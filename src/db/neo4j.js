@@ -1,25 +1,9 @@
-import mysql from 'mysql2/promise';
-
-/**
- * @constant pool
- * @description The MySQL pool
- */
-const pool = mysql.createPool({
-    host: process.env.MYSQL_HOST,
-    port: process.env.MYSQL_PORT,
-    user: process.env.MYSQL_USER,
-    password: process.env.MYSQL_PASSWORD,
-    database: process.env.MYSQL_DATABASE,
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0
-});
 
 /**
  * @constant manager
  * @description The manager object
  */
-const manager = { pool };
+const manager = { };
 
 /**
  * @function count
@@ -28,9 +12,7 @@ const manager = { pool };
  * @returns {Number} The number of records
  */
 manager.count = async function (pluralName) {
-    const query = `SELECT COUNT(*) AS count FROM ?`;
-    const [rows] = await this.pool.query(query, [pluralName]);
-    return rows[0].count;
+    return 0;
 }
 
 /**
@@ -42,9 +24,7 @@ manager.count = async function (pluralName) {
  * @returns {Array} An array of records
  */
 manager.findAll = async function (pluralName, limit = 10, offset = 0) {
-    const query = `SELECT * FROM ? LIMIT ? OFFSET ?`;
-    const [rows] = await this.pool.query(query, [pluralName, limit, offset]);
-    return rows;
+    return [];
 }
 
 /**
@@ -56,9 +36,7 @@ manager.findAll = async function (pluralName, limit = 10, offset = 0) {
  * @returns {object} The record
  */
 manager.findOne = async function (pluralName, pk, pkValue) {
-    const query = `SELECT * FROM ? WHERE ? = ?`;
-    const [rows] = await this.pool.query(query, [pluralName, pk, pkValue]);
-    return rows[0];
+    return null;
 }
 
 /**
@@ -69,10 +47,6 @@ manager.findOne = async function (pluralName, pk, pkValue) {
  * @returns {undefined}
  */
 manager.create = async function (pluralName, data) {
-    const keys = Object.keys(data);
-    const values = Object.values(data);
-    const query = `INSERT INTO ? (?) VALUES (?)`;
-    await this.pool.query(query, [pluralName, keys, values]);
 }
 
 /**
@@ -85,10 +59,6 @@ manager.create = async function (pluralName, data) {
  * @returns {undefined}
  */
 manager.update = async function (pluralName, data, pk, pkValue) {
-    const keys = Object.keys(data);
-    const values = Object.values(data);
-    const query = `UPDATE ? SET ? WHERE ? = ?`;
-    await this.pool.query(query, [pluralName, keys, pk, pkValue]);
 }
 
 /**
@@ -100,8 +70,6 @@ manager.update = async function (pluralName, data, pk, pkValue) {
  * @returns {undefined}
  */
 manager.destroy = async function (pluralName, pk, pkValue) {
-    const query = `DELETE FROM ? WHERE ? = ?`;
-    await this.pool.query(query, [pluralName, pk, pkValue]);
 }
 
 // export manager

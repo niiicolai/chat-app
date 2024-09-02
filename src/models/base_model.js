@@ -1,4 +1,4 @@
-import MySQLPool from '../db/mysql.js'; 
+import MySQLAdapter from '../db/mysql.js'; 
 
 /**
  * @class BaseModel
@@ -50,6 +50,7 @@ export default class BaseModel {
         this.fields = options.fields;
         this.singularName = options.singularName;
         this.pluralName = options.pluralName;
+        this.adapter = MySQLAdapter;
     }
 
     /**
@@ -62,10 +63,7 @@ export default class BaseModel {
      * console.log(count); // 10
      */
     async count() {
-        const pool = MySQLPool.getConnection();
-        const query = `SELECT COUNT(*) AS count FROM ?`;
-        const [rows] = await pool.query(query, [this.pluralName]);
-        return rows[0].count;
+        return this.adapter.count(this.pluralName);
     }
 
     /**
@@ -87,11 +85,7 @@ export default class BaseModel {
         if (!options) throw new Error('Options are required');
         if (isNaN(options.limit)) throw new Error('Limit must be a number');
         if (isNaN(options.offset)) throw new Error('Offset must be a number');
-        
-        const pool = MySQLPool.getConnection();
-        const query = `SELECT * FROM ? LIMIT ? OFFSET ?`;
-        const [rows] = await pool.query(query, [this.pluralName, options.limit, options.offset]);
-        return rows;
+        return this.adapter.findAll(this.pluralName, options.limit, options.offset);
     }
 
     /**
@@ -134,11 +128,7 @@ export default class BaseModel {
             params[this.pk] = body[this.pk];
         }
 
-        const pool = MySQLPool.getConnection();
-        let query = `INSERT INTO ? SET`;
-        this.fields.forEach(f => query += ` ${f} = ?,`);
-        query = query.slice(0, -1); // remove trailing comma
-        await pool.query(query, [this.pluralName, ...Object.values(params)]);        
+        await this.adapter.create(this.pluralName, params); 
     }
 
     /**
@@ -154,11 +144,7 @@ export default class BaseModel {
      */
     async findOne(pkValue) {
         if (!pkValue) throw new Error(`${this.pk} is required`);
-
-        const pool = MySQLPool.getConnection();
-        const query = `SELECT * FROM ? WHERE ? = ?`;
-        const [rows] = await pool.query(query, [this.pluralName, this.pk, pkValue]);
-        return rows[0];
+        return this.adapter.findOne(this.pluralName, this.pk, pkValue);
     }
 
     /**
@@ -186,12 +172,7 @@ export default class BaseModel {
             else params[f] = existing[f];
         });
 
-        const pool = MySQLPool.getConnection();
-        let query = `UPDATE ? SET`;
-        this.fields.forEach(f => query += ` ${f} = ?,`);
-        query = query.slice(0, -1); // remove trailing comma
-        query += ` WHERE ? = ?`;
-        await pool.query(query, [this.pluralName, ...Object.values(params), this.pk, pkValue]);
+        await this.adapter.update(this.pluralName, params, this.pk, pkValue);
     }
 
     /**
@@ -210,8 +191,6 @@ export default class BaseModel {
         const existing = await this.findOne(pkValue);
         if (!existing) throw new Error(`No record found with ${this.pk} = ${pkValue}`);
 
-        const pool = MySQLPool.getConnection();
-        const query = `DELETE FROM ? WHERE ? = ?`;
-        await pool.query(query, [this.pluralName, this.pk, pkValue]);
+        await this.adapter.destroy(this.pluralName, this.pk, pkValue);
     }
 }
