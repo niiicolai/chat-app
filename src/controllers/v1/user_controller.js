@@ -27,7 +27,7 @@ controller.defineCustomRoute('get', '/login', async (req, res) => {
     const data = req.body;
     const user = await crudService.login(data);
     res.json(user);
-});
+}, false);
 
 // Export the controller
 export default controller;

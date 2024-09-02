@@ -1,5 +1,5 @@
 import BaseController from './base_controller.js';
-import crudService from '../../services/room_service.js';
+import crudService from '../../services/room_invite_link_service.js';
 
 // Create a new controller
 const controller = new BaseController({

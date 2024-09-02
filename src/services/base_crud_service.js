@@ -89,7 +89,7 @@ export default class BaseCrudService {
      * service.create({ name: 'Room 1', description: 'Room 1', room_category_name: 'Standard' });
      * @throws {ControllerError} If the resource already exists
      */
-    async create(body) {
+    async create(body, file=null) {
         const pkValue = body[this.model.pk];
         if (this.model.findOne(pkValue)) {
             throw new ControllerError(400, 'Resource already exists');
@@ -127,7 +127,7 @@ export default class BaseCrudService {
      * @example
      * service.update('1', { name: 'Room 1', description: 'Room 1', room_category_name: 'Standard' });
      */
-    async update(pkValue, body) {
+    async update(pkValue, body, file=null) {
         const resource = await this.model.findOne(pkValue);
         if (!resource) {
             throw new ControllerError(404, 'Resource not found');

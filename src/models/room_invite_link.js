@@ -2,14 +2,13 @@ import BaseModel from './base_model.js';
 
 // Define the model
 const model = new BaseModel({
-    singularName: 'channel_message',
-    pluralName: 'channel_messages',
-    mysql_table: 'channelmessage',
+    singularName: 'room_invite_link',
+    pluralName: 'room_invite_links',
+    mysql_table: 'roominvitelink',
     pk: 'uuid',
     fields: [
-        'body',
-        'channel_uuid',
-        'user_uuid',
+        'room_uuid',
+        'expires_at',
     ]
 });
 

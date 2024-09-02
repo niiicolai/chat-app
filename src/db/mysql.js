@@ -24,84 +24,84 @@ const manager = { pool };
 /**
  * @function count
  * @description Count the number of records
- * @param {String} pluralName The plural name of the resource
+ * @param {String} model The model
  * @returns {Number} The number of records
  */
-manager.count = async function (pluralName) {
-    const query = `SELECT COUNT(*) AS count FROM ?`;
-    const [rows] = await this.pool.query(query, [pluralName]);
+manager.count = async function (model) {
+    const query = `SELECT COUNT(*) AS count FROM ${model.mysql_table}`;
+    const [rows] = await this.pool.query(query);
     return rows[0].count;
 }
 
 /**
  * @function findAll
  * @description Find all records
- * @param {String} pluralName The plural name of the resource
+ * @param {String} model The model
  * @param {Number} limit The number of records to return
  * @param {Number} offset The number of records to skip
  * @returns {Array} An array of records
  */
-manager.findAll = async function (pluralName, limit = 10, offset = 0) {
-    const query = `SELECT * FROM ? LIMIT ? OFFSET ?`;
-    const [rows] = await this.pool.query(query, [pluralName, limit, offset]);
+manager.findAll = async function (model, limit = 10, offset = 0) {
+    const query = `SELECT * FROM ${model.mysql_table} LIMIT ? OFFSET ?`;
+    const [rows] = await this.pool.query(query, [limit, offset]);
     return rows;
 }
 
 /**
  * @function findOne
  * @description Find one record
- * @param {String} pluralName The plural name of the resource
+ * @param {String} model The model
  * @param {String} pk The primary key
  * @param {String} pkValue The primary key value
  * @returns {object} The record
  */
-manager.findOne = async function (pluralName, pk, pkValue) {
-    const query = `SELECT * FROM ? WHERE ? = ?`;
-    const [rows] = await this.pool.query(query, [pluralName, pk, pkValue]);
+manager.findOne = async function (model, pk, pkValue) {
+    const query = `SELECT * FROM ${model.mysql_table} WHERE ? = ?`;
+    const [rows] = await this.pool.query(query, [pk, pkValue]);
     return rows[0];
 }
 
 /**
  * @function create
  * @description Create a record
- * @param {String} pluralName The plural name of the resource
+ * @param {String} model The model
  * @param {Object} data The data to create
  * @returns {undefined}
  */
-manager.create = async function (pluralName, data) {
+manager.create = async function (model, data) {
     const keys = Object.keys(data);
     const values = Object.values(data);
-    const query = `INSERT INTO ? (?) VALUES (?)`;
-    await this.pool.query(query, [pluralName, keys, values]);
+    const query = `INSERT INTO ${model.mysql_table} (?) VALUES (?)`;
+    await this.pool.query(query, [keys, values]);
 }
 
 /**
  * @function update
  * @description Update a record
- * @param {String} pluralName The plural name of the resource
+ * @param {String} model The model
  * @param {Object} data The data to update
  * @param {String} pk The primary key
  * @param {String} pkValue The primary key value
  * @returns {undefined}
  */
-manager.update = async function (pluralName, data, pk, pkValue) {
+manager.update = async function (model, data, pk, pkValue) {
     const keys = Object.keys(data);
     const values = Object.values(data);
-    const query = `UPDATE ? SET ? WHERE ? = ?`;
-    await this.pool.query(query, [pluralName, keys, pk, pkValue]);
+    const query = `UPDATE ${model.mysql_table} SET ? WHERE ? = ?`;
+    await this.pool.query(query, [keys, pk, pkValue]);
 }
 
 /**
  * @function destroy
  * @description Destroy a record
- * @param {String} pluralName The plural name of the resource
+ * @param {String} model The model
  * @param {String} pk The primary key
  * @param {String} pkValue The primary key value
  * @returns {undefined}
  */
-manager.destroy = async function (pluralName, pk, pkValue) {
-    const query = `DELETE FROM ? WHERE ? = ?`;
-    await this.pool.query(query, [pluralName, pk, pkValue]);
+manager.destroy = async function (model, pk, pkValue) {
+    const query = `DELETE FROM ${model.mysql_table} WHERE ? = ?`;
+    await this.pool.query(query, [pk, pkValue]);
 }
 
 // export manager

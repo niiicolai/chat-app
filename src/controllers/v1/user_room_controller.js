@@ -6,7 +6,7 @@ const controller = new BaseController({
     crudService,
     auth: {
         _index: true,
-        _new: true,
+        _new: false,
         _create: true,
         _show: true,
         _update: true,

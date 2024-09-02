@@ -1,5 +1,6 @@
 
 import AuthMiddleware from '../../middlewares/auth_middleware.js';
+import LogMiddleware from '../../middlewares/log_middleware.js';
 import ControllerError from '../../errors/controller_error.js';
 import express from 'express';
 
@@ -37,12 +38,11 @@ export default class BaseController {
      * @constructor
      * @description Constructor for BaseController
      * @param {Object} options
-     * @param {String} options.baseUrl
      * @param {String} options.pk
      * @param {Object} options.crudService
      * @param {Object} options.auth
      */
-    constructor(options = {baseUrl: '', crudService: null, auth: {}}) {
+    constructor(options = {crudService: null, auth: {}}) {
         if (!options) throw new Error('options is required');
         if (!options.crudService) throw new Error('crudService is required');
         if (!options.auth) throw new Error('auth is required');
@@ -53,6 +53,7 @@ export default class BaseController {
         this.singularName = options.crudService.model.singularName;
         this.pluralName = options.crudService.model.pluralName;
         this.auth = options.auth;
+        this.baseUrl = '/api/v1';
     }
 
     /**
@@ -61,11 +62,12 @@ export default class BaseController {
      * @returns {undefined}
      * @memberof BaseController
      */
-    _index() {
-        const url = `/${this.pluralName}`;
-        const auth = this.auth._index ? AuthMiddleware : [];
+    _index(middleware=[]) {
+        const url = `${this.baseUrl}/${this.pluralName}`;
+        middleware.push(LogMiddleware);
+        if (this.auth._index) middleware.push(AuthMiddleware);
 
-        this.router.get(url, auth, (req, res) => {
+        this.router.get(url, middleware, (req, res) => {
             handleError(async () => {
                 const page = req.query.page ? parseInt(req.query.page) : 1;
                 const limit = req.query.limit ? parseInt(req.query.limit) : 10;
@@ -73,9 +75,6 @@ export default class BaseController {
                 res.json(data);
             }, res);
         });
-
-        if (process.env.DEBUG)
-            console.log(`${this.pluralName} (index): curl -X GET http://localhost:${process.env.WEB_PORT}${url}`);
     }
 
     /**
@@ -84,18 +83,16 @@ export default class BaseController {
      * @returns {undefined}
      * @memberof BaseController
      */
-    _new() {
-        const url = `/${this.singularName}/new`;
-        const auth = this.auth._new ? AuthMiddleware : [];
+    _new(middleware=[]) {
+        const url = `${this.baseUrl}/${this.singularName}/new`;
+        middleware.push(LogMiddleware);
+        if (this.auth._new) middleware.push(AuthMiddleware);
 
-        this.router.get(url, auth, (req, res) => {
+        this.router.get(url, middleware, (req, res) => {
             handleError(() => {
                 res.json(this.crudService.template());
             }, res);
         });
-
-        if (process.env.DEBUG)
-            console.log(`${this.singularName} (new): curl -X GET http://localhost:${process.env.WEB_PORT}${url}`);
     }
 
     /**
@@ -104,19 +101,17 @@ export default class BaseController {
      * @returns {undefined}
      * @memberof BaseController
      */
-    _create() {
-        const url = `/${this.singularName}`;
-        const auth = this.auth._create ? AuthMiddleware : [];
+    _create(middleware=[]) {
+        const url = `${this.baseUrl}/${this.singularName}`;
+        middleware.push(LogMiddleware);
+        if (this.auth._create) middleware.push(AuthMiddleware);
 
-        this.router.post(url, auth, (req, res) => {
+        this.router.post(url, middleware, (req, res) => {
             handleError(async () => {
-                const data = await this.crudService.create(req.body);
+                const data = await this.crudService.create(req.body, req.file);
                 res.json(data);
             }, res);
         });
-
-        if (process.env.DEBUG)
-            console.log(`${this.singularName} (create): curl -X POST http://localhost:${process.env.WEB_PORT}${url}`);
     }
 
     /**
@@ -125,41 +120,37 @@ export default class BaseController {
      * @returns {undefined}
      * @memberof BaseController
      */
-    _show() {
-        const url = `/${this.singularName}/:${this.pk}`;
-        const auth = this.auth._show ? AuthMiddleware : [];
+    _show(middleware=[]) {
+        const url = `${this.baseUrl}/${this.singularName}/:${this.pk}`;
+        middleware.push(LogMiddleware);
+        if (this.auth._show) middleware.push(AuthMiddleware);
 
-        this.router.get(url, auth, (req, res) => {
+        this.router.get(url, middleware, (req, res) => {
             handleError(async () => {
                 const data = await this.crudService.findOne(req.params[this.pk]);
                 res.json(data);
             }, res);
         });
-
-        if (process.env.DEBUG)
-            console.log(`${this.singularName} (show): curl -X GET http://localhost:${process.env.WEB_PORT}${url}`);
     }
 
     /**
-     * @function _edit
-     * @description Define the edit route for getting a resource template for editing
+     * @function _update
+     * @description Define the _update route for updating a resource
      * @returns {undefined}
      * @memberof BaseController
      */
-    _update() {
-        const url = `/${this.singularName}/:${this.pk}`;
-        const auth = this.auth._update ? AuthMiddleware : [];
+    _update(middleware=[]) {
+        const url = `${this.baseUrl}/${this.singularName}/:${this.pk}`;
+        middleware.push(LogMiddleware);
+        if (this.auth._update) middleware.push(AuthMiddleware);
 
-        this.router.patch(url, auth, (req, res) => {
+        this.router.patch(url, middleware, (req, res) => {
             handleError(async () => {
-                await this.crudService.update(req.params[this.pk], req.body);
+                await this.crudService.update(req.params[this.pk], req.body, req.file);
 
                 res.status(204).json();
             }, res);
         });
-
-        if (process.env.DEBUG)
-            console.log(`${this.singularName} (update): curl -X PATCH http://localhost:${process.env.WEB_PORT}${url}`);
     }
 
     /**
@@ -168,28 +159,26 @@ export default class BaseController {
      * @returns {undefined}
      * @memberof BaseController
      */
-    _destroy() {
-        const url = `/${this.singularName}/:${this.pk}`;
-        const auth = this.auth._destroy ? AuthMiddleware : []
+    _destroy(middleware=[]) {
+        const url = `${this.baseUrl}/${this.singularName}/:${this.pk}`;
+        middleware.push(LogMiddleware);
+        if (this.auth._destroy) middleware.push(AuthMiddleware);
 
-        this.router.delete(url, auth, (req, res) => {
+        this.router.delete(url, middleware, (req, res) => {
             handleError(async () => {
                 await this.crudService.destroy(req.params[this.pk])
 
                 res.status(204).json();
             }, res);
         });
-
-        if (process.env.DEBUG)
-            console.log(`${this.singularName} (destroy): curl -X DELETE http://localhost:${process.env.WEB_PORT}${url}`);
     }
 
-    defineCustomRoute(method, url, callback) {
-        handleError(() => {
-            this.router[method](url, callback);
-        });
+    defineCustomRoute(method, url, callback, auth=true, middleware=[]) {
+        middleware.push(LogMiddleware);
+        if (auth) middleware.push(AuthMiddleware);
 
-        if (process.env.DEBUG)
-            console.log(`Custom Route (${method}): curl -X ${method.toUpperCase()} http://localhost:${process.env.WEB_PORT}${url}`);
+        handleError(() => {
+            this.router[method](`${this.baseUrl}/${url}`, middleware, callback);
+        });
     }
 }

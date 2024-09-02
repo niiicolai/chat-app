@@ -10,6 +10,7 @@ import MySQLAdapter from '../db/mysql.js';
  * const model = new BaseModel({
  *    singularName: 'upload_type',
  *    pluralName: 'upload_types',
+ *    mysql_table: 'upload_types',
  *    pk: 'name',
  *    fields: ['description']
  * });
@@ -26,30 +27,36 @@ export default class BaseModel {
      * @param {Array} options.fields The fields
      * @param {String} options.singularName The singular name
      * @param {String} options.pluralName The plural name
+     * @param {Object} options.mysql_table The MySQL table
      * @example
-     * const model = new BaseModel({ pk: 'id', fields: ['name', 'email'], singularName: 'user', pluralName: 'users' });
+     * const model = new BaseModel({ pk: 'id', fields: ['name', 'email'], singularName: 'user', pluralName: 'users', 
+ *    mysql_table: 'users' });
      * @throws {Error} If options are not provided
      * @throws {Error} If primary key is not provided
      * @throws {Error} If fields are not provided
      * @throws {Error} If singularName is not provided
      * @throws {Error} If pluralName is not provided
+     * @throws {Error} If mysql_table is not provided
      */
     constructor(options = {
             pk: null, 
             fields: null, 
             singularName: null,
-            pluralName: null
+            pluralName: null,
+            mysql_table: null
         }) {
         if (!options) throw new Error('Options are required');
         if (!options.pk) throw new Error('Primary key is required');
         if (!options.fields) throw new Error('Fields are required');
         if (!options.singularName) throw new Error('singularName is required');
         if (!options.pluralName) throw new Error('pluralName is required');
+        if (!options.mysql_table) throw new Error('mysql_table is required');
 
         this.pk = options.pk;
         this.fields = options.fields;
         this.singularName = options.singularName;
         this.pluralName = options.pluralName;
+        this.mysql_table = options.mysql_table;
         this.adapter = MySQLAdapter;
     }
 
@@ -58,12 +65,13 @@ export default class BaseModel {
      * @description Count the number of records
      * @returns {Number} The number of records
      * @example
-     * const model = new BaseModel({ pk: 'id', fields: ['name', 'email'], singularName: 'user', pluralName: 'users' });
+     * const model = new BaseModel({ pk: 'id', fields: ['name', 'email'], singularName: 'user', pluralName: 'users', 
+ *    mysql_table: 'users' });
      * const count = model.count();
      * console.log(count); // 10
      */
     async count() {
-        return this.adapter.count(this.pluralName);
+        return this.adapter.count(this);
     }
 
     /**
@@ -74,7 +82,8 @@ export default class BaseModel {
      * @param {Number} options.offset The number of records to skip
      * @returns {Array} An array of records
      * @example
-     * const model = new BaseModel({ pk: 'id', fields: ['name', 'email'], singularName: 'user', pluralName: 'users' });
+     * const model = new BaseModel({ pk: 'id', fields: ['name', 'email'], singularName: 'user', pluralName: 'users', 
+ *    mysql_table: 'users' });
      * const records = model.findAll({ limit: 10, offset: 0 });
      * console.log(records); // [{ id: 1, name: 'John Doe', email: 'test@test.com' }]
      * @throws {Error} If options are not provided  
@@ -85,7 +94,7 @@ export default class BaseModel {
         if (!options) throw new Error('Options are required');
         if (isNaN(options.limit)) throw new Error('Limit must be a number');
         if (isNaN(options.offset)) throw new Error('Offset must be a number');
-        return this.adapter.findAll(this.pluralName, options.limit, options.offset);
+        return this.adapter.findAll(this, options.limit, options.offset);
     }
 
     /**
@@ -93,7 +102,8 @@ export default class BaseModel {
      * @description Create a new object with all fields set to null
      * @returns {Object} A new object with all fields set to null
      * @example
-     * const model = new BaseModel({ pk: 'id', fields: ['name', 'email'], singularName: 'user', pluralName: 'users' });
+     * const model = new BaseModel({ pk: 'id', fields: ['name', 'email'], singularName: 'user', pluralName: 'users', 
+ *    mysql_table: 'users' });
      * const template = model.template();
      * console.log(template); // { id: null, name: null, email: null }
      */
@@ -109,7 +119,8 @@ export default class BaseModel {
      * @param {Object} body The request body
      * @returns {Object} The newly created record
      * @example
-     * const model = new BaseModel({ pk: 'id', fields: ['name', 'email'], singularName: 'user', pluralName: 'users' });
+     * const model = new BaseModel({ pk: 'id', fields: ['name', 'email'], singularName: 'user', pluralName: 'users', 
+ *    mysql_table: 'users' });
      * const record = model.create({ name: 'John Doe', email: 'test@test.com' });
      * console.log(record); // { id: 1, name: 'John Doe', email: 'test@test.com' }
      * @throws {Error} If the body is not provided
@@ -128,7 +139,7 @@ export default class BaseModel {
             params[this.pk] = body[this.pk];
         }
 
-        await this.adapter.create(this.pluralName, params); 
+        await this.adapter.create(this, params); 
     }
 
     /**
@@ -137,14 +148,15 @@ export default class BaseModel {
      * @param {String} pkValue The primary key value
      * @returns {Object} The record found
      * @example
-     * const model = new BaseModel({ pk: 'id', fields: ['name', 'email'], singularName: 'user', pluralName: 'users' });
+     * const model = new BaseModel({ pk: 'id', fields: ['name', 'email'], singularName: 'user', pluralName: 'users', 
+ *    mysql_table: 'users' });
      * const record = model.findOne(1);
      * console.log(record); // { id: 1, name: 'John Doe', email: 'test@test.com' }
      * @throws {Error} If no record is found with the primary key value
      */
     async findOne(pkValue) {
         if (!pkValue) throw new Error(`${this.pk} is required`);
-        return this.adapter.findOne(this.pluralName, this.pk, pkValue);
+        return this.adapter.findOne(this, this.pk, pkValue);
     }
 
     /**
@@ -154,7 +166,8 @@ export default class BaseModel {
      * @param {Object} body The request body
      * @returns {Object} The updated record
      * @example
-     * const model = new BaseModel({ pk: 'id', fields: ['name', 'email'], singularName: 'user', pluralName: 'users' });
+     * const model = new BaseModel({ pk: 'id', fields: ['name', 'email'], singularName: 'user', pluralName: 'users', 
+ *    mysql_table: 'users' });
      * const record = model.update(1, { name: 'Jane Doe', email: 'test@test.com' });
      * console.log(record); // { id: 1, name: 'Jane Doe', email: 'test@test.com' }
      * @throws {Error} If no record is found with the primary key value
@@ -172,7 +185,7 @@ export default class BaseModel {
             else params[f] = existing[f];
         });
 
-        await this.adapter.update(this.pluralName, params, this.pk, pkValue);
+        await this.adapter.update(this, params, this.pk, pkValue);
     }
 
     /**
@@ -180,7 +193,8 @@ export default class BaseModel {
      * @description Delete a record by primary key
      * @param {String} pkValue The primary key value
      * @example
-     * const model = new BaseModel({ pk: 'id', fields: ['name', 'email'], singularName: 'user', pluralName: 'users' });
+     * const model = new BaseModel({ pk: 'id', fields: ['name', 'email'], singularName: 'user', pluralName: 'users', 
+ *    mysql_table: 'users' });
      * model.destroy(1);
      * @throws {Error} If no record is found with the primary key value
      * @throws {Error} If the primary key value is not provided
@@ -191,6 +205,6 @@ export default class BaseModel {
         const existing = await this.findOne(pkValue);
         if (!existing) throw new Error(`No record found with ${this.pk} = ${pkValue}`);
 
-        await this.adapter.destroy(this.pluralName, this.pk, pkValue);
+        await this.adapter.destroy(this, this.pk, pkValue);
     }
 }

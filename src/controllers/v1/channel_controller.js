@@ -5,8 +5,8 @@ import crudService from '../../services/channel_service.js';
 const controller = new BaseController({
     crudService,
     auth: {
-        _index: false,
-        _new: true,
+        _index: true,
+        _new: false,
         _create: true,
         _show: true,
         _update: true,

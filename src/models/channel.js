@@ -4,6 +4,7 @@ import BaseModel from './base_model.js';
 const model = new BaseModel({
     singularName: 'channel',
     pluralName: 'channels',
+    mysql_table: 'channel',
     pk: 'uuid',
     fields: [
         'name',
