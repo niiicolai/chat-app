@@ -32,10 +32,10 @@ class UserService extends BaseCrudService {
      * @returns {Object} The user and token
      */
     async login(data) {
-        const user = await this.model.findOne({ where: { email: data.email } });
-        if (!user) throw new ControllerError('User not found', 404);
+        const user = await this.model.findOneByField('email', data.email);
+        if (!user) throw new ControllerError(404, 'User not found');
         const isValid = await this.model.comparePassword(user, data.password);
-        if (!isValid) throw new ControllerError('Invalid password', 400);
+        if (!isValid) throw new ControllerError(400, 'Invalid password');
 
         const token = JwtService.sign(user.uuid);
         return { user: this.dto(user), token };

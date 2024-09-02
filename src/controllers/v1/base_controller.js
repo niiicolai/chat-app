@@ -11,19 +11,21 @@ import express from 'express';
  * @param {Object} res
  * @returns {undefined}
  */
-const handleError = (callback, res) => {
+const handleError = async (callback, res) => {
     try {
-        callback();
+        await callback();
     } catch (error) {
+        if (process.env.DEBUG) {
+            console.log(error);
+        }
+        
         if (error instanceof ControllerError) {
             res.status(error.code).json({ error: error.message });
         } else {
             res.status(500).json({ error: 'Internal Server Error' });
         }
 
-        if (process.env.DEBUG) {
-            console.error(error);
-        }
+        
     }
 }
 
@@ -71,7 +73,7 @@ export default class BaseController {
             handleError(async () => {
                 const page = req.query.page ? parseInt(req.query.page) : 1;
                 const limit = req.query.limit ? parseInt(req.query.limit) : 10;
-                const data = await this.crudService.findAll(page, limit);
+                const data = await this.crudService.findAll(page, limit, req.user);
                 res.json(data);
             }, res);
         });
@@ -108,7 +110,7 @@ export default class BaseController {
 
         this.router.post(url, middleware, (req, res) => {
             handleError(async () => {
-                const data = await this.crudService.create(req.body, req.file);
+                const data = await this.crudService.create(req.body, req.file, req.user);
                 res.json(data);
             }, res);
         });
@@ -127,7 +129,7 @@ export default class BaseController {
 
         this.router.get(url, middleware, (req, res) => {
             handleError(async () => {
-                const data = await this.crudService.findOne(req.params[this.pk]);
+                const data = await this.crudService.findOne(req.params[this.pk], req.user);
                 res.json(data);
             }, res);
         });
@@ -146,7 +148,7 @@ export default class BaseController {
 
         this.router.patch(url, middleware, (req, res) => {
             handleError(async () => {
-                await this.crudService.update(req.params[this.pk], req.body, req.file);
+                await this.crudService.update(req.params[this.pk], req.body, req.file, req.user);
 
                 res.status(204).json();
             }, res);
@@ -166,7 +168,7 @@ export default class BaseController {
 
         this.router.delete(url, middleware, (req, res) => {
             handleError(async () => {
-                await this.crudService.destroy(req.params[this.pk])
+                await this.crudService.destroy(req.params[this.pk], req.user);
 
                 res.status(204).json();
             }, res);
@@ -177,8 +179,10 @@ export default class BaseController {
         middleware.push(LogMiddleware);
         if (auth) middleware.push(AuthMiddleware);
 
-        handleError(() => {
-            this.router[method](`${this.baseUrl}/${url}`, middleware, callback);
+        this.router[method](`${this.baseUrl}/${url}`, middleware, (req, res) => {
+            handleError(async () => {
+                await callback(req, res);
+            }, res);
         });
     }
 }

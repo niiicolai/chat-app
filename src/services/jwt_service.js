@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken';
 
 const SECRET = process.env.JWT_SECRET;
-const EXPIRE = process.env.JWT_EXPIRE;
+const EXPIRE = process.env.JWT_EXPIRE; // 7d
 
 export default class JwtService {
     constructor() {
@@ -9,7 +9,7 @@ export default class JwtService {
 
     static sign(sub) {
         const iat = Math.floor(Date.now() / 1000);
-        const exp = iat + EXPIRE;
+        const exp = iat + (60 * 60 * 24 * 7); // 7 days
         const payload = {
             sub,
             iat,

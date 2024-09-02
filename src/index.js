@@ -1,5 +1,6 @@
 
 import 'dotenv/config'
+import cors from 'cors'
 import express from 'express'
 import expressOasGenerator from 'express-oas-generator'
 
@@ -20,6 +21,7 @@ const app = express()
 
 expressOasGenerator.handleResponses(app, {});
 
+app.use(cors({ origin: '*' }))
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 

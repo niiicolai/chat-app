@@ -1,5 +1,6 @@
 import BaseController from './base_controller.js';
 import crudService from '../../services/user_service.js';
+import ControllerError from '../../errors/controller_error.js';
 
 // Create a new controller
 const controller = new BaseController({
@@ -23,10 +24,11 @@ controller._update();
 controller._destroy();
 
 // Define custom routes
-controller.defineCustomRoute('get', '/login', async (req, res) => {
+controller.defineCustomRoute('post', 'login', async (req, res) => {
     const data = req.body;
-    const user = await crudService.login(data);
-    res.json(user);
+        const user = await crudService.login(data);
+        res.json(user);
+    
 }, false);
 
 // Export the controller

@@ -1,5 +1,5 @@
 import MySQLAdapter from '../db/mysql.js'; 
-
+import ControllerError from '../errors/controller_error.js';
 /**
  * @class BaseModel
  * @description The base model class
@@ -70,8 +70,8 @@ export default class BaseModel {
      * const count = model.count();
      * console.log(count); // 10
      */
-    async count() {
-        return this.adapter.count(this);
+    async count(where={}) {
+        return await this.adapter.count(this, where);
     }
 
     /**
@@ -90,11 +90,11 @@ export default class BaseModel {
      * @throws {Error} If limit is not a number
      * @throws {Error} If offset is not a number
      */
-    async findAll(options = {limit: null, offset: null}) {
+    async findAll(options = {limit: null, offset: null}, where={}) {
         if (!options) throw new Error('Options are required');
         if (isNaN(options.limit)) throw new Error('Limit must be a number');
         if (isNaN(options.offset)) throw new Error('Offset must be a number');
-        return this.adapter.findAll(this, options.limit, options.offset);
+        return await this.adapter.findAll(this, options.limit, options.offset, where);
     }
 
     /**
@@ -156,7 +156,20 @@ export default class BaseModel {
      */
     async findOne(pkValue) {
         if (!pkValue) throw new Error(`${this.pk} is required`);
-        return this.adapter.findOne(this, this.pk, pkValue);
+        return await this.adapter.findOne(this, pkValue);
+    }
+
+    /**
+     * @function findOneByField
+     * @description Find a record by field
+     * @param {String} fieldName The field name
+     * @param {String} fieldValue The field value
+     * @returns {Object} The record found
+     */ 
+    async findOneByField(fieldName, fieldValue) {
+        if (!fieldName) throw new Error('fieldName is required');
+        if (!fieldValue) throw new Error('fieldValue is required');
+        return await this.adapter.findOneByField(this, fieldName, fieldValue);
     }
 
     /**
@@ -177,7 +190,7 @@ export default class BaseModel {
         if (!pkValue) throw new Error(`${this.pk} is required`);
 
         const existing = await this.findOne(pkValue);
-        if (!existing) throw new Error(`No record found with ${this.pk} = ${pkValue}`);
+        if (!existing) throw new ControllerError(404, 'Resource not found');
 
         const params = {}
         this.fields.forEach(f => {
@@ -203,7 +216,7 @@ export default class BaseModel {
         if (!pkValue) throw new Error(`${this.pk} is required`);
 
         const existing = await this.findOne(pkValue);
-        if (!existing) throw new Error(`No record found with ${this.pk} = ${pkValue}`);
+        if (!existing) throw new ControllerError(404, 'Resource not found');
 
         await this.adapter.destroy(this, this.pk, pkValue);
     }

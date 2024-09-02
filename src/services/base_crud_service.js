@@ -46,17 +46,20 @@ export default class BaseCrudService {
      * const data = service.findAll(1, 10);
      * console.log(data); // { data: [], meta: { total: 0, page: 1, pages: 0 } }
      */
-    async findAll(page, limit) {
+    async findAll(page, limit, user=null, where={}) {
         if (isNaN(page)) page = 1;
         if (isNaN(limit)) limit = 10;
 
+        if (user && this.model.fields.includes('user_uuid'))
+            where.user_uuid = user.uuid;
+
         const offset = (page - 1) * limit;
-        const total = this.model.count();
+        const total = this.model.count(where);
         const pages = Math.ceil(total / limit);
         const data = await this.model.findAll({
             offset: offset,
             limit: limit,
-        });
+        }, where);
         
         return {
             data: data.map(d => this.dto(d)),
@@ -89,13 +92,14 @@ export default class BaseCrudService {
      * service.create({ name: 'Room 1', description: 'Room 1', room_category_name: 'Standard' });
      * @throws {ControllerError} If the resource already exists
      */
-    async create(body, file=null) {
+    async create(body, file=null, user=null) {
         const pkValue = body[this.model.pk];
-        if (this.model.findOne(pkValue)) {
+        if (await this.model.findOne(pkValue)) {
             throw new ControllerError(400, 'Resource already exists');
         }
-        await this.model.create(body);
-        const resource = await this.model.findOne(pkValue);
+        if (user) body.user_id = user.id;
+        await this.model.create(body, user);
+        const resource = await this.model.findOne(pkValue, user);
         return this.dto(resource);
     }
 
@@ -109,11 +113,13 @@ export default class BaseCrudService {
      * const resource = service.findOne('1');
      * console.log(resource); // { name: 'Room 1', description: 'Room 1', room_category_name: 'Standard' }
      */
-    async findOne(pkValue) {
-        const resource = await this.model.findOne(pkValue);
+    async findOne(pkValue, user=null) {
+        const resource = await this.model.findOne(pkValue, user);
         if (!resource) {
             throw new ControllerError(404, 'Resource not found');
         }
+        if (user && resource.user_id && resource.user_id !== user.id) 
+            throw new ControllerError(404, 'Resource not found');
 
         return this.dto(resource);
     }
@@ -127,11 +133,13 @@ export default class BaseCrudService {
      * @example
      * service.update('1', { name: 'Room 1', description: 'Room 1', room_category_name: 'Standard' });
      */
-    async update(pkValue, body, file=null) {
-        const resource = await this.model.findOne(pkValue);
+    async update(pkValue, body, file=null, user=null) {
+        const resource = await this.model.findOne(pkValue, user);
         if (!resource) {
             throw new ControllerError(404, 'Resource not found');
         }
+        if (user && resource.user_id && resource.user_id !== user.id) 
+            throw new ControllerError(404, 'Resource not found');
 
         await this.model.update(pkValue, body);
     }
@@ -144,11 +152,13 @@ export default class BaseCrudService {
      * @example
      * service.destroy('1');
      */
-    async destroy(pkValue) {
-        const resource = await this.model.findOne(pkValue);
+    async destroy(pkValue, user=null) {
+        const resource = await this.model.findOne(pkValue, user);
         if (!resource) {
             throw new ControllerError(404, 'Resource not found');
         }
+        if (user && resource.user_id && resource.user_id !== user.id) 
+            throw new ControllerError(404, 'Resource not found');
 
         await this.model.destroy(pkValue);
     }
