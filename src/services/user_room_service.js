@@ -61,9 +61,9 @@ class UserRoomService {
             .optionsBuilder()
             .findAll(page, limit)
         
-        if (user) 
-            options.where('user_uuid', user.sub)
-
+        //if (user) options.where('user_uuid', user.sub)
+        if (findAllArgs.room_uuid) options.where('room_uuid', findAllArgs.room_uuid)
+        
         for (const key in findAllArgs.where) {
             options.where(key, findAllArgs.where[key]);
         }
@@ -142,6 +142,11 @@ class UserRoomService {
         const userRoom = await model.findOne({ pk });
         if (!userRoom)
             throw new ControllerError(404, 'userRoom not found');
+
+        const role = userRoom.user_room_room_role_name;
+        if (role == 'Admin') {
+            throw new ControllerError(400, 'Admin cannot be removed from the room');
+        }
 
         if (!this.findOne({ room_uuid: userRoom.user_room_room_uuid, user: destroyArgs.user }))
             throw new ControllerError(404, 'User is not in the room');

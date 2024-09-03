@@ -36,6 +36,32 @@ class ChannelService {
         return dto(channel);
     }
 
+    async isInRoom(findArgs = { channel_uuid: null, user: null, room_role_name: null }) {
+        if (!findArgs.channel_uuid)
+            throw new ControllerError(400, 'channel_uuid is required');
+        if (!findArgs.user)
+            throw new ControllerError(400, 'User is required');
+
+        const channel = await model.findOne(model
+            .optionsBuilder()
+            .findOne(findArgs.channel_uuid)
+            .build());
+
+        if (!channel)
+            throw new ControllerError(404, 'channel not found');
+
+        const room_uuid = channel.channel_room_uuid;
+        const user = findArgs.user;
+        const room_role_name = findArgs.room_role_name;
+        const isUserInRoom = await UserRoomService.isInRoom({ 
+            room_uuid, 
+            user, 
+            room_role_name 
+        });
+            
+        return isUserInRoom;
+    }
+
     async findAll(findAllArgs = { page: 1, limit: 10, room_uuid: null, user: null }) {
         if (!findAllArgs.user)
             throw new ControllerError(400, 'User is required');
