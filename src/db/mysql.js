@@ -1,4 +1,6 @@
 import mysql from 'mysql2/promise';
+import BaseAdapter from './base_adapter.js';
+import { query } from 'express';
 
 /**
  * @constant pool
@@ -15,113 +17,212 @@ const pool = mysql.createPool({
     queueLimit: 0
 });
 
-/**
- * @constant manager
- * @description The manager object
- */
-const manager = { pool };
+const queryBuilder = (model, options) => {
+    const builder = { req: { query: ``, values: [] } };
 
-/**
- * @function count
- * @description Count the number of records
- * @param {String} model The model
- * @returns {Number} The number of records
- */
-manager.count = async function (model, where={}) {
-    const values = [];
-    let query = `SELECT COUNT(*) AS count FROM ${model.mysql_table}`;
-    if (Object.keys(where).length > 0) {
-        query += ' WHERE ';
-        query += Object.keys(where).map(k => `\`${k}\` = ?`).join(' AND ');
-        values.push(...Object.values(where));
+    builder.count = () => {
+        builder.req.query = `SELECT COUNT(*) AS count FROM ${model.mysql_table}`;
+        return builder;
     }
-    const [rows] = await this.pool.query(query, values);
-    return rows[0].count;
-}
 
-/**
- * @function findAll
- * @description Find all records
- * @param {String} model The model
- * @param {Number} limit The number of records to return
- * @param {Number} offset The number of records to skip
- * @returns {Array} An array of records
- */
-manager.findAll = async function (model, limit = 10, offset = 0, where={}) {
-    const values = [limit, offset];
-    let query = `SELECT * FROM ${model.mysql_table} LIMIT ? OFFSET ?`;
-    if (Object.keys(where).length > 0) {
-        query += ' WHERE ';
-        query += Object.keys(where).map(k => `\`${k}\` = ?`).join(' AND ');
-        values.push(...Object.values(where));
+    builder.find = () => {
+        builder.req.query = `SELECT`;
+        for (const field in model.fields) {
+
+            builder.req.query += ` ${model.mysql_table}.${model.fields[field]} as ${model.singularName}_${model.fields[field]},`;
+        }
+        builder.req.query += ` ${model.mysql_table}.${model.pk} as ${model.singularName}_${model.pk}`;
+        builder.req.query += ` FROM ${model.mysql_table}`;
+
+        return builder;
     }
-    
-    const [rows] = await this.pool.query(query, values);
-    return rows;
+
+    builder.create = () => {
+        const keys = Object.keys(options).map(k => `\`${k}\``).join(', ');
+        const placeholders = Object.keys(options).map(k => '?').join(', ');
+
+        builder.req.query = `INSERT INTO ${model.mysql_table} (${keys}) VALUES (${placeholders})`;
+        builder.req.values = Object.values(options);
+        return builder;
+    }
+
+    builder.update = () => {
+        const keys = Object.keys(options.body).map(k => `\`${k}\` = ?`).join(', ');
+        builder.req.query = `UPDATE ${model.mysql_table} SET ${keys} WHERE ${model.pk} = ?`;
+        builder.req.values = Object.values(options.body);
+        builder.req.values.push(options.pk);
+        return builder;
+    }
+
+    builder.destroy = () => {
+        builder.req.query = `DELETE FROM ${model.mysql_table} WHERE ${model.pk} = ?`;
+        builder.req.values = [options.pk];
+        return builder;
+    }
+
+    builder.where = (where={}) => {
+        if (Object.keys(where).length > 0) {
+            builder.req.query += ' WHERE ';
+            builder.req.query += Object.keys(where).map(k => `${k} = ?`).join(' AND ');
+            builder.req.values.push(...Object.values(where));
+        }
+        return builder;
+    }
+
+    builder.include = (include=[]) => {
+        if (include.length > 0) {
+            include.forEach(i => {
+                const table = i.model_table || model.mysql_table;
+                const field = i.model_field || model.pk;
+
+                const iTable = i.model.mysql_table;
+                const iField = i.field;
+                
+                builder.req.query += ` JOIN ${iTable} ON ${iTable}.${iField} = ${table}.${field}`;
+            });
+        }
+        return builder;
+    }
+
+    builder.limit = (limit) => {
+        if (!isNaN(limit)) {
+            builder.req.query += ' LIMIT ?';
+            builder.req.values.push(limit);
+        }
+        return builder;
+    }
+
+    builder.offset = (offset) => {
+        if (!isNaN(offset)) {
+            builder.req.query += ' OFFSET ?';
+            builder.req.values.push(offset);
+        }
+        return builder;
+    }
+
+    builder.build = () => {
+        if (process.env.DEBUG) console.log(builder.req);
+        
+        return builder.req;
+    }
+
+    return builder;
 }
 
-/**
- * @function findOne
- * @description Find one record
- * @param {String} model The model
- * @param {String} pk The primary key
- * @param {String} pkValue The primary key value
- * @returns {object} The record
- */
-manager.findOne = async function (model, pkValue) {
-    const query = `SELECT * FROM ${model.mysql_table} WHERE ${model.pk} = ?`;
-    const [rows] = await this.pool.query(query, [pkValue]);
-    return rows[0];
+class MysqlAdapter extends BaseAdapter {
+    constructor() {
+        super();
+    }
+
+    async count(model, options) {
+        if (!model) throw new Error('Model is required');
+        if (!model.mysql_table) throw new Error('Model mysql_table is required');
+        if (!model.pk) throw new Error('Model pk is required');
+        if (!options) throw new Error('Options are required');
+
+        const req = queryBuilder(model, options)
+            .count()
+            .include(options.include)
+            .where(options.where)
+            .build();
+
+        const [rows] = await pool.query(req.query, req.values);
+        return rows[0].count;
+    }
+
+    async findAll(model, options) {
+        if (!model) throw new Error('Model is required');
+        if (!model.mysql_table) throw new Error('Model mysql_table is required');
+        if (!options) throw new Error('Options are required');
+
+        const req = queryBuilder(model, options)
+            .find()
+            .include(options.include)
+            .where(options.where)
+            .limit(options.limit)
+            .offset(options.offset)
+            .build();
+
+        const [rows] = await pool.query(req.query, req.values);
+        return rows;
+    }
+
+    async findOne(model, options) {
+        if (!model) throw new Error('Model is required');
+        if (!model.mysql_table) throw new Error('Model mysql_table is required');
+        if (!model.pk) throw new Error('Model pk is required');
+        if (!options) throw new Error('Options are required');
+        if (!options.pk) throw new Error('Primary key is required');
+
+        const req = queryBuilder(model, options)
+            .find()
+            .include(options.include)
+            .where({ [`${model.mysql_table}.${model.pk}`]: options.pk })
+            .build();
+
+        const [rows] = await pool.query(req.query, req.values);
+        return rows[0];
+    }
+
+    async findOneByField(model, options) {
+        if (!model) throw new Error('Model is required');
+        if (!model.mysql_table) throw new Error('Model mysql_table is required');
+        if (!options) throw new Error('Options are required');
+        if (!options.fieldName) throw new Error('Field name is required');
+        if (!options.fieldValue) throw new Error('Field value is required');
+
+        const req = queryBuilder(model, options)
+            .find()
+            .include(options.include)
+            .where({ ...options.where, [options.fieldName]: options.fieldValue })
+            .build();
+
+        const [rows] = await pool.query(req.query, req.values);
+        return rows[0];
+    }
+
+    async create(model, options) {
+        if (!model) throw new Error('Model is required');
+        if (!model.mysql_table) throw new Error('Model mysql_table is required');
+        if (!options) throw new Error('Options are required');
+
+        const req = queryBuilder(model, options)
+            .create()
+            .build();
+
+        await pool.query(req.query, req.values);
+    }
+
+    async update(model, options) {
+        if (!model) throw new Error('Model is required');
+        if (!model.mysql_table) throw new Error('Model mysql_table is required');
+        if (!model.pk) throw new Error('Model pk is required');
+        if (!options) throw new Error('Options are required');
+        if (!options.pk) throw new Error('Primary key is required');
+        if (!options.body) throw new Error('Body is required');
+
+        const req = queryBuilder(model, options)
+            .update()
+            .build();
+
+        await pool.query(req.query, req.values);
+    }
+
+    async destroy(model, options) {
+        if (!model) throw new Error('Model is required');
+        if (!model.mysql_table) throw new Error('Model mysql_table is required');
+        if (!model.pk) throw new Error('Model pk is required');
+        if (!options) throw new Error('Options are required');
+        if (!options.pk) throw new Error('Primary key is required');
+
+        const req = queryBuilder(model, options)
+            .destroy()
+            .build();
+
+        await pool.query(req.query, req.values);
+    }
 }
 
-manager.findOneByField = async function (model, fieldName, fieldValue) {
-    const query = `SELECT * FROM ${model.mysql_table} WHERE ${fieldName} = ?`;
-    const [rows] = await this.pool.query(query, [fieldValue]);
-    return rows[0];
-}
+const adapter = new MysqlAdapter();
 
-/**
- * @function create
- * @description Create a record
- * @param {String} model The model
- * @param {Object} data The data to create
- * @returns {undefined}
- */
-manager.create = async function (model, data) {
-    const keys = Object.keys(data).map(k => `\`${k}\``).join(', ');
-    const values = Object.values(data);
-    const query = `INSERT INTO ${model.mysql_table} (${keys}) VALUES (?)`;
-    await this.pool.query(query, [values]);
-}
-
-/**
- * @function update
- * @description Update a record
- * @param {String} model The model
- * @param {Object} data The data to update
- * @param {String} pk The primary key
- * @param {String} pkValue The primary key value
- * @returns {undefined}
- */
-manager.update = async function (model, data, pk, pkValue) {
-    const keys = Object.keys(data);
-    const values = Object.values(data);
-    const query = `UPDATE ${model.mysql_table} SET ? WHERE ? = ?`;
-    await this.pool.query(query, [keys, pk, pkValue]);
-}
-
-/**
- * @function destroy
- * @description Destroy a record
- * @param {String} model The model
- * @param {String} pk The primary key
- * @param {String} pkValue The primary key value
- * @returns {undefined}
- */
-manager.destroy = async function (model, pk, pkValue) {
-    const query = `DELETE FROM ${model.mysql_table} WHERE ? = ?`;
-    await this.pool.query(query, [pk, pkValue]);
-}
-
-// export manager
-export default manager;
+export default adapter;

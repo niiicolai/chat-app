@@ -1,4 +1,4 @@
-import MySQLAdapter from '../db/mysql.js'; 
+import MysqlAdapter from '../db/mysql.js'; 
 import ControllerError from '../errors/controller_error.js';
 /**
  * @class BaseModel
@@ -43,7 +43,8 @@ export default class BaseModel {
             fields: null, 
             singularName: null,
             pluralName: null,
-            mysql_table: null
+            mysql_table: null,
+            adapter: MysqlAdapter
         }) {
         if (!options) throw new Error('Options are required');
         if (!options.pk) throw new Error('Primary key is required');
@@ -57,7 +58,7 @@ export default class BaseModel {
         this.singularName = options.singularName;
         this.pluralName = options.pluralName;
         this.mysql_table = options.mysql_table;
-        this.adapter = MySQLAdapter;
+        this.adapter = options.adapter || MysqlAdapter;
     }
 
     /**
@@ -70,8 +71,8 @@ export default class BaseModel {
      * const count = model.count();
      * console.log(count); // 10
      */
-    async count(where={}) {
-        return await this.adapter.count(this, where);
+    async count(options={ where: {}, include: [] }) {
+        return await this.adapter.count(this, options);
     }
 
     /**
@@ -90,11 +91,9 @@ export default class BaseModel {
      * @throws {Error} If limit is not a number
      * @throws {Error} If offset is not a number
      */
-    async findAll(options = {limit: null, offset: null}, where={}) {
+    async findAll(options = {where: {}, include: []}) {
         if (!options) throw new Error('Options are required');
-        if (isNaN(options.limit)) throw new Error('Limit must be a number');
-        if (isNaN(options.offset)) throw new Error('Offset must be a number');
-        return await this.adapter.findAll(this, options.limit, options.offset, where);
+        return await this.adapter.findAll(this, options);
     }
 
     /**
@@ -154,9 +153,9 @@ export default class BaseModel {
      * console.log(record); // { id: 1, name: 'John Doe', email: 'test@test.com' }
      * @throws {Error} If no record is found with the primary key value
      */
-    async findOne(pkValue) {
-        if (!pkValue) throw new Error(`${this.pk} is required`);
-        return await this.adapter.findOne(this, pkValue);
+    async findOne(options={pk: null, where: {}, include: []}) {
+        if (!options.pk) throw new Error('Primary key value is required');
+        return await this.adapter.findOne(this, options);
     }
 
     /**
@@ -166,10 +165,10 @@ export default class BaseModel {
      * @param {String} fieldValue The field value
      * @returns {Object} The record found
      */ 
-    async findOneByField(fieldName, fieldValue) {
-        if (!fieldName) throw new Error('fieldName is required');
-        if (!fieldValue) throw new Error('fieldValue is required');
-        return await this.adapter.findOneByField(this, fieldName, fieldValue);
+    async findOneByField(options={fieldName: null, fieldValue: null, where: {}, include: []}) {
+        if (!options.fieldName) throw new Error('fieldName is required');
+        if (!options.fieldValue) throw new Error('fieldValue is required');
+        return await this.adapter.findOneByField(this, options);
     }
 
     /**
@@ -186,19 +185,23 @@ export default class BaseModel {
      * @throws {Error} If no record is found with the primary key value
      * @throws {Error} If the primary key value is not provided
      */
-    async update(pkValue, body) {
-        if (!pkValue) throw new Error(`${this.pk} is required`);
+    async update(options={pk: null, body: null, where: {}, include: []}) {
+        if (!options.pk) throw new Error('Primary key value is required');
+        if (!options.body) throw new Error('Body is required');
 
-        const existing = await this.findOne(pkValue);
-        if (!existing) throw new ControllerError(404, 'Resource not found');
+        const findArgs = { pk: options.pk, where: options.where, include: options.include };
+        const existing = await this.findOne(findArgs);
+        if (!existing) 
+            throw new ControllerError(404, 'Resource not found');
 
+        const body = options.body;
         const params = {}
         this.fields.forEach(f => {
             if (body[f]) params[f] = body[f];
             else params[f] = existing[f];
         });
 
-        await this.adapter.update(this, params, this.pk, pkValue);
+        await this.adapter.update(this, { pk: options.pk, body: params });
     }
 
     /**
@@ -212,12 +215,73 @@ export default class BaseModel {
      * @throws {Error} If no record is found with the primary key value
      * @throws {Error} If the primary key value is not provided
      */
-    async destroy(pkValue) {
-        if (!pkValue) throw new Error(`${this.pk} is required`);
+    async destroy(options={pk: null, where: {}, include: []}) {
+        if (!options.pk) throw new Error('Primary key value is required');
 
-        const existing = await this.findOne(pkValue);
+        const findArgs = { pk: options.pk, where: options.where, include: options.include };
+        const existing = await this.findOne(findArgs);
         if (!existing) throw new ControllerError(404, 'Resource not found');
 
-        await this.adapter.destroy(this, this.pk, pkValue);
+        await this.adapter.destroy(this, options);
+    }
+
+    optionsBuilder() {
+        const builder = { options: { include: [], where: {}} };
+
+        builder.findAll = (page, limit) => {
+            if (!isNaN(limit)) 
+                builder.options.limit = limit;
+            if (!isNaN(page) && !isNaN(limit)) 
+                builder.options.offset = (page - 1) * limit;
+            return builder;
+        }
+
+        builder.create = (body) => {
+            builder.options.body = body;
+            return builder;
+        }
+
+        builder.findOne = (pk) => {
+            builder.options.pk = pk;
+            return builder;
+        }
+
+        builder.findOneByField = (fieldName, fieldValue) => {
+            builder.options.fieldName = fieldName;
+            builder.options.fieldValue = fieldValue;
+            return builder;
+        }
+
+        builder.update = (pk, body) => {
+            builder.options.pk = pk;
+            builder.options.body = body;
+            return builder;
+        }
+
+        builder.destroy = (pk) => {
+            builder.options.pk = pk;
+            return builder;
+        }
+
+        builder.where = (key, value) => {
+            if (!builder.options.where) builder.options.where = {};
+            builder.options.where[key] = value;
+            return builder;
+        }
+
+        builder.include = (model, field, model_field, model_table) => {
+            if (!builder.options.include) builder.options.include = [];
+            const p = { model, field };
+            if (model_field) p.model_field = model_field;
+            if (model_table) p.model_table = model_table
+            builder.options.include.push(p);
+            return builder;
+        }
+
+        builder.build = () => {
+            return builder.options;
+        }
+
+        return builder;
     }
 }

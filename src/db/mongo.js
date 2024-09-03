@@ -1,7 +1,7 @@
 
 import BaseAdapter from './base_adapter.js';
 
-class Neo4jAdapter extends BaseAdapter {
+class MongoAdapter extends BaseAdapter {
     constructor() {
         super();
     }
@@ -87,6 +87,6 @@ class Neo4jAdapter extends BaseAdapter {
     }
 }
 
-const adapter = new Neo4jAdapter();
+const adapter = new MongoAdapter();
 
 export default adapter;

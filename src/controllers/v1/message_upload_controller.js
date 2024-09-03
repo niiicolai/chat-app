@@ -1,32 +1,70 @@
-import BaseController from './base_controller.js';
+import UserResourceController from './_user_resource_controller.js';
 import crudService from '../../services/message_upload_service.js';
 import multer from 'multer';
 
-// memory storage
 const upload = multer({
     storage: multer.memoryStorage()
 });
 
-// Create a new controller
-const controller = new BaseController({
-    crudService,
-    auth: {
-        _index: true,
-        _new: false,
-        _create: true,
-        _show: true,
-        _update: true,
-        _destroy: true
+const uploadMiddleware = [
+    upload.single('file')
+];
+
+/**
+ * @class MessageUploadController
+ * @classdesc Controller for message uploads
+ * @extends UserResourceController
+ */
+class MessageUploadController extends UserResourceController {
+    constructor() {
+        super({ crudService });
     }
-});
 
-// Define the routes for the controller
-controller._index();
-controller._new();
-controller._create([upload.single('file')]);
-controller._show();
-controller._update([upload.single('file')]);
-controller._destroy();
+    /**
+     * @method create
+     * @description Create a new message upload,
+     * and add the upload middleware to the create method
+     */
+    create() {
+        super.create(uploadMiddleware);
+    }
 
-// Export the controller
+    /**
+     * @method createArgs
+     * @description Create the arguments for the create method
+     * @param {Object} req - The request object
+     * @returns {Object} The arguments for the create method
+     */
+    createArgs(req) {
+        return {
+            ...super.createArgs(req),
+            file: req.file
+        };
+    }
+
+    /**
+     * @method update
+     * @description Update a message upload,
+     * and add the upload middleware to the update method
+     */
+    update() {
+        super.update(uploadMiddleware);
+    }
+
+    /**
+     * @method updateArgs
+     * @description Create the arguments for the update method
+     * @param {Object} req - The request object
+     * @returns {Object} The arguments for the update method
+     */
+    updateArgs(req) {
+        return {
+            ...super.updateArgs(req),
+            file: req.file
+        };
+    }
+}
+
+const controller = new MessageUploadController();
+
 export default controller;

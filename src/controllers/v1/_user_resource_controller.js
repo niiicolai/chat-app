@@ -1,22 +1,23 @@
 import BaseController from './_base_controller.js';
-import crudService from '../../services/user_service.js';
 
 /**
- * @class UserController
- * @classdesc Controller for users
+ * @class UserResourceController
  * @extends BaseController
+ * @description Includes the user_id in the where clause for all routes
+ * and sets the auth object to true for index, show, create, update, and destroy
  */
-class UserController extends BaseController {
-    constructor() {
+export default class UserResourceController extends BaseController {
+    constructor({ crudService, baseUrl }) {
         super({ crudService, auth: {
             index: true,
+            show: true,
             template: false,
-            create: false,
-            show: false,
+            create: true,
             update: true,
             destroy: true
-        }});
+        }, baseUrl });
 
+        this.index();
         this.template();
         this.create();
         this.show();
@@ -51,6 +52,19 @@ class UserController extends BaseController {
     }
 
     /**
+     * @method createArgs
+     * @description Adds the user to the args object
+     * @param {Object} req - The request object
+     * @returns {Object} The args object
+     */
+    createArgs(req) {
+        return {
+            ...super.createArgs(req),
+            user: req.user
+        };
+    }
+
+    /**
      * @method updateArgs
      * @description Adds the user to the args object
      * @param {Object} req - The request object
@@ -76,18 +90,3 @@ class UserController extends BaseController {
         };
     }
 }
-
-const controller = new UserController();
-
-controller.defineCustomRoute('post', 'login', async (req, res) => {
-    const data = req.body;
-    const user = await crudService.login(data);
-    res.json(user);
-}, false);
-
-controller.defineCustomRoute('get', 'me', async (req, res) => {
-    const user = await crudService.me(req.user);
-    res.json(user);
-}, true);
-
-export default controller;

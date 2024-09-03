@@ -29,13 +29,13 @@ class UserModel extends BaseModel {
     /**
      * @function create
      * @description Create a new user
-     * @param {Object} user
+     * @param {Object} body
      * @returns {Promise}
      */
-    async create(user) {
+    async create(body) {
         const saltRounds = 10;
-        const hash = await bcrypt.hash(user.password, saltRounds);
-        return await super.create({ ...user, password: hash });
+        const hash = await bcrypt.hash(body.password, saltRounds);
+        return await super.create({ ...body, password: hash });
     }
 
     /**
@@ -44,13 +44,13 @@ class UserModel extends BaseModel {
      * @param {Object} user
      * @returns {Promise}
      */
-    async update(user) {
-        if (user.password) {
+    async update(options) {
+        if (options.body.password) {
             const saltRounds = 10;
-            const hash = await bcrypt.hash(user.password, saltRounds);
-            return await super.update({ ...user, password: hash });
+            options.body.password = await bcrypt.hash(options.body.password, saltRounds);
         }
-        return await super.update(user);
+
+        return await super.update(options);
     }
 
     /**

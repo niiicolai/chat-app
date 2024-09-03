@@ -1,18 +1,6 @@
-import BaseController from './base_controller.js';
 import crudService from '../../services/room_role_service.js';
+import TypeResourceController from './_type_resource_controller.js';
 
-// Create a new controller
-const controller = new BaseController({
-    crudService,
-    auth: {
-        _index: false,
-        _show: false,
-    }
-});
+const controller = new TypeResourceController({ crudService });
 
-// Define the routes for the controller
-controller._index();
-controller._show();
-
-// Export the controller
 export default controller;

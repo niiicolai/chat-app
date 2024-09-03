@@ -1,26 +1,14 @@
-import BaseController from './base_controller.js';
 import crudService from '../../services/room_invite_link_service.js';
+import UserResourceController from './_user_resource_controller.js';
 
-// Create a new controller
-const controller = new BaseController({
-    crudService,
-    auth: {
-        _index: true,
-        _new: false,
-        _create: true,
-        _show: true,
-        _update: true,
-        _destroy: true
-    }
-});
+const controller = new UserResourceController({ crudService });
 
-// Define the routes for the controller
-controller._index();
-controller._new();
-controller._create();
-controller._show();
-controller._update();
-controller._destroy();
+controller.defineCustomRoute('post', 'join_link/:uuid', async (req, res) => {
+    const result = await crudService.joinLink({
+        uuid: req.params.uuid,
+        user: req.user,
+    });
+    res.json(result);
+}, true);
 
-// Export the controller
 export default controller;

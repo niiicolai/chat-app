@@ -1,4 +1,4 @@
-import BaseCrudService from './base_crud_service.js';
+
 import ControllerError from '../errors/controller_error.js';
 import StorageService from './storage_service.js';
 import model from '../models/message_upload.js';
@@ -15,9 +15,10 @@ const upload = async (file) => {
  * @class MessageUploadService
  * @extends BaseCrudService
  */
-class MessageUploadService extends BaseCrudService {
+class MessageUploadService  {
     constructor() {
-        super({ model, dto });
+        this.model = model;
+        this.dto = dto;
     }
 
     /**
@@ -52,4 +53,4 @@ class MessageUploadService extends BaseCrudService {
 const service = new MessageUploadService({ model, dto });
 
 // Export the service
-export default service;
+export default {model,dto};
