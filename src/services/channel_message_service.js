@@ -1,9 +1,12 @@
 
 import model from '../models/channel_message.js';
 import dto from '../dtos/channel_message.js';
+import RoomSettingService from './room_setting_service.js';
 import ControllerError from '../errors/controller_error.js';
 import ChannelService from './channel_service.js';
 import UserService from './user_service.js';
+import MessageUploadService from './message_upload_service.js';
+import { v4 as uuidv4 } from 'uuid';
 
 class ChannelMessageService {
     constructor() {
@@ -31,7 +34,7 @@ class ChannelMessageService {
 
         if (!channelMessage)
             throw new ControllerError(404, 'channel message not found');
-        
+
         const channel_uuid = channelMessage.channel_message_channel_uuid;
         if (!await ChannelService.isInRoom({ channel_uuid, user, room_role_name: null }))
             throw new ControllerError(403, 'Forbidden');
@@ -54,12 +57,14 @@ class ChannelMessageService {
             .findAll(page, limit)
             .where('channel_uuid', channel_uuid)
             .include(UserService.model, 'uuid', 'user_uuid')
+            .include(MessageUploadService.model, 'channel_message_uuid')
+            .orderBy('channelmessage.created_at DESC')
             .build()
-            const channels = await model.findAll(options);
 
+        const channels = await model.findAll(options);
         const total = await model.count(options);
         const pages = Math.ceil(total / limit);
-        const data = channels.map(channel => dto(channel));        
+        const data = channels.map(channel => dto(channel));
 
         return {
             data,
@@ -95,8 +100,34 @@ class ChannelMessageService {
 
         createArgs.body.user_uuid = user.sub;
 
+        if (!createArgs.body.created_by_system)
+            createArgs.body.created_by_system = 0;
+
         await this.model.create(createArgs.body);
         const resource = await model.findOne({ pk });
+
+        if (createArgs.file) {
+            const channel = await ChannelService.findOne({ pk: channel_uuid, user });
+            if (!channel)
+                throw new ControllerError(404, 'Channel not found');
+            const roomSetting = await RoomSettingService.findOne({ room_uuid: channel.room_uuid, user });
+            if (!roomSetting)
+                throw new ControllerError(404, 'Room setting not found');
+
+            const size = createArgs.file.size;
+            if (size > roomSetting.upload_bytes)
+                throw new ControllerError(400, 'File size is too large. Maximum size is ' + roomSetting.upload_bytes / 1000000 + ' MB. The file size is ' + size / 1000000 + ' MB');
+            
+            const sum = await MessageUploadService.sum({ channel_uuid: channel.uuid, field: 'size' });
+            if ((sum + size) > roomSetting.total_upload_bytes)
+                throw new ControllerError(400, `The room has used ${sum / 1000000} MB of the total upload limit of ${roomSetting.total_upload_bytes / 1000000} MB. The file size is ${size / 1000000} MB and the new total would be ${(sum + size) / 1000000} MB`);
+
+            const uploadUuid = uuidv4();
+            const upload = await MessageUploadService.create({
+                uuid: uploadUuid,
+                channel_message_uuid: createArgs.body.uuid,
+            }, createArgs.file);
+        }
 
         return dto(resource);
     }
@@ -122,6 +153,7 @@ class ChannelMessageService {
 
         body.user_uuid = channelMessage.user_uuid;
         body.channel_uuid = channelMessage.channel_uuid;
+        body.created_by_system = channelMessage.created_by_system;
 
         await model.update({ pk, body });
 

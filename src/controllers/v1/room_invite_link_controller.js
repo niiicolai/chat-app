@@ -3,6 +3,13 @@ import UserResourceController from './_user_resource_controller.js';
 
 const controller = new UserResourceController({ crudService });
 
+controller.index();
+controller.template();
+controller.create();
+controller.show();
+controller.update();
+controller.destroy();
+
 controller.defineCustomRoute('post', 'join_link/:uuid', async (req, res) => {
     const result = await crudService.joinLink({
         uuid: req.params.uuid,

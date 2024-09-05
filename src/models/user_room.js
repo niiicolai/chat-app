@@ -10,7 +10,14 @@ const model = new BaseModel({
         'room_uuid',
         'user_uuid',
         'room_role_name',
-    ]
+    ],
+    requiredFields: [
+        'room_uuid',
+        'user_uuid',
+        'room_role_name',
+    ],
+    create_timestamp: 'created_at',
+    update_timestamp: 'updated_at',
 });
 
 // Export the model

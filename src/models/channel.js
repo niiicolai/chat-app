@@ -11,7 +11,15 @@ const model = new BaseModel({
         'description',
         'channel_type_name',
         'room_uuid',
-    ]
+    ],
+    requiredFields: [
+        'name',
+        'description',
+        'channel_type_name',
+        'room_uuid',
+    ],
+    create_timestamp: 'created_at',
+    update_timestamp: 'updated_at',
 });
 
 // Export the model

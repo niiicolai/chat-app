@@ -3,6 +3,24 @@ import JwtService from './jwt_service.js';
 import model from '../models/user.js';
 import dto from '../dtos/user.js';
 import userProfileDto from '../dtos/user_profile.js';
+import StorageService from './storage_service.js';
+import UploadError from '../errors/upload_error.js';
+
+const storageService = new StorageService('user_avatars');
+const upload = async (uuid, file) => {
+    try {
+        const { buffer, mimetype } = file;
+        const originalname = file.originalname.split('.').slice(0, -1).join('.').replace(/\s/g, '');
+        const timestamp = new Date().getTime();
+        const filename = `${originalname}-${uuid}-${timestamp}.${mimetype.split('/')[1]}`;
+        return await storageService.uploadFile(buffer, filename);
+    } catch (error) {
+        if (error instanceof UploadError) 
+            throw new ControllerError(400, error.message);
+
+        throw new ControllerError(500, error.message);
+    }
+};
 
 /**
  * @class UserService
@@ -23,12 +41,12 @@ class UserService {
         if (!user) 
             throw new ControllerError(400, 'User is required');
 
-        const pk = user.uuid;
+        const pk = user.sub;
         const resource = await model.findOne({ pk });
         if (!resource) 
             throw new ControllerError(404, 'User not found');
 
-        return userProfileDto(resource);
+        return dto(resource);
     }
 
     // Public, so it uses the profile DTO
@@ -71,6 +89,10 @@ class UserService {
             fieldValue: createArgs.body.username 
         });
         if (usernameCheck) throw new ControllerError(400, 'Resource already exists');
+
+        if (createArgs.file) {
+            createArgs.body.avatar_src = await upload(pk, createArgs.file);
+        }
         
         await this.model.create(createArgs.body);
         const resource = await model.findOne({ pk });
@@ -91,12 +113,25 @@ class UserService {
 
         const { body, pk } = updateArgs;
 
-        if (updateArgs.user.uuid !== pk) 
+        if (updateArgs.user.sub !== pk) 
             throw new ControllerError(403, 'Forbidden');
 
         const user = await model.findOne({ pk });
         if (!user) 
             throw new ControllerError(404, 'User not found');
+
+        if (updateArgs.file) {
+            updateArgs.body.avatar_src = await upload(pk, updateArgs.file);
+        } else {
+            updateArgs.body.avatar_src = user.avatar_src;
+        }
+
+        if (!updateArgs.body.email) 
+            updateArgs.body.email = user.email;
+        if (!updateArgs.body.username)
+            updateArgs.body.username = user.username;
+        if (!updateArgs.body.password)
+            updateArgs.body.password = user.password;
 
         await model.update({ pk, body });
         const resource = await model.findOne({ pk });

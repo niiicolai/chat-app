@@ -10,7 +10,16 @@ const model = new BaseModel({
         'body',
         'channel_uuid',
         'user_uuid',
-    ]
+        'created_by_system',
+    ],
+    requiredFields: [
+        'body',
+        'channel_uuid',
+        'user_uuid',
+        'created_by_system',
+    ],
+    create_timestamp: 'created_at',
+    update_timestamp: 'updated_at',
 });
 
 // Export the model

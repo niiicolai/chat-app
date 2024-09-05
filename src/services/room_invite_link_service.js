@@ -3,7 +3,40 @@ import dto from '../dtos/room_invite_link.js';
 import ControllerError from '../errors/controller_error.js';
 import RoomService from './room_service.js';
 import UserRoomService from './user_room_service.js';
+import RoomSettingService from './room_setting_service.js';
+import ChannelService from './channel_service.js';
+import ChannelMessageService from './channel_message_service.js';
 import { v4 as uuidV4 } from 'uuid';
+import UserService from './user_service.js';
+
+const createWelcomeMessage = async (room, setting, user) => {
+    const me = await UserService.me(user);
+    const room_uuid = room.uuid;
+
+    let channel = null;
+    if (setting.join_channel_uuid) {
+        channel = await ChannelService.findOne({ pk: setting.join_channel_uuid, user });
+    } else {
+        const channels = await ChannelService.findAll({ room_uuid, user });
+        if (channels.data.length > 0) {
+            channel = channels.data[0];
+        }
+    }
+
+    if (channel) {
+        ChannelMessageService.create({
+            body: {
+                uuid: uuidV4(),
+                channel_uuid: channel.uuid,
+                user_uuid: user.sub,
+                body: `${me.username} ${setting.join_message || 'joined the room! 👻'}`,
+                created_by_system: 1
+            },
+            user
+        });
+    }
+}
+
 
 class RoomInviteLinkService {
     constructor() {
@@ -48,6 +81,7 @@ class RoomInviteLinkService {
             .findAll(page, limit)
             .where('room_uuid', room_uuid)
             .include(RoomService.model, 'uuid', 'room_uuid')
+            .orderBy('roominvitelink.created_at DESC')
             .build()
 
         const total = await model.count(options);
@@ -149,7 +183,7 @@ class RoomInviteLinkService {
             .optionsBuilder()
             .where('uuid', joinLinkArgs.uuid)
             .build());
-        
+
         if (links.length === 0)
             throw new ControllerError(404, 'Link not found');
 
@@ -158,6 +192,14 @@ class RoomInviteLinkService {
         const user = joinLinkArgs.user;
         if (await UserRoomService.isInRoom({ room_uuid, user, room_role_name: null }))
             throw new ControllerError(400, 'Already a member');
+
+        const roomSetting = await RoomSettingService.findOne({ room_uuid });
+        if (!roomSetting)
+            throw new ControllerError(404, 'Room setting not found');
+
+        const userRoomsCount = await UserRoomService.count({ where: { room_uuid } });
+        if (userRoomsCount >= roomSetting.max_members)
+            throw new ControllerError(400, 'Room is full');
 
         const userRoom = await UserRoomService.create({
             body: {
@@ -168,6 +210,10 @@ class RoomInviteLinkService {
             user: joinLinkArgs.user
         });
         const room = await RoomService.findOne({ pk: room_uuid, user: joinLinkArgs.user });
+
+        await createWelcomeMessage(room, roomSetting, joinLinkArgs.user);
+        
+
         return {
             room,
             userRoom

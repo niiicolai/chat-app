@@ -9,7 +9,13 @@ const model = new BaseModel({
     fields: [
         'room_uuid',
         'expires_at',
-    ]
+    ],
+    requiredFields: [
+        'room_uuid',
+        'expires_at',
+    ],
+    create_timestamp: 'created_at',
+    update_timestamp: 'updated_at',
 });
 
 // Export the model

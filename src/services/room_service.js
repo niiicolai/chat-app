@@ -1,8 +1,27 @@
 import UserRoomService from './user_room_service.js';
+import RoomSettingService from './room_setting_service.js';
 import RoomInviteLinkService from './room_invite_link_service.js';
 import ControllerError from '../errors/controller_error.js';
 import model from '../models/room.js';
 import dto from '../dtos/room.js';
+import StorageService from './storage_service.js';
+import UploadError from '../errors/upload_error.js';
+
+const storageService = new StorageService('room_avatars');
+const upload = async (uuid, file) => {
+    try {
+        const { buffer, mimetype } = file;
+        const originalname = file.originalname.split('.').slice(0, -1).join('.').replace(/\s/g, '');
+        const timestamp = new Date().getTime();
+        const filename = `${originalname}-${uuid}-${timestamp}.${mimetype.split('/')[1]}`;
+        return await storageService.uploadFile(buffer, filename);
+    } catch (error) {
+        if (error instanceof UploadError) 
+            throw new ControllerError(400, error.message);
+
+        throw new ControllerError(500, error.message);
+    }
+};
 
 class RoomService {
     constructor() {
@@ -27,6 +46,7 @@ class RoomService {
             .findOne(pk)
             .where('user_uuid', user.sub)
             .include(UserRoomService.model, 'room_uuid')
+            .include(RoomSettingService.model, 'room_uuid')
             .build());
 
         if (!room)
@@ -45,6 +65,8 @@ class RoomService {
             .findAll(page, limit)
             .where('user_uuid', user.sub)
             .include(UserRoomService.model, 'room_uuid')
+            .include(RoomSettingService.model, 'room_uuid')
+            .orderBy('room.created_at DESC')
             .build()
 
         const total = await model.count(options);
@@ -92,8 +114,28 @@ class RoomService {
             user: createArgs.user
         };
 
+        const roomSettingArgs = {
+            body: { 
+                uuid: pk, 
+                room_uuid: pk, 
+                total_upload_bytes: process.env.ROOM_TOTAL_UPLOAD_SIZE,
+                upload_bytes: process.env.ROOM_UPLOAD_SIZE,
+                join_message: process.env.ROOM_JOIN_MESSAGE,
+                rules_text: process.env.ROOM_RULES_TEXT,
+                max_channels: process.env.ROOM_MAX_CHANNELS,
+                max_members: process.env.ROOM_MAX_MEMBERS
+            },
+            user: createArgs.user
+        }
+
+        if (createArgs.file) {
+            createArgs.body.avatar_src = await upload(pk, createArgs.file);
+        }
+
         await this.model.create(createArgs.body);
         await UserRoomService.create(userRoomArgs);
+        await RoomSettingService.create(roomSettingArgs);
+
         const resource = await model.findOne({ pk });
 
         return dto(resource);
@@ -117,6 +159,19 @@ class RoomService {
         const user = updateArgs.user;
         if (!await UserRoomService.isInRoom({ room_uuid, user, room_role_name: 'Admin' }))
             throw new ControllerError(403, 'Forbidden');
+
+        if (updateArgs.file) {
+            updateArgs.body.avatar_src = await upload(pk, updateArgs.file);
+        } else {
+            updateArgs.body.avatar_src = room.avatar_src;
+        }
+
+        if (!updateArgs.body.name)
+            updateArgs.body.name = room.name;
+        if (!updateArgs.body.description)
+            updateArgs.body.description = room.description;
+        if (!updateArgs.body.room_category_name)
+            updateArgs.body.room_category_name = room.room_category_name;
 
         await model.update({ pk, body });
 

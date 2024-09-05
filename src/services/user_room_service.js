@@ -2,7 +2,7 @@
 import ControllerError from '../errors/controller_error.js';
 import model from '../models/user_room.js';
 import dto from '../dtos/user_room.js';
-
+import UserService from './user_service.js';
 
 class UserRoomService {
     constructor() {
@@ -13,6 +13,19 @@ class UserRoomService {
 
     template() {
         return this.model.template();
+    }
+
+    async count(countArgs = { where: {} }) {
+        let options = model
+            .optionsBuilder()
+
+        for (const key in countArgs.where) {
+            options.where(key, countArgs.where[key]);
+        }
+
+        options = options.build();
+
+        return await model.count(options);
     }
 
     async findOne(findArgs = { room_uuid: null, user: null }) {
@@ -32,7 +45,7 @@ class UserRoomService {
             throw new ControllerError(404, 'User room not found');
 
         const userRoom = userRooms[0];
-        
+
         return dto(userRoom);
     }
 
@@ -48,10 +61,10 @@ class UserRoomService {
             .where('user_uuid', user.sub)
             .where('room_uuid', room_uuid)
             .build());
-            
+
         if (!findArgs.room_role_name)
             return userRooms.length > 0;
-        
+
         return userRooms.length > 0 && userRooms[0].user_room_room_role_name == findArgs.room_role_name;
     }
 
@@ -60,10 +73,11 @@ class UserRoomService {
         let options = model
             .optionsBuilder()
             .findAll(page, limit)
-        
+            .include(UserService.model, 'uuid', 'user_uuid')
+
         //if (user) options.where('user_uuid', user.sub)
         if (findAllArgs.room_uuid) options.where('room_uuid', findAllArgs.room_uuid)
-        
+
         for (const key in findAllArgs.where) {
             options.where(key, findAllArgs.where[key]);
         }

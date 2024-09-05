@@ -10,7 +10,15 @@ const model = new BaseModel({
         'name',
         'description',
         'room_category_name',
-    ]
+        'avatar_src',
+    ],
+    requiredFields: [
+        'name',
+        'description',
+        'room_category_name',
+    ],
+    create_timestamp: 'created_at',
+    update_timestamp: 'updated_at',
 });
 
 // Export the model

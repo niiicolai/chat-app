@@ -15,6 +15,7 @@ import RoomRoleController from './controllers/v1/room_role_controller.js'
 import RoomController from './controllers/v1/room_controller.js'
 import UserRoomController from './controllers/v1/user_room_controller.js'
 import UserController from './controllers/v1/user_controller.js'
+import RoomSettingController from './controllers/v1/room_setting_controller.js'
 
 const port = process.env.PORT || 3000
 const app = express()
@@ -36,6 +37,7 @@ app.use(RoomRoleController.router)
 app.use(RoomController.router)
 app.use(UserRoomController.router)
 app.use(UserController.router)
+app.use(RoomSettingController.router)
 
 expressOasGenerator.handleRequests();
 

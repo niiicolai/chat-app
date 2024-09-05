@@ -22,7 +22,15 @@ class UserModel extends BaseModel {
                 'username',
                 'email',
                 'password',
-            ]
+                'avatar_src',
+            ],
+            requiredFields: [
+                'username',
+                'email',
+                'password',
+            ],
+            create_timestamp: 'created_at',
+            update_timestamp: 'updated_at',
         });
     }
 

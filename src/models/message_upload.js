@@ -11,7 +11,15 @@ const model = new BaseModel({
         'upload_type_name',
         'size',
         'channel_message_uuid',
-    ]
+    ],
+    requiredFields: [
+        'src',
+        'upload_type_name',
+        'size',
+        'channel_message_uuid',
+    ],
+    create_timestamp: 'created_at',
+    update_timestamp: 'updated_at',
 });
 
 // Export the model

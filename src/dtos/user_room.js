@@ -1,7 +1,8 @@
+import userProfileDto from './user_profile.js';
 
 export default (entity) => {
 
-    return {
+    const dto = {
         uuid: entity.user_room_uuid,
         room_uuid: entity.user_room_room_uuid,
         user_uuid: entity.user_room_user_uuid,
@@ -9,4 +10,10 @@ export default (entity) => {
         created_at: entity.user_room_created_at,
         updated_at: entity.user_room_updated_at
     }
+
+    if (entity.user_uuid) {
+        dto.user = userProfileDto(entity);
+    }
+
+    return dto;
 }

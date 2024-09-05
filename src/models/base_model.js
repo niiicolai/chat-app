@@ -40,24 +40,31 @@ export default class BaseModel {
      */
     constructor(options = {
             pk: null, 
-            fields: null, 
+            fields: null,
+            requiredFields: null,
             singularName: null,
             pluralName: null,
             mysql_table: null,
+            create_timestamp: null,
+            update_timestamp: null,
             adapter: MysqlAdapter
         }) {
         if (!options) throw new Error('Options are required');
         if (!options.pk) throw new Error('Primary key is required');
         if (!options.fields) throw new Error('Fields are required');
+        if (!options.requiredFields) throw new Error('requiredFields are required');
         if (!options.singularName) throw new Error('singularName is required');
         if (!options.pluralName) throw new Error('pluralName is required');
         if (!options.mysql_table) throw new Error('mysql_table is required');
 
         this.pk = options.pk;
         this.fields = options.fields;
+        this.requiredFields = options.requiredFields;
         this.singularName = options.singularName;
         this.pluralName = options.pluralName;
         this.mysql_table = options.mysql_table;
+        this.create_timestamp = options.create_timestamp;
+        this.update_timestamp = options.update_timestamp;
         this.adapter = options.adapter || MysqlAdapter;
     }
 
@@ -73,6 +80,10 @@ export default class BaseModel {
      */
     async count(options={ where: {}, include: [] }) {
         return await this.adapter.count(this, options);
+    }
+
+    async sum(options={ field: null, where: {}, include: [] }) {
+        return await this.adapter.sum(this, options);
     }
 
     /**
@@ -130,7 +141,8 @@ export default class BaseModel {
 
         const params = {}
         this.fields.forEach(f => {
-            if (!body[f]) throw new Error(`Field ${f} is required`);
+            if (!body[f] && this.requiredFields.includes(f) && isNaN(body[f]))
+                throw new Error(`Field ${f} is required`);
             params[f] = body[f];
         });
 
@@ -228,6 +240,11 @@ export default class BaseModel {
     optionsBuilder() {
         const builder = { options: { include: [], where: {}} };
 
+        builder.sum = (field) => {
+            builder.options.field = field;
+            return builder;
+        }
+
         builder.findAll = (page, limit) => {
             if (!isNaN(limit)) 
                 builder.options.limit = limit;
@@ -275,6 +292,11 @@ export default class BaseModel {
             if (model_field) p.model_field = model_field;
             if (model_table) p.model_table = model_table
             builder.options.include.push(p);
+            return builder;
+        }
+
+        builder.orderBy = (orderBy) => {
+            builder.options.orderBy = orderBy;
             return builder;
         }
 

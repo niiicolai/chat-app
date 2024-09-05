@@ -16,13 +16,6 @@ export default class UserResourceController extends BaseController {
             update: true,
             destroy: true
         }, baseUrl });
-
-        this.index();
-        this.template();
-        this.create();
-        this.show();
-        this.update();
-        this.destroy();
     }
 
     /**

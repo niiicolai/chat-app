@@ -1,5 +1,14 @@
 import BaseController from './_base_controller.js';
 import crudService from '../../services/user_service.js';
+import multer from 'multer';
+
+const upload = multer({
+    storage: multer.memoryStorage()
+});
+
+const uploadMiddleware = [
+    upload.single('file')
+];
 
 /**
  * @class UserController
@@ -22,6 +31,14 @@ class UserController extends BaseController {
         this.show();
         this.update();
         this.destroy();
+    }
+
+    create() {
+        super.create(uploadMiddleware);
+    }
+
+    update() {
+        super.update(uploadMiddleware);
     }
 
     /**
@@ -51,6 +68,19 @@ class UserController extends BaseController {
     }
 
     /**
+     * @method createArgs
+     * @description Adds the user to the args object
+     * @param {Object} req - The request object
+     * @returns {Object} The args object
+     */
+    createArgs(req) {
+        return {
+            ...super.updateArgs(req),
+            file: req.file
+        };
+    }
+
+    /**
      * @method updateArgs
      * @description Adds the user to the args object
      * @param {Object} req - The request object
@@ -59,7 +89,8 @@ class UserController extends BaseController {
     updateArgs(req) {
         return {
             ...super.updateArgs(req),
-            user: req.user
+            user: req.user,
+            file: req.file
         };
     }
 
@@ -78,6 +109,12 @@ class UserController extends BaseController {
 }
 
 const controller = new UserController();
+
+controller.template();
+controller.create();
+controller.show();
+controller.update();
+controller.destroy();
 
 controller.defineCustomRoute('post', 'login', async (req, res) => {
     const data = req.body;

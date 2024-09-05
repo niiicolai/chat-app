@@ -1,5 +1,6 @@
 import UserRoomService from './user_room_service.js';
 import ControllerError from '../errors/controller_error.js';
+import RoomSettingService from './room_setting_service.js';
 import model from '../models/channel.js';
 import dto from '../dtos/channel.js';
 
@@ -76,6 +77,7 @@ class ChannelService {
             .optionsBuilder()
             .findAll(page, limit)
             .where('room_uuid', room_uuid)
+            .orderBy('channel.created_at DESC')
             .build()
             const channels = await model.findAll(options);
         const total = await model.count(options);
@@ -126,6 +128,14 @@ class ChannelService {
         const user = createArgs.user;
         if (!await UserRoomService.isInRoom({ room_uuid, user, room_role_name: 'Admin' }))
             throw new ControllerError(403, 'Forbidden');
+
+        const roomSetting = await RoomSettingService.findOne({ room_uuid });
+        if (!roomSetting)
+            throw new ControllerError(404, 'Room setting not found');
+
+        const channelsCount = await model.count({ where: { room_uuid } });
+        if (channelsCount >= roomSetting.max_channels)
+            throw new ControllerError(400, 'Room channel limit reached');
 
         await this.model.create(createArgs.body);
         const resource = await model.findOne({ pk });
