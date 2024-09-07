@@ -39,20 +39,13 @@ class MessageUploadService  {
     }
 
     async sum(findArgs = { channel_uuid: null, field: null }) {
-        if (!findArgs.channel_uuid)
-            throw new ControllerError(400, 'channel_uuid is required');
-        if (!findArgs.field)
-            throw new ControllerError(400, 'field is required');
-
-        const { channel_uuid, field } = findArgs;
-        const sum = await model.sum(model
-            .optionsBuilder()
-            .sum(field)
+        return await model
+            .throwIfNotPresent(findArgs.channel_uuid, 'channel_uuid is required')
+            .throwIfNotPresent(findArgs.field, 'field is required')
+            .sum({field: findArgs.field})
             .include(ChannelMessageService.model, 'uuid', 'channel_message_uuid')
-            .where('channel_uuid', channel_uuid)
-            .build());
-
-        return sum;
+            .where('channel_uuid', findArgs.channel_uuid)
+            .execute();
     }
 
     /**
@@ -63,35 +56,41 @@ class MessageUploadService  {
      * @returns {Object} The user and token
      */
     async create(data, file, transaction) {
-        if (!data.uuid) throw new ControllerError('UUID is required', 400);
-        if (!data.channel_message_uuid) throw new ControllerError('Message Channel UUID is required', 400);
-        if (!file) throw new ControllerError('File is required', 400);
+        await model.throwIfNotPresent(data, 'Data is required')
+            .throwIfNotPresent(data.uuid, 'UUID is required')
+            .throwIfNotPresent(data.channel_message_uuid, 'Message Channel UUID is required')
+            .throwIfNotPresent(file, 'File is required');
+
         data.src = await upload(data.uuid, file);
         data.size = file.size;
         data.upload_type_name = getUploadType(file.mimetype);
-        await model.create({body: data, transaction});
-        const messageUpload = await model.findOne({pk: data.uuid});
 
-        return this.dto(messageUpload);
+        await model.create({body: data}).transaction(transaction).execute();
+
+        return await model
+            .find()
+            .where('uuid', data.uuid)
+            .dto(dto)
+            .executeOne();
     }
 
     async destroy(destroyArgs = { pk: null, user: null }, transaction) {
-        if (!destroyArgs.pk)
-            throw new ControllerError(400, 'Primary key value is required (pk)');
-        if (!destroyArgs.user)
-            throw new ControllerError(400, 'User is required');
+        await model
+            .throwIfNotPresent(destroyArgs.pk, 'Primary key value is required (pk)')
+            .throwIfNotPresent(destroyArgs.user, 'User is required')
+            .find()
+            .where('uuid', destroyArgs.pk)
+            .throwIfNotFound()
+            .executeOne();
 
-        const { pk } = destroyArgs;
-        const messageUpload = await model.findOne({ pk });
-        if (!messageUpload)
-            throw new ControllerError(404, 'messageUpload not found');
-
-        await model.destroy({ pk, transaction });
+        await model
+            .destroy()
+            .where('uuid', destroyArgs.pk)
+            .transaction(transaction)
+            .execute();
     }
 }
 
-// Create a new service
 const service = new MessageUploadService({ model, dto });
 
-// Export the service
 export default service;

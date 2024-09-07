@@ -80,10 +80,8 @@ export default class BaseModel {
     }
 
     throwIfNotPresent(input, message) {
-        if (!isNaN(input)) return this;
-        if (Array.isArray(input) && input.length === 0) 
-            throw new ControllerError(400, message);
-        if (!input) 
+        if (typeof input === 'number') return this;
+        if (input === null || input === undefined || input === "")
             throw new ControllerError(400, message);
         return this;
     }
@@ -102,13 +100,18 @@ export default class BaseModel {
     find(options={}) {
         const page = options.page;
         const limit = options.limit;
-        const opt = { };
-        if (!isNaN(limit)) opt.limit = limit;
-        if (!isNaN(page) && !isNaN(limit)) {
+        const opt = {};
+        const conditions = {}
+        if (limit && !isNaN(limit)) {
+            opt.limit = limit;
+            conditions.limit = limit;
+        }
+        if (page && limit && !isNaN(page) && !isNaN(limit)) {
             opt.offset = (page - 1) * limit;
+            conditions.page = page;
         }
 
-        this.operation = { method: 'find', options: opt, conditions: { page, limit } };
+        this.operation = { method: 'find', options: opt, conditions };
         return this.subMethods();
     }
     
@@ -137,8 +140,9 @@ export default class BaseModel {
         const body = options.body;
         const params = {}
         this.fields.forEach(f => {
-            if (body[f]) params[f] = body[f];
-            else params[f] = existing[f];
+            if (!body[f] && this.requiredFields.includes(f) && isNaN(body[f]))
+                throw new Error(`Field ${f} is required`);
+            params[f] = body[f];
         });
 
         this.operation = { method: 'update', options: { body: params }, conditions: {} };
@@ -200,15 +204,19 @@ export default class BaseModel {
         if (!this.operation) throw new Error('Operation is required');
 
         const model = this;
-        const sub = { options: {} }
+        const sub = { options: {}, model }
 
         sub.where = (key, value, operator='=') => {
+            if (operator === undefined || operator === null) operator = '=';
             if (!sub.options.where) sub.options.where = {};
             sub.options.where[key] = { value, operator };
             return sub;
         }
 
         sub.include = (model, field, other_field, other_table) => {
+            if (!model) throw new Error('Model is required');
+            if (!field) throw new Error('Field is required');
+
             const p = { model, field };            
             if (!sub.options.include) sub.options.include = [];            
             if (other_field) p.model_field = other_field;
@@ -218,6 +226,7 @@ export default class BaseModel {
         }
 
         sub.orderBy = (orderBy) => {
+            if (!orderBy) throw new Error('OrderBy is required');
             sub.options.orderBy = orderBy;
             return sub;
         }
@@ -238,11 +247,13 @@ export default class BaseModel {
         }
 
         sub.dto = (dto) => {
+            if (!dto) throw new Error('DTO is required');
             model.operation.conditions.dto = dto;
             return sub;
         }
 
         sub.meta = () => {
+            if (!model.operation.conditions) model.operation.conditions = {};
             model.operation.conditions.meta = true;
             return sub;
         }
@@ -266,82 +277,5 @@ export default class BaseModel {
         }
 
         return sub;
-    }
-
-    optionsBuilder() {
-        const builder = { options: { include: [], where: {}}, method: null };
-
-        builder.sum = (field) => {
-            builder.options.field = field;
-            builder.method = 'sum';
-            return builder;
-        }
-
-        builder.find = (options={}) => {
-            if (!isNaN(options.limit)) builder.options.limit = limit;
-            if (!isNaN(options.page) && !isNaN(limit)) builder.options.offset = (page - 1) * limit;
-            builder.method = 'find';
-            return builder;
-        }
-
-        builder.create = (body) => {
-            builder.options.body = body;
-            builder.method = 'create';
-            return builder;
-        }
-
-        builder.update = (body) => {
-            builder.method = 'update';
-            builder.options.body = body;
-            return builder;
-        }
-
-        builder.destroy = () => {
-            builder.method = 'destroy';
-            return builder;
-        }
-
-        builder.where = (key, value, operator='=') => {
-            if (!builder.options.where) builder.options.where = {};
-            builder.options.where[key] = { value, operator };
-            return builder;
-        }
-
-        builder.include = (model, field, model_field, model_table) => {
-            const p = { model, field };            
-            if (!builder.options.include) builder.options.include = [];            
-            if (model_field) p.model_field = model_field;
-            if (model_table) p.model_table = model_table
-            builder.options.include.push(p);
-            return builder;
-        }
-
-        builder.orderBy = (orderBy) => {
-            builder.options.orderBy = orderBy;
-            return builder;
-        }
-
-        builder.transaction = (transaction) => {
-            builder.options.transaction = transaction;
-            return builder;
-        }
-
-        builder.build = () => {
-            return builder.options;
-        }
-
-        builder.execute = async () => {
-            if (!builder.method) throw new Error('Method is required to execute immediately');
-            return await this.adapter[builder.method](this, builder.options);
-        }
-
-        builder.executeOne = async () => {
-            if (!builder.method) throw new Error('Method is required to execute immediately');
-            const rows = await this.adapter[builder.method](this, builder.options);
-            if (rows.length === 0) return null;
-            return rows[0];
-        }
-
-        return builder;
     }
 }

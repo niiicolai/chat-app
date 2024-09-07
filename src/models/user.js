@@ -41,10 +41,12 @@ class UserModel extends BaseModel {
      * @param {Object} body
      * @returns {Promise}
      */
-    async create(body) {
+    create(options={body: null}) {
+        const { body } = options;
+        if (!body) return super.create(options);
         const saltRounds = 10;
-        const hash = await bcrypt.hash(body.password, saltRounds);
-        return await super.create({ ...body, password: hash });
+        const hash = bcrypt.hashSync(body.password, saltRounds);
+        return super.create({ ...options, ...{ body: { ...body, password: hash } } });
     }
 
     /**
@@ -53,13 +55,17 @@ class UserModel extends BaseModel {
      * @param {Object} user
      * @returns {Promise}
      */
-    async update(options) {
-        if (options.body.password) {
+    update(options={body: null}) {
+        const { body } = options;
+        if (!body) return super.update(options);
+
+        if (body.password) {
             const saltRounds = 10;
-            options.body.password = await bcrypt.hash(options.body.password, saltRounds);
+            const hash = bcrypt.hashSync(body.password, saltRounds);
+            body.password = hash;
         }
 
-        return await super.update(options);
+        return super.update(options);
     }
 
     /**

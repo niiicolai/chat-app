@@ -88,7 +88,7 @@ export default class Builder {
     create() {
         if (!this.options.body) throw new Error('create: options.body is required');
 
-        const body = options.body;
+        const body = this.options.body;
         const keys = Object.keys(body).map(k => `\`${k}\``).join(', ');
         const placeholders = Object.keys(body).map(k => '?').join(', ');
 
@@ -101,7 +101,7 @@ export default class Builder {
         if (!this.options.body) throw new Error('update: options.body is required');
         if (!this.options.where) throw new Error('Security risk: Blocked update without where clause');
 
-        const body = options.body;
+        const body = this.options.body;
         const keys = Object.keys(body).map(k => `\`${k}\` = ?`).join(', ');
         this.req.query = `UPDATE ${this.table} SET ${keys}`;
         this.req.values = Object.values(body);
@@ -178,7 +178,7 @@ export default class Builder {
     async execute() {
         const req = this.build();
         if (this.options.transaction !== undefined) {
-            return await this.options.transaction(req.query, req.values);
+            return await this.options.transaction.query(req.query, req.values);
         } else {
             return await pool.query(req.query, req.values);
         }

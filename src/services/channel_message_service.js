@@ -23,7 +23,7 @@ class ChannelMessageService {
             .throwIfNotPresent(findArgs.pk, 'uuid is required')
             .throwIfNotPresent(findArgs.user.sub, 'user is required')
             .find()
-            .where(model.pk, findArgs.pk)
+            .where(`${model.mysql_table}.${model.pk}`, findArgs.pk)
             .include(UserService.model, 'uuid', 'user_uuid')
             .dto(dto)
             .throwIfNotFound()
@@ -58,28 +58,22 @@ class ChannelMessageService {
     }
 
     async create(createArgs = { body: null, user: null }, transaction) {
-        if (!createArgs.body)
-            throw new ControllerError(400, 'Resource body is required');
-        if (!createArgs.body.body)
-            throw new ControllerError(400, 'body is required');
-        if (!createArgs.body.channel_uuid)
-            throw new ControllerError(400, 'channel_uuid is required');
-        if (!createArgs.body.uuid)
-            throw new ControllerError(400, 'uuid is required');
-        if (!createArgs.user)
-            throw new ControllerError(400, 'User is required');
+        await model.throwIfNotPresent(createArgs.body, 'Resource body is required')
+            .throwIfNotPresent(createArgs.body.body, 'body is required')
+            .throwIfNotPresent(createArgs.body.channel_uuid, 'channel_uuid is required')
+            .throwIfNotPresent(createArgs.body.uuid, 'uuid is required')
+            .throwIfNotPresent(createArgs.user, 'User is required')
+            .find()
+            .where(`${model.mysql_table}.${model.pk}`, createArgs.body[model.pk])
+            .throwIfFound('A channel message with the same primary key already exists')
+            .executeOne();
 
         const pk = createArgs.body[model.pk];
         const user = createArgs.user;
-        if (pk && await this.findOne({ pk, user })) {
-            throw new ControllerError(400, 'A channel message with the same primary key already exists');
-        }
-
         const channel_uuid = createArgs.body.channel_uuid;
         if (!await ChannelService.isInRoom({ channel_uuid, user, room_role_name: null }))
             throw new ControllerError(403, 'Forbidden');
         
-        createArgs.body.user_uuid = user.sub;
 
         if (!createArgs.body.created_by_system) {
             createArgs.body.created_by_system = 0;
@@ -87,7 +81,7 @@ class ChannelMessageService {
 
         const transactionMethod = async (t) => {
             await model
-                .create(createArgs.body)
+                .create({ body: {...createArgs.body, user_uuid: user.sub} })
                 .transaction(t)
                 .execute();
 
@@ -103,9 +97,10 @@ class ChannelMessageService {
                     user
                 });
 
-                const sum = await MessageUploadService.sum({ channel_uuid: channel.uuid, field: 'size' });
-                if ((sum + size) > roomSetting.total_upload_bytes)
-                    throw new ControllerError(400, `The room has used ${sum / 1000000} MB of the total upload limit of ${roomSetting.total_upload_bytes / 1000000} MB. The file size is ${size / 1000000} MB and the new total would be ${(sum + size) / 1000000} MB`);
+                //const size = createArgs.file.size;
+                //const sum = await MessageUploadService.sum({ channel_uuid: channel.uuid, field: 'size' });
+                //if ((sum + size) > roomSetting.total_upload_bytes)
+                //    throw new ControllerError(400, `The room has used ${sum / 1000000} MB of the total upload limit of ${roomSetting.total_upload_bytes / 1000000} MB. The file size is ${size / 1000000} MB and the new total would be ${(sum + size) / 1000000} MB`);
 
                 await MessageUploadService.create({
                     uuid: uuidv4(),
@@ -121,12 +116,9 @@ class ChannelMessageService {
     }
 
     async update(updateArgs = { pk: null, body: null, user: null }, transaction) {
-        if (!updateArgs.pk)
-            throw new ControllerError(400, 'Primary key value is required (pk)');
-        if (!updateArgs.body)
-            throw new ControllerError(400, 'Resource body is required');
-        if (!updateArgs.user)
-            throw new ControllerError(400, 'User is required');
+        await model.throwIfNotPresent(updateArgs.pk, 'Primary key value is required (pk)')
+            .throwIfNotPresent(updateArgs.body, 'Resource body is required')
+            .throwIfNotPresent(updateArgs.user, 'User is required');
 
         const { body, pk } = updateArgs;
         const channelMessage = await this.findOne({ pk, user: updateArgs.user });

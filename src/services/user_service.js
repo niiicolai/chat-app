@@ -37,7 +37,6 @@ class UserService {
     }
 
     async me(user) {
-        console.log(user)
         return await this.model
             .throwIfNotPresent(user, 'user is required')
             .throwIfNotPresent(user.sub, 'user.sub is required')
@@ -58,14 +57,18 @@ class UserService {
             .executeOne();
     }
 
-    async create({ body, file }, transaction) {
-        model.throwIfNotPresent(body, 'Resource body is required')
+    async create(options={ body: null, file: null }, transaction) {
+        const { body, file } = options
+        await model
+            .throwIfNotPresent(body, 'Resource body is required')
             .throwIfNotPresent(body.email, 'Email is required')
             .throwIfNotPresent(body.password, 'Password is required')
             .throwIfNotPresent(body.username, 'Username is required')
-            .throwIfNotPresent(body.uuid, 'uuid is required');
-
-        await this.findOne({ pk: body.uuid })
+            .throwIfNotPresent(body.uuid, 'uuid is required')
+            .find()
+            .where('uuid', body.uuid)
+            .throwIfFound()
+            .executeOne();
         
         await model
             .find()
@@ -80,15 +83,15 @@ class UserService {
             .executeOne();
 
         if (file) {
-            body.avatar_src = await upload(pk, file);
+            body.avatar_src = await upload(body.uuid, file);
         }
 
         await model
-            .create(body)
+            .create({ body })
             .transaction(transaction)
             .execute();
 
-        const user = await this.findOne({ pk });
+        const user = await this.findOne({ pk: body.uuid });
         const token = JwtService.sign(body.uuid);
 
         return { user, token };

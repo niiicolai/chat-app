@@ -116,7 +116,7 @@ export default class BaseController {
     index(middleware=[]) {
         initMiddleware(middleware, this.auth.index);
 
-        this.router.get(this.paths.index, middleware, (req, res) => {
+        this.router.get(this.paths.index, middleware, async (req, res) => {
             handleError(async () => {
                 const data = await this.crudService.findAll(this.indexArgs(req));
                 res.json(data);

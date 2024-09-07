@@ -54,7 +54,7 @@ class ChannelService {
     }
 
     async findAll(findAllArgs = { page: 1, limit: 10, room_uuid: null, user: null }) {
-        model.throwIfNotPresent(findAllArgs.room_uuid, 'room_uuid is required')
+        await model.throwIfNotPresent(findAllArgs.room_uuid, 'room_uuid is required')
              .throwIfNotPresent(findAllArgs.user, 'user is required')
 
         const { page, limit, user, room_uuid } = findAllArgs;
@@ -71,63 +71,61 @@ class ChannelService {
     }
 
     async create(createArgs = { body: null, user: null }, transaction) {
-        if (!createArgs.body) throw new ControllerError(400, 'Resource body is required');
-        if (!createArgs.body.name) throw new ControllerError(400, 'name is required');
-        if (!createArgs.body.description) throw new ControllerError(400, 'description is required');
-        if (!createArgs.body.room_uuid) throw new ControllerError(400, 'room_uuid is required');
-        if (!createArgs.body.channel_type_name) throw new ControllerError(400, 'channel_type_name is required');
-        if (!createArgs.body.uuid) throw new ControllerError(400, 'uuid is required');
-        if (!createArgs.user) throw new ControllerError(400, 'User is required');
+        await model.throwIfNotPresent(createArgs.body, 'Resource body is required')
+            .throwIfNotPresent(createArgs.body.name, 'name is required')
+            .throwIfNotPresent(createArgs.body.description, 'description is required')
+            .throwIfNotPresent(createArgs.body.room_uuid, 'room_uuid is required')
+            .throwIfNotPresent(createArgs.body.channel_type_name, 'channel_type_name is required')
+            .throwIfNotPresent(createArgs.body.uuid, 'uuid is required')
+            .throwIfNotPresent(createArgs.user, 'User is required');
 
         await this.model
             .find()
             .where('uuid', createArgs.body.uuid)
-            .throwIfNotFound('A channel with the same uuid already exists')
+            .throwIfFound('A channel with the same uuid already exists')
             .executeOne();
 
         await this.model
             .find()
             .where('name', createArgs.body.name)
             .where('channel_type_name', createArgs.body.channel_type_name)
-            .throwIfNotFound('A channel with the same name and type already exists')
+            .throwIfFound('A channel with the same name and type already exists')
             .executeOne();
 
         const room_uuid = createArgs.body.room_uuid;
         const user = createArgs.user;
+        const body = createArgs.body;
+        const pk = createArgs.body[model.pk];
         if (!await UserRoomService.isInRoom({ room_uuid, user, room_role_name: 'Admin' }))
             throw new ControllerError(403, 'Forbidden');
 
         const roomSetting = await RoomSettingService.findOne({ room_uuid });
-        if (!roomSetting)
-            throw new ControllerError(404, 'Room setting not found');
-
         const channelsCount = await model
             .count()
             .where('room_uuid', room_uuid)
             .execute();
+
         if (channelsCount >= roomSetting.max_channels)
             throw new ControllerError(400, 'Room channel limit reached');
 
         await model
-            .create(createArgs.body)
+            .create({ body })
             .transaction(transaction)
             .execute();
 
-        return await this.findOne({ pk });
+        return await this.findOne({ pk, user });
     }
 
     // Not public, so it require a user object
     async update(updateArgs = { pk: null, body: null, user: null }, transaction) {
-        if (!updateArgs.pk)
-            throw new ControllerError(400, 'Primary key value is required (pk)');
-        if (!updateArgs.body)
-            throw new ControllerError(400, 'Resource body is required');
-        if (!updateArgs.user)
-            throw new ControllerError(400, 'User is required');
-
-        const { body, pk } = updateArgs;
-        const channel = await this.findOne({ pk, user: updateArgs.user });
-        if (!channel) throw new ControllerError(404, 'channel not found');
+        const channel = await model.throwIfNotPresent(updateArgs.pk, 'Primary key value is required (pk)')
+            .throwIfNotPresent(updateArgs.body, 'Resource body is required')
+            .throwIfNotPresent(updateArgs.user, 'User is required')
+            .find()
+            .where(model.pk, updateArgs.pk)
+            .throwIfNotFound()
+            .dto(dto)
+            .executeOne();
 
         const room_uuid = channel.room_uuid;
         const user = updateArgs.user;
@@ -140,18 +138,18 @@ class ChannelService {
             .transaction(transaction)
             .execute();
 
-        return await this.findOne({ pk, user: updateArgs.user });
+        return await this.findOne({ pk, user });
     }
 
     async destroy(destroyArgs = { pk: null, user: null }, transaction) {
-        if (!destroyArgs.pk)
-            throw new ControllerError(400, 'Primary key value is required (pk)');
-        if (!destroyArgs.user)
-            throw new ControllerError(400, 'User is required');
-
-        const { pk } = destroyArgs;
-        const channel = await this.findOne({ pk, user: destroyArgs.user });
-        if (!channel) throw new ControllerError(404, 'channel not found');
+        const channel = await model
+            .throwIfNotPresent(destroyArgs.pk, 'Primary key value is required (pk)')
+            .throwIfNotPresent(destroyArgs.user, 'User is required')
+            .find()
+            .where(model.pk, destroyArgs.pk)
+            .throwIfNotFound()
+            .dto(dto)
+            .executeOne();
 
         const room_uuid = channel.room_uuid;
         const user = destroyArgs.user;
@@ -166,8 +164,6 @@ class ChannelService {
     }
 }
 
-// Create a new service
 const service = new ChannelService();
 
-// Export the service
 export default service;

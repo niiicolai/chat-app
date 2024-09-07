@@ -63,83 +63,62 @@ class RoomService {
     }
 
     async create(createArgs = { body: null, user: null }, transaction) {
-        if (!createArgs.body)
-            throw new ControllerError(400, 'Resource body is required');
-        if (!createArgs.body.name)
-            throw new ControllerError(400, 'name is required');
-        if (!createArgs.body.description)
-            throw new ControllerError(400, 'description is required');
-        if (!createArgs.body.room_category_name)
-            throw new ControllerError(400, 'room_category_name is required');
-        if (!createArgs.body.uuid)
-            throw new ControllerError(400, 'uuid is required');
-        if (!createArgs.user)
-            throw new ControllerError(400, 'User is required');
+        await model.throwIfNotPresent(createArgs.body, 'Resource body is required')
+            .throwIfNotPresent(createArgs.body.name, 'name is required')
+            .throwIfNotPresent(createArgs.body.description, 'description is required')
+            .throwIfNotPresent(createArgs.body.room_category_name, 'room_category_name is required')
+            .throwIfNotPresent(createArgs.body.uuid, 'uuid is required')
+            .throwIfNotPresent(createArgs.user, 'User is required');
 
         const pk = createArgs.body[model.pk];
-        if (pk && await model.findOne({ pk })) {
-            throw new ControllerError(400, 'Resource already exists');
-        }
-        
-        const nameCheck = await model.findOneByField({
-            fieldName: 'name',
-            fieldValue: createArgs.body.name
-        });
-        if (nameCheck) throw new ControllerError(400, 'Name is already in use');
-
-        const userRoomArgs = {
-            body: { uuid: pk, room_uuid: pk, user_uuid: createArgs.user.sub, room_role_name: 'Admin' },
-            user: createArgs.user
-        };
-
-        const roomSettingArgs = {
-            body: { 
-                uuid: pk, 
-                room_uuid: pk, 
-                total_upload_bytes: process.env.ROOM_TOTAL_UPLOAD_SIZE,
-                upload_bytes: process.env.ROOM_UPLOAD_SIZE,
-                join_message: process.env.ROOM_JOIN_MESSAGE,
-                rules_text: process.env.ROOM_RULES_TEXT,
-                max_channels: process.env.ROOM_MAX_CHANNELS,
-                max_members: process.env.ROOM_MAX_MEMBERS
-            },
-            user: createArgs.user
-        }
+        await model.find().where(model.pk, pk).throwIfFound().executeOne();
+        await model.find().where('name', createArgs.body.name).throwIfFound().executeOne();
+        await model.find().where('uuid', createArgs.body.uuid).throwIfFound().executeOne();
 
         if (createArgs.file) {
             createArgs.body.avatar_src = await upload(pk, createArgs.file);
         }
 
         const transactionMethod = async (t) => {
-            await model.create({ body: createArgs.body, transaction: t });
-            await UserRoomService.create(userRoomArgs, t);
-            await RoomSettingService.create(roomSettingArgs, t);
+            await model.create({ body: createArgs.body })
+                .transaction(t)
+                .execute();
+            
+            await UserRoomService.create({
+                body: { uuid: pk, room_uuid: pk, user_uuid: createArgs.user.sub, room_role_name: 'Admin' },
+                user: createArgs.user
+            }, t);
+            await RoomSettingService.create({
+                body: { 
+                    uuid: pk, 
+                    room_uuid: pk, 
+                    total_upload_bytes: process.env.ROOM_TOTAL_UPLOAD_SIZE,
+                    upload_bytes: process.env.ROOM_UPLOAD_SIZE,
+                    join_message: process.env.ROOM_JOIN_MESSAGE,
+                    rules_text: process.env.ROOM_RULES_TEXT,
+                    max_channels: process.env.ROOM_MAX_CHANNELS,
+                    max_members: process.env.ROOM_MAX_MEMBERS
+                },
+                user: createArgs.user
+            }, t);
         };
 
         if (transaction) await transactionMethod(transaction);
-        else await model.transaction(transactionMethod);
+        else await model.defineTransaction(transactionMethod);
 
-        const resource = await model.findOne({ pk });
-        return dto(resource);
+        return await this.findOne({ pk, user: createArgs.user });
     }
 
     // Not public, so it require a user object
     async update(updateArgs = { pk: null, body: null, user: null }, transaction) {
-        if (!updateArgs.pk)
-            throw new ControllerError(400, 'Primary key value is required (pk)');
-        if (!updateArgs.body)
-            throw new ControllerError(400, 'Resource body is required');
-        if (!updateArgs.user)
-            throw new ControllerError(400, 'User is required');
+        await model.throwIfNotPresent(updateArgs.pk, 'Primary key value is required (pk)')
+            .throwIfNotPresent(updateArgs.body, 'Resource body is required')
+            .throwIfNotPresent(updateArgs.user, 'User is required');
 
-        const { body, pk } = updateArgs;
-        const room = await this.findOne({ pk, user: updateArgs.user });
-        if (!room)
-            throw new ControllerError(404, 'room not found');
+        const { body, pk, user } = updateArgs;
+        const room = await model.find().where(model.pk, pk).throwIfNotFound().dto(dto).executeOne();
 
-        const room_uuid = room.uuid;
-        const user = updateArgs.user;
-        if (!await UserRoomService.isInRoom({ room_uuid, user, room_role_name: 'Admin' }))
+        if (!await UserRoomService.isInRoom({ room_uuid: pk, user, room_role_name: 'Admin' }))
             throw new ControllerError(403, 'Forbidden');
 
         if (updateArgs.file) {
@@ -148,21 +127,18 @@ class RoomService {
             updateArgs.body.avatar_src = room.avatar_src;
         }
 
-        if (!updateArgs.body.name)
-            updateArgs.body.name = room.name;
-        if (!updateArgs.body.description)
-            updateArgs.body.description = room.description;
-        if (!updateArgs.body.room_category_name)
-            updateArgs.body.room_category_name = room.room_category_name;
+        if (!updateArgs.body.name) updateArgs.body.name = room.name;
+        if (!updateArgs.body.description) updateArgs.body.description = room.description;
+        if (!updateArgs.body.room_category_name) updateArgs.body.room_category_name = room.room_category_name;
 
         const transactionMethod = async (t) => {
             await model.update({ pk, body, transaction: t });
         };
 
         if (transaction) await transactionMethod(transaction);
-        else await model.transaction(transactionMethod);        
+        else await model.defineTransaction(transactionMethod);        
 
-        return await this.findOne({ pk, user: updateArgs.user });
+        return await this.findOne({ pk, user });
     }
 
     // Not public, so it require a user object
@@ -197,7 +173,7 @@ class RoomService {
         };
 
         if (transaction) await transactionMethod(transaction);
-        else await model.transaction(transactionMethod);
+        else await model.defineTransaction(transactionMethod);
     }
 }
 

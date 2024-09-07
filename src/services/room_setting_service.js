@@ -15,22 +15,17 @@ class RoomSettingService {
     }
 
     async canUpload(findArgs = { room_uuid: null, byteSize: null, user: null }) {
-        if (!findArgs.room_uuid) throw new ControllerError(400, 'room_uuid is required');
-        if (!findArgs.size) throw new ControllerError(400, 'size is required');
-        if (!findArgs.user) throw new ControllerError(400, 'User is required');
-
-        const roomSettings = await model
-            .optionsBuilder()
+        const roomSetting = await model
+            .throwIfNotPresent(findArgs.room_uuid, 'room_uuid is required')
+            .throwIfNotPresent(findArgs.byteSize, 'byteSize is required')
+            .throwIfNotPresent(findArgs.user, 'user is required')
             .find()
-            .where('room_uuid', room_uuid)
-            .execute();        
+            .where('room_uuid', findArgs.room_uuid)
+            .throwIfNotFound()
+            .dto(dto)
+            .executeOne();        
         
-        if (roomSettings.length === 0)
-            throw new ControllerError(404, 'Room setting not found');
-
-        const roomSetting = roomSettings[0];
-        const size = findArgs.size;
-
+        const size = findArgs.byteSize;
         const uploadSizeMb = roomSetting.upload_bytes / 1000000;        
         const sizeMb = size / 1000000;
 
@@ -57,38 +52,25 @@ class RoomSettingService {
     }
 
     async create(createArgs = { body: null, user: null }, transaction) {
-        if (!createArgs.body)
-            throw new ControllerError(400, 'Resource body is required');
-        if (!createArgs.body.total_upload_bytes)
-            throw new ControllerError(400, 'total_upload_bytes is required');
-        if (!createArgs.body.join_message)
-            throw new ControllerError(400, 'join_message is required');
-        if (!createArgs.body.max_channels)
-            throw new ControllerError(400, 'max_channels is required');
-        if (!createArgs.body.max_members)
-            throw new ControllerError(400, 'max_channels is required');
-        if (!createArgs.body.room_uuid)
-            throw new ControllerError(400, 'max_channels is required');
-        if (!createArgs.body.uuid)
-            throw new ControllerError(400, 'uuid is required');
-        if (!createArgs.user)
-            throw new ControllerError(400, 'User is required');
+        await model.throwIfNotPresent(createArgs.body, 'Resource body is required')
+            .throwIfNotPresent(createArgs.body.total_upload_bytes, 'total_upload_bytes is required')
+            .throwIfNotPresent(createArgs.body.join_message, 'join_message is required')
+            .throwIfNotPresent(createArgs.body.max_channels, 'max_channels is required')
+            .throwIfNotPresent(createArgs.body.max_members, 'max_members is required')
+            .throwIfNotPresent(createArgs.body.room_uuid, 'room_uuid is required')
+            .throwIfNotPresent(createArgs.body.uuid, 'uuid is required')
+            .throwIfNotPresent(createArgs.user, 'User is required');
 
         const pk = createArgs.body[model.pk];
-        if (pk && await model.findOne({ pk })) {
-            throw new ControllerError(400, 'Resource already exists');
-        }
+        await model.find().where(model.pk, pk).throwIfFound().executeOne();
+        await model.find().where('room_uuid', createArgs.body.room_uuid).throwIfFound('Room already has settings').executeOne();
 
-        const roomUuidCheck = await model.findOneByField({
-            fieldName: 'room_uuid',
-            fieldValue: createArgs.body.room_uuid
-        });
-        if (roomUuidCheck) throw new ControllerError(400, 'Room already has settings');
+        await this.model
+            .create({ body: createArgs.body})
+            .transaction(transaction)
+            .execute();
 
-        await this.model.create({ body: createArgs.body, transaction });
-        const resource = await model.findOne({ pk });
-
-        return dto(resource);
+        return await this.findOne({ room_uuid: createArgs.body.room_uuid });
     }
 
     // Not public, so it require a user object
