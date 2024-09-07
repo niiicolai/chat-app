@@ -15,7 +15,7 @@ const upload = async (uuid, file) => {
         const filename = `${originalname}-${uuid}-${timestamp}.${mimetype.split('/')[1]}`;
         return await storageService.uploadFile(buffer, filename);
     } catch (error) {
-        if (error instanceof UploadError) 
+        if (error instanceof UploadError)
             throw new ControllerError(400, error.message);
 
         throw new ControllerError(500, error.message);
@@ -27,7 +27,6 @@ const upload = async (uuid, file) => {
  */
 class UserService {
     constructor() {
-        // For the controller
         this.model = model;
         this.dto = dto;
         this.userProfileDto = userProfileDto;
@@ -38,145 +37,128 @@ class UserService {
     }
 
     async me(user) {
-        if (!user) 
-            throw new ControllerError(400, 'User is required');
-
-        const pk = user.sub;
-        const resource = await model.findOne({ pk });
-        if (!resource) 
-            throw new ControllerError(404, 'User not found');
-
-        return dto(resource);
+        console.log(user)
+        return await this.model
+            .throwIfNotPresent(user, 'user is required')
+            .throwIfNotPresent(user.sub, 'user.sub is required')
+            .find()
+            .where(model.pk, user.sub)
+            .throwIfNotFound()
+            .dto(dto)
+            .executeOne();
     }
 
-    // Public, so it uses the profile DTO
-    async show(findArgs={pk: null}) {
-        if (!findArgs.pk) 
-            throw new ControllerError(400, 'Primary key is required');
-
-        const pk = findArgs.pk;
-        const user = await model.findOne({ pk });
-
-        if (!user) 
-            throw new ControllerError(404, 'User not found');
-
-        return userProfileDto(user);
+    async findOne({ pk }) {
+        await this.model
+            .throwIfNotPresent(pk, 'Primary key value is required')
+            .find()
+            .where(model.pk, pk)
+            .throwIfNotFound()
+            .dto(userProfileDto)
+            .executeOne();
     }
 
-    async create(createArgs={body: null}) {
-        if (!createArgs.body) 
-            throw new ControllerError(400, 'Resource body is required');
-        if (!createArgs.body.email) 
-            throw new ControllerError(400, 'Email is required');
-        if (!createArgs.body.password)
-            throw new ControllerError(400, 'Password is required');
-        if (!createArgs.body.username) 
-            throw new ControllerError(400, 'Username is required');
+    async create({ body, file }, transaction) {
+        model.throwIfNotPresent(body, 'Resource body is required')
+            .throwIfNotPresent(body.email, 'Email is required')
+            .throwIfNotPresent(body.password, 'Password is required')
+            .throwIfNotPresent(body.username, 'Username is required')
+            .throwIfNotPresent(body.uuid, 'uuid is required');
 
-        const pk = createArgs.body[model.pk];
-        if (pk && await model.findOne({ pk })) {
-            throw new ControllerError(400, 'Resource already exists');
-        }
-
-        const emailCheck = await model.findOneByField({ 
-            fieldName: 'email', 
-            fieldValue: createArgs.body.email 
-        });
-        if (emailCheck) throw new ControllerError(400, 'Resource already exists');
-
-        const usernameCheck = await model.findOneByField({ 
-            fieldName: 'username', 
-            fieldValue: createArgs.body.username 
-        });
-        if (usernameCheck) throw new ControllerError(400, 'Resource already exists');
-
-        if (createArgs.file) {
-            createArgs.body.avatar_src = await upload(pk, createArgs.file);
-        }
+        await this.findOne({ pk: body.uuid })
         
-        await this.model.create(createArgs.body);
-        const resource = await model.findOne({ pk });
+        await model
+            .find()
+            .where('email', body.email)
+            .throwIfFound()
+            .executeOne();
 
-        const token = JwtService.sign(resource.user_uuid);
+        await model
+            .find()
+            .where('username', body.username)
+            .throwIfFound()
+            .executeOne();
 
-        return { user: dto(resource), token };
-    }
-
-    // Not public, so it require a user object
-    async update(updateArgs={pk: null, body: null, user: null}) {
-        if (!updateArgs.pk) 
-            throw new ControllerError(400, 'Primary key value is required (pk)');
-        if (!updateArgs.body) 
-            throw new ControllerError(400, 'Resource body is required');
-        if (!updateArgs.user) 
-            throw new ControllerError(400, 'User is required');
-
-        const { body, pk } = updateArgs;
-
-        if (updateArgs.user.sub !== pk) 
-            throw new ControllerError(403, 'Forbidden');
-
-        const user = await model.findOne({ pk });
-        if (!user) 
-            throw new ControllerError(404, 'User not found');
-
-        if (updateArgs.file) {
-            updateArgs.body.avatar_src = await upload(pk, updateArgs.file);
-        } else {
-            updateArgs.body.avatar_src = user.avatar_src;
+        if (file) {
+            body.avatar_src = await upload(pk, file);
         }
 
-        if (!updateArgs.body.email) 
-            updateArgs.body.email = user.email;
-        if (!updateArgs.body.username)
-            updateArgs.body.username = user.username;
-        if (!updateArgs.body.password)
-            updateArgs.body.password = user.password;
+        await model
+            .create(body)
+            .transaction(transaction)
+            .execute();
 
-        await model.update({ pk, body });
-        const resource = await model.findOne({ pk });
+        const user = await this.findOne({ pk });
+        const token = JwtService.sign(body.uuid);
 
-        return dto(resource);
+        return { user, token };
     }
 
-    // Not public, so it require a user object
-    async destroy(destroyArgs={pk: null, user: null}) {
-        if (!destroyArgs.pk) 
-            throw new ControllerError(400, 'Primary key value is required (pk)');
-        if (!destroyArgs.user)
-            throw new ControllerError(400, 'User is required');
+    async update({ pk, body, user }, transaction) {
+        model.throwIfNotPresent(pk, 'Primary key value is required (pk)')
+            .throwIfNotPresent(body, 'Resource body is required')
+            .throwIfNotPresent(user, 'User is required');
 
-        const { pk } = destroyArgs;
-        if (destroyArgs.user.uuid !== pk) 
+        if (user.sub !== pk) throw new ControllerError(403, 'Forbidden');
+
+        await model
+            .find()
+            .where('email', body.email)
+            .throwIfFound()
+            .executeOne();
+
+        await model
+            .find()
+            .where('username', body.username)
+            .throwIfFound()
+            .executeOne();
+
+        const current = await this.findOne({ pk });
+        if (file) body.avatar_src = await upload(pk, file);
+        else body.avatar_src = current.avatar_src;
+
+        if (!body.email) body.email = current.email;
+        if (!body.username) body.username = current.username;
+        if (!body.password) body.password = current.password;
+
+        await model
+            .update(body)
+            .where(model.pk, pk)
+            .transaction(transaction)
+            .execute();
+
+        return await this.findOne({ pk });
+    }
+
+    async destroy({ pk, user }, transaction) {
+        model.throwIfNotPresent(pk, 'Primary key value is required (pk)')
+            .throwIfNotPresent(user, 'User is required');
+
+        if (user.sub !== pk)
             throw new ControllerError(403, 'Forbidden');
 
-        const user = await model.findOne({ pk });
-        if (!user) 
-            throw new ControllerError(404, 'User not found');
-
-        await model.destroy({ pk });
+        await this.findOne({ pk });        
+        await model.optionsBuilder()
+            .destroy()
+            .where(model.pk, pk)
+            .transaction(transaction)
+            .execute();
     }
 
-    async login(data) {
-        const user = await model.findOneByField({ 
-            fieldName: 'email', 
-            fieldValue: data.email 
-        });
-        if (!user) 
-            throw new ControllerError(404, 'User not found');
-
-        const isValid = await model.comparePassword(user, data.password);
-        if (!isValid) 
-            throw new ControllerError(400, 'Invalid password');
-
-        const token = JwtService.sign(user.uuid);
-
-        return { user: dto(user), token };
+    async login({ email, password }) {        
+        const user = await model
+            .throwIfNotPresent(email, 'Email is required')
+            .throwIfNotPresent(password, 'Password is required')
+            .find()
+            .where('email', email)                        
+            .throwIfNotFound()
+            .executeOne();
+        
+        await model.throwIfNoPasswordMatch(password, user.user_password);
+        return { user: dto(user), token: JwtService.sign(user.user_uuid) };
     }
 }
 
-// Create a new service
 const service = new UserService();
 
-// Export the service
 export default service;

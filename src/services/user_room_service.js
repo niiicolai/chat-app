@@ -6,7 +6,6 @@ import UserService from './user_service.js';
 
 class UserRoomService {
     constructor() {
-        // For the controller
         this.model = model;
         this.dto = dto;
     }
@@ -15,90 +14,73 @@ class UserRoomService {
         return this.model.template();
     }
 
-    async count(countArgs = { where: {} }) {
-        let options = model
-            .optionsBuilder()
+    async count({ where={} }) {
+        const operation = model.count();
 
-        for (const key in countArgs.where) {
-            options.where(key, countArgs.where[key]);
+        for (const key in where) {
+            operation.where(key, 
+                where[key].value, 
+                where[key].operator
+            );
         }
 
-        options = options.build();
-
-        return await model.count(options);
+        return await operation.execute();
     }
 
-    async findOne(findArgs = { room_uuid: null, user: null }) {
-        if (!findArgs.room_uuid)
-            throw new ControllerError(400, 'room_uuid is required');
-        if (!findArgs.user)
-            throw new ControllerError(400, 'User is required');
+    async findOne({ room_uuid, user }) {
+        return await model
+            .throwIfNotPresent(room_uuid, 'room_uuid is required')
+            .throwIfNotPresent(user, 'User is required')
+            .find()
+            .where('room_uuid', room_uuid)
+            .where('user_uuid', user.sub)
+            .throwIfNotFound()
+            .dto(dto)
+            .executeOne();
+    }
 
-        const { room_uuid, user } = findArgs;
-        const userRooms = await model.findAll(model
-            .optionsBuilder()
+    async isInRoom({ room_uuid, user, room_role_name }) {
+        const userRoom = await model
+            .throwIfNotPresent(room_uuid, 'room_uuid is required')
+            .throwIfNotPresent(user.sub, 'user_uuid is required')
+            .find()
             .where('user_uuid', user.sub)
             .where('room_uuid', room_uuid)
-            .build());
+            .dto(dto)
+            .executeOne();
 
-        if (userRooms.length === 0)
-            throw new ControllerError(404, 'User room not found');
-
-        const userRoom = userRooms[0];
-
-        return dto(userRoom);
+        return userRoom &&
+            (room_role_name ? userRoom.room_role_name == room_role_name : true);
     }
 
-    async isInRoom(findArgs = { room_uuid: null, user: null, room_role_name: null }) {
-        if (!findArgs.room_uuid)
-            throw new ControllerError(400, 'room_uuid is required');
-        if (!findArgs.user)
-            throw new ControllerError(400, 'User is required');
+    async findAll(options={}) {
+        const page = options.page;
+        const limit = options.limit;
+        const where = options.where;
+        const room_uuid = options.room_uuid;
+        const res = await model
+            .throwIfNotPresent(room_uuid, 'room_uuid is required')
+            .find({ page, limit })
+            .include(UserService.model, 'uuid', 'user_uuid');
 
-        const { room_uuid, user } = findArgs;
-        const userRooms = await model.findAll(model
-            .optionsBuilder()
-            .where('user_uuid', user.sub)
-            .where('room_uuid', room_uuid)
-            .build());
-
-        if (!findArgs.room_role_name)
-            return userRooms.length > 0;
-
-        return userRooms.length > 0 && userRooms[0].user_room_room_role_name == findArgs.room_role_name;
-    }
-
-    async findAll(findAllArgs = { user: null, where: {} }) {
-        const { page, limit, user } = findAllArgs;
-        let options = model
-            .optionsBuilder()
-            .findAll(page, limit)
-            .include(UserService.model, 'uuid', 'user_uuid')
-
-        //if (user) options.where('user_uuid', user.sub)
-        if (findAllArgs.room_uuid) options.where('room_uuid', findAllArgs.room_uuid)
-
-        for (const key in findAllArgs.where) {
-            options.where(key, findAllArgs.where[key]);
-        }
-        options = options.build();
-
-        const total = await model.count(options);
-        const userRooms = await model.findAll(options);
-        const pages = Math.ceil(total / limit);
-        const data = userRooms.map(userRoom => dto(userRoom));
-
-        return {
-            data,
-            meta: {
-                total,
-                page,
-                pages
+        if (where) {
+            for (const key in where) {
+                res.where(key,
+                    where[key].value,
+                    where[key].operator
+                );
             }
-        };
+        }
+
+        return await res
+            .where('room_uuid', room_uuid)
+            .orderBy('userroom.created_at DESC')
+            .dto(dto)
+            .meta()
+            .execute();
     }
 
-    async create(createArgs = { body: null, user: null }) {
+    async create(createArgs = { body: null, user: null }, transaction) {
         if (!createArgs.body)
             throw new ControllerError(400, 'Resource body is required');
         if (!createArgs.body.room_uuid)
@@ -117,14 +99,14 @@ class UserRoomService {
 
         createArgs.body.user_uuid = createArgs.user.sub;
 
-        await this.model.create(createArgs.body);
+        await this.model.create({ body: createArgs.body, transaction });
         const resource = await model.findOne({ pk });
 
         return dto(resource);
     }
 
     // Not public, so it require a user object
-    async update(updateArgs = { pk: null, body: null, user: null }) {
+    async update(updateArgs = { pk: null, body: null, user: null }, transaction) {
         if (!updateArgs.pk)
             throw new ControllerError(400, 'Primary key value is required (pk)');
         if (!updateArgs.body)
@@ -140,13 +122,13 @@ class UserRoomService {
         if (!this.findOne({ room_uuid: userRoom.user_room_room_uuid, user: destroyArgs.user }))
             throw new ControllerError(404, 'User is not in the room');
 
-        await model.update({ pk, body });
+        await model.update({ pk, body, transaction });
 
         return await this.show({ pk, user: updateArgs.user });
     }
 
     // Not public, so it require a user object
-    async destroy(destroyArgs = { pk: null, user: null }) {
+    async destroy(destroyArgs = { pk: null, user: null }, transaction) {
         if (!destroyArgs.pk)
             throw new ControllerError(400, 'Primary key value is required (pk)');
         if (!destroyArgs.user)
@@ -165,7 +147,7 @@ class UserRoomService {
         if (!this.findOne({ room_uuid: userRoom.user_room_room_uuid, user: destroyArgs.user }))
             throw new ControllerError(404, 'User is not in the room');
 
-        await model.destroy({ pk });
+        await model.destroy({ pk, transaction });
     }
 }
 

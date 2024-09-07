@@ -1,5 +1,6 @@
 import BaseModel from './base_model.js';
 import bcrypt from 'bcrypt';
+import ControllerError from '../errors/controller_error.js';
 
 /**
  * @class UserModel
@@ -68,8 +69,10 @@ class UserModel extends BaseModel {
      * @param {String} password
      * @returns {Promise}
      */
-    async comparePassword(user, password) {
-        return await bcrypt.compare(password, user.password);
+    async throwIfNoPasswordMatch(password1, password2) {
+        if (!await bcrypt.compare(password1, password2)) {
+            throw new ControllerError(400, 'Invalid password');
+        }
     }
 }
 

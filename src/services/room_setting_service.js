@@ -14,25 +14,49 @@ class RoomSettingService {
         return this.model.template();
     }
 
-    async findOne(findArgs = { room_uuid: null }) {
-        if (!findArgs.room_uuid)
-            throw new ControllerError(400, 'room_uuid is required');
+    async canUpload(findArgs = { room_uuid: null, byteSize: null, user: null }) {
+        if (!findArgs.room_uuid) throw new ControllerError(400, 'room_uuid is required');
+        if (!findArgs.size) throw new ControllerError(400, 'size is required');
+        if (!findArgs.user) throw new ControllerError(400, 'User is required');
 
-        const { room_uuid } = findArgs;
-        const roomSettings = await model.findAll(model
+        const roomSettings = await model
             .optionsBuilder()
+            .find()
             .where('room_uuid', room_uuid)
-            .build());
-            
-        if (!roomSettings.length === 0)
-            throw new ControllerError(404, 'room Setting not found');
+            .execute();        
+        
+        if (roomSettings.length === 0)
+            throw new ControllerError(404, 'Room setting not found');
 
         const roomSetting = roomSettings[0];
+        const size = findArgs.size;
 
-        return dto(roomSetting);
+        const uploadSizeMb = roomSetting.upload_bytes / 1000000;        
+        const sizeMb = size / 1000000;
+
+        if (size > roomSetting.upload_bytes)
+            throw new ControllerError(400, `File size is too large. Maximum size is ${uploadSizeMb} MB. The file size is ${sizeMb} MB`);
+        
+        //const totalUploadSizeMb = roomSetting.total_upload_bytes / 1000000;
+        //const sum = await MessageUploadService.sum({ channel_uuid: channel.uuid, field: 'size' });    
+        //if ((sum + size) > roomSetting.total_upload_bytes)
+            //throw new ControllerError(400, `The room has used ${sum / 1000000} MB of the total upload limit of ${roomSetting.total_upload_bytes / 1000000} MB. The file size is ${size / 1000000} MB and the new total would be ${(sum + size) / 1000000} MB`);
+        console.log('todo: implement sum function');
+
+        return true;
     }
 
-    async create(createArgs = { body: null, user: null }) {
+    async findOne({ room_uuid }) {
+        return await model
+            .throwIfNotPresent(room_uuid, 'room_uuid is required')
+            .find()
+            .where('room_uuid', room_uuid)
+            .throwIfNotFound()
+            .dto(dto)
+            .executeOne();
+    }
+
+    async create(createArgs = { body: null, user: null }, transaction) {
         if (!createArgs.body)
             throw new ControllerError(400, 'Resource body is required');
         if (!createArgs.body.total_upload_bytes)
@@ -61,14 +85,14 @@ class RoomSettingService {
         });
         if (roomUuidCheck) throw new ControllerError(400, 'Room already has settings');
 
-        await this.model.create(createArgs.body);
+        await this.model.create({ body: createArgs.body, transaction });
         const resource = await model.findOne({ pk });
 
         return dto(resource);
     }
 
     // Not public, so it require a user object
-    async update(updateArgs = { pk: null, body: null, user: null }) {
+    async update(updateArgs = { pk: null, body: null, user: null }, transaction) {
         if (!updateArgs.pk)
             throw new ControllerError(400, 'Primary key value is required (pk)');
         if (!updateArgs.body)
@@ -103,7 +127,7 @@ class RoomSettingService {
         updateArgs.body.room_uuid = roomSetting.room_setting_room_uuid;
 
 
-        await model.update({ pk, body });
+        await model.update({ pk, body, transaction });
 
         const updatedRoomSetting = await model.findOne({ pk, user: updateArgs.user });
 
@@ -111,7 +135,7 @@ class RoomSettingService {
     }
 
     // Not public, so it require a user object
-    async destroy(destroyArgs = { pk: null, user: null }) {
+    async destroy(destroyArgs = { pk: null, user: null }, transaction) {
         if (!destroyArgs.pk)
             throw new ControllerError(400, 'Primary key value is required (pk)');
         if (!destroyArgs.user)
@@ -127,7 +151,7 @@ class RoomSettingService {
         if (!await UserRoomService.isInRoom({ room_uuid, user, room_role_name: 'Admin' }))
             throw new ControllerError(403, 'Forbidden');
 
-        await model.destroy({ pk });
+        await model.destroy({ pk, transaction });
     }
 }
 

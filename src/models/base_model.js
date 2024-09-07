@@ -65,82 +65,59 @@ export default class BaseModel {
         this.mysql_table = options.mysql_table;
         this.create_timestamp = options.create_timestamp;
         this.update_timestamp = options.update_timestamp;
-        this.adapter = options.adapter || MysqlAdapter;
+        this.adapter = options.adapter || new MysqlAdapter(this);
+        this.operation = null;
     }
 
-    /**
-     * @function count
-     * @description Count the number of records
-     * @returns {Number} The number of records
-     * @example
-     * const model = new BaseModel({ pk: 'id', fields: ['name', 'email'], singularName: 'user', pluralName: 'users', 
- *    mysql_table: 'users' });
-     * const count = model.count();
-     * console.log(count); // 10
-     */
-    async count(options={ where: {}, include: [] }) {
-        return await this.adapter.count(this, options);
-    }
-
-    async sum(options={ field: null, where: {}, include: [] }) {
-        return await this.adapter.sum(this, options);
-    }
-
-    /**
-     * @function findAll
-     * @description Find all records
-     * @param {Object} options The options object
-     * @param {Number} options.limit The number of records to return
-     * @param {Number} options.offset The number of records to skip
-     * @returns {Array} An array of records
-     * @example
-     * const model = new BaseModel({ pk: 'id', fields: ['name', 'email'], singularName: 'user', pluralName: 'users', 
- *    mysql_table: 'users' });
-     * const records = model.findAll({ limit: 10, offset: 0 });
-     * console.log(records); // [{ id: 1, name: 'John Doe', email: 'test@test.com' }]
-     * @throws {Error} If options are not provided  
-     * @throws {Error} If limit is not a number
-     * @throws {Error} If offset is not a number
-     */
-    async findAll(options = {where: {}, include: []}) {
-        if (!options) throw new Error('Options are required');
-        return await this.adapter.findAll(this, options);
-    }
-
-    /**
-     * @function template
-     * @description Create a new object with all fields set to null
-     * @returns {Object} A new object with all fields set to null
-     * @example
-     * const model = new BaseModel({ pk: 'id', fields: ['name', 'email'], singularName: 'user', pluralName: 'users', 
- *    mysql_table: 'users' });
-     * const template = model.template();
-     * console.log(template); // { id: null, name: null, email: null }
-     */
     template() {
         const t = { [this.pk]: null };
         this.fields.forEach(f => t[f] = null);
         return t;
     }
 
-    /**
-     * @function create
-     * @description Create a new record
-     * @param {Object} body The request body
-     * @returns {Object} The newly created record
-     * @example
-     * const model = new BaseModel({ pk: 'id', fields: ['name', 'email'], singularName: 'user', pluralName: 'users', 
- *    mysql_table: 'users' });
-     * const record = model.create({ name: 'John Doe', email: 'test@test.com' });
-     * console.log(record); // { id: 1, name: 'John Doe', email: 'test@test.com' }
-     * @throws {Error} If the body is not provided
-     * @throws {Error} If a required field is not provided
-     */
-    async create(body) {
-        if (!body) throw new Error('Body is required');
+    async defineTransaction(callback) {
+        return await this.adapter.transaction(callback);
+    }
 
-        const params = {}
-        this.fields.forEach(f => {
+    throwIfNotPresent(input, message) {
+        if (!isNaN(input)) return this;
+        if (Array.isArray(input) && input.length === 0) 
+            throw new ControllerError(400, message);
+        if (!input) 
+            throw new ControllerError(400, message);
+        return this;
+    }
+
+    count() {
+        this.operation = { method: 'count', options: {}, conditions: {} };
+        return this.subMethods();
+    }
+
+    sum(options={ field: null }) {
+        if (!options.field) throw new Error('Field is required');
+        this.operation = { method: 'sum', options, conditions: {} };
+        return this.subMethods();
+    }
+
+    find(options={}) {
+        const page = options.page;
+        const limit = options.limit;
+        const opt = { };
+        if (!isNaN(limit)) opt.limit = limit;
+        if (!isNaN(page) && !isNaN(limit)) {
+            opt.offset = (page - 1) * limit;
+        }
+
+        this.operation = { method: 'find', options: opt, conditions: { page, limit } };
+        return this.subMethods();
+    }
+    
+    create(options={body: null}) {
+        if (!options.body) throw new Error('Body is required');
+        
+        const body = options.body;
+        const params = {};
+        this.fields.forEach(f => {            
             if (!body[f] && this.requiredFields.includes(f) && isNaN(body[f]))
                 throw new Error(`Field ${f} is required`);
             params[f] = body[f];
@@ -150,61 +127,12 @@ export default class BaseModel {
             params[this.pk] = body[this.pk];
         }
 
-        await this.adapter.create(this, params); 
+        this.operation = { method: 'create', options: { body: params }, conditions: {} };
+        return this.subMethods();
     }
 
-    /**
-     * @function findOne
-     * @description Find a record by primary key
-     * @param {String} pkValue The primary key value
-     * @returns {Object} The record found
-     * @example
-     * const model = new BaseModel({ pk: 'id', fields: ['name', 'email'], singularName: 'user', pluralName: 'users', 
- *    mysql_table: 'users' });
-     * const record = model.findOne(1);
-     * console.log(record); // { id: 1, name: 'John Doe', email: 'test@test.com' }
-     * @throws {Error} If no record is found with the primary key value
-     */
-    async findOne(options={pk: null, where: {}, include: []}) {
-        if (!options.pk) throw new Error('Primary key value is required');
-        return await this.adapter.findOne(this, options);
-    }
-
-    /**
-     * @function findOneByField
-     * @description Find a record by field
-     * @param {String} fieldName The field name
-     * @param {String} fieldValue The field value
-     * @returns {Object} The record found
-     */ 
-    async findOneByField(options={fieldName: null, fieldValue: null, where: {}, include: []}) {
-        if (!options.fieldName) throw new Error('fieldName is required');
-        if (!options.fieldValue) throw new Error('fieldValue is required');
-        return await this.adapter.findOneByField(this, options);
-    }
-
-    /**
-     * @function update
-     * @description Update a record by primary key
-     * @param {String} pkValue The primary key value
-     * @param {Object} body The request body
-     * @returns {Object} The updated record
-     * @example
-     * const model = new BaseModel({ pk: 'id', fields: ['name', 'email'], singularName: 'user', pluralName: 'users', 
- *    mysql_table: 'users' });
-     * const record = model.update(1, { name: 'Jane Doe', email: 'test@test.com' });
-     * console.log(record); // { id: 1, name: 'Jane Doe', email: 'test@test.com' }
-     * @throws {Error} If no record is found with the primary key value
-     * @throws {Error} If the primary key value is not provided
-     */
-    async update(options={pk: null, body: null, where: {}, include: []}) {
-        if (!options.pk) throw new Error('Primary key value is required');
+    update(options={body: null}) {
         if (!options.body) throw new Error('Body is required');
-
-        const findArgs = { pk: options.pk, where: options.where, include: options.include };
-        const existing = await this.findOne(findArgs);
-        if (!existing) 
-            throw new ControllerError(404, 'Resource not found');
 
         const body = options.body;
         const params = {}
@@ -213,82 +141,175 @@ export default class BaseModel {
             else params[f] = existing[f];
         });
 
-        await this.adapter.update(this, { pk: options.pk, body: params });
+        this.operation = { method: 'update', options: { body: params }, conditions: {} };
+        return this.subMethods();
+    }
+
+    destroy() {
+        this.operation = { method: 'destroy', options: {}, conditions: {} };
+        return this.subMethods();
+    }
+
+    async execute(options={}) {        
+        if (!this.operation) throw new Error('Operation is required');                
+        let result = await this.adapter[this.operation.method]({ 
+            ...options, 
+            ...this.operation.options 
+        });        
+        
+        if (Array.isArray(result)) {
+            let { meta, dto, page, limit } = this.operation.conditions;
+            if (dto) result = result.map(dto);
+            
+            if (meta) {
+                const total = await this.adapter.count(options);
+                if (!page) page = 1;
+                if (!limit) limit = total;
+                const pages = Math.ceil(total / limit);
+                result = { data: result, meta: { total, page, pages } };
+            }
+        }
+
+        return result;
+    }
+
+    async executeOne(options={}) {
+        if (!this.operation) throw new Error('Operation is required');
+        if (!this.operation.method === 'find') throw new Error('executeOne only works for find');    
+        const rows = await this.adapter[this.operation.method]({
+            ...options,
+            ...this.operation.options
+        });
+        
+        const { dto, notFound, found } = this.operation.conditions;
+        if (rows.length === 0 && notFound)
+            throw new ControllerError(notFound.status, notFound.message);
+        else if (rows.length > 0 && found)
+            throw new ControllerError(found.status, found.message);
+        else if (rows.length === 0) return null;
+        
+        if (dto) return dto(rows[0]);
+        return rows[0];
     }
 
     /**
-     * @function destroy
-     * @description Delete a record by primary key
-     * @param {String} pkValue The primary key value
-     * @example
-     * const model = new BaseModel({ pk: 'id', fields: ['name', 'email'], singularName: 'user', pluralName: 'users', 
- *    mysql_table: 'users' });
-     * model.destroy(1);
-     * @throws {Error} If no record is found with the primary key value
-     * @throws {Error} If the primary key value is not provided
+     * Define sub methods that can be chained
+     * for all base methods.
      */
-    async destroy(options={pk: null, where: {}, include: []}) {
-        if (!options.pk) throw new Error('Primary key value is required');
+    subMethods() {
+        if (!this.operation) throw new Error('Operation is required');
 
-        const findArgs = { pk: options.pk, where: options.where, include: options.include };
-        const existing = await this.findOne(findArgs);
-        if (!existing) throw new ControllerError(404, 'Resource not found');
+        const model = this;
+        const sub = { options: {} }
 
-        await this.adapter.destroy(this, options);
+        sub.where = (key, value, operator='=') => {
+            if (!sub.options.where) sub.options.where = {};
+            sub.options.where[key] = { value, operator };
+            return sub;
+        }
+
+        sub.include = (model, field, other_field, other_table) => {
+            const p = { model, field };            
+            if (!sub.options.include) sub.options.include = [];            
+            if (other_field) p.model_field = other_field;
+            if (other_table) p.model_table = other_table
+            sub.options.include.push(p);
+            return sub;
+        }
+
+        sub.orderBy = (orderBy) => {
+            sub.options.orderBy = orderBy;
+            return sub;
+        }
+
+        sub.transaction = (transaction) => {
+            sub.options.transaction = transaction;
+            return sub;
+        }
+
+        sub.throwIfNotFound = (message=`${model.singularName} not found`) => {
+            model.operation.conditions.notFound = { status: 404, message };
+            return sub;
+        }
+
+        sub.throwIfFound = (message=`${model.singularName} already exists`) => {
+            model.operation.conditions.found = { status: 400, message };
+            return sub;
+        }
+
+        sub.dto = (dto) => {
+            model.operation.conditions.dto = dto;
+            return sub;
+        }
+
+        sub.meta = () => {
+            model.operation.conditions.meta = true;
+            return sub;
+        }
+
+        sub.each = (arr, callback) => {
+            if (!Array.isArray(arr)) throw new Error('Array is required');
+            if (!callback) throw new Error('Callback is required');
+            for (let i = 0; i < arr.length; i++) {
+                const data = arr[i];
+                sub.options = callback(data, sub.options);
+            }
+            return sub;
+        }
+
+        sub.execute = async () => {            
+            return model.execute(sub.options);
+        }        
+
+        sub.executeOne = async () => {
+            return model.executeOne(sub.options);
+        }
+
+        return sub;
     }
 
     optionsBuilder() {
-        const builder = { options: { include: [], where: {}} };
+        const builder = { options: { include: [], where: {}}, method: null };
 
         builder.sum = (field) => {
             builder.options.field = field;
+            builder.method = 'sum';
             return builder;
         }
 
-        builder.findAll = (page, limit) => {
-            if (!isNaN(limit)) 
-                builder.options.limit = limit;
-            if (!isNaN(page) && !isNaN(limit)) 
-                builder.options.offset = (page - 1) * limit;
+        builder.find = (options={}) => {
+            if (!isNaN(options.limit)) builder.options.limit = limit;
+            if (!isNaN(options.page) && !isNaN(limit)) builder.options.offset = (page - 1) * limit;
+            builder.method = 'find';
             return builder;
         }
 
         builder.create = (body) => {
             builder.options.body = body;
+            builder.method = 'create';
             return builder;
         }
 
-        builder.findOne = (pk) => {
-            builder.options.pk = pk;
-            return builder;
-        }
-
-        builder.findOneByField = (fieldName, fieldValue) => {
-            builder.options.fieldName = fieldName;
-            builder.options.fieldValue = fieldValue;
-            return builder;
-        }
-
-        builder.update = (pk, body) => {
-            builder.options.pk = pk;
+        builder.update = (body) => {
+            builder.method = 'update';
             builder.options.body = body;
             return builder;
         }
 
-        builder.destroy = (pk) => {
-            builder.options.pk = pk;
+        builder.destroy = () => {
+            builder.method = 'destroy';
             return builder;
         }
 
-        builder.where = (key, value) => {
+        builder.where = (key, value, operator='=') => {
             if (!builder.options.where) builder.options.where = {};
-            builder.options.where[key] = value;
+            builder.options.where[key] = { value, operator };
             return builder;
         }
 
         builder.include = (model, field, model_field, model_table) => {
-            if (!builder.options.include) builder.options.include = [];
-            const p = { model, field };
+            const p = { model, field };            
+            if (!builder.options.include) builder.options.include = [];            
             if (model_field) p.model_field = model_field;
             if (model_table) p.model_table = model_table
             builder.options.include.push(p);
@@ -300,8 +321,25 @@ export default class BaseModel {
             return builder;
         }
 
+        builder.transaction = (transaction) => {
+            builder.options.transaction = transaction;
+            return builder;
+        }
+
         builder.build = () => {
             return builder.options;
+        }
+
+        builder.execute = async () => {
+            if (!builder.method) throw new Error('Method is required to execute immediately');
+            return await this.adapter[builder.method](this, builder.options);
+        }
+
+        builder.executeOne = async () => {
+            if (!builder.method) throw new Error('Method is required to execute immediately');
+            const rows = await this.adapter[builder.method](this, builder.options);
+            if (rows.length === 0) return null;
+            return rows[0];
         }
 
         return builder;

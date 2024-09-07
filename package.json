@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "start": "nodemon src/index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "vitest"
   },
   "author": "",
   "license": "ISC",
@@ -23,6 +23,7 @@
     "mysql2": "^3.11.0",
     "nodemon": "^3.1.4",
     "uuid": "^10.0.0",
+    "vitest": "^2.0.5",
     "websocket": "^1.0.35"
   }
 }

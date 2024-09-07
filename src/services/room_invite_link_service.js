@@ -9,7 +9,7 @@ import ChannelMessageService from './channel_message_service.js';
 import { v4 as uuidV4 } from 'uuid';
 import UserService from './user_service.js';
 
-const createWelcomeMessage = async (room, setting, user) => {
+const createWelcomeMessage = async (room, setting, user, transaction) => {
     const me = await UserService.me(user);
     const room_uuid = room.uuid;
 
@@ -33,14 +33,13 @@ const createWelcomeMessage = async (room, setting, user) => {
                 created_by_system: 1
             },
             user
-        });
+        }, transaction);
     }
 }
 
 
 class RoomInviteLinkService {
     constructor() {
-        // For the controller
         this.model = model;
         this.dto = dto;
     }
@@ -50,56 +49,34 @@ class RoomInviteLinkService {
     }
 
     async findOne(findArgs = { pk: null }) {
-        if (!findArgs.pk)
-            throw new ControllerError(400, 'Primary key is required');
-
-        const { pk } = findArgs;
-        const resource = await model.findOne(model
-            .optionsBuilder()
-            .findOne(pk)
-            .build());
-
-        if (!resource)
-            throw new ControllerError(404, 'Room invite link not found');
-
-        return dto(resource);
+        return await model
+            .throwIfNotPresent(findArgs.pk, 'Primary key value is required')
+            .find()
+            .where(model.pk, findArgs.pk)
+            .throwIfNotFound()
+            .dto(dto)
+            .executeOne();
     }
 
     async findAll(findAllArgs = { page, limit, room_uuid: null, user: null }) {
-        if (!findAllArgs.room_uuid)
-            throw new ControllerError(400, 'Room uuid is required');
-        if (!findAllArgs.user)
-            throw new ControllerError(400, 'User is required');
+        model.throwIfNotPresent(findAllArgs.room_uuid, 'room_uuid is required')
+            .throwIfNotPresent(findAllArgs.user, 'User is required');
 
-        const { page, limit, user, room_uuid } = findAllArgs;
-
+        const { user, room_uuid } = findAllArgs;
         if (!await UserRoomService.isInRoom({ room_uuid, user, room_role_name: null }))
             throw new ControllerError(403, 'Forbidden');
 
-        const options = model
-            .optionsBuilder()
-            .findAll(page, limit)
+        return await model
+            .find({page: findAllArgs.page, limit: findAllArgs.limit})
             .where('room_uuid', room_uuid)
             .include(RoomService.model, 'uuid', 'room_uuid')
             .orderBy('roominvitelink.created_at DESC')
-            .build()
-
-        const total = await model.count(options);
-        const links = await model.findAll(options);
-        const pages = Math.ceil(total / limit);
-        const data = links.map(link => dto(link));
-
-        return {
-            data,
-            meta: {
-                total,
-                page,
-                pages
-            }
-        };
+            .dto(dto)
+            .meta()
+            .execute();
     }
 
-    async create(createArgs = { body: null, user: null }) {
+    async create(createArgs = { body: null, user: null }, transaction) {
         if (!createArgs.body)
             throw new ControllerError(400, 'Resource body is required');
         if (!createArgs.body.room_uuid)
@@ -120,14 +97,14 @@ class RoomInviteLinkService {
         if (! await UserRoomService.isInRoom({ room_uuid: createArgs.body.room_uuid, user, room_role_name: 'Admin' }))
             throw new ControllerError(403, 'Forbidden');
 
-        await this.model.create(createArgs.body);
+        await this.model.create({body: createArgs.body, transaction});
         const resource = await model.findOne({ pk });
 
         return dto(resource);
     }
 
     // Not public, so it require a user object
-    async update(updateArgs = { pk: null, body: null, user: null }) {
+    async update(updateArgs = { pk: null, body: null, user: null }, transaction) {
         if (!updateArgs.pk)
             throw new ControllerError(400, 'Primary key value is required (pk)');
         if (!updateArgs.body)
@@ -148,13 +125,13 @@ class RoomInviteLinkService {
         if (!body.room_uuid)
             body.room_uuid = room_uuid;
 
-        await model.update({ pk, body });
+        await model.update({ pk, body, transaction });
 
         return await this.findOne({ pk });
     }
 
     // Not public, so it require a user object
-    async destroy(destroyArgs = { pk: null, user: null }) {
+    async destroy(destroyArgs = { pk: null, user: null }, transaction) {
         if (!destroyArgs.pk)
             throw new ControllerError(400, 'Primary key value is required (pk)');
         if (!destroyArgs.user)
@@ -170,10 +147,10 @@ class RoomInviteLinkService {
         if (! await UserRoomService.isInRoom({ room_uuid, user, room_role_name: 'Admin' }))
             throw new ControllerError(403, 'Forbidden');
 
-        await model.destroy({ pk });
+        await model.destroy({ pk, transaction });
     }
 
-    async joinLink(joinLinkArgs = { uuid: null, user: null }) {
+    async joinLink(joinLinkArgs = { uuid: null, user: null }, transaction) {
         if (!joinLinkArgs.uuid)
             throw new ControllerError(400, 'uuid is required');
         if (!joinLinkArgs.user)
@@ -208,10 +185,10 @@ class RoomInviteLinkService {
                 room_role_name: 'Member'
             },
             user: joinLinkArgs.user
-        });
+        }, transaction);
         const room = await RoomService.findOne({ pk: room_uuid, user: joinLinkArgs.user });
 
-        await createWelcomeMessage(room, roomSetting, joinLinkArgs.user);
+        await createWelcomeMessage(room, roomSetting, joinLinkArgs.user, transaction);
         
 
         return {

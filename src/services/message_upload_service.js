@@ -62,20 +62,20 @@ class MessageUploadService  {
      * @param {Object} file The file data
      * @returns {Object} The user and token
      */
-    async create(data, file) {
+    async create(data, file, transaction) {
         if (!data.uuid) throw new ControllerError('UUID is required', 400);
         if (!data.channel_message_uuid) throw new ControllerError('Message Channel UUID is required', 400);
         if (!file) throw new ControllerError('File is required', 400);
         data.src = await upload(data.uuid, file);
         data.size = file.size;
         data.upload_type_name = getUploadType(file.mimetype);
-        await model.create(data);
+        await model.create({body: data, transaction});
         const messageUpload = await model.findOne({pk: data.uuid});
 
         return this.dto(messageUpload);
     }
 
-    async destroy(destroyArgs = { pk: null, user: null }) {
+    async destroy(destroyArgs = { pk: null, user: null }, transaction) {
         if (!destroyArgs.pk)
             throw new ControllerError(400, 'Primary key value is required (pk)');
         if (!destroyArgs.user)
@@ -86,7 +86,7 @@ class MessageUploadService  {
         if (!messageUpload)
             throw new ControllerError(404, 'messageUpload not found');
 
-        await model.destroy({ pk });
+        await model.destroy({ pk, transaction });
     }
 }
 

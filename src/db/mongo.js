@@ -2,88 +2,44 @@
 import BaseAdapter from './base_adapter.js';
 
 class MongoAdapter extends BaseAdapter {
-    constructor() {
-        super();
+    constructor(model) {
+        super(model);
     }
 
-    async count(model, options) {
-        if (!model) throw new Error('Model is required');
-        if (!model.mysql_table) throw new Error('Model mysql_table is required');
-        if (!model.pk) throw new Error('Model pk is required');
-        if (!options) throw new Error('Options are required');
-
-        const req = {}
-
-        throw new Error('Method not implemented');
+    async count(options={}) {
+        throw new Error('count method not implemented');
     }
 
-    async findAll(model, options) {
-        if (!model) throw new Error('Model is required');
-        if (!model.mysql_table) throw new Error('Model mysql_table is required');
-        if (!options) throw new Error('Options are required');
-
-        const req = {}
-
-        throw new Error('Method not implemented');
+    async sum(options={}) {
+        throw new Error('sum method not implemented');
     }
 
-    async findOne(model, options) {
-        if (!model) throw new Error('Model is required');
-        if (!model.mysql_table) throw new Error('Model mysql_table is required');
-        if (!model.pk) throw new Error('Model pk is required');
-        if (!options) throw new Error('Options are required');
-        if (!options.pk) throw new Error('Primary key is required');
-
-        const req = {}
-
-        throw new Error('Method not implemented');
+    async max(options={}) {
+        throw new Error('max method not implemented');
     }
 
-    async findOneByField(model, options) {
-        if (!model) throw new Error('Model is required');
-        if (!model.mysql_table) throw new Error('Model mysql_table is required');
-        if (!options) throw new Error('Options are required');
-        if (!options.fieldName) throw new Error('Field name is required');
-        if (!options.fieldValue) throw new Error('Field value is required');
-
-        const req = {}
-
-        throw new Error('Method not implemented');
+    async min(options={}) {
+        throw new Error('min method not implemented');
     }
 
-    async create(model, options) {
-        if (!model) throw new Error('Model is required');
-        if (!model.mysql_table) throw new Error('Model mysql_table is required');
-        if (!options) throw new Error('Options are required');
-
-        const req = {}
-
-        throw new Error('Method not implemented');
+    async find(options={}) {
+        throw new Error('findAll method not implemented');
     }
 
-    async update(model, options) {
-        if (!model) throw new Error('Model is required');
-        if (!model.mysql_table) throw new Error('Model mysql_table is required');
-        if (!model.pk) throw new Error('Model pk is required');
-        if (!options) throw new Error('Options are required');
-        if (!options.pk) throw new Error('Primary key is required');
-        if (!options.body) throw new Error('Body is required');
-
-        const req = {}
-
-        throw new Error('Method not implemented');
+    async create(options={}) {
+        throw new Error('create method not implemented');
     }
 
-    async destroy(model, options) {
-        if (!model) throw new Error('Model is required');
-        if (!model.mysql_table) throw new Error('Model mysql_table is required');
-        if (!model.pk) throw new Error('Model pk is required');
-        if (!options) throw new Error('Options are required');
-        if (!options.pk) throw new Error('Primary key is required');
+    async update(options={}) {
+        throw new Error('update method not implemented');
+    }
 
-        const req = {}
+    async destroy(options={}) {
+        throw new Error('destroy method not implemented');
+    }
 
-        throw new Error('Method not implemented');
+    async transaction(callback) {
+        throw new Error('count method not implemented');
     }
 }
 
