@@ -1,5 +1,6 @@
 
 import 'dotenv/config'
+import './websocket.js'
 import cors from 'cors'
 import express from 'express'
 import expressOasGenerator from 'express-oas-generator'
