@@ -1,96 +1,220 @@
-import UploadError from "../errors/upload_error.js";
 import ControllerError from '../errors/controller_error.js';
 import StorageService from './storage_service.js';
 import model from '../models/message_upload.js';
 import dto from '../dtos/message_upload.js';
 import ChannelMessageService from './channel_message_service.js';
+import ChannelService from './channel_service.js';
 
+/**
+ * @constant storageService
+ * @description Storage service to upload message uploads.
+ */
 const storageService = new StorageService('message_uploads');
-const upload = async (uuid, file) => {
-    try {
-        const { buffer, mimetype } = file;
-        const originalname = file.originalname.split('.').slice(0, -1).join('.');
-        const timestamp = new Date().getTime();
-        const filename = `${originalname}-${uuid}-${timestamp}.${mimetype.split('/')[1]}`;
-        return await storageService.uploadFile(buffer, filename);
-    } catch (error) {
-        if (error instanceof UploadError) 
-            throw new ControllerError(400, error.message);
 
-        throw new ControllerError(500, error.message);
-    }
-};
+/**
+ * @constant types
+ * @description The types of uploads.
+ */
+const types = {
+    Image: 'Image',
+    Video: 'Video',
+    Document: 'Document'
+}
 
-const types = ['Image', 'Video', 'Document'];
+/**
+ * @function getUploadType
+ * @description Get the upload type from the mimetype.
+ * @param {String} mimetype The mimetype of the upload
+ * @returns {String} The upload type
+ */
 const getUploadType = (mimetype) => {
-    if (['image/jpeg', 'image/png', 'image/gif'].includes(mimetype)) return 'Image';
-    if (['video/mp4', 'video/quicktime'].includes(mimetype)) return 'Video';
-    return 'Document';
+    if (['image/jpeg', 'image/png', 'image/gif'].includes(mimetype)) return types.Image;
+    if (['video/mp4', 'video/quicktime'].includes(mimetype)) return types.Video;
+    return types.Document;
 }
 
 /**
  * @class MessageUploadService
- * @extends BaseCrudService
+ * @description crud service for message uploads.
+ * @exports RoomInviteLinkService
  */
 class MessageUploadService  {
+
+    /**
+     * @constructor
+     */
     constructor() {
         this.model = model;
         this.dto = dto;
     }
 
-    async sum(findArgs = { channel_uuid: null, field: null }) {
+    /**
+     * @function sum 
+     * @description Sum the field for the channel.
+     * @param {Object} options
+     * @param {String} options.channel_uuid
+     * @param {String} options.field
+     * @returns {Promise<Number>}
+     */
+    async sum(options = { channel_uuid: null, field: null }) {
+        const { channel_uuid, field } = options;
+
         return await model
-            .throwIfNotPresent(findArgs.channel_uuid, 'channel_uuid is required')
-            .throwIfNotPresent(findArgs.field, 'field is required')
-            .sum({field: findArgs.field})
+            .throwIfNotPresent(channel_uuid, 'channel_uuid is required')
+            .throwIfNotPresent(field, 'field is required')
+            .sum({ field })
             .include(ChannelMessageService.model, 'uuid', 'channel_message_uuid')
-            .where('channel_uuid', findArgs.channel_uuid)
+            .where('channel_uuid', channel_uuid)
             .execute();
     }
 
     /**
      * @function create
-     * @description Create a message upload
-     * @param {Object} data The message upload data
-     * @param {Object} file The file data
-     * @returns {Object} The user and token
+     * @description Create a new message upload.
+     * @param {Object} options
+     * @param {Object} options.body
+     * @param {Object} options.file
+     * @param {Object} transaction
+     * @returns {Promise<Object>}
      */
-    async create(data, file, transaction) {
-        await model.throwIfNotPresent(data, 'Data is required')
-            .throwIfNotPresent(data.uuid, 'UUID is required')
-            .throwIfNotPresent(data.channel_message_uuid, 'Message Channel UUID is required')
+    async create(options = { body: null, file: null }, transaction) {
+        const { body, file } = options;
+
+        /**
+         * Ensure that the body and file are present.
+         */
+        await model
+            .throwIfNotPresent(body, 'body is required')
+            .throwIfNotPresent(body.uuid, 'UUID is required')
+            .throwIfNotPresent(body.channel_message_uuid, 'Message Channel UUID is required')
             .throwIfNotPresent(file, 'File is required');
+        
+        /**
+         * Upload the file to the storage service.
+         * Set the src and size on the body.
+         * Set the upload type name based on the mimetype.
+         */
+        body.src = await storageService.uploadFile(file, body.uuid);
+        body.size = file.size;
+        body.upload_type_name = getUploadType(file.mimetype);
 
-        data.src = await upload(data.uuid, file);
-        data.size = file.size;
-        data.upload_type_name = getUploadType(file.mimetype);
-
-        await model.create({body: data}).transaction(transaction).execute();
-
+        /**
+         * Create the message upload.
+         */
+        await model
+            .create({ body })
+            .transaction(transaction)
+            .execute();
+        
+        /**
+         * Return the message upload.
+         */
         return await model
             .find()
-            .where('uuid', data.uuid)
+            .where('uuid', body.uuid)
             .dto(dto)
             .executeOne();
     }
 
-    async destroy(destroyArgs = { pk: null, user: null }, transaction) {
+    /**
+     * @function destroy
+     * @description Destroy a message upload.
+     * @param {Object} options
+     * @param {String} options.pk
+     * @param {Object} options.user
+     * @param {Object} transaction
+     * @returns {Promise}
+     */
+    async destroy(options = { pk: null, user: null }, transaction) {
+        const { pk, user } = options;
+
+        /**
+         * Ensure the necessary fields are present
+         * and that the message upload exists.
+         */
         await model
-            .throwIfNotPresent(destroyArgs.pk, 'Primary key value is required (pk)')
-            .throwIfNotPresent(destroyArgs.user, 'User is required')
+            .throwIfNotPresent(pk, 'Primary key value is required (pk)')
+            .throwIfNotPresent(user, 'User is required')
             .find()
-            .where('uuid', destroyArgs.pk)
+            .where('uuid', pk)
             .throwIfNotFound()
             .executeOne();
 
+        /**
+         * Ensure the user is an admin in the room
+         * before destroying the message upload.
+         */
         await model
             .destroy()
-            .where('uuid', destroyArgs.pk)
+            .where('uuid', pk)
+            .transaction(transaction)
+            .execute();
+    }
+    
+
+    /**
+     * @function destroyAllByChannelMessageUuid
+     * @description Destroy all message uploads related to a channel message.
+     * @param {Object} options
+     * @param {String} options.channel_message_uuid
+     * @param {Object} transaction
+     * @returns {Promise}
+     */
+    async destroyAllByChannelMessageUuid(options = { channel_message_uuid: null }, transaction) {
+        /**
+         * Destroy all message uploads related to the channel message.
+         */
+        await model
+            .destroy()
+            .where('channel_message_uuid', options.channel_message_uuid)
+            .transaction(transaction)
+            .execute();
+    }
+
+    /**
+     * @function destroyAllByChannelUuid
+     * @description Destroy all message uploads related to a channel.
+     * @param {Object} options
+     * @param {String} options.channel_uuid
+     * @param {Object} transaction
+     * @returns {Promise}
+     */
+    async destroyAllByChannelUuid(options = { channel_uuid: null }, transaction) {
+
+        /**
+         * Destroy all message uploads related to the channel.
+         */
+        await model
+            .destroy()
+            .where('channel_uuid', options.channel_uuid)
+            .include(ChannelMessageService.model, 'uuid', 'channel_message_uuid')
+            .transaction(transaction)
+            .execute();
+    }
+
+    /**
+     * @function destroyAllByRoomUuid
+     * @description Destroy all message uploads
+     * @param {Object} options
+     * @param {String} options.channel_uuid
+     * @param {Object} transaction
+     * @returns {Promise}
+     */
+    async destroyAllByRoomUuid(options = { room_uuid: null }, transaction) {
+
+        /**
+         * Destroy all message uploads related to the channel.
+         */
+        await model
+            .destroy()
+            .include(ChannelMessageService.model, 'uuid', 'channel_message_uuid')
+            .include(ChannelService.model, 'uuid', 'channel_uuid', ChannelMessageService.model.mysql_table)
+            .where('room_uuid', options.room_uuid)
             .transaction(transaction)
             .execute();
     }
 }
 
-const service = new MessageUploadService({ model, dto });
+const service = new MessageUploadService();
 
 export default service;

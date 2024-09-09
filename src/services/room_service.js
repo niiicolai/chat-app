@@ -1,42 +1,58 @@
 import UserRoomService from './user_room_service.js';
 import RoomSettingService from './room_setting_service.js';
 import RoomInviteLinkService from './room_invite_link_service.js';
+import RoomPermissionService from './room_permission_service.js';
+import ChannelService from './channel_service.js';
+import StorageService from './storage_service.js';
 import ControllerError from '../errors/controller_error.js';
 import model from '../models/room.js';
 import dto from '../dtos/room.js';
-import StorageService from './storage_service.js';
-import UploadError from '../errors/upload_error.js';
+import { v4 as uuidv4 } from 'uuid';
 
+/**
+ * @constant storageService
+ * @description Storage service to upload room avatars.
+ */
 const storageService = new StorageService('room_avatars');
-const upload = async (uuid, file) => {
-    try {
-        const { buffer, mimetype } = file;
-        const originalname = file.originalname.split('.').slice(0, -1).join('.').replace(/\s/g, '');
-        const timestamp = new Date().getTime();
-        const filename = `${originalname}-${uuid}-${timestamp}.${mimetype.split('/')[1]}`;
-        return await storageService.uploadFile(buffer, filename);
-    } catch (error) {
-        if (error instanceof UploadError) 
-            throw new ControllerError(400, error.message);
 
-        throw new ControllerError(500, error.message);
-    }
-};
 
+/**
+ * @class RoomService
+ * @description CRUD service for room service.
+ * @exports RoomService
+ */
 class RoomService {
+
+    /**
+     * @constructor
+     */
     constructor() {
-        // For the controller
         this.model = model;
         this.dto = dto;
     }
 
+    /**
+     * @function template
+     * @description Return the model template.
+     * @returns {Object}
+     */
     template() {
         return this.model.template();
     }
 
-    async findOne({ pk, user }) {
+    /**
+     * @function findOne
+     * @description Find a room by primary key and user.
+     * @param {Object} options
+     * @param {String} options.pk
+     * @param {Object} options.user
+     * @returns {Promise<Object>}
+     */
+    async findOne(options = { pk: null, user: null }) {
+        const { pk, user } = options;
+
         return await model
-            .throwIfNotPresent([pk], 'uuid is required')
+            .throwIfNotPresent(pk, 'uuid is required')
             .throwIfNotPresent(user, 'user is required')
             .throwIfNotPresent(user.sub, 'user.sub is required')
             .find()
@@ -49,7 +65,18 @@ class RoomService {
             .executeOne();
     }
 
-    async findAll({ page, limit, user }) {
+    /**
+     * @function findAll
+     * @description Find all rooms for a user.
+     * @param {Object} options
+     * @param {Number} options.page
+     * @param {Number} options.limit
+     * @param {Object} options.user
+     * @returns {Promise<Object>}
+     */
+    async findAll(options = { page: null, limit: null, user: null }) {
+        const { page, limit, user } = options;
+
         return await model
             .throwIfNotPresent(user, 'user is required')
             .find({ page, limit })
@@ -62,123 +89,204 @@ class RoomService {
             .execute();
     }
 
-    async create(createArgs = { body: null, user: null }, transaction) {
-        await model.throwIfNotPresent(createArgs.body, 'Resource body is required')
-            .throwIfNotPresent(createArgs.body.name, 'name is required')
-            .throwIfNotPresent(createArgs.body.description, 'description is required')
-            .throwIfNotPresent(createArgs.body.room_category_name, 'room_category_name is required')
-            .throwIfNotPresent(createArgs.body.uuid, 'uuid is required')
-            .throwIfNotPresent(createArgs.user, 'User is required');
+    /**
+     * @function create
+     * @description Create a room.
+     * @param {Object} options
+     * @param {Object} options.body
+     * @param {Object} options.user
+     * @param {Object} options.file
+     * @param {Object} transaction
+     * @returns {Promise<Object>}
+     */
+    async create(options = { body: null, user: null, file: null }, transaction) {
+        const { body, user, file } = options;
 
-        const pk = createArgs.body[model.pk];
-        await model.find().where(model.pk, pk).throwIfFound().executeOne();
-        await model.find().where('name', createArgs.body.name).throwIfFound().executeOne();
-        await model.find().where('uuid', createArgs.body.uuid).throwIfFound().executeOne();
+        /**
+         * Ensure the necessary fields are present
+         * and that the room does not already exist.
+         */
+        await model
+            .throwIfNotPresent(body, 'Resource body is required')
+            .throwIfNotPresent(body.name, 'name is required')
+            .throwIfNotPresent(body.description, 'description is required')
+            .throwIfNotPresent(body.room_category_name, 'room_category_name is required')
+            .throwIfNotPresent(body.uuid, 'uuid is required')
+            .throwIfNotPresent(user, 'User is required')
+            .find()
+            .where(model.pk, body.uuid)
+            .throwIfFound()
+            .executeOne();
 
-        if (createArgs.file) {
-            createArgs.body.avatar_src = await upload(pk, createArgs.file);
+        /**
+         * Ensure the room name is not already in use.
+         */
+        await model
+            .find()
+            .where('name', body.name)
+            .throwIfFound()
+            .executeOne();
+
+        /**
+         * if a file is present, upload it and set the avatar_src
+         * field to the file path.
+         */
+        if (file) {
+            body.avatar_src = await storageService.uploadFile(file, body.uuid);
         }
 
-        const transactionMethod = async (t) => {
-            await model.create({ body: createArgs.body })
-                .transaction(t)
-                .execute();
-            
+        /**
+         * Create the room.
+         * And a user room for the user with the role of Admin.
+         * And a room setting for the room.
+         * (in a transaction, so that if one fails, none are created)
+         */
+        await model.defineTransaction(async (t) => {
+            await model.create({ body }).transaction(t).execute();
             await UserRoomService.create({
-                body: { uuid: pk, room_uuid: pk, user_uuid: createArgs.user.sub, room_role_name: 'Admin' },
-                user: createArgs.user
+                body: { uuid: uuidv4(), room_uuid: body.uuid, user_uuid: user.sub, room_role_name: 'Admin' },
+                user
             }, t);
             await RoomSettingService.create({
-                body: { 
-                    uuid: pk, 
-                    room_uuid: pk, 
-                    total_upload_bytes: process.env.ROOM_TOTAL_UPLOAD_SIZE,
-                    upload_bytes: process.env.ROOM_UPLOAD_SIZE,
-                    join_message: process.env.ROOM_JOIN_MESSAGE,
-                    rules_text: process.env.ROOM_RULES_TEXT,
-                    max_channels: process.env.ROOM_MAX_CHANNELS,
-                    max_members: process.env.ROOM_MAX_MEMBERS
-                },
-                user: createArgs.user
+                body: { uuid: uuidv4(), room_uuid: body.uuid },
+                user
             }, t);
-        };
-
-        if (transaction) await transactionMethod(transaction);
-        else await model.defineTransaction(transactionMethod);
-
-        return await this.findOne({ pk, user: createArgs.user });
-    }
-
-    // Not public, so it require a user object
-    async update(updateArgs = { pk: null, body: null, user: null }, transaction) {
-        await model.throwIfNotPresent(updateArgs.pk, 'Primary key value is required (pk)')
-            .throwIfNotPresent(updateArgs.body, 'Resource body is required')
-            .throwIfNotPresent(updateArgs.user, 'User is required');
-
-        const { body, pk, user } = updateArgs;
-        const room = await model.find().where(model.pk, pk).throwIfNotFound().dto(dto).executeOne();
-
-        if (!await UserRoomService.isInRoom({ room_uuid: pk, user, room_role_name: 'Admin' }))
-            throw new ControllerError(403, 'Forbidden');
-
-        if (updateArgs.file) {
-            updateArgs.body.avatar_src = await upload(pk, updateArgs.file);
-        } else {
-            updateArgs.body.avatar_src = room.avatar_src;
-        }
-
-        if (!updateArgs.body.name) updateArgs.body.name = room.name;
-        if (!updateArgs.body.description) updateArgs.body.description = room.description;
-        if (!updateArgs.body.room_category_name) updateArgs.body.room_category_name = room.room_category_name;
-
-        const transactionMethod = async (t) => {
-            await model.update({ pk, body, transaction: t });
-        };
-
-        if (transaction) await transactionMethod(transaction);
-        else await model.defineTransaction(transactionMethod);        
-
-        return await this.findOne({ pk, user });
-    }
-
-    // Not public, so it require a user object
-    async destroy(destroyArgs = { pk: null, user: null }, transaction) {
-        if (!destroyArgs.pk)
-            throw new ControllerError(400, 'Primary key value is required (pk)');
-        if (!destroyArgs.user)
-            throw new ControllerError(400, 'User is required');
-
-        const { pk } = destroyArgs;
-        const room = await this.findOne({ pk, user: destroyArgs.user });
-        if (!room)
-            throw new ControllerError(404, 'room not found');
+        }, transaction);
         
-        const room_uuid = room.uuid;
-        const user = destroyArgs.user;
-        if (!await UserRoomService.isInRoom({ room_uuid, user, room_role_name: 'Admin' }))
+        /**
+         * Return the room that was created.
+         */
+        return await this.findOne({ pk: body.uuid, user });
+    }
+
+    /**
+     * @function update
+     * @description Update a room.
+     * @param {Object} options
+     * @param {String} options.pk
+     * @param {Object} options.body
+     * @param {Object} options.user
+     * @param {Object} options.file
+     * @param {Object} transaction
+     * @returns {Promise}
+     */
+    async update(options = { pk: null, body: null, user: null, file: null }, transaction) {
+        const { pk, body, user, file } = options;
+
+        /**
+         * Ensure the necessary fields are present
+         * and that the room exists.
+         */
+        const room = await model
+            .throwIfNotPresent(pk, 'Primary key value is required (pk)')
+            .throwIfNotPresent(body, 'Resource body is required')
+            .throwIfNotPresent(user, 'User is required')
+            .find()
+            .where(model.pk, pk)
+            .throwIfNotFound()
+            .dto(dto)
+            .executeOne();
+
+        /**
+         * Ensure the room name is not already in use.
+         * If the name is the same as the current name, 
+         * skip this check.
+         */
+        if (body.name && body.name !== room.name) {
+            await model
+                .find()
+                .where('name', body.name)
+                .throwIfFound()
+                .executeOne();
+        } else body.name = room.name;
+        
+        /**
+         * Ensure the user is an admin in the room
+         * before updating the room.
+         */
+        if (!await RoomPermissionService.isUserInRoom({ room_uuid: pk, user, room_role_name: 'Admin' }))
             throw new ControllerError(403, 'Forbidden');
 
-        const transactionMethod = async (t) => {
-            const roomInviteLinks = await RoomInviteLinkService.findAll({ room_uuid, user });
-            for (const roomInviteLink of roomInviteLinks.data) {
-                await RoomInviteLinkService.destroy({ pk: roomInviteLink.uuid, user }, t);
-            }
+        /**
+         * If a file is present, upload it and set the avatar_src
+         * field to the file path.
+         * If a file is not present, set the avatar_src to the
+         * current avatar_src value.
+         */
+        if (file) body.avatar_src = await storageService.uploadFile(file, pk);
+        else body.avatar_src = room.avatar_src;
 
-            const userRooms = await UserRoomService.findAll({ where: { room_uuid: pk } });
-            for (const userRoom of userRooms.data) {
-                await UserRoomService.destroy({ pk: userRoom.uuid, user: destroyArgs.user }, t);
-            }
+        /**
+         * If a field is not present in the body, set it to the
+         * current value of the field in the room.
+         */
+        if (!body.description) body.description = room.description;
+        if (!body.room_category_name) body.room_category_name = room.room_category_name;
 
-            await model.destroy({ pk, transaction: t });
-        };
+        /**
+         * Update the room.
+         */
+        await model
+            .update({ body })
+            .where(model.pk, pk)
+            .transaction(transaction)
+            .execute();
+    }
 
-        if (transaction) await transactionMethod(transaction);
-        else await model.defineTransaction(transactionMethod);
+    /**
+     * @function destroy
+     * @description Destroy a room.
+     * @param {Object} options
+     * @param {String} options.pk
+     * @param {Object} options.user
+     * @param {Object} transaction
+     * @returns {Promise}
+     */
+    async destroy(options = { pk: null, user: null }, transaction) {
+        const { pk, user } = options;
+
+        /**
+         * Ensure the necessary fields are present
+         * and that the room exists.
+         */
+        const room = await model
+            .throwIfNotPresent(pk, 'Primary key value is required (pk)')
+            .throwIfNotPresent(user, 'User is required')
+            .find()
+            .where(model.pk, pk)
+            .throwIfNotFound()
+            .dto(dto)
+            .executeOne();
+        
+        /**
+         * Ensure the user is an admin in the room
+         * before destroying the room.
+         */
+        if (!await RoomPermissionService.isUserInRoom({ 
+            room_uuid: room.uuid,
+            user, 
+            room_role_name: 'Admin' 
+        })) throw new ControllerError(403, 'Forbidden');
+
+        /**
+         * Destroy the room.
+         * And all room invite links for the room.
+         * And all user rooms for the room.
+         */
+        await model.defineTransaction(async (t) => {
+            await RoomSettingService.destroyAll({ room_uuid: pk }, t);
+            await RoomInviteLinkService.destroyAll({ room_uuid: pk }, t);
+            await UserRoomService.destroyAll({ room_uuid: pk }, t);
+            await ChannelService.destroyAll({ room_uuid: pk }, t);
+            await model
+                .destroy()
+                .where(model.pk, pk)
+                .transaction(t)
+                .execute();
+        }, transaction);
     }
 }
 
-// Create a new service
 const service = new RoomService();
 
-// Export the service
 export default service;

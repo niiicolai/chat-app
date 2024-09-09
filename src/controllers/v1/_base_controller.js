@@ -226,8 +226,8 @@ export default class BaseController {
 
         this.router.patch(this.paths.update, middleware, (req, res) => {
             handleError(async () => {
-                const data = await this.crudService.update(this.updateArgs(req));
-                res.json(data);
+                await this.crudService.update(this.updateArgs(req));
+                res.json({ message: 'Resource updated' });
             }, res);
         });
     }

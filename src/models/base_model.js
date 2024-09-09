@@ -75,13 +75,24 @@ export default class BaseModel {
         return t;
     }
 
-    async defineTransaction(callback) {
+    async defineTransaction(callback, t = null) {
+        /**
+         * If the caller already has a transaction,
+         * then use it, otherwise create a new one.
+         */
+        if (t) return await callback(t);
         return await this.adapter.transaction(callback);
     }
 
     throwIfNotPresent(input, message) {
         if (typeof input === 'number') return this;
         if (input === null || input === undefined || input === "")
+            throw new ControllerError(400, message);
+        return this;
+    }
+
+    throwIfPresent(input, message) {
+        if (input !== null && input !== undefined && input !== "")
             throw new ControllerError(400, message);
         return this;
     }
@@ -263,7 +274,9 @@ export default class BaseModel {
             if (!callback) throw new Error('Callback is required');
             for (let i = 0; i < arr.length; i++) {
                 const data = arr[i];
-                sub.options = callback(data, sub.options);
+                const res = callback(data, sub.options);
+                if (typeof res !== 'object') throw new Error('Callback must return an object');
+                sub.options = {...sub.options, ...res};
             }
             return sub;
         }

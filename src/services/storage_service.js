@@ -3,7 +3,6 @@
  */
 
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
-import UploadError from "../errors/upload_error.js";
 
 const {
     S3_ENDPOINT_URL,
@@ -14,8 +13,6 @@ const {
     S3_ENDPOINT_PROTOCOL,
     S3_CDN_URL
 } = process.env;
-
-const maxBytes = process.env.UPLOAD_MAX_SIZE || 1024 * 1024 * 10; // 10MB
 
 /**
  * @class StorageService
@@ -81,22 +78,15 @@ export default class StorageService {
         }
     }
 
-    /**
-     * @function uploadFile
-     * @description Upload a file to an S3 bucket.
-     * @param {Buffer} Body - The file's buffer.
-     * @param {string} Key - The key name.
-     * @returns {Promise<string>} - The promise.
-     * @throws {Error} - The error.
-     */
-    async uploadFile(Body, Key, ACL = 'public-read') {
-        const { Bucket, prefix } = this;
+    async uploadFile(file, key, ACL = 'public-read') {
+        const { buffer, mimetype } = file;
+        const originalname = file.originalname.split('.').slice(0, -1).join('.').replace(/\s/g, '');
+        const timestamp = new Date().getTime();
+        const filename = `${originalname}-${key}-${timestamp}.${mimetype.split('/')[1]}`;
 
-        if (Body.byteLength > maxBytes) {
-            throw new UploadError(`File is too large. Max size: ${maxBytes / 1024 / 1024} MB`);
-        }
+        const { Bucket, prefix } = this;
         
-        return this.upload({ Bucket, Key: `${prefix}/${Key}`, Body, ACL });
+        return this.upload({ Bucket, Key: `${prefix}/${filename}`, Body: buffer, ACL });
     }
 
 

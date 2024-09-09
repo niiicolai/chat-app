@@ -1,47 +1,102 @@
+import RoomPermissionService from './room_permission_service.js';
 import ControllerError from '../errors/controller_error.js';
 import model from '../models/room_setting.js';
 import dto from '../dtos/room_setting.js';
-import UserRoomService from './user_room_service.js';
 
+/**
+ * @class RoomSettingService
+ * @description CRUD service for room settings.
+ * @exports RoomSettingService
+ * @requires ControllerError
+ * @requires model
+ * @requires dto
+ * @requires RoomPermissionService
+ */
 class RoomSettingService {
+
+    /**
+     * @constructor
+     */
     constructor() {
-        // For the controller
         this.model = model;
         this.dto = dto;
     }
 
+    /**
+     * @function template
+     * @description Return the model template.
+     * @returns {Object}
+     */
     template() {
         return this.model.template();
     }
 
-    async canUpload(findArgs = { room_uuid: null, byteSize: null, user: null }) {
+    /**
+     * @function canUpload
+     * @description Check if a user can upload a file to a room
+     * @param {Object} options
+     * @param {String} options.room_uuid
+     * @param {Number} options.byteSize
+     * @param {Object} options.user
+     * @returns {Promise<Boolean>}
+     */
+    async canUpload(options = { room_uuid: null, byteSize: null, user: null }) {
+        const { room_uuid, byteSize, user } = options;
+
+        /**
+         * Ensure the necessary fields are present
+         * and find the room setting.
+         */
         const roomSetting = await model
-            .throwIfNotPresent(findArgs.room_uuid, 'room_uuid is required')
-            .throwIfNotPresent(findArgs.byteSize, 'byteSize is required')
-            .throwIfNotPresent(findArgs.user, 'user is required')
+            .throwIfNotPresent(room_uuid, 'room_uuid is required')
+            .throwIfNotPresent(byteSize, 'byteSize is required')
+            .throwIfNotPresent(user, 'user is required')
             .find()
-            .where('room_uuid', findArgs.room_uuid)
+            .where('room_uuid', room_uuid)
             .throwIfNotFound()
             .dto(dto)
-            .executeOne();        
-        
-        const size = findArgs.byteSize;
-        const uploadSizeMb = roomSetting.upload_bytes / 1000000;        
-        const sizeMb = size / 1000000;
+            .executeOne();
 
-        if (size > roomSetting.upload_bytes)
+        /**
+         * Convert the byte size to MB
+         * and convert the upload size to MB
+         */
+        const convertBytesToMb = (bytes) => bytes / 1000000;
+        const uploadSizeMb = convertBytesToMb(roomSetting.upload_bytes);
+        const sizeMb = convertBytesToMb(byteSize);
+
+        /**
+         * Check if the uploaded file size is too large
+         */
+        if (byteSize > roomSetting.upload_bytes)
             throw new ControllerError(400, `File size is too large. Maximum size is ${uploadSizeMb} MB. The file size is ${sizeMb} MB`);
-        
+
+        /**
+         * Check if the room has used too much of the total upload limit
+         * @todo Implement sum function
+         */
         //const totalUploadSizeMb = roomSetting.total_upload_bytes / 1000000;
         //const sum = await MessageUploadService.sum({ channel_uuid: channel.uuid, field: 'size' });    
         //if ((sum + size) > roomSetting.total_upload_bytes)
-            //throw new ControllerError(400, `The room has used ${sum / 1000000} MB of the total upload limit of ${roomSetting.total_upload_bytes / 1000000} MB. The file size is ${size / 1000000} MB and the new total would be ${(sum + size) / 1000000} MB`);
+        //throw new ControllerError(400, `The room has used ${sum / 1000000} MB of the total upload limit of ${roomSetting.total_upload_bytes / 1000000} MB. The file size is ${size / 1000000} MB and the new total would be ${(sum + size) / 1000000} MB`);
         console.log('todo: implement sum function');
 
+        /**
+         * Return true if the user can upload
+         */
         return true;
     }
 
-    async findOne({ room_uuid }) {
+    /**
+     * @function findOne
+     * @description Find a room setting by room_uuid.
+     * @param {Object} options
+     * @param {String} options.room_uuid
+     * @returns {Promise<Object>}
+     */
+    async findOne(options = { room_uuid: null }) {
+        const { room_uuid } = options;
+
         return await model
             .throwIfNotPresent(room_uuid, 'room_uuid is required')
             .find()
@@ -51,94 +106,246 @@ class RoomSettingService {
             .executeOne();
     }
 
-    async create(createArgs = { body: null, user: null }, transaction) {
-        await model.throwIfNotPresent(createArgs.body, 'Resource body is required')
-            .throwIfNotPresent(createArgs.body.total_upload_bytes, 'total_upload_bytes is required')
-            .throwIfNotPresent(createArgs.body.join_message, 'join_message is required')
-            .throwIfNotPresent(createArgs.body.max_channels, 'max_channels is required')
-            .throwIfNotPresent(createArgs.body.max_members, 'max_members is required')
-            .throwIfNotPresent(createArgs.body.room_uuid, 'room_uuid is required')
-            .throwIfNotPresent(createArgs.body.uuid, 'uuid is required')
-            .throwIfNotPresent(createArgs.user, 'User is required');
+    /**
+     * @function create
+     * @description Create a room setting.
+     * @param {Object} options
+     * @param {Object} options.body
+     * @param {Object} options.user
+     * @param {Object} transaction
+     * @returns {Promise<Object>}
+     */
+    async create(options = { body: null, user: null }, transaction) {
+        const { body, user } = options;
 
-        const pk = createArgs.body[model.pk];
-        await model.find().where(model.pk, pk).throwIfFound().executeOne();
-        await model.find().where('room_uuid', createArgs.body.room_uuid).throwIfFound('Room already has settings').executeOne();
+        /**
+         * Set the default values for the room setting
+         */
+        body.total_upload_bytes = process.env.ROOM_TOTAL_UPLOAD_SIZE;
+        body.upload_bytes = process.env.ROOM_UPLOAD_SIZE;
+        body.join_message = process.env.ROOM_JOIN_MESSAGE;
+        body.rules_text = process.env.ROOM_RULES_TEXT;
+        body.max_channels = process.env.ROOM_MAX_CHANNELS;
+        body.max_members = process.env.ROOM_MAX_MEMBERS;
 
+        /**
+         * Ensure the necessary fields are present
+         * and that the room setting does not already exist.
+         */
+        await model
+            .throwIfNotPresent(body, 'Resource body is required')
+            .throwIfNotPresent(body.total_upload_bytes, 'total_upload_bytes is required')
+            .throwIfNotPresent(body.join_message, 'join_message is required')
+            .throwIfNotPresent(body.rules_text, 'rules_text is required')
+            .throwIfNotPresent(body.max_channels, 'max_channels is required')
+            .throwIfNotPresent(body.max_members, 'max_members is required')
+            .throwIfNotPresent(body.room_uuid, 'room_uuid is required')
+            .throwIfNotPresent(body.uuid, 'uuid is required')
+            .throwIfNotPresent(user, 'User is required')
+            .find()
+            .where(model.pk, body.uuid)
+            .where('room_uuid', body.room_uuid)
+            .throwIfFound()
+            .executeOne();
+
+        /**
+         * Create the room setting
+         */
         await this.model
-            .create({ body: createArgs.body})
+            .create({ body })
             .transaction(transaction)
             .execute();
 
-        return await this.findOne({ room_uuid: createArgs.body.room_uuid });
+        /**
+         * No need to return the created user room,
+         * because it is not needed in the controller.
+         */
     }
 
-    // Not public, so it require a user object
-    async update(updateArgs = { pk: null, body: null, user: null }, transaction) {
-        if (!updateArgs.pk)
-            throw new ControllerError(400, 'Primary key value is required (pk)');
-        if (!updateArgs.body)
-            throw new ControllerError(400, 'Resource body is required');
-        if (!updateArgs.user)
-            throw new ControllerError(400, 'User is required');
-        if (updateArgs.body.total_upload_bytes)
-            throw new ControllerError(400, 'total_upload_bytes cannot be updated');
-        if (updateArgs.body.upload_bytes)
-            throw new ControllerError(400, 'upload_bytes cannot be updated');
-        if (updateArgs.body.max_channels)
-            throw new ControllerError(400, 'max_channels cannot be updated');
-        if (updateArgs.body.max_members)
-            throw new ControllerError(400, 'max_members cannot be updated');
-        if (updateArgs.body.room_uuid)
-            throw new ControllerError(400, 'room_uuid cannot be updated');
+    /**
+     * @function update
+     * @description Update a room setting.
+     * @param {Object} options
+     * @param {Object} options.pk
+     * @param {Object} options.body
+     * @param {Object} options.user
+     * @param {Object} transaction
+     * @returns {Promise<Object>}
+     */
+    async update(options = { pk: null, body: null, user: null }, transaction) {
+        const { pk, body, user } = options;
 
-        const { body, pk } = updateArgs;
-        const roomSetting = await model.findOne({ pk, user: updateArgs.user });
-        if (!roomSetting)
-            throw new ControllerError(404, 'roomSetting not found');
+        /**
+         * Ensure the necessary fields are present
+         * and that the room setting exists.
+         * Also ensure that fields that
+         * cannot be updated are not present.
+         */
+        const roomSetting = await model
+            .throwIfNotPresent(pk, 'Primary key value is required (pk)')
+            .throwIfNotPresent(body, 'Resource body is required')
+            .throwIfNotPresent(user, 'User is required')
+            .throwIfPresent(body.total_upload_bytes, 'total_upload_bytes cannot be updated')
+            .throwIfPresent(body.upload_bytes, 'upload_bytes cannot be updated')
+            .throwIfPresent(body.max_channels, 'max_channels cannot be updated')
+            .throwIfPresent(body.max_members, 'max_members cannot be updated')
+            .throwIfPresent(body.room_uuid, 'room_uuid cannot be updated')
+            .find()
+            .where(model.pk, pk)
+            .throwIfNotFound()
+            .dto(dto)
+            .executeOne();
 
-        const room_uuid = roomSetting.room_setting_room_uuid;
-        const user = updateArgs.user;
-        if (!await UserRoomService.isInRoom({ room_uuid, user, room_role_name: 'Admin' }))
-            throw new ControllerError(403, 'Forbidden');
-        
-        updateArgs.body.total_upload_bytes = roomSetting.room_setting_total_upload_bytes;
-        updateArgs.body.upload_bytes = roomSetting.room_setting_upload_bytes;
-        updateArgs.body.max_channels = roomSetting.room_setting_max_channels;
-        updateArgs.body.max_members = roomSetting.room_setting_max_members;
-        updateArgs.body.room_uuid = roomSetting.room_setting_room_uuid;
+        /**
+         * Ensure the user is an admin in the room
+         * before updating the room setting.
+         */
+        if (!await RoomPermissionService.isUserInRoom({
+            room_uuid: roomSetting.room_uuid,
+            user,
+            room_role_name: 'Admin'
+        })) throw new ControllerError(403, 'Forbidden');
 
+        /**
+         * Overwrite default values with the existing values
+         */
+        body.total_upload_bytes = roomSetting.total_upload_bytes;
+        body.upload_bytes = roomSetting.upload_bytes;
+        body.max_channels = roomSetting.max_channels;
+        body.max_members = roomSetting.max_members;
+        body.room_uuid = roomSetting.room_uuid;
 
-        await model.update({ pk, body, transaction });
+        if (!body.join_message) body.join_message = roomSetting.join_message;
+        if (!body.rules_text) body.rules_text = roomSetting.rules_text;
+        if (!body.join_channel_uuid) body.join_channel_uuid = roomSetting.join_channel_uuid;
 
-        const updatedRoomSetting = await model.findOne({ pk, user: updateArgs.user });
-
-        return dto(updatedRoomSetting);
+        /**
+         * Update the room setting
+         */
+        await model
+            .update({ body })
+            .where(model.pk, pk)
+            .transaction(transaction)
+            .execute();
     }
 
-    // Not public, so it require a user object
-    async destroy(destroyArgs = { pk: null, user: null }, transaction) {
-        if (!destroyArgs.pk)
-            throw new ControllerError(400, 'Primary key value is required (pk)');
-        if (!destroyArgs.user)
-            throw new ControllerError(400, 'User is required');
+    /**
+     * @function clearJoinChannel
+     * @description Clear the join channel from a room setting.
+     * @param {Object} options
+     * @param {String} options.join_channel_uuid
+     * @param {Object} transaction
+     * @returns {Promise<void>}
+     */
+    async clearJoinChannel(options = { join_channel_uuid: null }, transaction) {
+        const { join_channel_uuid } = options;
 
-        const { pk } = destroyArgs;
-        const roomSetting = await model.findOne({ pk, user: updateArgs.user });
-        if (!roomSetting)
-            throw new ControllerError(404, 'roomSetting not found');
+        /**
+         * Ensure the necessary fields are present
+         * and that the room setting exists.
+         */
+        const roomSetting = await model
+            .throwIfNotPresent(join_channel_uuid, 'join_channel_uuid is required')
+            .find()
+            .where('join_channel_uuid', join_channel_uuid)
+            .dto(dto)
+            .executeOne();
 
-        const room_uuid = roomSetting.room_setting_room_uuid;
-        const user = updateArgs.user;
-        if (!await UserRoomService.isInRoom({ room_uuid, user, room_role_name: 'Admin' }))
-            throw new ControllerError(403, 'Forbidden');
+        /**
+         * If no room setting is found, 
+         * we just return because it means
+         * no room setting is associated 
+         * with the join channel.
+         */
+        if (!roomSetting) {
+            return;
+        }
 
-        await model.destroy({ pk, transaction });
+        /**
+         * Clear the join channel
+         * and ensure the other room settings are not updated.
+         */
+        await model
+            .update({ body: {
+                join_channel_uuid: null,
+                total_upload_bytes: roomSetting.total_upload_bytes,
+                upload_bytes: roomSetting.upload_bytes,
+                max_channels: roomSetting.max_channels,
+                max_members: roomSetting.max_members,
+                room_uuid: roomSetting.room_uuid,
+                join_message: roomSetting.join_message,
+                rules_text: roomSetting.rules_text
+            }})
+            .where('join_channel_uuid', join_channel_uuid)
+            .transaction(transaction)
+            .execute();
     }
-}
 
-// Create a new service
-const service = new RoomSettingService();
+    /**
+     * @function destroy
+     * @description Destroy a room setting.
+     * @param {Object} options
+     * @param {String} options.pk
+     * @param {Object} options.user
+     * @param {Object} transaction
+     * @returns {Promise<void>}
+     */
+    async destroy(options = { pk: null, user: null }, transaction) {
+            const { pk, user } = options;
 
-// Export the service
+            /**
+             * Ensure the necessary fields are present
+             * and that the room setting exists.
+             */
+            const roomSetting = await model
+                .throwIfNotPresent(pk, 'Primary key value is required (pk)')
+                .throwIfNotPresent(user, 'User is required')
+                .find()
+                .where(model.pk, pk)
+                .throwIfNotFound()
+                .dto(dto)
+                .executeOne();
+
+            /**
+             * Ensure the user is an admin in the room
+             * before destroying the room setting.
+             */
+            if (!await RoomPermissionService.isUserInRoom({
+                room_uuid: roomSetting.room_uuid,
+                user,
+                room_role_name: 'Admin'
+            })) throw new ControllerError(403, 'Forbidden');
+
+            /**
+             * Destroy the room setting
+             */
+            await model
+                .destroy()
+                .where(model.pk, pk)
+                .transaction(transaction)
+                .execute();
+        }
+
+    /**
+     * @function destroyAll
+     * @description Destroy all room settings for a room.
+     * @param {Object} options
+     * @param {String} options.room_uuid
+     * @param {Object} transaction
+     * @returns {Promise<void>}
+     */
+    async destroyAll(options = { room_uuid: null }, transaction) {
+            /**
+             * Destroy all user rooms for the room.
+             */
+            await model
+                .destroy()
+                .where('room_uuid', options.room_uuid)
+                .transaction(transaction)
+                .execute();
+        }
+    }
+
+    const service = new RoomSettingService();
+
 export default service;

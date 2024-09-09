@@ -1,5 +1,4 @@
 import pool from './pool.js';
-import OP from './op.js';
 
 export default class Builder {
     constructor(model) {
@@ -111,7 +110,7 @@ export default class Builder {
     destroy() {
         if (!this.options.where) throw new Error('Security risk: Blocked delete without where clause');
 
-        this.req.query = `DELETE FROM ${this.table}`;
+        this.req.query = `DELETE ${this.table} FROM ${this.table}`;
         return this;
     }
 
@@ -121,9 +120,7 @@ export default class Builder {
         if (keys.length > 0) {
             this.req.query += ' WHERE ';
             this.req.query += keys.map(k => `${k} ${where[k].operator || '='} ?`).join(' AND ');
-            this.req.values.push(...keys.map(k => where[k].value));
-            
-            console.log(this.req.values);
+            this.req.values.push(...keys.map(k => where[k].value));                    
         }
         return this;
     }

@@ -2,72 +2,82 @@ import model from '../models/room_invite_link.js';
 import dto from '../dtos/room_invite_link.js';
 import ControllerError from '../errors/controller_error.js';
 import RoomService from './room_service.js';
-import UserRoomService from './user_room_service.js';
-import RoomSettingService from './room_setting_service.js';
-import ChannelService from './channel_service.js';
-import ChannelMessageService from './channel_message_service.js';
-import { v4 as uuidV4 } from 'uuid';
-import UserService from './user_service.js';
+import RoomPermissionService from './room_permission_service.js';
 
-const createWelcomeMessage = async (room, setting, user, transaction) => {
-    const me = await UserService.me(user);
-    const room_uuid = room.uuid;
-
-    let channel = null;
-    if (setting.join_channel_uuid) {
-        channel = await ChannelService.findOne({ pk: setting.join_channel_uuid, user });
-    } else {
-        const channels = await ChannelService.findAll({ room_uuid, user });
-        if (channels.data.length > 0) {
-            channel = channels.data[0];
-        }
-    }
-
-    if (channel) {
-        ChannelMessageService.create({
-            body: {
-                uuid: uuidV4(),
-                channel_uuid: channel.uuid,
-                user_uuid: user.sub,
-                body: `${me.username} ${setting.join_message || 'joined the room! 👻'}`,
-                created_by_system: 1
-            },
-            user
-        }, transaction);
-    }
-}
-
-
+/**
+ * @class RoomInviteLinkService
+ * @description service class for room invite links.
+ * @exports RoomInviteLinkService
+ */
 class RoomInviteLinkService {
+
+    /**
+     * @constructor
+     */
     constructor() {
         this.model = model;
         this.dto = dto;
     }
 
+    /**
+     * @function template
+     * @description Return the model template.
+     * @returns {Object}
+     */
     template() {
         return this.model.template();
     }
 
-    async findOne(findArgs = { pk: null }) {
+    /**
+     * @function findOne
+     * @description Find a room invite link by primary key.
+     * @param {Object} options
+     * @param {String} options.pk
+     * @returns {Promise<Object>}
+     */
+    async findOne(options = { pk: null }) {
+        const { pk } = options;
+
         return await model
-            .throwIfNotPresent(findArgs.pk, 'Primary key value is required')
+            .throwIfNotPresent(pk, 'Primary key value is required')
             .find()
-            .where(model.pk, findArgs.pk)
+            .where(model.pk, pk)
             .throwIfNotFound()
             .dto(dto)
             .executeOne();
     }
 
-    async findAll(findAllArgs = { page, limit, room_uuid: null, user: null }) {
-        model.throwIfNotPresent(findAllArgs.room_uuid, 'room_uuid is required')
-            .throwIfNotPresent(findAllArgs.user, 'User is required');
+    /**
+     * @function findAll
+     * @description Find all room invite links for the room.
+     * @param {Object} options
+     * @param {Number} options.page
+     * @param {Number} options.limit
+     * @param {String} options.room_uuid
+     * @param {Object} options.user
+     * @returns {Promise<Array>}
+     */
+    async findAll(options = { page: null, limit: null, room_uuid: null, user: null }) {
+        const { page, limit, room_uuid, user } = options;
 
-        const { user, room_uuid } = findAllArgs;
-        if (!await UserRoomService.isInRoom({ room_uuid, user, room_role_name: null }))
+        /**
+         * Ensure that the room_uuid and user are present.
+         */
+        await model
+            .throwIfNotPresent(room_uuid, 'room_uuid is required')
+            .throwIfNotPresent(user, 'User is required');
+
+        /**
+         * Only members of the room can view the room invite links.
+         */
+        if (!await RoomPermissionService.isUserInRoom({ room_uuid, user, room_role_name: null }))
             throw new ControllerError(403, 'Forbidden');
 
+        /**
+         * Find all room invite links for the room.
+         */
         return await model
-            .find({page: findAllArgs.page, limit: findAllArgs.limit})
+            .find({page, limit })
             .where('room_uuid', room_uuid)
             .include(RoomService.model, 'uuid', 'room_uuid')
             .orderBy('roominvitelink.created_at DESC')
@@ -76,125 +86,168 @@ class RoomInviteLinkService {
             .execute();
     }
 
-    async create(createArgs = { body: null, user: null }, transaction) {
-        if (!createArgs.body)
-            throw new ControllerError(400, 'Resource body is required');
-        if (!createArgs.body.room_uuid)
-            throw new ControllerError(400, 'room_uuid is required');
-        if (!createArgs.body.expires_at)
-            throw new ControllerError(400, 'expires_at is required');
-        if (!createArgs.body.uuid)
-            throw new ControllerError(400, 'uuid is required');
-        if (!createArgs.user)
-            throw new ControllerError(400, 'User is required');
+    /**
+     * @function create
+     * @description Create a room invite link.
+     * @param {Object} options
+     * @param {Object} options.body
+     * @param {Object} options.user
+     * @param {Object} transaction
+     * @returns {Promise<Object>}
+     */
+    async create(options = { body: null, user: null }, transaction) {
+        const { body, user } = options;
 
-        const pk = createArgs.body[model.pk];
-        if (pk && await model.findOne({ pk })) {
-            throw new ControllerError(400, 'Resource already exists');
-        }
+        /**
+         * Ensure the necessary fields are present
+         * and a room invite link with the same primary key
+         * does not already exist.
+         */
+        await model
+            .throwIfNotPresent(body, 'Resource body is required')
+            .throwIfNotPresent(body.room_uuid, 'room_uuid is required')
+            .throwIfNotPresent(body.expires_at, 'expires_at is required')
+            .throwIfNotPresent(body.uuid, 'uuid is required')
+            .throwIfNotPresent(user, 'User is required')
+            .find()
+            .where(model.pk, body.uuid)
+            .throwIfFound()
+            .executeOne();
 
-        const user = createArgs.user;
-        if (! await UserRoomService.isInRoom({ room_uuid: createArgs.body.room_uuid, user, room_role_name: 'Admin' }))
-            throw new ControllerError(403, 'Forbidden');
+        /**
+         * Ensure the user is an admin of the room.
+         */
+        if (!await RoomPermissionService.isUserInRoom({ 
+            room_uuid: body.room_uuid, 
+            user, 
+            room_role_name: 'Admin' 
+        })) throw new ControllerError(403, 'Forbidden');
 
-        await this.model.create({body: createArgs.body, transaction});
-        const resource = await model.findOne({ pk });
+        /**
+         * Create the room invite link.
+         */
+        await this.model
+            .create({ body })
+            .transaction(transaction)
+            .execute();
 
-        return dto(resource);
+        /**
+         * Return the created room invite link.
+         */
+        return await this.findOne({ pk: body.uuid });
     }
 
-    // Not public, so it require a user object
-    async update(updateArgs = { pk: null, body: null, user: null }, transaction) {
-        if (!updateArgs.pk)
-            throw new ControllerError(400, 'Primary key value is required (pk)');
-        if (!updateArgs.body)
-            throw new ControllerError(400, 'Resource body is required');
-        if (!updateArgs.user)
-            throw new ControllerError(400, 'User is required');
+    /**
+     * @function update
+     * @description Update a room invite link.
+     * @param {Object} options
+     * @param {String} options.pk
+     * @param {Object} options.body
+     * @param {Object} options.user
+     * @param {Object} transaction
+     * @returns {Promise<Object>}
+     */
+    async update(options = { pk: null, body: null, user: null }, transaction) {
+        const { pk, body, user } = options;
 
-        const { body, pk } = updateArgs;
-        const roomInviteLink = await this.findOne({ pk });
-        if (!roomInviteLink)
-            throw new ControllerError(404, 'room invite link not found');
-
-        const room_uuid = roomInviteLink.room_uuid;
-        const user = updateArgs.user;
-        if (! await UserRoomService.isInRoom({ room_uuid, user, room_role_name: 'Admin' }))
-            throw new ControllerError(403, 'Forbidden');
-
-        if (!body.room_uuid)
-            body.room_uuid = room_uuid;
-
-        await model.update({ pk, body, transaction });
-
-        return await this.findOne({ pk });
-    }
-
-    // Not public, so it require a user object
-    async destroy(destroyArgs = { pk: null, user: null }, transaction) {
-        if (!destroyArgs.pk)
-            throw new ControllerError(400, 'Primary key value is required (pk)');
-        if (!destroyArgs.user)
-            throw new ControllerError(400, 'User is required');
-
-        const { pk } = destroyArgs;
-        const roomInviteLink = await this.findOne({ pk });
-        if (!roomInviteLink)
-            throw new ControllerError(404, 'room invite link not found');
-
-        const room_uuid = roomInviteLink.room_uuid;
-        const user = destroyArgs.user;
-        if (! await UserRoomService.isInRoom({ room_uuid, user, room_role_name: 'Admin' }))
-            throw new ControllerError(403, 'Forbidden');
-
-        await model.destroy({ pk, transaction });
-    }
-
-    async joinLink(joinLinkArgs = { uuid: null, user: null }, transaction) {
-        if (!joinLinkArgs.uuid)
-            throw new ControllerError(400, 'uuid is required');
-        if (!joinLinkArgs.user)
-            throw new ControllerError(400, 'User is required');
-
-        const links = await model.findAll(model
-            .optionsBuilder()
-            .where('uuid', joinLinkArgs.uuid)
-            .build());
-
-        if (links.length === 0)
-            throw new ControllerError(404, 'Link not found');
-
-        const link = links[0];
-        const room_uuid = link.room_invite_link_room_uuid;
-        const user = joinLinkArgs.user;
-        if (await UserRoomService.isInRoom({ room_uuid, user, room_role_name: null }))
-            throw new ControllerError(400, 'Already a member');
-
-        const roomSetting = await RoomSettingService.findOne({ room_uuid });
-        if (!roomSetting)
-            throw new ControllerError(404, 'Room setting not found');
-
-        const userRoomsCount = await UserRoomService.count({ where: { room_uuid } });
-        if (userRoomsCount >= roomSetting.max_members)
-            throw new ControllerError(400, 'Room is full');
-
-        const userRoom = await UserRoomService.create({
-            body: {
-                uuid: uuidV4(),
-                room_uuid,
-                room_role_name: 'Member'
-            },
-            user: joinLinkArgs.user
-        }, transaction);
-        const room = await RoomService.findOne({ pk: room_uuid, user: joinLinkArgs.user });
-
-        await createWelcomeMessage(room, roomSetting, joinLinkArgs.user, transaction);
+        /**
+         * Get the room invite link to be updated.
+         */
+        const roomInviteLink = await model
+            .throwIfNotPresent(pk, 'Primary key value is required (pk)')
+            .throwIfNotPresent(body, 'Resource body is required')
+            .throwIfNotPresent(user, 'User is required')
+            .throwIfPresent(body.room_uuid, 'room_uuid cannot be updated')
+            .find()
+            .where(model.pk, pk)
+            .throwIfNotFound()
+            .dto(dto)
+            .executeOne();
         
+        /**
+         * Ensure the user is an admin of the room.
+         */
+        if (!await RoomPermissionService.isUserInRoom({ 
+            room_uuid: roomInviteLink.room_uuid,
+            user, 
+            room_role_name: 'Admin' 
+        })) throw new ControllerError(403, 'Forbidden');
 
-        return {
-            room,
-            userRoom
-        };
+        /**
+         * set the room_uuid to the room_invite_link_room_uuid
+         */
+        body.room_uuid = roomInviteLink.room_uuid;
+
+        /**
+         * Update the room invite link.
+         */
+        await model
+            .update({ body })
+            .where(model.pk, pk)
+            .transaction(transaction)
+            .execute();
+    }
+
+    /**
+     * @function destroy
+     * @description Destroy a room invite link.
+     * @param {Object} options
+     * @param {String} options.pk
+     * @param {Object} options.user
+     * @param {Object} transaction
+     * @returns {Promise<void>}
+     */
+    async destroy(options = { pk: null, user: null }, transaction) {
+        const { pk, user } = options;
+
+        /**
+         * Get the room invite link to be destroyed.
+         */
+        const roomInviteLink = await model
+            .throwIfNotPresent(pk, 'Primary key value is required (pk)')
+            .throwIfNotPresent(user, 'User is required')
+            .find()
+            .where(model.pk, pk)
+            .throwIfNotFound()
+            .dto(dto)
+            .executeOne();
+
+        /**
+         * Ensure the user is an admin of the room.
+         */
+        if (!await RoomPermissionService.isUserInRoom({ 
+            room_uuid: roomInviteLink.room_uuid, 
+            user, 
+            room_role_name: 'Admin' 
+        })) throw new ControllerError(403, 'Forbidden');
+
+        /**
+         * Destroy the room invite link.
+         */
+        await model
+            .destroy()
+            .where(model.pk, pk)
+            .transaction(transaction)
+            .execute();
+    }
+
+    /**
+     * @function destroyAll
+     * @description Destroy all room invite links for the room.
+     * @param {Object} options
+     * @param {String} options.room_uuid
+     * @param {Object} transaction
+     * @returns {Promise<void>}
+     */
+    async destroyAll(options = { room_uuid: null }, transaction) {
+        /**
+         * Destroy all user rooms for the room.
+         */
+        await model
+            .destroy()
+            .where('room_uuid', options.room_uuid)
+            .transaction(transaction)
+            .execute();
     }
 }
 

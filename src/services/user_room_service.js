@@ -2,30 +2,75 @@
 import ControllerError from '../errors/controller_error.js';
 import model from '../models/user_room.js';
 import dto from '../dtos/user_room.js';
+import RoomPermissionService from './room_permission_service.js';
 import UserService from './user_service.js';
 
+/**
+ * @class UserRoomService
+ * @description CRUD service for user rooms.
+ * @exports UserRoomService
+ * @requires ControllerError
+ * @requires model
+ * @requires dto
+ * @requires RoomPermissionService  
+ * @requires UserService
+ */
 class UserRoomService {
+
+    /**
+     * @constructor
+     */
     constructor() {
         this.model = model;
         this.dto = dto;
     }
 
+    /**
+     * @function template
+     * @description Return the model template.
+     * @returns {Object}
+     */
     template() {
         return this.model.template();
     }
 
-    async count({ where={} }) {
-        return await model.count()
-            .each(Object.keys(where), (data, options) => {
-                options.where(data.key, data.value, data.operator);
+    /**
+     * @function count
+     * @description Count the number of user rooms where the options are met.
+     * @param {Object} options
+     * @param {Object} options.where
+     * @returns {Promise<Number>}
+     */
+    async count(options={ where: {} }) {
+        const where = options.where || {};
+        const arr = Object.keys(where) || []; 
+
+        return await model
+            .count()
+            .each(arr, (key, subOptions) => {
+                if (subOptions.where) {
+                    return { where: { [key]: { value: where[key] }, ...subOptions.where }}
+                }
+
+                return { where: { [key]: { value: where[key] } }}
             })
             .execute();
     }
 
-    async findOne({ room_uuid, user }) {
+    /**
+     * @function findOne
+     * @description Find a user room by room_uuid and user_uuid.
+     * @param {Object} options
+     * @param {String} options.room_uuid
+     * @param {Object} options.user
+     * @returns {Promise<Object>}
+     */
+    async findOne(options={ room_uuid: null, user: null }) {
+        const { room_uuid, user } = options;
+
         return await model
             .throwIfNotPresent(room_uuid, 'room_uuid is required')
-            .throwIfNotPresent(user, 'User is required')
+            .throwIfNotPresent(user, 'user is required')
             .find()
             .where('room_uuid', room_uuid)
             .where('user_uuid', user.sub)
@@ -34,24 +79,20 @@ class UserRoomService {
             .executeOne();
     }
 
-    async isInRoom({ room_uuid, user, room_role_name }) {
-        const userRoom = await model
-            .throwIfNotPresent(room_uuid, 'room_uuid is required')
-            .throwIfNotPresent(user.sub, 'user_uuid is required')
-            .find()
-            .where('user_uuid', user.sub)
-            .where('room_uuid', room_uuid)
-            .dto(dto)
-            .executeOne();
-
-        return userRoom && (room_role_name 
-            ? userRoom.room_role_name == room_role_name 
-            : true
-        );
-    }
-
-    async findAll(options={}) {
-        const { page, limit, room_uuid, where={} } = options;
+    /**
+     * @function findAll
+     * @description Find all user rooms by room_uuid.
+     * @param {Object} options
+     * @param {Number} options.page
+     * @param {Number} options.limit
+     * @param {String} options.room_uuid
+     * @param {Object} options.where
+     * @returns {Promise<Array>}
+     */
+    async findAll(options={ page: null, limit: null, room_uuid: null, where: {} }) {
+        const { page, limit, room_uuid } = options;
+        const where = options.where || {};
+        
         return await model
             .throwIfNotPresent(room_uuid, 'room_uuid is required')
             .find({ page, limit })
@@ -66,75 +107,134 @@ class UserRoomService {
             .execute();
     }
 
-    async create(createArgs = { body: null, user: null }, transaction) {
-        await model.throwIfNotPresent(createArgs.body, 'Resource body is required')
-            .throwIfNotPresent(createArgs.body.room_uuid, 'room_uuid is required')
-            .throwIfNotPresent(createArgs.body.room_role_name, 'room_role_name is required')
-            .throwIfNotPresent(createArgs.body.uuid, 'uuid is required')
-            .throwIfNotPresent(createArgs.user, 'User is required')
-            .find().where(model.pk, createArgs.body.uuid).throwIfFound().executeOne();
+    async create(options = { body: null, user: null }, transaction) {
+        const { body, user } = options;
 
+        /**
+         * Ensure the necessary fields are present
+         * and a user room with the same primary key
+         * does not already exist.
+         */
+        await model
+            .throwIfNotPresent(body, 'Resource body is required')
+            .throwIfNotPresent(body.room_uuid, 'room_uuid is required')
+            .throwIfNotPresent(body.room_role_name, 'room_role_name is required')
+            .throwIfNotPresent(body.uuid, 'uuid is required')
+            .throwIfNotPresent(user, 'User is required')
+            .find()
+            .where(model.pk, body.uuid)
+            .throwIfFound()
+            .executeOne();
+
+        /**
+         * Ensure the user is in the room 
+         * before creating the user room.
+         */
         await this.model
-            .create({ body: { ...createArgs.body, user_uuid: createArgs.user.sub } })
+            .create({ body: { ...body, user_uuid: user.sub } })
             .transaction(transaction)
             .execute();
 
-        return await this.findOne({ 
-            room_uuid: createArgs.body.room_uuid, 
-            user: createArgs.user 
-        });
+        /**
+         * No need to return the created user room,
+         * because it is not needed in the controller.
+         */
     }
 
-    async update(updateArgs = { pk: null, body: null, user: null }, transaction) {
+    async update(options = { pk: null, body: null, user: null }, transaction) {
+        const { pk, body, user } = options;
+
+        /**
+         * Get the user room to be updated.
+         */
         const userRoom = await model
-            .throwIfNotPresent(updateArgs.pk, 'Primary key value is required (pk)')
-            .throwIfNotPresent(updateArgs.body, 'Resource body is required')
-            .throwIfNotPresent(updateArgs.user, 'User is required')
+            .throwIfNotPresent(pk, 'Primary key value is required (pk)')
+            .throwIfNotPresent(body, 'Resource body is required')
+            .throwIfNotPresent(user, 'User is required')
             .find()
-            .where(model.pk, updateArgs.pk)
+            .where(model.pk, pk)
             .throwIfNotFound()
             .executeOne();
 
-        if (!this.isInRoom({ 
+        /**
+         * Check if the user is in the room
+         * as an admin before updating the user room.
+         */
+        if (!RoomPermissionService.isUserInRoom({ 
             room_uuid: userRoom.room_uuid,
-            user: updateArgs.user,
+            user,
             room_role_name: 'Admin'
         })) throw new ControllerError(404, 'User is not in the room');
 
+        /**
+         * Update the user room.
+         */
         await model.update({ body })
-            .where(model.pk, updateArgs.pk)
+            .where(model.pk, pk)
             .transaction(transaction)
             .execute();
-
-        return await this.findOne({ 
-            room_uuid: userRoom.room_uuid, 
-            user: updateArgs.user 
-        });
     }
 
-    async destroy(destroyArgs = { pk: null, user: null }, transaction) {
+    async destroy(options = { pk: null, user: null }, transaction) {
+        const { pk, user } = options;
+
+        /**
+         * Get the user room to be destroyed.
+         */
         const userRoom = await model
-            .throwIfNotPresent(destroyArgs.pk, 'Primary key value is required (pk)')
-            .throwIfNotPresent(destroyArgs.user, 'User is required')
+            .throwIfNotPresent(pk, 'Primary key value is required (pk)')
+            .throwIfNotPresent(user, 'User is required')
             .find()
-            .where(model.pk, destroyArgs.pk)
+            .where(model.pk, pk)
             .throwIfNotFound()
             .dto(dto)
             .executeOne();
-
-        if (userRoom.room_role_name === 'Admin') {
+            
+        /**
+         * Check if the user has the right to destroy the user room.
+         * (Must be an admin of the room).
+         * TODO: Add a check to see if the user is the only admin in the room.
+         */
+        console.log("TODO: Add a check to see if the user is the only admin in the room.");
+        if (userRoom.role_name === 'Admin') {
             throw new ControllerError(400, 'Admin cannot be removed from the room');
         }
 
-        if (!this.isInRoom({ 
+        /**
+         * Check if the user is in the room
+         * as an admin before destroying the user room.
+         */
+        if (!RoomPermissionService.isUserInRoom({ 
             room_uuid: userRoom.room_uuid,
-            user: destroyArgs.user,
+            user,
             room_role_name: 'Admin'
         })) throw new ControllerError(404, 'User is not in the room');
 
+        /**
+         * Destroy the user room.
+         */
         await model
             .destroy()
-            .where(model.pk, destroyArgs.pk)
+            .where(model.pk, pk)
+            .transaction(transaction)
+            .execute();
+    }
+
+    /**
+     * @function destroyAll
+     * @description Destroy all user rooms for the room.
+     * @param {Object} options
+     * @param {String} options.room_uuid
+     * @param {Object} transaction
+     * @returns {Promise<void>}
+     */
+    async destroyAll(options = { room_uuid: null }, transaction) {
+        /**
+         * Destroy all user rooms for the room.
+         */
+        await model
+            .destroy()
+            .where('room_uuid', options.room_uuid)
             .transaction(transaction)
             .execute();
     }
