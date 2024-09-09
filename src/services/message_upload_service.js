@@ -4,6 +4,8 @@ import model from '../models/message_upload.js';
 import dto from '../dtos/message_upload.js';
 import ChannelMessageService from './channel_message_service.js';
 import ChannelService from './channel_service.js';
+import RoomPermissionService from './room_permission_service.js';
+import UserService from './user_service.js';
 
 /**
  * @constant storageService
@@ -65,6 +67,81 @@ class MessageUploadService  {
             .sum({ field })
             .include(ChannelMessageService.model, 'uuid', 'channel_message_uuid')
             .where('channel_uuid', channel_uuid)
+            .execute();
+    }
+
+    /**
+     * @function sumByRoomUuid
+     * @description Sum the field for the channel.
+     * @param {Object} options
+     * @param {String} options.room_uuid
+     * @param {String} options.field
+     * @param {Object} options.user
+     * @param {Boolean} skipPermissionCheck
+     * @returns {Promise<Number>}
+     */
+    async sumByRoomUuid(options = { room_uuid: null, field: null, user: null }, skipPermissionCheck = false) {
+        const { room_uuid, field, user } = options;
+
+        /**
+         * Ensure the user is an admin in the room.
+         */
+        if (!skipPermissionCheck && !await RoomPermissionService.isUserInRoom({
+            room_uuid,
+            user,
+            room_role_name: 'Admin'
+        })) throw new ControllerError(403, 'Forbidden');
+
+        /**
+         * Sum the field for the room.
+         */
+        return await model
+            .throwIfNotPresent(room_uuid, 'room_uuid is required')
+            .throwIfNotPresent(field, 'field is required')
+            .sum({ field })
+            .include(ChannelMessageService.model, 'uuid', 'channel_message_uuid')
+            .include(ChannelService.model, 'uuid', 'channel_uuid', ChannelMessageService.model.mysql_table)
+            .where('room_uuid', options.room_uuid)
+            .execute();
+    }
+
+    /**
+     * @function findAll
+     * @description Find all message uploads for the room.
+     * @param {Object} options
+     * @param {String} options.page
+     * @param {String} options.limit
+     * @param {String} options.room_uuid
+     * @param {String} options.user
+     * @returns {Promise<Array>}
+     */
+    async findAll(options = { page: null, limit: null, room_uuid: null, user: null }) {
+        const { page, limit, room_uuid, user } = options;
+
+        /**
+         * Ensure that the room_uuid and user are present.
+         */
+        await model
+            .throwIfNotPresent(room_uuid, 'room_uuid is required')
+            .throwIfNotPresent(user, 'User is required');
+
+        /**
+         * Only members of the room can view the message uploads.
+         */
+        if (!await RoomPermissionService.isUserInRoom({ room_uuid, user, room_role_name: null }))
+            throw new ControllerError(403, 'Forbidden');
+
+        /**
+         * Find all message uploads for the room.
+         */
+        return await model
+            .find({ page, limit })
+            .where('room_uuid', room_uuid)
+            .include(ChannelMessageService.model, 'uuid', 'channel_message_uuid')
+            .include(ChannelService.model, 'uuid', 'channel_uuid', ChannelMessageService.model.mysql_table)
+            .include(UserService.model, 'uuid', 'user_uuid', ChannelMessageService.model.mysql_table)
+            .dto(dto)
+            .meta()
             .execute();
     }
 

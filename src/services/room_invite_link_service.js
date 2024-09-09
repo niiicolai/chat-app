@@ -106,7 +106,6 @@ class RoomInviteLinkService {
         await model
             .throwIfNotPresent(body, 'Resource body is required')
             .throwIfNotPresent(body.room_uuid, 'room_uuid is required')
-            .throwIfNotPresent(body.expires_at, 'expires_at is required')
             .throwIfNotPresent(body.uuid, 'uuid is required')
             .throwIfNotPresent(user, 'User is required')
             .find()

@@ -1,3 +1,4 @@
+import jwtService from './services/jwt_service.js';
 import WebSocketServer from 'websocket';
 import http from 'http';
 
@@ -26,6 +27,23 @@ function originIsAllowed(origin) {
     return allowedOrigins.includes(origin);
 }
 
+const joinChannel = (client, json) => {
+    const channel = json.channel;
+    const user = jwtService.getUserFromToken({ authorization: json.token });
+    if (!user) {
+        console.log(new Date() + ` Peer ${client.remoteAddress} unauthorized`);
+        client.sendUTF(JSON.stringify({ error: 'Unauthorized' }));
+        return;
+    }
+    client.userData = { user, channel };
+    console.log((new Date()) + ` Peer ${user.sub} joined channel ${channel}`);
+};
+
+const leaveChannel = (client) => {
+    client.userData = { user: null, channel: null };
+    console.log((new Date()) + ` Peer ${client.remoteAddress} left channel`);
+};
+
 wsServer.on('request', (request) => {
     if (!originIsAllowed(request.origin)) {
         request.reject();
@@ -33,22 +51,41 @@ wsServer.on('request', (request) => {
         return;
     }
 
-    const connection = request.accept('echo-protocol', request.origin);
-    console.log((new Date()) + ' Connection accepted.');
+    try {
+        const connection = request.accept('echo-protocol', request.origin);
+        console.log((new Date()) + ' Connection accepted.');
 
-    connection.on('message', (message) => {
-        if (message.type === 'utf8') {
-            console.log('Received Message: ' + message.utf8Data);
-            connection.sendUTF(message.utf8Data);
-        } else if (message.type === 'binary') {
-            console.log('Received Binary Message of ' + message.binaryData.length + ' bytes');
-            connection.sendBytes(message.binaryData);
+        connection.userData = { user: null, channel: null };
+        connection.on('message', function (message) {
+
+            if (message.type === 'utf8') {
+                const json = JSON.parse(message.utf8Data);
+                switch (json.type) {
+                    case 'join_channel':
+                        joinChannel(connection, json);
+                        break;
+                    case 'leave_channel':
+                        leaveChannel(connection);
+                        break;
+                }
+            }
+        });
+
+        connection.on('close', (reasonCode, description) => {
+            console.log((new Date()) + ' Peer ' + connection.remoteAddress + ' disconnected.');
+        });
+    } catch (error) {
+        console.error(error);
+    }
+
+});
+
+export const broadcastChannel = (channel, message) => {
+    wsServer.connections.forEach((connection) => {
+        if (connection.userData.channel === channel) {
+            connection.sendUTF(JSON.stringify({ type: 'chat_message', message}));
         }
     });
-
-    connection.on('close', (reasonCode, description) => {
-        console.log((new Date()) + ' Peer ' + connection.remoteAddress + ' disconnected.');
-    });
-});
+};
 
 export default server;

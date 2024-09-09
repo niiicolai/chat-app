@@ -25,19 +25,23 @@ export default class MysqlAdapter extends BaseAdapter {
     async transaction(callback) {
         const connection = await pool.getConnection();
         await connection.beginTransaction();
-        console.log('TRANSACTION STARTED;');
+        if (process.env.DEBUG === 'true') 
+            console.log('TRANSACTION STARTED;');
         
         try {
             await callback(connection);
             await connection.commit();
-            console.log('COMMIT;');
+            if (process.env.DEBUG === 'true') 
+                console.log('COMMIT;');
         } catch (error) {
             await connection.rollback();
-            console.log(`ROLLBACK: ${error.message};`);
+            if (process.env.DEBUG === 'true') 
+                console.log(`ROLLBACK: ${error.message};`);
             throw error;
         } finally {
             connection.release();
-            console.log('CONNECTION RELEASED;');
+            if (process.env.DEBUG === 'true') 
+                console.log('CONNECTION RELEASED;');
         }
     }
 

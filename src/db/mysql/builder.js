@@ -168,7 +168,7 @@ export default class Builder {
     }
 
     build() {
-        if (process.env.DEBUG) console.log(this.req);        
+        if (process.env.DEBUG === 'true') console.log(this.req);        
         return this.req;
     }
 

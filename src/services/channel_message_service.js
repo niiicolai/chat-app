@@ -7,6 +7,7 @@ import ChannelService from './channel_service.js';
 import UserService from './user_service.js';
 import RoomPermissionService from './room_permission_service.js';
 import MessageUploadService from './message_upload_service.js';
+import { broadcastChannel } from '../websocket.js';
 import { v4 as uuidv4 } from 'uuid';
 
 /**
@@ -205,15 +206,27 @@ class ChannelMessageService {
             }
         }, transaction);
 
+    
         /**
-         * Return the channel message.
+         * Get the channel message to be returned.
          */
-        return await model
+        const result = await model
             .find()
             .where(`${model.mysql_table}.${model.pk}`, body.uuid)
             .include(UserService.model, 'uuid', 'user_uuid')
             .dto(dto)
             .executeOne();
+
+        /**
+         * Broadcast the channel message to all users
+         * in the room where the channel message was created.
+         */
+        broadcastChannel(`channel-${channel.uuid}`, result);
+
+        /**
+         * Return the channel message.
+         */
+        return result;
     }
 
 

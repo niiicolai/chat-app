@@ -19,6 +19,19 @@ const EXPIRE = parseInt(process.env.JWT_EXPIRE);
  */
 export default class JwtService {
 
+    static getUserFromToken(options = { authorization: null }) {
+        let { authorization: token } = options;
+    
+        if (!token) return null;
+        if (!token.startsWith('Bearer ')) return null;
+    
+        token = token.slice(7, token.length);
+        const user = JwtService.verify(token);
+        if (!user) return null;
+        
+        return user;
+    }
+
     /**
      * @function sign
      * @description Sign a token with the provided sub.

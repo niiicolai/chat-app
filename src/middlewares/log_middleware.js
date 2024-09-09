@@ -1,6 +1,6 @@
 
 export default (req, res, next) => {
-    if (process.env.DEBUG)
+    if (process.env.DEBUG === 'true') 
         console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl} 
     - body: ${JSON.stringify(req.body)} 
     - params: ${JSON.stringify(req.params)} 

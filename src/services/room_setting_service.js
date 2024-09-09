@@ -1,4 +1,5 @@
 import RoomPermissionService from './room_permission_service.js';
+import MessageUploadService from './message_upload_service.js';
 import ControllerError from '../errors/controller_error.js';
 import model from '../models/room_setting.js';
 import dto from '../dtos/room_setting.js';
@@ -73,13 +74,14 @@ class RoomSettingService {
 
         /**
          * Check if the room has used too much of the total upload limit
-         * @todo Implement sum function
          */
-        //const totalUploadSizeMb = roomSetting.total_upload_bytes / 1000000;
-        //const sum = await MessageUploadService.sum({ channel_uuid: channel.uuid, field: 'size' });    
-        //if ((sum + size) > roomSetting.total_upload_bytes)
-        //throw new ControllerError(400, `The room has used ${sum / 1000000} MB of the total upload limit of ${roomSetting.total_upload_bytes / 1000000} MB. The file size is ${size / 1000000} MB and the new total would be ${(sum + size) / 1000000} MB`);
-        console.log('todo: implement sum function');
+        const skipPermissionCheck = true;
+        const sum = await MessageUploadService.sumByRoomUuid({ room_uuid, field: 'size' }, skipPermissionCheck); 
+        const totalUploadSizeMb = convertBytesToMb(roomSetting.total_upload_bytes);   
+        const newTotalUploadSizeMb = convertBytesToMb(sum + byteSize);
+        if ((sum + byteSize) > roomSetting.total_upload_bytes)
+        throw new ControllerError(400, `The room has used ${sum / 1000000} MB of the total upload limit of ${totalUploadSizeMb} MB. The file size is ${sizeMb} MB and the new total would be ${newTotalUploadSizeMb} MB`);
+
 
         /**
          * Return true if the user can upload

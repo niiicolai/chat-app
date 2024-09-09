@@ -50,7 +50,7 @@ class RoomPermissionService {
             .where('uuid', options.channel_uuid)
             .dto(channelDto)
             .executeOne();
-        console.log("channel", channel);
+
         return this.isUserInRoom({
             room_uuid: channel.room_uuid,
             user: options.user,

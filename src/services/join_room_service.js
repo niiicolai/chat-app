@@ -42,6 +42,14 @@ class JoinRoomService {
             .executeOne();
 
         /**
+         * Ensure the room invite link is not expired.
+         * If expires_at is null, the link never expires.
+         */
+        if (roomInviteLink.expires_at) {
+            const expiresAt = new Date(roomInviteLink.expires_at);
+            if (expiresAt < new Date()) throw new ControllerError(400, 'Link expired');
+        }
+        /**
          * Ensure the user is not already a member of the room.
          */
         if (await RoomPermissionService.isUserInRoom({
