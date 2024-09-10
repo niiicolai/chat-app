@@ -117,8 +117,7 @@ controller.update();
 controller.destroy();
 
 controller.defineCustomRoute('post', 'login', async (req, res) => {
-    const data = req.body;
-    const user = await crudService.login(data);
+    const user = await crudService.login(req.body);
     res.json(user);
 }, false);
 

@@ -143,7 +143,7 @@ class UserService {
          * and sign a JWT token for the user
          * to authenticate the user.
          */
-        const user = await this.findOne({ pk: body.uuid });
+        const user = await model.find().where('uuid', body.uuid).dto(dto).executeOne();
         const token = JwtService.sign(body.uuid);
 
         /**

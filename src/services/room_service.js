@@ -124,7 +124,7 @@ class RoomService {
         await model
             .find()
             .where('name', body.name)
-            .throwIfFound()
+            .throwIfFound('Room name is already in use')
             .executeOne();
 
         /**
@@ -196,7 +196,7 @@ class RoomService {
             await model
                 .find()
                 .where('name', body.name)
-                .throwIfFound()
+                .throwIfFound('Room name is already in use')
                 .executeOne();
         } else body.name = room.name;
         
