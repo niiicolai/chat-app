@@ -103,7 +103,7 @@ class ChannelService {
         return await model
             .find({ page, limit })
             .where('room_uuid', room_uuid)
-            .orderBy('channel.created_at DESC')
+            .orderBy(`${model.mysql_table}.created_at DESC`)
             .dto(dto)
             .meta()
             .execute();

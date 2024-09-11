@@ -107,7 +107,7 @@ class ChannelWebhookService {
             .find({ page, limit })
             .include(ChannelService.model, 'uuid', 'channel_uuid')
             .where('room_uuid', room_uuid)
-            .orderBy('channelwebhook.created_at DESC')
+            .orderBy(`${model.mysql_table}.created_at DESC`)
             .dto(dto)
             .meta()
             .execute();

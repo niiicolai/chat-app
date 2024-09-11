@@ -116,7 +116,7 @@ class ChannelMessageService {
             .where('channel_uuid', channel_uuid)
             .include(UserService.model, 'uuid', 'user_uuid')
             .include(MessageUploadService.model, 'channel_message_uuid')
-            .orderBy('channelmessage.created_at DESC')
+            .orderBy(`${model.mysql_table}.created_at DESC`)
             .dto(dto)
             .meta()
             .execute();

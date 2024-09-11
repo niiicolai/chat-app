@@ -140,6 +140,7 @@ class MessageUploadService  {
             .include(ChannelMessageService.model, 'uuid', 'channel_message_uuid')
             .include(ChannelService.model, 'uuid', 'channel_uuid', ChannelMessageService.model.mysql_table)
             .include(UserService.model, 'uuid', 'user_uuid', ChannelMessageService.model.mysql_table)
+            .orderBy(`${model.mysql_table}.created_at DESC`)
             .dto(dto)
             .meta()
             .execute();
