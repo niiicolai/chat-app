@@ -4,7 +4,7 @@ import BaseModel from './base_model.js';
 const model = new BaseModel({
     singularName: 'channel_type',
     pluralName: 'channel_types',
-    mysql_table: 'channeltype',
+    mysql_table: 'ChannelType',
     pk: 'name',
     fields: [
     ],

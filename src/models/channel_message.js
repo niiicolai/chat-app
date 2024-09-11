@@ -4,7 +4,7 @@ import BaseModel from './base_model.js';
 const model = new BaseModel({
     singularName: 'channel_message',
     pluralName: 'channel_messages',
-    mysql_table: 'channelmessage',
+    mysql_table: 'ChannelMessage',
     pk: 'uuid',
     fields: [
         'body',

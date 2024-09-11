@@ -4,7 +4,7 @@ import BaseModel from './base_model.js';
 const model = new BaseModel({
     singularName: 'message_upload',
     pluralName: 'message_uploads',
-    mysql_table: 'messageupload',
+    mysql_table: 'MessageUpload',
     pk: 'uuid',
     fields: [
         'src',

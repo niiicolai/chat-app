@@ -101,7 +101,7 @@ class UserRoomService {
                 options.where(data.key, data.value, data.operator); 
             })
             .where('room_uuid', room_uuid)
-            .orderBy('userroom.created_at DESC')
+            .orderBy(`${model.mysql_table}.created_at DESC`)
             .dto(dto)
             .meta()
             .execute();

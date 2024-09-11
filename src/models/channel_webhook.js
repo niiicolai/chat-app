@@ -4,7 +4,7 @@ import BaseModel from './base_model.js';
 const model = new BaseModel({
     singularName: 'channel_webhook',
     pluralName: 'channel_webhooks',
-    mysql_table: 'channelwebhook',
+    mysql_table: 'ChannelWebhook',
     pk: 'uuid',
     fields: [
         'channel_uuid',

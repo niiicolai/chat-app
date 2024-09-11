@@ -135,7 +135,7 @@ class ChannelWebhookService {
             .throwIfNotPresent(body, 'Resource body is required')
             .throwIfNotPresent(body.message, 'message is required')
             .find()
-            .where('channelwebhook.uuid', pk)
+            .where(`${model.mysql_table}.${model.pk}`, pk)
             .include(ChannelService.model, 'uuid', 'channel_uuid')
             .throwIfNotFound('Channel webhook not found')
             .executeOne();

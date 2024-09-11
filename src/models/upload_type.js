@@ -4,7 +4,7 @@ import BaseModel from './base_model.js';
 const model = new BaseModel({
     singularName: 'upload_type',
     pluralName: 'upload_types',
-    mysql_table: 'uploadtype',
+    mysql_table: 'UploadType',
     pk: 'name',
     fields: [
     ],

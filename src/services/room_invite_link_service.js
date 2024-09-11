@@ -80,7 +80,7 @@ class RoomInviteLinkService {
             .find({page, limit })
             .where('room_uuid', room_uuid)
             .include(RoomService.model, 'uuid', 'room_uuid')
-            .orderBy('roominvitelink.created_at DESC')
+            .orderBy(`${model.mysql_table}.created_at DESC`)
             .dto(dto)
             .meta()
             .execute();

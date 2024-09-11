@@ -4,7 +4,7 @@ import BaseModel from './base_model.js';
 const model = new BaseModel({
     singularName: 'room_role',
     pluralName: 'room_roles',
-    mysql_table: 'roomrole',
+    mysql_table: 'RoomRole',
     pk: 'name',
     fields: [
     ],

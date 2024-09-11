@@ -4,7 +4,7 @@ import BaseModel from './base_model.js';
 const model = new BaseModel({
     singularName: 'room_invite_link',
     pluralName: 'room_invite_links',
-    mysql_table: 'roominvitelink',
+    mysql_table: 'RoomInvitelink',
     pk: 'uuid',
     fields: [
         'room_uuid',

@@ -63,8 +63,8 @@ CREATE TABLE RoomSetting (
     room_uuid VARCHAR(36) NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (room_uuid) REFERENCES room(uuid),
-    FOREIGN KEY (join_channel_uuid) REFERENCES channel(uuid)
+    FOREIGN KEY (room_uuid) REFERENCES Room(uuid),
+    FOREIGN KEY (join_channel_uuid) REFERENCES Channel(uuid)
 );
 CREATE TABLE User (
     uuid VARCHAR(36) PRIMARY KEY,
@@ -135,10 +135,10 @@ DROP TRIGGER IF EXISTS room_settings_after_insert_room;
 -- Trigger to insert a new row into roomsetting when a new room is created
 DELIMITER //
 CREATE TRIGGER room_settings_after_insert_room
-AFTER INSERT ON room
+AFTER INSERT ON Room
 FOR EACH ROW
 BEGIN
-    INSERT INTO roomsetting
+    INSERT INTO RoomSetting
     (uuid, total_upload_bytes, join_message, rules_text, max_channels, max_members, room_uuid, upload_bytes)
     VALUES
     (UUID(),                  
@@ -157,13 +157,13 @@ DROP TRIGGER IF EXISTS room_before_delete;
 -- Trigger to delete all related rows when a room is deleted
 DELIMITER //
 CREATE TRIGGER room_before_delete
-BEFORE DELETE ON room
+BEFORE DELETE ON Room
 FOR EACH ROW
 BEGIN
-    DELETE FROM roomsetting WHERE room_uuid = OLD.uuid;
-    DELETE FROM roominvitelink WHERE room_uuid = OLD.uuid;
-    DELETE FROM userroom WHERE room_uuid = OLD.uuid;
-    DELETE FROM channel WHERE room_uuid = OLD.uuid;
+    DELETE FROM RoomSetting WHERE room_uuid = OLD.uuid;
+    DELETE FROM RoomInviteLink WHERE room_uuid = OLD.uuid;
+    DELETE FROM UserRoom WHERE room_uuid = OLD.uuid;
+    DELETE FROM Channel WHERE room_uuid = OLD.uuid;
 END //
 DELIMITER ;
 
@@ -171,12 +171,12 @@ DROP TRIGGER IF EXISTS channel_before_delete;
 -- Trigger to delete all related rows when a channel is deleted
 DELIMITER //
 CREATE TRIGGER channel_before_delete
-BEFORE DELETE ON channel
+BEFORE DELETE ON Channel
 FOR EACH ROW
 BEGIN
-    DELETE FROM channelmessage WHERE channel_uuid = OLD.uuid;
-    DELETE FROM channelwebhook WHERE channel_uuid = OLD.uuid;
-    UPDATE roomsetting SET join_channel_uuid = NULL WHERE join_channel_uuid = OLD.uuid;
+    DELETE FROM ChannelMessage WHERE channel_uuid = OLD.uuid;
+    DELETE FROM ChannelWebhook WHERE channel_uuid = OLD.uuid;
+    UPDATE RoomSetting SET join_channel_uuid = NULL WHERE join_channel_uuid = OLD.uuid;
 END //
 DELIMITER ;
 
@@ -184,10 +184,10 @@ DROP TRIGGER IF EXISTS channel_message_before_delete;
 -- Trigger to delete all related rows when a channel message is deleted
 DELIMITER //
 CREATE TRIGGER channel_message_before_delete
-BEFORE DELETE ON channelmessage
+BEFORE DELETE ON ChannelMessage
 FOR EACH ROW
 BEGIN
-    DELETE FROM messageupload WHERE channel_message_uuid = OLD.uuid;
+    DELETE FROM MessageUpload WHERE channel_message_uuid = OLD.uuid;
 END //
 DELIMITER ;
 
@@ -206,11 +206,11 @@ BEGIN
     DECLARE upload_bytes BIGINT;
     
     SELECT SUM(size), total_upload_bytes INTO upload_bytes, total_bytes
-    FROM roomsetting
-		LEFT JOIN channel ON channel.room_uuid = roomsetting.room_uuid
-        LEFT JOIN channelmessage ON channelmessage.channel_uuid = channel.uuid
-        LEFT JOIN messageupload ON messageupload.channel_message_uuid = channelmessage.uuid
-    WHERE roomsetting.room_uuid = room_uuid_input
+    FROM RoomSetting
+		LEFT JOIN Channel ON channel.room_uuid = roomsetting.room_uuid
+        LEFT JOIN ChannelMessage ON channelmessage.channel_uuid = channel.uuid
+        LEFT JOIN MessageUpload ON messageupload.channel_message_uuid = channelmessage.uuid
+    WHERE RoomSetting.room_uuid = room_uuid_input
     GROUP BY total_upload_bytes;
     
     SET result = ((upload_bytes + new_upload_bytes) > total_bytes);
@@ -276,14 +276,14 @@ BEGIN
     ELSE
         -- Select join message and join channel UUID from room setting
         SELECT join_message, join_channel_uuid INTO join_message, join_channel_uuid
-        FROM roomsetting
+        FROM RoomSetting
         WHERE room_uuid = room_uuid_input;
     END IF;
 
     -- If no join_channel_uuid, select the first channel in the room
     IF join_channel_uuid IS NULL THEN
         SELECT uuid INTO join_channel_uuid
-        FROM channel
+        FROM Channel
         WHERE room_uuid = room_uuid_input
         LIMIT 1;
     END IF;
@@ -312,25 +312,25 @@ DROP VIEW IF EXISTS room_view;
 -- View to get all rooms with their settings
 CREATE VIEW room_view AS
 SELECT r.uuid, r.name, r.description, r.room_category_name, r.avatar_src, rs.total_upload_bytes, rs.upload_bytes, rs.join_channel_uuid, rs.join_message, rs.rules_text, rs.max_channels, rs.max_members
-FROM room r
-LEFT JOIN roomsetting rs ON r.uuid = rs.room_uuid;
+FROM Room r
+LEFT JOIN RoomSetting rs ON r.uuid = rs.room_uuid;
 
 DROP VIEW IF EXISTS channel_view;
 -- View to get all channels with their messages
 CREATE VIEW channel_view AS
 SELECT c.uuid, c.name, c.description, c.room_uuid, c.channel_type_name, cm.uuid AS message_uuid, cm.body, cm.created_by_system, cm.user_uuid
-FROM channel c
-LEFT JOIN channelmessage cm ON c.uuid = cm.channel_uuid
-LEFT JOIN messageupload mu ON cm.uuid = mu.channel_message_uuid
-LEFT JOIN user u ON cm.user_uuid = u.uuid;
+FROM Channel c
+LEFT JOIN ChannelMessage cm ON c.uuid = cm.channel_uuid
+LEFT JOIN MessageUpload mu ON cm.uuid = mu.channel_message_uuid
+LEFT JOIN User u ON cm.user_uuid = u.uuid;
 
 DROP VIEW IF EXISTS message_view;
 -- View to get all messages with their uploads and their users
 CREATE VIEW message_view AS
 SELECT cm.uuid, cm.body, cm.created_by_system, cm.channel_uuid, cm.user_uuid, mu.uuid AS upload_uuid, mu.src, mu.upload_type_name, mu.size
-FROM channelmessage cm
-LEFT JOIN messageupload mu ON cm.uuid = mu.channel_message_uuid
-LEFT JOIN user u ON cm.user_uuid = u.uuid;
+FROM ChannelMessage cm
+LEFT JOIN MessageUpload mu ON cm.uuid = mu.channel_message_uuid
+LEFT JOIN User u ON cm.user_uuid = u.uuid;
 
 -- ### TEST DATA ###
 

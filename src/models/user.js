@@ -17,7 +17,7 @@ class UserModel extends BaseModel {
         super({
             singularName: 'user',
             pluralName: 'users',
-            mysql_table: 'user',
+            mysql_table: 'User',
             pk: 'uuid',
             fields: [
                 'username',
