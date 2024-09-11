@@ -9,7 +9,7 @@ services:
   mysql:
     image: mysql
     environment:
-      - MYSQL_ROOT_PASSWORD=secret
+      - MYSQL_ROOT_PASSWORD=password
       - MYSQL_DATABASE=chat
     ports:
       - "3306:3306"
