@@ -84,6 +84,51 @@ export default class MysqlAdapter extends BaseAdapter {
     }
 
     /**
+     * @function func
+     * @description Executes a db function
+     * @param {Object} options
+     * @returns {Promise}
+     */
+    async func(options) {
+        if (!options) throw new Error('func: Options are required');
+        if (!options.func) throw new Error('func: options.func is required');
+        if (typeof options.args !== 'object') 
+            throw new Error('func: options.arguments is required');
+
+        return await this.builder
+            .setOptions(options)
+            .func()
+            .execute();
+    }
+
+    /**
+     * @function procedure
+     * @description Executes a db procedure
+     * @param {Object} options
+     * @returns {Promise}
+     */
+    async procedure(options) {
+        if (!options) throw new Error('procedure: Options are required');
+        if (!options.procedure) throw new Error('procedure: options.procedure is required');
+        if (typeof options.args !== 'object') 
+            throw new Error('procedure: options.arguments is required');
+
+        await this.builder
+            .setOptions(options)
+            .callProcedure()
+            .execute();
+
+        const [ rows ] =  await this.builder
+            .setOptions(options)
+            .selectProcedure()
+            .execute();
+            
+        if (rows.length === 0) return null;
+
+        return rows[0].result;
+    }
+
+    /**
      * @function find
      * @description Finds rows
      * @param {Object} options

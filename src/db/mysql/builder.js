@@ -114,6 +114,34 @@ export default class Builder {
         return this;
     }
 
+    func() {
+        if (!this.options.func) throw new Error('func: options.function is required');
+        if (typeof this.options.args !== 'object') throw new Error('func: options.arguments is required');
+
+        const args = Object.keys(this.options.args).map(a => '?').join(', ');
+        this.req.query = `SELECT ${this.options.func}(${args}) AS result FROM ${this.table}`;
+        this.req.values = Object.values(this.options.args);
+        return this;
+    }
+
+    callProcedure() {
+        if (!this.options.procedure) throw new Error('procedure: options.procedure is required');
+        if (typeof this.options.args !== 'object') throw new Error('procedure: options.arguments is required');
+
+        const args = Object.keys(this.options.args).map(a => '?').join(', ');
+        this.req.query = `CALL ${this.options.procedure}(${args}, @result);`;
+        this.req.values = Object.values(this.options.args);
+        return this;
+    }
+
+    selectProcedure() {
+        if (!this.options.procedure) throw new Error('procedure: options.procedure is required');
+        if (typeof this.options.args !== 'object') throw new Error('procedure: options.arguments is required');
+        this.req.query = `SELECT @result as result;`;
+        this.req.values = [];
+        return this;
+    }
+
     where() {
         const where = this.options.where || {};
         const keys = Object.keys(where);

@@ -142,17 +142,33 @@ class RoomService {
          * (in a transaction, so that if one fails, none are created)
          */
         await model.defineTransaction(async (t) => {
-            await model.create({ body }).transaction(t).execute();
-            await UserRoomService.create({
-                body: { uuid: uuidv4(), room_uuid: body.uuid, user_uuid: user.sub, room_role_name: 'Admin' },
-                user
-            }, t);
-            await RoomSettingService.create({
-                body: { uuid: uuidv4(), room_uuid: body.uuid },
-                user
-            }, t);
+            await model
+                .procedure('create_room_proc', {
+                    user_uuid_input: user.sub,
+                    room_uuid_input: body.uuid,
+                    room_name_input: body.name,
+                    room_description_input: body.description,
+                    room_category_name_input: body.room_category_name,
+                    room_role_name_input: 'Admin',
+                    room_avatar_src_input: body.avatar_src
+                })
+                .transaction(t)
+                .execute(t);
+            /*
+                # Part of the stored procedure
+                await UserRoomService.create({
+                    body: { uuid: uuidv4(), room_uuid: body.uuid, user_uuid: user.sub, room_role_name: 'Admin' },
+                    user
+                }, t);
+                
+                # Added as a trigger in the database
+                await RoomSettingService.create({
+                    body: { uuid: uuidv4(), room_uuid: body.uuid },
+                    user
+                }, t);
+            */
         }, transaction);
-        
+
         /**
          * Return the room that was created.
          */
@@ -274,10 +290,13 @@ class RoomService {
          * And all user rooms for the room.
          */
         await model.defineTransaction(async (t) => {
-            await RoomSettingService.destroyAll({ room_uuid: pk }, t);
-            await RoomInviteLinkService.destroyAll({ room_uuid: pk }, t);
-            await UserRoomService.destroyAll({ room_uuid: pk }, t);
-            await ChannelService.destroyAll({ room_uuid: pk }, t);
+            /*
+                # Added as a trigger in the database
+                await RoomSettingService.destroyAll({ room_uuid: pk }, t);
+                await RoomInviteLinkService.destroyAll({ room_uuid: pk }, t);
+                await UserRoomService.destroyAll({ room_uuid: pk }, t);
+                await ChannelService.destroyAll({ room_uuid: pk }, t);
+            */
             await model
                 .destroy()
                 .where(model.pk, pk)

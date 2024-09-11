@@ -1,4 +1,4 @@
-import BaseController from './_base_controller.js';
+import BaseController from '../base_controller.js';
 import crudService from '../../services/user_service.js';
 import multer from 'multer';
 

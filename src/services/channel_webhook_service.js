@@ -1,16 +1,17 @@
 import ControllerError from '../errors/controller_error.js';
-import ChannelMessageService from './channel_message_service.js';
-import RoomSettingService from './room_setting_service.js';
 import RoomPermissionService from './room_permission_service.js';
-import model from '../models/channel.js';
-import dto from '../dtos/channel.js';
+import ChannelService from './channel_service.js';
+import ChannelMessageService from './channel_message_service.js';
+import model from '../models/channel_webhook.js';
+import dto from '../dtos/channel_webhook.js';
+import { v4 as uuidv4 } from 'uuid';
 
 /**
- * @class ChannelService
- * @description service class for channels.
- * @exports ChannelService
+ * @class ChannelWebhookService
+ * @description service class for channel webhook
+ * @exports ChannelWebhookService
  */
-class ChannelService {
+class ChannelWebhookService {
 
     /**
      * @constructor
@@ -31,7 +32,7 @@ class ChannelService {
 
     /**
      * @function findOne
-     * @description Find a channel by primary key and user.
+     * @description Find a channel webhook by primary key and user.
      * @param {Object} options
      * @param {String} options.pk
      * @param {Object} options.user
@@ -49,27 +50,29 @@ class ChannelService {
             await model.throwIfNotPresent(user, 'user is required')
 
         /**
-         * Ensure the user and channel are in the room
-         * where the channel is being retrieved.
+         * Find the channel webhook by primary key.
          */
-        if (!skipPermissionCheck && !await RoomPermissionService.isUserAndChannelInRoom({
-            channel_uuid: pk, user, room_role_name: null
-        })) throw new ControllerError(403, 'Forbidden');
-
-        /**
-         * Find the channel and return it.
-         */
-        return await model
+        const channelWebhook = await model
             .find()
             .where(model.pk, pk)
             .throwIfNotFound()
             .dto(dto)
             .executeOne();
+
+        /**
+         * Ensure the user and channel are 'admin in the room
+         * where the channel is being retrieved.
+         */
+        if (!skipPermissionCheck && !await RoomPermissionService.isUserAndChannelInRoom({
+            channel_uuid: channelWebhook.channel_uuid, user, room_role_name: 'Admin'
+        })) throw new ControllerError(403, 'Forbidden');
+
+        return channelWebhook;
     }
 
     /**
      * @function findAll
-     * @description Find all channels by room_uuid and user.
+     * @description Find all channel webhooks by room_uuid and user.
      * @param {Object} options
      * @param {Number} options.page
      * @param {Number} options.limit
@@ -98,20 +101,68 @@ class ChannelService {
         })) throw new ControllerError(403, 'Forbidden');
 
         /**
-         * Find all channels in the room and return them.
+         * Find all channel webhooks in the room and return them.
          */
         return await model
             .find({ page, limit })
+            .include(ChannelService.model, 'uuid', 'channel_uuid')
             .where('room_uuid', room_uuid)
-            .orderBy('channel.created_at DESC')
+            .orderBy('channelwebhook.created_at DESC')
             .dto(dto)
             .meta()
             .execute();
     }
 
     /**
+     * @function event
+     * @description Executed when a channel webhook event is triggered.
+     * @param {Object} options
+     * @param {String} options.pk
+     * @param {Object} options.body
+     * @param {Object} options.user
+     * @param {Object} transaction
+     * @returns {Promise<Object>}
+     */
+    async event(options = { pk: null, body: null }, transaction) {
+        const { pk, body } = options;
+
+        /**
+         * Ensure the necessary fields are present
+         * and that the channel webhook exist.
+         */
+        const webhook = await model
+            .throwIfNotPresent(pk, 'Primary key value is required (pk)')
+            .throwIfNotPresent(body, 'Resource body is required')
+            .throwIfNotPresent(body.message, 'message is required')
+            .find()
+            .where('channelwebhook.uuid', pk)
+            .include(ChannelService.model, 'uuid', 'channel_uuid')
+            .throwIfNotFound('Channel webhook not found')
+            .executeOne();
+
+
+        /**
+         * Create the channel message.
+         */
+        await ChannelMessageService.create({
+            body: {
+                uuid: uuidv4(),
+                channel_uuid: webhook.channel_uuid,
+                body: body.message,
+                user_uuid: null
+            },
+            user: null
+        }, transaction, 1, true);
+
+        /**
+         * Return the channel webhook that was created.
+         */
+        return await this.findOne({ pk, user: null }, true);
+    }
+
+    /**
      * @function create
-     * @description Create a channel.
+     * @description Create a channel webhook.
      * @param {Object} options
      * @param {Object} options.body
      * @param {Object} options.user
@@ -123,52 +174,36 @@ class ChannelService {
 
         /**
          * Ensure the necessary fields are present
-         * and that the channel does not already exist.
+         * and that the channel webhook does not already exist.
          */
         await model
             .throwIfNotPresent(body, 'Resource body is required')
-            .throwIfNotPresent(body.name, 'name is required')
-            .throwIfNotPresent(body.description, 'description is required')
-            .throwIfNotPresent(body.room_uuid, 'room_uuid is required')
-            .throwIfNotPresent(body.channel_type_name, 'channel_type_name is required')
+            .throwIfNotPresent(body.channel_uuid, 'channel_uuid is required')
             .throwIfNotPresent(body.uuid, 'uuid is required')
             .throwIfNotPresent(user, 'User is required')
             .find()
             .where('uuid', body.uuid)
-            .throwIfFound('A channel with the same uuid already exists')
+            .throwIfFound('A channel webhook with the same uuid already exists')
             .executeOne();
 
-        /**
-         * Ensure the channel name and type are unique in the room.
-         */
-        await this.model
+        await model
             .find()
-            .where('name', body.name)
-            .where('channel_type_name', body.channel_type_name)
-            .where('room_uuid', body.room_uuid)
-            .throwIfFound('A channel with the same name and type already exists')
+            .where('channel_uuid', body.channel_uuid)
+            .throwIfFound('The channel already has a webhook')
             .executeOne();
 
         /**
          * Ensure the user is an admin in the room
          * before creating the channel.
          */
-        if (!await RoomPermissionService.isUserInRoom({
-            room_uuid: body.room_uuid,
+        if (!await RoomPermissionService.isUserAndChannelInRoom({
+            channel_uuid: body.channel_uuid,
             user,
             room_role_name: 'Admin'
         })) throw new ControllerError(403, 'Forbidden');
 
         /**
-         * Get the room setting and count the channels in the room.
-         * And ensure the channel limit has not been reached.
-         */
-        const roomSetting = await RoomSettingService.findOne({ room_uuid: body.room_uuid });
-        const channelsCount = await model.count().where('room_uuid', body.room_uuid).execute();
-        if (channelsCount >= roomSetting.max_channels) throw new ControllerError(400, 'Room channel limit reached');
-
-        /**
-         * Create the channel.
+         * Create the channel webhook.
          */
         await model
             .create({ body })
@@ -176,17 +211,18 @@ class ChannelService {
             .execute();
 
         /**
-         * Return the channel that was created.
+         * Return the channel webhook that was created.
          */
         return await this.findOne({ pk: body.uuid, user });
     }
 
     /**
      * @function update
-     * @description Update a channel.
+     * @description Update a channel webhook.
      * @param {Object} options
      * @param {String} options.pk
      * @param {Object} options.body
+     * @param {Object} options.body.channel_uuid
      * @param {Object} options.user
      * @param {Object} transaction
      * @returns {Promise}
@@ -195,12 +231,13 @@ class ChannelService {
         const { pk, body, user } = options;
 
         /**
-         * Get the channel to be updated
+         * Get the channel webhook to be updated
          * and ensure the necessary fields are present.
          */
-        const channel = await model
+        await model
             .throwIfNotPresent(pk, 'Primary key value is required (pk)')
             .throwIfNotPresent(body, 'Resource body is required')
+            .throwIfNotPresent(body.channel_uuid, 'channel_uuid is required')
             .throwIfNotPresent(user, 'User is required')
             .find()
             .where(model.pk, pk)
@@ -208,18 +245,24 @@ class ChannelService {
             .dto(dto)
             .executeOne();
 
+        await model
+            .find()
+            .where('channel_uuid', body.channel_uuid)
+            .throwIfFound('The channel already has a webhook')
+            .executeOne();
+
         /**
-         * Check if the user has the right to update the channel.
+         * Check if the user has the right to update the channel webhook.
          * (Must be an admin of the room).
          */
-        if (!await RoomPermissionService.isUserInRoom({
-            room_uuid: channel.room_uuid,
+        if (!await RoomPermissionService.isUserAndChannelInRoom({
+            channel_uuid: body.channel_uuid,
             user,
             room_role_name: 'Admin'
         })) throw new ControllerError(403, 'Forbidden');
 
         /**
-         * Update the channel.
+         * Update the channel webhook.
          */
         await model
             .update({ body })
@@ -230,7 +273,7 @@ class ChannelService {
 
     /**
      * @function destroy
-     * @description Destroy a channel.
+     * @description Destroy a channel webhook.
      * @param {Object} options
      * @param {String} options.pk
      * @param {Object} options.user
@@ -241,9 +284,9 @@ class ChannelService {
         const { pk, user } = options;
 
         /**
-         * Get the channel to be destroyed.
+         * Get the channel webhook to be destroyed.
          */
-        const channel = await model
+        const channelWebhook = await model
             .throwIfNotPresent(pk, 'Primary key value is required (pk)')
             .throwIfNotPresent(user, 'User is required')
             .find()
@@ -256,58 +299,23 @@ class ChannelService {
          * Check if the user has the right to destroy the channel.
          * (Must be an admin of the room).
          */
-        if (!await RoomPermissionService.isUserInRoom({
-            room_uuid: channel.room_uuid,
+        if (!await RoomPermissionService.isUserAndChannelInRoom({
+            channel_uuid: channelWebhook.channel_uuid,
             user,
             room_role_name: 'Admin'
         })) throw new ControllerError(403, 'Forbidden');
 
         /**
-         * Destroy the channel and all its messages.
-         * (All in a transaction, so if something goes wrong, the changes are rolled back).
+         * Destroy the channel webhook
          */
-        await model.defineTransaction(async (t) => {
-            /*
-                # Added as a trigger in the database
-                await ChannelMessageService.destroyAllByChannelUuid({ channel_uuid: pk }, t);
-                await RoomSettingService.clearJoinChannel({ join_channel_uuid: pk }, t);
-            */
-            
-            await model
-                .destroy()
-                .where(model.pk, pk)
-                .transaction(t)
-                .execute();
-        }, transaction);
-    }
-
-    /**
-     * @function destroyAll
-     * @description Destroy all channels for a room.
-     * @param {Object} options
-     * @param {String} options.room_uuid
-     * @param {Object} transaction
-     * @returns {Promise<void>}
-     */
-    async destroyAll(options = { room_uuid: null }, transaction) {
-        const { room_uuid } = options;
-        if (!room_uuid) throw new ControllerError(400, 'room_uuid is required');
-
-        await model.defineTransaction(async (t) => {
-            /*
-                # Added as a trigger in the database
-                await ChannelMessageService.destroyAllByChannelUuid({ channel_uuid: pk }, t);
-            */
-           
-            await model
-                .destroy()
-                .where('room_uuid', room_uuid)
-                .transaction(t)
-                .execute();
-        }, transaction);
+        await model
+            .destroy()
+            .where(model.pk, pk)
+            .transaction(transaction)
+            .execute();
     }
 }
 
-const service = new ChannelService();
+const service = new ChannelWebhookService();
 
 export default service;

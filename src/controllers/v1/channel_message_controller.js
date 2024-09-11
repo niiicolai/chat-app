@@ -1,5 +1,5 @@
 import crudService from '../../services/channel_message_service.js';
-import UserFileResourceController from './_user_file_resource_controller.js';
+import UserFileResourceController from '../user_file_resource_controller.js';
 
 const controller = new UserFileResourceController({ crudService });
 

@@ -1,6 +1,6 @@
 import crudService from '../../services/room_invite_link_service.js';
 import joinRoomService from '../../services/join_room_service.js';
-import UserResourceController from './_user_resource_controller.js';
+import UserResourceController from '../user_resource_controller.js';
 
 const controller = new UserResourceController({ crudService });
 

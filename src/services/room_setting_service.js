@@ -62,7 +62,7 @@ class RoomSettingService {
          * Convert the byte size to MB
          * and convert the upload size to MB
          */
-        const convertBytesToMb = (bytes) => bytes / 1000000;
+        const convertBytesToMb = (bytes) => bytes / 1024 / 1024;
         const uploadSizeMb = convertBytesToMb(roomSetting.upload_bytes);
         const sizeMb = convertBytesToMb(byteSize);
 
@@ -72,15 +72,16 @@ class RoomSettingService {
         if (byteSize > roomSetting.upload_bytes)
             throw new ControllerError(400, `File size is too large. Maximum size is ${uploadSizeMb} MB. The file size is ${sizeMb} MB`);
 
+        
         /**
          * Check if the room has used too much of the total upload limit
          */
-        const skipPermissionCheck = true;
-        const sum = await MessageUploadService.sumByRoomUuid({ room_uuid, field: 'size' }, skipPermissionCheck); 
-        const totalUploadSizeMb = convertBytesToMb(roomSetting.total_upload_bytes);   
-        const newTotalUploadSizeMb = convertBytesToMb(sum + byteSize);
-        if ((sum + byteSize) > roomSetting.total_upload_bytes)
-        throw new ControllerError(400, `The room has used ${sum / 1000000} MB of the total upload limit of ${totalUploadSizeMb} MB. The file size is ${sizeMb} MB and the new total would be ${newTotalUploadSizeMb} MB`);
+        const totalUploadSizeMb = convertBytesToMb(roomSetting.total_upload_bytes);
+        const totalExceeds = await model
+            .procedure('check_upload_exceeds_proc', { byteSize, room_uuid })
+            .execute();
+        if (totalExceeds === 1)
+            throw new ControllerError(400, `The total upload size would or has exceeded the limit of ${totalUploadSizeMb} MB`);
 
 
         /**

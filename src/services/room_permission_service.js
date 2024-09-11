@@ -17,9 +17,10 @@ class RoomPermissionService {
      * @param {String} options.room_uuid
      * @param {Object} options.user
      * @param {String} options.room_role_name
+     * @param {Array} options.room_role_names
      * @returns {Promise}
      */
-    async isUserInRoom(options = { room_uuid: null, user: null, room_role_name: null }) {
+    async isUserInRoom(options = { room_uuid: null, user: null, room_role_name: null, room_role_names: null }) {
         const userRoom = await userRoomModel
             .throwIfNotPresent(options.room_uuid, 'room_uuid is required')
             .throwIfNotPresent(options.user.sub, 'user_uuid is required')
@@ -28,22 +29,30 @@ class RoomPermissionService {
             .where('room_uuid', options.room_uuid)
             .dto(userRoomDto)
             .executeOne();
+        
+        if (options.room_role_name) {
+            return userRoom && userRoom.room_role_name == options.room_role_name;
+        }
+        
+        if (options.room_role_names) {
+            console.log('options.room_role_names', options.room_role_names);
+            return userRoom && options.room_role_names.includes(userRoom.room_role_name);
+        }
 
-        return userRoom && (options.room_role_name 
-            ? userRoom.room_role_name == options.room_role_name 
-            : true
-        );
+        return userRoom ? true : false;
     }
 
     /**
      * @function isChannelInRoom
      * @description Check if a channel is in a room
      * @param {Object} options
-     * @param {String} options.room_uuid
+     * @param {String} options.user
      * @param {String} options.channel_uuid
+     * @param {String} options.room_role_name
+     * @param {Array} options.room_role_names
      * @returns {Promise}
      */    
-    async isUserAndChannelInRoom(options = { channel_uuid: null, user: null, room_role_name: null }) {
+    async isUserAndChannelInRoom(options = { channel_uuid: null, user: null, room_role_name: null, room_role_names: null }) {
         const channel = await channelModel
             .throwIfNotPresent(options.channel_uuid, 'channel_uuid is required')
             .find()
@@ -51,10 +60,11 @@ class RoomPermissionService {
             .dto(channelDto)
             .executeOne();
 
-        return this.isUserInRoom({
+        return await this.isUserInRoom({
             room_uuid: channel.room_uuid,
             user: options.user,
-            room_role_name: options.room_role_name
+            room_role_name: options.room_role_name,
+            room_role_names: options.room_role_names
         });
     }
 }

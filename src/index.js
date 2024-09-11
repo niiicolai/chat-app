@@ -8,6 +8,7 @@ import expressOasGenerator from 'express-oas-generator'
 import ChannelController from './controllers/v1/channel_controller.js'
 import ChannelMessageController from './controllers/v1/channel_message_controller.js'
 import ChannelTypeController from './controllers/v1/channel_type_controller.js'
+import ChannelWebhookController from './controllers/v1/channel_webhook_controller.js'
 import MessageUploadController from './controllers/v1/message_upload_controller.js'
 import UploadTypeController from './controllers/v1/upload_type_controller.js'
 import RoomInviteLinkController from './controllers/v1/room_invite_link_controller.js'
@@ -30,6 +31,7 @@ app.use(express.urlencoded({ extended: true }))
 app.use(ChannelController.router)
 app.use(ChannelMessageController.router)
 app.use(ChannelTypeController.router)
+app.use(ChannelWebhookController.router)
 app.use(MessageUploadController.router)
 app.use(UploadTypeController.router)
 app.use(RoomInviteLinkController.router)

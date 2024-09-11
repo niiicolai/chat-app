@@ -262,10 +262,10 @@ class ChannelMessageService {
          * channel message or an admin of the room.
          */
         const isOwner = user.sub === channelMessage.user_uuid;
-        const isAdmin = await RoomPermissionService.isUserAndChannelInRoom({ 
-            channel_uuid: channelMessage.channel_uuid, user, room_role_name: 'Admin' 
+        const hasSpecialRole = await RoomPermissionService.isUserAndChannelInRoom({ 
+            channel_uuid: channelMessage.channel_uuid, user, room_role_names: ['Admin', 'Moderator']
         });
-        if (!isOwner && !isAdmin) throw new ControllerError(403, 'Forbidden');
+        if (!isOwner && !hasSpecialRole) throw new ControllerError(403, 'Forbidden');
 
         /**
          * Add the user_uuid and channel_uuid to the body
@@ -314,20 +314,20 @@ class ChannelMessageService {
          * channel message or an admin of the room.
          */
         const isOwner = user.sub === channelMessage.user_uuid;
-        const isAdmin = await RoomPermissionService.isUserAndChannelInRoom({ 
-            channel_uuid: channelMessage.channel_uuid, user, room_role_name: 'Admin' 
+        const hasSpecialRole = await RoomPermissionService.isUserAndChannelInRoom({ 
+            channel_uuid: channelMessage.channel_uuid, user, room_role_names: ['Admin', 'Moderator']
         });
-        if (!isOwner && !isAdmin) throw new ControllerError(403, 'Forbidden');
+        if (!isOwner && !hasSpecialRole) throw new ControllerError(403, 'Forbidden');
 
         
         /**
          * Destroy the channel message.
          */
         await model.defineTransaction(async (t) => {
-            /**
-             * Destroy all message uploads related to the channel.
-             */
-            await MessageUploadService.destroyAllByChannelMessageUuid({ channel_message_uuid: pk }, t);
+            /*
+                # Added as a trigger in the database
+                await MessageUploadService.destroyAllByChannelMessageUuid({ channel_message_uuid: pk }, t);
+            */
             await model
                 .destroy()
                 .where(model.pk, pk)
@@ -348,10 +348,10 @@ class ChannelMessageService {
         const { channel_uuid } = options;
 
         await model.defineTransaction(async (t) => {
-            /**
-             * Destroy all message uploads related to the channel.
-             */
-            await MessageUploadService.destroyAllByChannelUuid({ channel_uuid }, t);
+            /*
+                # Added as a trigger in the database
+                await MessageUploadService.destroyAllByChannelMessageUuid({ channel_message_uuid: pk }, t);
+            */
 
             /**
              * Destroy all channel messages related to the channel.

@@ -165,6 +165,22 @@ export default class BaseModel {
         return this.subMethods();
     }
 
+    func(name, args) {
+        if (!name) throw new Error('func: name is required');
+        if (typeof args !== 'object') throw new Error('func: args is required');
+
+        this.operation = { method: 'func', options: { func: name, args }, conditions: {} };
+        return this.subMethods();
+    }
+
+    procedure(name, args) {
+        if (!name) throw new Error('procedure: name is required');
+        if (typeof args !== 'object') throw new Error('procedure: args is required');
+
+        this.operation = { method: 'procedure', options: { procedure: name, args }, conditions: {} };
+        return this.subMethods();
+    }
+
     async execute(options={}) {        
         if (!this.operation) throw new Error('Operation is required');                
         let result = await this.adapter[this.operation.method]({ 

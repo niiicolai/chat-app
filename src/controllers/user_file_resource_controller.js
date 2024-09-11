@@ -1,4 +1,4 @@
-import UserResourceController from './_user_resource_controller.js';
+import UserResourceController from './user_resource_controller.js';
 import multer from 'multer';
 
 const upload = multer({

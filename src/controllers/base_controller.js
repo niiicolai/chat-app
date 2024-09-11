@@ -1,7 +1,7 @@
 
-import AuthMiddleware from '../../middlewares/auth_middleware.js';
-import LogMiddleware from '../../middlewares/log_middleware.js';
-import ControllerError from '../../errors/controller_error.js';
+import AuthMiddleware from '../middlewares/auth_middleware.js';
+import LogMiddleware from '../middlewares/log_middleware.js';
+import ControllerError from '../errors/controller_error.js';
 import express from 'express';
 
 /**

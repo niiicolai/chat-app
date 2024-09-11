@@ -1,4 +1,4 @@
-import UserResourceController from './_user_resource_controller.js';
+import UserResourceController from '../user_resource_controller.js';
 import crudService from '../../services/message_upload_service.js';
 
 const controller = new UserResourceController({ crudService });

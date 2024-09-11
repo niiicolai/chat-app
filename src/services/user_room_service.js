@@ -154,17 +154,24 @@ class UserRoomService {
             .find()
             .where(model.pk, pk)
             .throwIfNotFound()
+            .dto(dto)
             .executeOne();
 
         /**
          * Check if the user is in the room
          * as an admin before updating the user room.
          */
-        if (!RoomPermissionService.isUserInRoom({ 
+        if (!await RoomPermissionService.isUserInRoom({ 
             room_uuid: userRoom.room_uuid,
             user,
             room_role_name: 'Admin'
-        })) throw new ControllerError(404, 'User is not in the room');
+        })) throw new ControllerError(404, 'User is not admin in the room');
+
+        if (!body.room_role_name) {
+            body.room_role_name = userRoom.room_role_name;
+        }
+        body.room_uuid = userRoom.room_uuid;
+        body.user_uuid = userRoom.user_uuid;
 
         /**
          * Update the user room.
@@ -195,20 +202,24 @@ class UserRoomService {
          * (Must be an admin of the room).
          * TODO: Add a check to see if the user is the only admin in the room.
          */
-        console.log("TODO: Add a check to see if the user is the only admin in the room.");
-        if (userRoom.role_name === 'Admin') {
+        console.log("TODO: Add a check to see if the user is the only admin or moderator in the room.");
+        if (userRoom.room_role_name === 'Admin') {
             throw new ControllerError(400, 'Admin cannot be removed from the room');
+        }
+        if (userRoom.room_role_name === 'Moderator') {
+            throw new ControllerError(400, 'Moderator cannot be removed from the room');
         }
 
         /**
          * Check if the user is in the room
-         * as an admin before destroying the user room.
+         * as an admin or moderator before destroying the user room.
+         * Or if the user is the owner of the user room.
          */
-        if (!RoomPermissionService.isUserInRoom({ 
+        if (user.sub !== userRoom.user_uuid && !await RoomPermissionService.isUserInRoom({ 
             room_uuid: userRoom.room_uuid,
             user,
-            room_role_name: 'Admin'
-        })) throw new ControllerError(404, 'User is not in the room');
+            room_role_names: ['Admin', 'Moderator']
+        })) throw new ControllerError(404, 'User is not admin or moderator in the room or owner of the user room');
 
         /**
          * Destroy the user room.
