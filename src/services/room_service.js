@@ -83,7 +83,7 @@ class RoomService {
             .where('user_uuid', user.sub)
             .include(UserRoomService.model, 'room_uuid')
             .include(RoomSettingService.model, 'room_uuid')
-            .orderBy('room.created_at DESC')
+            .orderBy(`${model.mysql_table}.created_at DESC`)
             .dto(dto)
             .meta()
             .execute();
