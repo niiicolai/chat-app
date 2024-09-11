@@ -1,4 +1,4 @@
-import jwtService from './services/jwt_service.js';
+import jwtService from './jwt_service.js';
 import WebSocketServer from 'websocket';
 import http from 'http';
 

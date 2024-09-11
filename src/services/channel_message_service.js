@@ -7,7 +7,7 @@ import ChannelService from './channel_service.js';
 import UserService from './user_service.js';
 import RoomPermissionService from './room_permission_service.js';
 import MessageUploadService from './message_upload_service.js';
-import { broadcastChannel } from '../websocket.js';
+import { broadcastChannel } from './websocket_service.js';
 import { v4 as uuidv4 } from 'uuid';
 
 /**
