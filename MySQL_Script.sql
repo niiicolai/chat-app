@@ -354,7 +354,7 @@ INSERT INTO ChannelType (name, created_at, updated_at) VALUES
 SET @user_uuid = UUID();
 SET @user2_uuid = UUID();
 SET @user3_uuid = UUID();
-SET @room_uuid = UUID();
+SET @room_uuid = '4157b6a2-6856-4b54-aaa5-dc4f9a80062f';
 SET @ch_uuid = UUID();
 SET @msg_uuid = UUID();
 

@@ -1,0 +1,19 @@
+services:
+  chat_app:
+    image: chat_app:v1.0
+    environment:
+      - NODE_ENV=production
+    ports:
+      - "3000:3000"
+      - "3001:3001"
+  mysql:
+    image: mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=secret
+      - MYSQL_DATABASE=chat
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-volume:/var/lib/mysql
+volumes:
+  mysql-volume:
