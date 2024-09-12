@@ -20,11 +20,7 @@ const wsServer = new WebSocketServer.server({
 });
 
 function originIsAllowed(origin) {
-    if (process.env.NODE_ENV === 'development') {
-        return true;
-    }
-
-    return allowedOrigins.includes(origin);
+    return true;
 }
 
 const joinChannel = (client, json) => {

@@ -204,13 +204,13 @@ CREATE PROCEDURE check_upload_exceeds_proc(
 BEGIN
     DECLARE total_bytes BIGINT;
     DECLARE upload_bytes BIGINT;
-    
+
     SELECT SUM(size), total_upload_bytes INTO upload_bytes, total_bytes
-    FROM RoomSetting
-		LEFT JOIN Channel ON channel.room_uuid = roomsetting.room_uuid
-        LEFT JOIN ChannelMessage ON channelmessage.channel_uuid = channel.uuid
-        LEFT JOIN MessageUpload ON messageupload.channel_message_uuid = channelmessage.uuid
-    WHERE RoomSetting.room_uuid = room_uuid_input
+    FROM RoomSetting rs
+		LEFT JOIN Channel c ON c.room_uuid = rs.room_uuid
+        LEFT JOIN ChannelMessage cm ON cm.channel_uuid = c.uuid
+        LEFT JOIN MessageUpload mu ON mu.channel_message_uuid = cm.uuid
+    WHERE rs.room_uuid = room_uuid_input
     GROUP BY total_upload_bytes;
     
     SET result = ((upload_bytes + new_upload_bytes) > total_bytes);
