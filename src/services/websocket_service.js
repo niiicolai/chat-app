@@ -1,14 +1,17 @@
+import 'dotenv/config'
 import jwtService from './jwt_service.js';
 import WebSocketServer from 'websocket';
 import http from 'http';
+import https from 'https';
 
 const allowedOrigins = process.env.ALLOWED_ORIGINS.split(',');
 const port = process.env.WEBSOCKET_PORT || 3001;
-const server = http.createServer((request, response) => {
-    console.log((new Date()) + ' Received request for ' + request.url);
-    response.writeHead(404);
-    response.end();
-});
+const requestListeners = (req, res) => {
+    res.writeHead(404)
+    res.end()
+}
+
+const server = http.createServer(requestListeners);
 
 server.listen(port, () => {
     console.log((new Date()) + ` WebSocket Server is listening on port ${port}`);
@@ -79,7 +82,7 @@ wsServer.on('request', (request) => {
 export const broadcastChannel = (channel, message) => {
     wsServer.connections.forEach((connection) => {
         if (connection.userData.channel === channel) {
-            connection.sendUTF(JSON.stringify({ type: 'chat_message', message}));
+            connection.sendUTF(JSON.stringify({ type: 'chat_message', message }));
         }
     });
 };
