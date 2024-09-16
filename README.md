@@ -1,4 +1,4 @@
-# Features
+# Server Features
 - REST API
     - Error Handling [x]
     - Rollbar Error Logging [x]
@@ -79,8 +79,9 @@ npm test
 ```
 
 ## API Docs
-The application uses Swagger for API documentation. The documentation can be accessed via the following link after starting the application:
-http://localhost:3000/api-docs
+The application uses Swagger for the API documentation for the REST API and a custom HTML file for the websocket documentation. The documentations can be accessed via the following links after starting the application:
+- Web server: http://localhost:3000/api-docs
+- Websocket server: http://localhost:3000/websocket/api-docs
 
 # Frontend Clients
 The chat application has been implemented using different frontend frameworks. The following are the links to the frontend clients:
