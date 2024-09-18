@@ -23,18 +23,19 @@
     "@aws-sdk/lib-storage": "^3.540.0",
     "bcrypt": "^5.1.1",
     "cors": "^2.8.5",
+    "cron": "^3.1.7",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
+    "jsdoc": "^4.0.3",
     "jsonwebtoken": "^9.0.2",
     "multer": "^1.4.5-lts.1",
     "mysql2": "^3.11.0",
     "nodemon": "^3.1.4",
+    "rollbar": "^2.26.4",
     "sequelize": "^6.37.3",
     "uuid": "^10.0.0",
     "vitest": "^2.0.5",
-    "websocket": "^1.0.35",
-    "rollbar": "^2.26.4",
-    "jsdoc": "^4.0.3"
+    "websocket": "^1.0.35"
   },
   "devDependencies": {
     "sequelize-cli": "^6.6.2",

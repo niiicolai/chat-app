@@ -140,7 +140,8 @@ class Service extends MysqlBaseFindService {
         if (!description) {
             body.description = existing.channel_description;
         }
-
+        
+        const room_uuid = existing.room_uuid;
         body.channel_type_name = existing.channel_type_name;
         
         if (file) {
@@ -157,7 +158,6 @@ class Service extends MysqlBaseFindService {
             body.bytes = existing.room_file_size;
         }
 
-        const room_uuid = existing.room_uuid;
         await db.sequelize.query('CALL edit_channel_proc(:channel_uuid, :name, :description, :channel_type_name, :bytes, :src, :room_uuid, @result)', {
             replacements: {
                 channel_uuid,

@@ -10,6 +10,10 @@ module.exports = (sequelize, DataTypes) => {
          * The `models/index` file will call this method automatically.
          */
         static associate(models) {
+            models.ChannelView.hasMany(models.ChannelMessageView, {
+                foreignKey: 'channel_uuid',
+                sourceKey: 'channel_uuid',
+            });
         }
     }
     ChannelView.init({

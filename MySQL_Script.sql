@@ -382,43 +382,6 @@ END //
 DELIMITER ;
 
 
-
--- Event automatically deletes messages older than message_days_to_live specified by RoomChannelSetting
-DROP EVENT IF EXISTS delete_old_messages;
-DELIMITER //
-CREATE EVENT delete_old_messages
-ON SCHEDULE EVERY 1 DAY
-DO
-BEGIN
-    DECLARE message_days_to_live INT;
-    DECLARE room_uuid VARCHAR(255);
-    DECLARE channel_uuid VARCHAR(255);
-    DECLARE message_cutoff DATETIME;
-    
-    DECLARE cur CURSOR FOR
-        SELECT rcs.message_days_to_live, rcs.room_uuid, c.uuid
-        FROM RoomChannelSetting rcs
-        JOIN Channel c ON rcs.room_uuid = c.room_uuid;
-    
-    OPEN cur;
-    
-    read_loop: LOOP
-        FETCH cur INTO message_days_to_live, room_uuid, channel_uuid;
-        
-        IF message_days_to_live IS NULL THEN
-            LEAVE read_loop;
-        END IF;
-        
-        SET message_cutoff = NOW() - INTERVAL message_days_to_live DAY;
-        
-        DELETE FROM ChannelMessage WHERE channel_uuid = channel_uuid AND created_at < message_cutoff;
-    END LOOP;
-    
-    CLOSE cur;
-END //
-DELIMITER ;
-
-
 -- Time to live for files should be handle by the client
 -- because the MySQL server doesn't have access to the S3 bucket
 
@@ -500,8 +463,7 @@ BEGIN
 
     -- Sum all the uploads in the room and get the total size allowed
     SELECT SUM(size), rs.total_files_bytes_allowed INTO total_files_bytes_sum, total_files_bytes_allowed
-    FROM RoomFileSetting rs
-		LEFT JOIN RoomFile rf ON rs.room_uuid = rf.room_uuid
+    FROM RoomFileSetting rs LEFT JOIN RoomFile rf ON rs.room_uuid = rf.room_uuid
     WHERE rs.room_uuid = room_uuid_input
     GROUP BY rs.total_files_bytes_allowed;
     
@@ -898,6 +860,7 @@ CREATE PROCEDURE join_room_proc(
     OUT result BOOLEAN
 )
 BEGIN
+    DECLARE username VARCHAR(255);
     DECLARE join_message TEXT;
     DECLARE join_channel_uuid VARCHAR(36);
     DECLARE exit_code VARCHAR(5);
@@ -915,15 +878,20 @@ BEGIN
     END;
 
     -- Select join message and join channel UUID from room setting
-    SELECT join_message, join_channel_uuid INTO join_message, join_channel_uuid
-    FROM RoomJoinSetting WHERE room_uuid = room_uuid_input LIMIT 1;
+    SELECT rs.join_message, rs.join_channel_uuid INTO join_message, join_channel_uuid
+    FROM RoomJoinSetting rs 
+    WHERE room_uuid = room_uuid_input LIMIT 1;
 
     -- If no join_channel_uuid, select the first channel in the room
     IF join_channel_uuid IS NULL THEN
-        SELECT uuid INTO join_channel_uuid
-        FROM Channel WHERE room_uuid = room_uuid_input
+        SELECT c.uuid INTO join_channel_uuid
+        FROM Channel c WHERE room_uuid = room_uuid_input
         LIMIT 1;
     END IF;
+
+    -- Get the username of the user
+    SELECT u.username INTO username
+    FROM User u WHERE u.uuid = user_uuid_input;
 
     START TRANSACTION;
         -- Insert the user into the room
@@ -931,8 +899,11 @@ BEGIN
         VALUES (UUID(), room_uuid_input, user_uuid_input, room_user_role_name_input);
         -- If join_channel_uuid is found, insert a welcome message into the join channel
         IF join_channel_uuid IS NOT NULL THEN
+            IF join_message IS NULL THEN
+                SET join_message = '{name} has joined the room!';
+            END IF;
             INSERT INTO ChannelMessage (uuid, body, channel_uuid, user_uuid, channel_message_type_name)
-            VALUES (UUID(), IFNULL(join_message, 'User has joined the room!'), join_channel_uuid, user_uuid_input, 'System');
+            VALUES (UUID(), REPLACE(join_message, '{name}', username), join_channel_uuid, user_uuid_input, 'System');
         END IF;
     COMMIT;
     SET result = TRUE;
