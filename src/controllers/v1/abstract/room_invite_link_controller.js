@@ -55,7 +55,7 @@ export default (crudService) => {
     ctrl.destroy = () => {
         router.delete('/room_invite_link/:room_invite_link_uuid', [authMiddleware], async (req, res) => {
             await errorHandler(res, async () => {
-                await crudService.delete({ room_invite_link_uuid: req.params.room_invite_link_uuid, user: req.user });
+                await crudService.destroy({ room_invite_link_uuid: req.params.room_invite_link_uuid, user: req.user });
                 res.sendStatus(204);
             });
         });

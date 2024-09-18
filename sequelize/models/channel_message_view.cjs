@@ -74,6 +74,26 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.DOUBLE,
             field: 'room_file_size_mb',
         },
+        channel_webhook_message_uuid: {
+            type: DataTypes.UUID,
+            field: 'channel_webhook_message_uuid',
+        },
+        channel_webhook_uuid: {
+            type: DataTypes.UUID,
+            field: 'channel_webhook_uuid',
+        },
+        channel_webhook_name: {
+            type: DataTypes.STRING,
+            field: 'channel_webhook_name',
+        },
+        channel_webhook_room_file_uuid: {
+            type: DataTypes.UUID,
+            field: 'channel_webhook_room_file_uuid',
+        },
+        channel_webhook_room_file_src: {
+            type: DataTypes.TEXT,
+            field: 'channel_webhook_room_file_src',
+        },
     }, {
         sequelize,
         timestamps: true,

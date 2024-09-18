@@ -38,6 +38,30 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.UUID,
             field: 'room_uuid',
         },
+        channel_message_upload_uuid: {
+            type: DataTypes.UUID,
+            field: 'channel_message_upload_uuid',
+        },
+        channel_message_upload_type_name: {
+            type: DataTypes.STRING,
+            field: 'channel_message_upload_type_name',
+        },
+        channel_message_uuid: {
+            type: DataTypes.UUID,
+            field: 'channel_message_uuid',
+        },
+        channel_message_body: {
+            type: DataTypes.TEXT,
+            field: 'channel_message_body',
+        },
+        user_uuid: {
+            type: DataTypes.UUID,
+            field: 'user_uuid',
+        },
+        user_username: {
+            type: DataTypes.STRING,
+            field: 'user_username',
+        },
     }, {
         sequelize,
         timestamps: true,

@@ -24,6 +24,9 @@
     - User Registration [x]
     - User Login [x]
     - Bcrypt Password Hashing [x]
+    - Forgot Password []
+    - Email Verification []
+    - Two Factor Authentication []
 - File Storage
     - S3 File Storage [x]
     - CDN [x]

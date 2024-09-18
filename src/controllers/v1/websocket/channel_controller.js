@@ -9,20 +9,18 @@ controller.join_channel = (connection, payload) => {
         connection.sendUTF(JSON.stringify({ error: 'Missing channel' }));
         return;
     }
-
     if (!token) {
         connection.sendUTF(JSON.stringify({ error: 'Missing token' }));
         return;
     }
 
-    const user = jwtService.getUserFromToken({ authorization: json.token });
+    const user = jwtService.getUserFromToken({ authorization: token });
     if (!user) {
-        client.sendUTF(JSON.stringify({ error: 'Unauthorized' }));
+        connection.sendUTF(JSON.stringify({ error: 'Unauthorized' }));
         return;
     }
 
-    client.userData = { user, channel };
-
+    connection.userData = { user, channel };
     if (process.env.DEBUG === 'true') 
         console.log((new Date()) + ` Peer ${user.sub} joined channel ${channel}`);
 }

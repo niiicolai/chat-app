@@ -10,6 +10,10 @@ module.exports = (sequelize, DataTypes) => {
          * The `models/index` file will call this method automatically.
          */
         static associate(models) {
+            models.RoomView.hasMany(models.RoomUserView, {
+                foreignKey: 'room_uuid',
+                sourceKey: 'room_uuid',
+            });
         }
     }
     RoomView.init({
@@ -73,6 +77,14 @@ module.exports = (sequelize, DataTypes) => {
         single_file_mb: {
             type: DataTypes.DOUBLE,
             field: 'single_file_mb',
+        },
+        bytes_used: {
+            type: DataTypes.INTEGER,
+            field: 'bytes_used',
+        },
+        mb_used: {
+            type: DataTypes.DOUBLE,
+            field: 'mb_used',
         },
         room_avatar_uuid: {
             type: DataTypes.UUID,

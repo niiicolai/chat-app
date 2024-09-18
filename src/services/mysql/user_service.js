@@ -44,6 +44,9 @@ service.create = async (options={ body: null, file: null }) => {
     }
 
     if (file) {
+        if (file.size > parseFloat(process.env.ROOM_UPLOAD_SIZE)) {
+            throw new ControllerError(400, 'File exceeds single file size limit');
+        }
         body.user_avatar_src = await storage.uploadFile(file, body.uuid);
     }
 
@@ -94,6 +97,9 @@ service.update = async (options={ body: null, file: null, user: null }) => {
     }
 
     if (file) {
+        if (file.size > parseFloat(process.env.ROOM_UPLOAD_SIZE)) {
+            throw new ControllerError(400, 'File exceeds single file size limit');
+        }
         body.user_avatar_src = await storage.uploadFile(file, user_uuid);
     } else {
         body.user_avatar_src = existing.user_user_avatar_src;
@@ -113,6 +119,10 @@ service.update = async (options={ body: null, file: null, user: null }) => {
 }
 
 service.login = async (options={ body: null }) => {
+    const { body } = options;
+    if (!body) {
+        throw new ControllerError(400, 'No body provided');
+    }
     if (!body.email) {
         throw new ControllerError(400, 'No email provided');
     }

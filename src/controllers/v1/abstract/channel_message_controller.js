@@ -48,7 +48,7 @@ export default (crudService) => {
     ctrl.destroy = () => {
         router.delete('/channel_message/:channel_message_uuid', [authMiddleware], async (req, res) => {
             await errorHandler(res, async () => {
-                await crudService.delete({ channel_message_uuid: req.params.channel_message_uuid, user: req.user });
+                await crudService.destroy({ channel_message_uuid: req.params.channel_message_uuid, user: req.user });
                 res.sendStatus(204);
             });
         });

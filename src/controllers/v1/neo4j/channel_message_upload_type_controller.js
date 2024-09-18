@@ -1,15 +1,15 @@
-import crudService from '../../../services/mysql/room_user_role_service.js';
-import roomUserRoleController from '../abstract/room_user_role_controller.js';
+import crudService from '../../../services/mysql/channel_message_upload_type_service.js';
+import channelMessageUploadTypeController from '../abstract/channel_message_upload_type_controller.js';
 
-const ctrl = roomUserRoleController(crudService);
+const ctrl = channelMessageUploadTypeController(crudService);
 
 /**
  * @openapi
- * '/api/v1/mysql/room_user_role/:name':
+ * '/api/v1/neo4j/channel_message_upload_type/:name':
  *  get:
  *     tags:
- *       - MySQL Room User Role Controller
- *     summary: Get a Room User Role
+ *       - Neo4j Channel Message Upload Type Controller
+ *     summary: Get a Channel Upload Message Type
  *     parameters:
  *      - in: path
  *        name: name
@@ -30,14 +30,13 @@ const ctrl = roomUserRoleController(crudService);
  */
 ctrl.findOne();
 
-
 /**
  * @openapi
- * '/api/v1/mysql/room_user_roles':
+ * '/api/v1/neo4j/channel_message_upload_types':
  *  get:
  *      tags:
- *       - MySQL Room User Role Controller
- *      summary: Get all Room User Roles
+ *       - Neo4j Channel Message Upload Type Controller
+ *      summary: Get all Channel Message Upload Types
  *      parameters:
  *        - in: query
  *          name: page
@@ -60,6 +59,5 @@ ctrl.findOne();
  *              description: Internal Server Error
  */
 ctrl.findAll();
-
 
 export default ctrl.router;
