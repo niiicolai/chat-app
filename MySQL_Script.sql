@@ -499,11 +499,11 @@ BEGIN
     DECLARE total_files_bytes_sum BIGINT;
 
     -- Sum all the uploads in the room and get the total size allowed
-    SELECT SUM(size), total_files_bytes_allowed INTO total_files_bytes_sum, total_files_bytes_allowed
+    SELECT SUM(size), rs.total_files_bytes_allowed INTO total_files_bytes_sum, total_files_bytes_allowed
     FROM RoomFileSetting rs
 		LEFT JOIN RoomFile rf ON rs.room_uuid = rf.room_uuid
     WHERE rs.room_uuid = room_uuid_input
-    GROUP BY total_files_bytes_allowed;
+    GROUP BY rs.total_files_bytes_allowed;
     
     -- Check if the total size + the new upload size exceeds 
     -- the allowed total size for a room.
@@ -525,10 +525,10 @@ BEGIN
     DECLARE single_file_bytes_allowed BIGINT;
 
     -- Sum all the uploads in the room and get the total size allowed
-    SELECT single_file_bytes_allowed INTO single_file_bytes_allowed
+    SELECT rs.single_file_bytes_allowed INTO single_file_bytes_allowed
     FROM RoomFileSetting rs
     WHERE rs.room_uuid = room_uuid_input
-    GROUP BY single_file_bytes_allowed;
+    GROUP BY rs.single_file_bytes_allowed;
     
     -- Check if the new upload size exceeds the allowed single file size for a room.
     SET result = (new_file_bytes_input > single_file_bytes_allowed);
@@ -550,11 +550,11 @@ BEGIN
     DECLARE total_channels_count INTEGER;
 
     -- Count all the channels in the room and get the total number allowed
-    SELECT COUNT(*), total_channels_allowed INTO total_channels_count, total_channels_allowed
+    SELECT COUNT(*), rs.total_channels_allowed INTO total_channels_count, total_channels_allowed
     FROM RoomChannelSetting rs
         LEFT JOIN Channel c ON rs.room_uuid = c.room_uuid
     WHERE rs.room_uuid = room_uuid_input
-    GROUP BY total_channels_allowed;
+    GROUP BY rs.total_channels_allowed;
     
     -- Check if the number of channels plus a number exceeds the allowed number of channels for a room.
     SET result = ((total_channels_count + number_of_channels_input) > total_channels_allowed);
@@ -576,11 +576,11 @@ BEGIN
     DECLARE total_users_count INTEGER;
 
     -- Count all the users in the room and get the total number allowed
-    SELECT COUNT(*), total_users_allowed INTO total_users_count, total_users_allowed
+    SELECT COUNT(*), rs.total_users_allowed INTO total_users_count, total_users_allowed
     FROM RoomUserSetting rs
         LEFT JOIN RoomUser ur ON rs.room_uuid = ur.room_uuid
     WHERE rs.room_uuid = room_uuid_input
-    GROUP BY total_users_allowed;
+    GROUP BY rs.total_users_allowed;
     
     -- Check if the number of members plus a number exceeds the allowed number of members for a room.
     SET result = ((total_users_count + number_of_users_input) > total_users_allowed);
@@ -605,6 +605,62 @@ BEGIN
     INSERT INTO User (uuid, username, email, password, avatar_src) 
     VALUES (user_uuid_input, user_name_input, user_email_input, user_password_input, user_avatar_src_input);
     SET result = TRUE;
+END //
+DELIMITER ;
+
+
+-- check if a user is in a room and has a specific role
+DROP PROCEDURE IF EXISTS check_user_in_room_with_role_proc;
+DELIMITER //
+CREATE PROCEDURE check_user_in_room_with_role_proc(
+    IN user_uuid_input VARCHAR(36),
+    IN room_uuid_input VARCHAR(36),
+    IN room_user_role_name_input VARCHAR(255),
+    OUT result BOOLEAN
+)
+BEGIN
+    DECLARE user_role_name VARCHAR(255);
+
+    IF room_user_role_name_input IS NULL THEN
+        SELECT ru.room_user_role_name INTO user_role_name
+        FROM RoomUser ru
+        WHERE ru.user_uuid = user_uuid_input AND ru.room_uuid = room_uuid_input;
+        SET result = (user_role_name IS NOT NULL);
+    ELSE
+        -- Check if the user is in the room and has the specific role
+        SELECT ru.room_user_role_name INTO user_role_name
+        FROM RoomUser ru
+        WHERE ru.user_uuid = user_uuid_input AND ru.room_uuid = room_uuid_input;
+        SET result = (user_role_name = room_user_role_name_input);
+    END IF;
+END //
+DELIMITER ;
+
+
+-- check if a user by channel uuid is in a room and has a specific role
+DROP PROCEDURE IF EXISTS check_user_by_channel_uuid_in_room_with_role_proc;
+DELIMITER //
+CREATE PROCEDURE check_user_by_channel_uuid_in_room_with_role_proc(
+    IN user_uuid_input VARCHAR(36),
+    IN channel_uuid_input VARCHAR(36),
+    IN room_user_role_name_input VARCHAR(255),
+    OUT result BOOLEAN
+)
+BEGIN
+    DECLARE user_role_name VARCHAR(255);
+
+    IF room_user_role_name_input IS NULL THEN
+        SELECT ru.room_user_role_name INTO user_role_name
+        FROM RoomUser ru
+        WHERE ru.user_uuid = user_uuid_input AND ru.room_uuid = (SELECT c.room_uuid FROM Channel c WHERE c.uuid = channel_uuid_input);
+        SET result = (user_role_name IS NOT NULL);
+    ELSE
+        -- Check if the user is in the room and has the specific role
+        SELECT room_user_role_name INTO user_role_name
+        FROM RoomUser ru
+        WHERE ru.user_uuid = user_uuid_input AND ru.room_uuid = (SELECT c.room_uuid FROM Channel c WHERE c.uuid = channel_uuid_input);
+        SET result = (user_role_name = room_user_role_name_input);
+    END IF;
 END //
 DELIMITER ;
 
@@ -708,8 +764,8 @@ BEGIN
             INSERT INTO RoomFile (uuid, src, size, room_uuid, room_file_type_name)
             VALUES (room_file_uuid, room_avatar_src_input, room_avatar_size_input, room_uuid_input, 'RoomAvatar');
 
-            -- Create a room avatar
-            INSERT INTO RoomAvatar (uuid, room_uuid, room_file_uuid) VALUES (UUID(), room_uuid_input, room_file_uuid);
+            -- Update room avatar
+            UPDATE RoomAvatar SET room_file_uuid = room_file_uuid WHERE room_uuid = room_uuid_input;
         END IF;
 
         -- Insert the user into the room
@@ -736,6 +792,8 @@ CREATE PROCEDURE edit_room_proc(
 )
 BEGIN
     DECLARE room_file_uuid VARCHAR(36);
+    DECLARE existing_avatar_uuid VARCHAR(36);
+    DECLARE existing_room_file_uuid VARCHAR(36);
     DECLARE exit_code VARCHAR(5);
     DECLARE exit_message TEXT;
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
@@ -746,30 +804,41 @@ BEGIN
         ROLLBACK;
         -- Print the error message and code
         SELECT CONCAT('Error Code: ', exit_code, ' Error Message: ', exit_message) AS error_output;
-        
         SET result = FALSE;
     END;
-
     START TRANSACTION;
-
         -- Update the room
-        UPDATE Room SET name = room_name_input, description = room_description_input, room_category_name = room_category_name_input
+        UPDATE Room 
+        SET name = room_name_input, description = room_description_input, room_category_name = room_category_name_input
         WHERE uuid = room_uuid_input;
-        
-        -- Check if the room avatar is not null and insert it into the RoomAvatar table
+
+        -- Check if the room avatar already exists
+        SELECT r.uuid, r.room_file_uuid into existing_avatar_uuid, existing_room_file_uuid
+        FROM RoomAvatar as r
+        WHERE room_uuid = room_uuid_input LIMIT 1;
+
+        -- Check if a new room avatar needs to be created
         IF room_avatar_src_input IS NOT NULL THEN
-            SET room_file_uuid = UUID();
-
-            -- Create a room file
-            INSERT INTO RoomFile (uuid, src, size, room_uuid, room_file_type_name)
-            VALUES (room_file_uuid, room_avatar_src_input, room_avatar_size_input, room_uuid_input, 'RoomAvatar');
-
-            -- Edit the room avatar
-            UPDATE RoomAvatar SET room_file_uuid = room_file_uuid WHERE room_uuid = room_uuid_input;
+			IF existing_room_file_uuid IS NOT NULL THEN
+				-- Update the existing room file record
+				UPDATE RoomFile
+				SET src = room_avatar_src_input, size = room_avatar_size_input
+				WHERE uuid = existing_room_file_uuid;
+			ELSE
+				-- Otherwise, create a new one and update the avatar
+				SET room_file_uuid = UUID();
+				INSERT INTO RoomFile (uuid, src, size, room_uuid, room_file_type_name)
+				VALUES (room_file_uuid, room_avatar_src_input, room_avatar_size_input, room_uuid_input, 'RoomAvatar');
+                UPDATE RoomAvatar SET room_file_uuid = room_file_uuid WHERE uuid = existing_avatar_uuid;
+			END IF;
+		ELSE
+			UPDATE RoomAvatar SET room_file_uuid = NULL WHERE uuid = existing_avatar_uuid;
         END IF;
+
     COMMIT;
     SET result = TRUE;
 END //
+DELIMITER ;
 
 
 
@@ -782,6 +851,10 @@ CREATE PROCEDURE delete_room_proc(
 )
 BEGIN
     -- Delete the room
+    DELETE ChannelWebhookMessage FROM ChannelWebhookMessage
+    JOIN ChannelMessage ON ChannelWebhookMessage.channel_message_uuid = ChannelMessage.uuid
+    JOIN Channel ON ChannelMessage.channel_uuid = Channel.uuid
+    WHERE Channel.room_uuid = room_uuid_input;
     DELETE FROM Room WHERE uuid = room_uuid_input;
     SET result = TRUE;
 END //
@@ -789,35 +862,25 @@ DELIMITER ;
 
 
 
--- Delete a room avatar
-DROP PROCEDURE IF EXISTS delete_room_avatar_proc;
-DELIMITER //
-CREATE PROCEDURE delete_room_avatar_proc(
-    IN room_uuid_input VARCHAR(36),
-    OUT result BOOLEAN
-)
-BEGIN
-    -- Delete the room avatar
-    DELETE FROM RoomAvatar WHERE room_uuid = room_uuid_input;
-    SET result = TRUE;
-END //
-DELIMITER ;
-
-
-
 -- Edit room join setting
-DROP PROCEDURE IF EXISTS edit_room_join_setting_proc;
+DROP PROCEDURE IF EXISTS edit_room_setting_proc;
 DELIMITER //
-CREATE PROCEDURE edit_room_join_setting_proc(
+CREATE PROCEDURE edit_room_setting_proc(
     IN room_uuid_input VARCHAR(36),
     IN join_message_input VARCHAR(255),
     IN join_channel_uuid_input VARCHAR(36),
+    IN rules_text_input TEXT,
     OUT result BOOLEAN
 )
 BEGIN
     -- Update the room setting
-    UPDATE RoomJoinSetting SET join_message = join_message_input, join_channel_uuid = join_channel_uuid_input
+    UPDATE RoomJoinSetting SET 
+        join_message = join_message_input, 
+        join_channel_uuid = join_channel_uuid_input
     WHERE room_uuid = room_uuid_input;
+    UPDATE RoomRulesSetting SET
+		rules_text = rules_text_input
+	WHERE room_uuid = room_uuid_input;
     SET result = TRUE;
 END //
 DELIMITER ;
@@ -1099,27 +1162,27 @@ CREATE PROCEDURE delete_channel_proc(
     OUT result BOOLEAN
 )
 BEGIN
-    -- Delete the channel
-    DELETE FROM Channel WHERE uuid = channel_uuid_input;
-    SET result = TRUE;
-END //
-DELIMITER ;
+    DECLARE exit_code VARCHAR(5);
+    DECLARE exit_message TEXT;
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        GET DIAGNOSTICS CONDITION 1
+            exit_code = RETURNED_SQLSTATE, 
+            exit_message = MESSAGE_TEXT;
+        ROLLBACK;
+        -- Print the error message and code
+        SELECT CONCAT('Error Code: ', exit_code, ' Error Message: ', exit_message) AS error_output;
+        
+        SET result = FALSE;
+    END;
 
-
-
--- Delete a channel avatar
-DROP PROCEDURE IF EXISTS delete_channel_avatar_proc;
-DELIMITER //
-CREATE PROCEDURE delete_channel_avatar_proc(
-    IN channel_uuid_input VARCHAR(36),
-    IN room_file_uuid_input VARCHAR(36),
-    OUT result BOOLEAN
-)
-BEGIN
-    -- Update the channel
-    UPDATE ChannelAvatar SET room_file_uuid = NULL WHERE channel_uuid = channel_uuid_input;
-    -- Delete the channel avatar
-    DELETE FROM RoomFile WHERE uuid = room_file_uuid_input;
+        START TRANSACTION;
+        -- Delete the channel
+        DELETE ChannelWebhookMessage FROM ChannelWebhookMessage
+        JOIN ChannelMessage ON ChannelWebhookMessage.channel_message_uuid = ChannelMessage.uuid
+        WHERE ChannelMessage.channel_uuid = channel_uuid_input;
+        DELETE FROM Channel WHERE uuid = channel_uuid_input;
+    COMMIT;
     SET result = TRUE;
 END //
 DELIMITER ;
@@ -1208,6 +1271,7 @@ CREATE PROCEDURE delete_channel_message_proc(
 )
 BEGIN
     -- Delete the channel message
+    DELETE FROM ChannelWebhookMessage WHERE channel_message_uuid = message_uuid_input;
     DELETE FROM ChannelMessage WHERE uuid = message_uuid_input;
     SET result = TRUE;
 END //
@@ -1281,7 +1345,7 @@ BEGIN
     COMMIT;
     SET result = TRUE;
 END //
-
+DELIMITER ;
 
 
 -- Edit a channel webhook
@@ -1328,25 +1392,6 @@ BEGIN
             WHERE uuid = channel_webhook_uuid_input;
         END IF;
     COMMIT;
-    SET result = TRUE;
-END //
-DELIMITER ;
-
-
-
--- Delete a channel webhook's avatar
-DROP PROCEDURE IF EXISTS delete_channel_webhook_avatar_proc;
-DELIMITER //
-CREATE PROCEDURE delete_channel_webhook_avatar_proc(
-    IN channel_webhook_uuid_input VARCHAR(36),
-    IN room_file_uuid VARCHAR(36),
-    OUT result BOOLEAN
-)
-BEGIN
-    -- Update the channel webhook
-    UPDATE ChannelWebhook SET room_file_uuid = NULL WHERE uuid = channel_webhook_uuid_input;
-    -- Delete the channel webhook's avatar
-    DELETE FROM RoomFile WHERE uuid = room_file_uuid;
     SET result = TRUE;
 END //
 DELIMITER ;
@@ -1440,6 +1485,7 @@ BEGIN
     INSERT INTO RoomRulesSetting (uuid, room_uuid, rules_text) VALUES (UUID(), NEW.uuid, 'No rules yet.');
     INSERT INTO RoomUserSetting (uuid, room_uuid, max_users) VALUES (UUID(), NEW.uuid, 25);
     INSERT INTO RoomChannelSetting (uuid, room_uuid, max_channels, message_days_to_live) VALUES (UUID(), NEW.uuid, 5, 30);
+    INSERT INTO RoomAvatar (uuid, room_uuid, room_file_uuid) VALUES (UUID(), NEW.uuid, NULL);
     -- Add information to the audit log
     INSERT INTO RoomAudit (uuid, body, room_uuid, room_audit_type_name) VALUES (UUID(), 'Room created.', NEW.uuid, 'ROOM_CREATED');
 END //
@@ -1592,6 +1638,22 @@ CREATE TRIGGER room_file_before_delete
 BEFORE DELETE ON RoomFile
 FOR EACH ROW
 BEGIN
+    -- if the room file is a room avatar, remove the room_file_uuid from the room avatar
+    if OLD.room_file_type_name = 'RoomAvatar' THEN
+        UPDATE RoomAvatar SET room_file_uuid = NULL WHERE room_file_uuid = OLD.uuid;
+    end if;
+    -- if the room file is a channel avatar, remove the room_file_uuid from the channel
+    if OLD.room_file_type_name = 'ChannelAvatar' THEN
+        UPDATE Channel SET room_file_uuid = NULL WHERE room_file_uuid = OLD.uuid;
+    end if;
+    -- if the room file is a channel webhook avatar, remove the room_file_uuid from the channel webhook
+    if OLD.room_file_type_name = 'ChannelWebhookAvatar' THEN
+        UPDATE ChannelWebhook SET room_file_uuid = NULL WHERE room_file_uuid = OLD.uuid;
+    end if;
+    -- if the room file is a channel message upload, delete the channel message upload
+    if OLD.room_file_type_name = 'ChannelMessageUpload' THEN
+        DELETE FROM ChannelMessageUpload WHERE room_file_uuid = OLD.uuid;
+    end if;
     -- Add information to the audit log
     INSERT INTO RoomAudit (uuid, body, room_uuid, room_audit_type_name) VALUES (UUID(), 'File deleted.', OLD.room_uuid, 'FILE_DELETED');
 END //
@@ -1732,7 +1794,6 @@ BEGIN
     -- Add information to the audit log
     INSERT INTO ChannelAudit (uuid, body, channel_uuid, channel_audit_type_name) VALUES (UUID(), 'Message deleted.', OLD.channel_uuid, 'MESSAGE_DELETED');
     DELETE FROM ChannelMessageUpload WHERE channel_message_uuid = OLD.uuid;
-    DELETE FROM ChannelWebhookMessage WHERE channel_message_uuid = OLD.uuid;
 END //
 DELIMITER ;
 
@@ -1757,8 +1818,7 @@ DELIMITER //
 CREATE TRIGGER channel_webhook_before_delete
 BEFORE DELETE ON ChannelWebhook
 FOR EACH ROW
-BEGIN
-    DELETE FROM ChannelWebhookMessage WHERE channel_webhook_uuid = OLD.uuid;
+BEGIN    
     -- Add information to the audit log
     INSERT INTO ChannelAudit (uuid, body, channel_uuid, channel_audit_type_name) VALUES (UUID(), 'Webhook deleted.', OLD.channel_uuid, 'WEBHOOK_DELETED');
 END //
@@ -1818,8 +1878,10 @@ SELECT
     rf.src as room_file_src,
     rf.size as room_file_size,
     rf.room_file_type_name as room_file_type_name,
-    bytes_to_mb(rf.size) as room_file_size_mb
+    bytes_to_mb(rf.size) as room_file_size_mb,
 
+    -- bytes_used
+    SUM(allFiles.size) as bytes_used, bytes_to_mb(SUM(allFiles.size)) as mb_used
 FROM Room r
     LEFT JOIN RoomJoinSetting rjs ON r.uuid = rjs.room_uuid
     LEFT JOIN RoomRulesSetting rrs ON r.uuid = rrs.room_uuid
@@ -1827,7 +1889,9 @@ FROM Room r
     LEFT JOIN RoomChannelSetting rcs ON r.uuid = rcs.room_uuid
     LEFT JOIN RoomFileSetting rfs ON r.uuid = rfs.room_uuid
     LEFT JOIN RoomAvatar ra ON r.uuid = ra.room_uuid
-    LEFT JOIN RoomFile rf ON ra.room_file_uuid = rf.uuid;
+    LEFT JOIN RoomFile rf ON ra.room_file_uuid = rf.uuid
+    LEFT JOIN RoomFile allFiles ON r.uuid = allFiles.room_uuid
+GROUP BY r.uuid;
 
 
 
@@ -1869,11 +1933,18 @@ DROP VIEW IF EXISTS room_file_view;
 CREATE VIEW room_file_view AS
 SELECT 
     -- RoomFile
-    rf.uuid as room_file_uuid, rf.src as room_file_src, rf.size as room_file_size, rf.room_file_type_name, rf.created_at as room_file_created_at, rf.updated_at as room_file_updated_at, bytes_to_mb(rf.size) as room_file_size_mb,
-    -- Room
-    r.uuid as room_uuid, r.name as room_name, r.description as room_description, r.room_category_name as room_category_name, r.created_at as room_created_at, r.updated_at as room_updated_at
+    rf.uuid as room_file_uuid, rf.src as room_file_src, room_uuid, rf.size as room_file_size, rf.room_file_type_name, rf.created_at as room_file_created_at, rf.updated_at as room_file_updated_at, bytes_to_mb(rf.size) as room_file_size_mb,
+    -- ChannelMessageUpload
+    cmu.uuid as channel_message_upload_uuid, cmu.channel_message_upload_type_name, cmu.created_at as channel_message_upload_created_at, cmu.updated_at as channel_message_upload_updated_at
+    -- ChannelMessage
+    cm.uuid as channel_message_uuid, cm.body as channel_message_body, cm.channel_message_type_name, cm.created_at as channel_message_created_at, cm.updated_at as channel_message_updated_at
+    -- User
+    u.uuid as user_uuid, u.username as user_username, u.avatar_src as user_avatar_src, u.created_at as user_created_at, u.updated_at as user_updated_at
 FROM RoomFile rf
-    JOIN Room r ON rf.room_uuid = r.uuid;
+    JOIN Room r ON rf.room_uuid = r.uuid
+    LEFT JOIN ChannelMessageUpload cmu ON rf.uuid = cmu.room_file_uuid
+    LEFT JOIN ChannelMessage cm ON cmu.channel_message_uuid = cm.uuid
+    LEFT JOIN User u ON cm.user_uuid = u.uuid;
 
 
 
@@ -1951,7 +2022,7 @@ SELECT
     rf.uuid as room_file_uuid, rf.src as room_file_src, rf.size as room_file_size, rf.room_file_type_name, bytes_to_mb(rf.size) as room_file_size_mb
 FROM Channel c
     JOIN Room r ON c.room_uuid = r.uuid
-    JOIN RoomFile rf ON c.room_file_uuid = rf.uuid;
+    LEFT JOIN RoomFile rf ON c.room_file_uuid = rf.uuid;
 
 
 
@@ -2001,12 +2072,21 @@ SELECT
     -- ChannelMessageUpload
     mu.uuid as channel_message_upload_uuid, mu.channel_message_upload_type_name,
 	-- Room File
-    rf.uuid as room_file_uuid, rf.src as room_file_src, rf.size as room_file_size, rf.room_file_type_name, bytes_to_mb(rf.size) as room_file_size_mb 
+    rf.uuid as room_file_uuid, rf.src as room_file_src, rf.size as room_file_size, rf.room_file_type_name, bytes_to_mb(rf.size) as room_file_size_mb,
+    -- ChannelWebhookMessage
+    cwm.uuid as channel_webhook_message_uuid, cwm.body as channel_webhook_message_body, cwm.channel_webhook_message_type_name, cwm.created_at as channel_webhook_message_created_at, cwm.updated_at as channel_webhook_message_updated_at,
+    -- ChannelWebhook
+    cw.uuid as channel_webhook_uuid, cw.name as channel_webhook_name,
+    -- ChannelWebhook Room File
+    cwrf.uuid as channel_webhook_room_file_uuid, cwrf.src as channel_webhook_room_file_src
 FROM ChannelMessage cm
     JOIN Channel c ON cm.channel_uuid = c.uuid
-    JOIN User u ON cm.user_uuid = u.uuid
+    LEFT JOIN User u ON cm.user_uuid = u.uuid
     LEFT JOIN ChannelMessageUpload mu ON cm.uuid = mu.channel_message_uuid
-    LEFT JOIN RoomFile rf on mu.room_file_uuid = rf.uuid;
+    LEFT JOIN RoomFile rf on mu.room_file_uuid = rf.uuid
+    LEFT JOIN ChannelWebhookMessage cwm ON cm.uuid = cwm.channel_message_uuid
+    LEFT JOIN ChannelWebhook cw ON cwm.channel_webhook_uuid = cw.uuid
+    LEFT JOIN RoomFile cwrf ON cw.room_file_uuid = cwrf.uuid;
 
 
 
@@ -2032,7 +2112,7 @@ SELECT
     rf.uuid as room_file_uuid, rf.src as room_file_src, rf.size as room_file_size, rf.room_file_type_name, bytes_to_mb(rf.size) as room_file_size_mb
 FROM ChannelWebhook cw
     JOIN Channel c ON cw.channel_uuid = c.uuid
-    JOIN RoomFile rf ON cw.room_file_uuid = rf.uuid;
+    LEFT JOIN RoomFile rf ON cw.room_file_uuid = rf.uuid;
 
 
 
@@ -2265,6 +2345,8 @@ GRANT EXECUTE ON PROCEDURE `chat`.`check_upload_exceeds_total_proc` TO 'chat_use
 GRANT EXECUTE ON PROCEDURE `chat`.`check_upload_exceeds_single_proc` TO 'chat_user'@'localhost';
 GRANT EXECUTE ON PROCEDURE `chat`.`check_channels_exceeds_total_proc` TO 'chat_user'@'localhost';
 GRANT EXECUTE ON PROCEDURE `chat`.`check_users_exceeds_total_proc` TO 'chat_user'@'localhost';
+GRANT EXECUTE ON PROCEDURE `chat`.`check_user_in_room_with_role_proc` TO 'chat_user'@'localhost';
+GRANT EXECUTE ON PROCEDURE `chat`.`check_user_by_channel_uuid_in_room_with_role_proc` TO 'chat_user'@'localhost';
 GRANT EXECUTE ON PROCEDURE `chat`.`create_user_proc` TO 'chat_user'@'localhost';
 GRANT EXECUTE ON PROCEDURE `chat`.`edit_user_proc` TO 'chat_user'@'localhost';
 GRANT EXECUTE ON PROCEDURE `chat`.`delete_user_proc` TO 'chat_user'@'localhost';
@@ -2272,7 +2354,6 @@ GRANT EXECUTE ON PROCEDURE `chat`.`delete_user_avatar_proc` TO 'chat_user'@'loca
 GRANT EXECUTE ON PROCEDURE `chat`.`create_room_proc` TO 'chat_user'@'localhost';
 GRANT EXECUTE ON PROCEDURE `chat`.`edit_room_proc` TO 'chat_user'@'localhost';
 GRANT EXECUTE ON PROCEDURE `chat`.`delete_room_proc` TO 'chat_user'@'localhost';
-GRANT EXECUTE ON PROCEDURE `chat`.`delete_room_avatar_proc` TO 'chat_user'@'localhost';
 GRANT EXECUTE ON PROCEDURE `chat`.`edit_room_join_setting_proc` TO 'chat_user'@'localhost';
 GRANT EXECUTE ON PROCEDURE `chat`.`join_room_proc` TO 'chat_user'@'localhost';
 GRANT EXECUTE ON PROCEDURE `chat`.`edit_room_user_role_proc` TO 'chat_user'@'localhost';
@@ -2284,14 +2365,12 @@ GRANT EXECUTE ON PROCEDURE `chat`.`delete_room_invite_link_proc` TO 'chat_user'@
 GRANT EXECUTE ON PROCEDURE `chat`.`create_channel_proc` TO 'chat_user'@'localhost';
 GRANT EXECUTE ON PROCEDURE `chat`.`edit_channel_proc` TO 'chat_user'@'localhost';
 GRANT EXECUTE ON PROCEDURE `chat`.`delete_channel_proc` TO 'chat_user'@'localhost';
-GRANT EXECUTE ON PROCEDURE `chat`.`delete_channel_avatar_proc` TO 'chat_user'@'localhost';
 GRANT EXECUTE ON PROCEDURE `chat`.`create_channel_message_proc` TO 'chat_user'@'localhost';
 GRANT EXECUTE ON PROCEDURE `chat`.`edit_channel_message_proc` TO 'chat_user'@'localhost';
 GRANT EXECUTE ON PROCEDURE `chat`.`delete_channel_message_proc` TO 'chat_user'@'localhost';
 GRANT EXECUTE ON PROCEDURE `chat`.`delete_channel_message_upload_proc` TO 'chat_user'@'localhost';
 GRANT EXECUTE ON PROCEDURE `chat`.`create_channel_webhook_proc` TO 'chat_user'@'localhost';
 GRANT EXECUTE ON PROCEDURE `chat`.`edit_channel_webhook_proc` TO 'chat_user'@'localhost';
-GRANT EXECUTE ON PROCEDURE `chat`.`delete_channel_webhook_avatar_proc` TO 'chat_user'@'localhost';
 GRANT EXECUTE ON PROCEDURE `chat`.`delete_channel_webhook_proc` TO 'chat_user'@'localhost';
 GRANT EXECUTE ON PROCEDURE `chat`.`create_webhook_message_proc` TO 'chat_user'@'localhost';
 -- Grant SELECT privilege on views only

@@ -4,7 +4,6 @@ import channelController from "./channel_controller.js";
 import channelTypeController from "./channel_type_controller.js";
 import channelMessageController from "./channel_message_controller.js";
 import channelMessageTypeController from "./channel_message_type_controller.js";
-import channelMessageUploadController from "./channel_message_upload_controller.js";
 import channelMessageUploadTypeController from "./channel_message_upload_type_controller.js";
 import channelWebhookController from "./channel_webhook_controller.js";
 import channelWebhookMessageTypeController from "./channel_webhook_message_type_controller.js";
@@ -27,7 +26,6 @@ const controllers = [
     channelTypeController,
     channelMessageController,
     channelMessageTypeController,
-    channelMessageUploadController,
     channelMessageUploadTypeController,
     channelWebhookController,
     channelWebhookMessageTypeController,

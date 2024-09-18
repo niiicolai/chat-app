@@ -30,8 +30,8 @@ export default (crudService) => {
     ctrl.message = () => {
         router.post('/channel_webhook/:channel_webhook_uuid', async (req, res) => {
             await errorHandler(res, async () => {
-                const result = await crudService.message({ channel_webhook_uuid: req.params.channel_webhook_uuid, body: req.body });
-                res.json(result);
+                await crudService.message({ channel_webhook_uuid: req.params.channel_webhook_uuid, body: req.body });
+                res.sendStatus(204);
             });
         });
     }
@@ -39,7 +39,7 @@ export default (crudService) => {
     ctrl.create = () => {
         router.post('/channel_webhook', [authMiddleware, uploadMiddleware], async (req, res) => {
             await errorHandler(res, async () => {
-                const result = await crudService.create({ ...req.body, user: req.user, file: req.file });
+                const result = await crudService.create({ body: req.body, user: req.user, file: req.file });
                 res.json(result);
             });
         });
@@ -48,7 +48,7 @@ export default (crudService) => {
     ctrl.update = () => {
         router.patch('/channel_webhook/:channel_webhook_uuid', [authMiddleware, uploadMiddleware], async (req, res) => {
             await errorHandler(res, async () => {
-                const result = await crudService.update({ ...req.body, channel_webhook_uuid: req.params.channel_webhook_uuid, user: req.user, file: req.file });
+                const result = await crudService.update({ body: req.body, channel_webhook_uuid: req.params.channel_webhook_uuid, user: req.user, file: req.file });
                 res.json(result);
             });
         });
@@ -57,7 +57,7 @@ export default (crudService) => {
     ctrl.destroy = () => {
         router.delete('/channel_webhook/:channel_webhook_uuid', [authMiddleware], async (req, res) => {
             await errorHandler(res, async () => {
-                await crudService.delete({ channel_webhook_uuid: req.params.channel_webhook_uuid, user: req.user });
+                await crudService.destroy({ channel_webhook_uuid: req.params.channel_webhook_uuid, user: req.user });
                 res.sendStatus(204);
             });
         });

@@ -141,7 +141,7 @@ ctrl.update();
  *  patch:
  *    tags:
  *     - MySQL Room Controller
- *    summary: Update a Room's Join Settings
+ *    summary: Update a Room's Settings
  *    security:
  *     - bearerAuth: []
  *    parameters:
@@ -153,7 +153,7 @@ ctrl.update();
  *     content:
  *      multipart/form-data:
  *       schema:
- *        $ref: '#/components/schemas/roomJoinSettingsInput'
+ *        $ref: '#/components/schemas/roomSettingsInput'
  *    responses:
  *     200:
  *      description: OK
@@ -169,7 +169,7 @@ ctrl.update();
  *     500:
  *      description: Internal Server Error
  */
-ctrl.editJoinSettings();
+ctrl.editSettings();
 
 /**
  * @openapi
@@ -216,29 +216,6 @@ ctrl.leave();
  *      description: Internal Server Error
  */
 ctrl.destroy();
-
-/**
- * @openapi
- * '/api/v1/mysql/room/:room_uuid/avatar':
- *  delete:
- *    tags:
- *     - MySQL Room Controller
- *    summary: Destroy a Room's Avatar
- *    security:
- *     - bearerAuth: []
- *    parameters:
- *      - in: path
- *        name: room_uuid
- *        required: true
- *    responses:
- *     204:
- *      description: No Content
- *     400:
- *      description: Bad Request
- *     500:
- *      description: Internal Server Error
- */
-ctrl.destroyAvatar();
 
 
 export default ctrl.router; 

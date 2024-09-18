@@ -8,14 +8,22 @@ export default class MysqlBaseFindService {
         this.pkName = this.model.primaryKeyAttributes[0];
     }
 
-    async findOne(options = {}) {
+    async findOne(options = { where: null, include: null }) {
         const { [this.pkName]: pk } = options;
 
         if (!pk) {
             throw new ControllerError(400, `${this.pkName} is required`);
         }
 
-        const m = await this.model.findOne({ where: { [this.pkName]: pk } });
+        const params = { where: { [this.pkName]: pk } };
+        if (options.where) {
+            params.where = { ...params.where, ...options.where };
+        }
+        if (options.include) {
+            params.include = options.include;
+        }
+
+        const m = await this.model.findOne(params);
         if (!m)  {
             throw new ControllerError(404, `${this.name} not found`);
         }
@@ -23,7 +31,7 @@ export default class MysqlBaseFindService {
         return this.dto(m);
     }
 
-    async findAll(options = { page: null, limit: null }) {  
+    async findAll(options = { page: null, limit: null, where: {}, include: [] }) {  
         const { page, limit } = options;
 
         if (page && isNaN(page)) {
@@ -54,6 +62,13 @@ export default class MysqlBaseFindService {
 
         if (page && !isNaN(page) && limit) {
             params.offset = parseInt(page - 1) * params.limit;
+        }
+
+        if (options.where) {
+            params.where = options.where;
+        }
+        if (options.include) {
+            params.include = options.include;
         }
 
         const total = await this.model.count();

@@ -10,6 +10,10 @@ module.exports = (sequelize, DataTypes) => {
          * The `models/index` file will call this method automatically.
          */
         static associate(models) {
+            models.RoomUserView.belongsTo(models.RoomView, {
+                foreignKey: 'room_uuid',
+                targetKey: 'room_uuid',
+            });
         }
     }
     RoomUserView.init({

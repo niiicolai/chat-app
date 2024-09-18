@@ -48,11 +48,11 @@ export default (crudService) => {
         });
     }
 
-    ctrl.editJoinSettings = () => {
-        router.patch('/room/:room_uuid/join_settings', [authMiddleware], async (req, res) => {
+    ctrl.editSettings = () => {
+        router.patch('/room/:room_uuid/settings', [authMiddleware], async (req, res) => {
             await errorHandler(res, async () => {
-                const result = await crudService.editJoinSettings({ room_uuid: req.params.room_uuid, body: req.body, user: req.user });
-                res.json(result);
+                await crudService.editSettings({ room_uuid: req.params.room_uuid, body: req.body, user: req.user });
+                res.sendStatus(204);
             });
         });
     }
@@ -70,15 +70,6 @@ export default (crudService) => {
         router.delete('/room/:room_uuid', [authMiddleware], async (req, res) => {
             await errorHandler(res, async () => {
                 await crudService.destroy({ room_uuid: req.params.room_uuid, user: req.user });
-                res.sendStatus(204);
-            });
-        });
-    }
-
-    ctrl.destroyAvatar = () => {
-        router.delete('/room/:room_uuid/avatar', [authMiddleware], async (req, res) => {
-            await errorHandler(res, async () => {
-                await crudService.removeRoomAvatar({ room_uuid: req.params.room_uuid, user: req.user });
                 res.sendStatus(204);
             });
         });

@@ -48,7 +48,7 @@ export default (crudService) => {
     ctrl.destroy = () => {
         router.delete('/channel/:channel_uuid', [authMiddleware], async (req, res) => {
             await errorHandler(res, async () => {
-                await crudService.remove({ channel_uuid: req.params.channel_uuid, user: req.user });
+                await crudService.destroy({ channel_uuid: req.params.channel_uuid, user: req.user });
                 res.sendStatus(204);
             });
         });

@@ -35,6 +35,7 @@ export function broadcastChannel(channel, type, payload) {
 };
 
 wsServer.on('request', (request) => {
+
     if (!originIsAllowed(request.origin)) {
         request.reject();
         return;

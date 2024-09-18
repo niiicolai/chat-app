@@ -28,7 +28,7 @@ export default (crudService) => {
     ctrl.destroy = () => {
         router.delete('/room_file/:room_file_uuid', [authMiddleware], async (req, res) => {
             await errorHandler(res, async () => {
-                await crudService.delete({ room_file_uuid: req.params.room_file_uuid, user: req.user });
+                await crudService.destroy({ room_file_uuid: req.params.room_file_uuid, user: req.user });
                 res.sendStatus(204);
             });
         });
