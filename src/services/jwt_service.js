@@ -47,7 +47,7 @@ export default class JwtService {
         const iat = Math.floor(Date.now() / 1000);
         const exp = iat + EXPIRE;
         const payload = { sub, iat, exp };
-
+        
         /**
          * Sign the token with the payload and secret.
          */
