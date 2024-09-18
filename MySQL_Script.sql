@@ -1935,9 +1935,9 @@ SELECT
     -- RoomFile
     rf.uuid as room_file_uuid, rf.src as room_file_src, room_uuid, rf.size as room_file_size, rf.room_file_type_name, rf.created_at as room_file_created_at, rf.updated_at as room_file_updated_at, bytes_to_mb(rf.size) as room_file_size_mb,
     -- ChannelMessageUpload
-    cmu.uuid as channel_message_upload_uuid, cmu.channel_message_upload_type_name, cmu.created_at as channel_message_upload_created_at, cmu.updated_at as channel_message_upload_updated_at
+    cmu.uuid as channel_message_upload_uuid, cmu.channel_message_upload_type_name, cmu.created_at as channel_message_upload_created_at, cmu.updated_at as channel_message_upload_updated_at,
     -- ChannelMessage
-    cm.uuid as channel_message_uuid, cm.body as channel_message_body, cm.channel_message_type_name, cm.created_at as channel_message_created_at, cm.updated_at as channel_message_updated_at
+    cm.uuid as channel_message_uuid, cm.body as channel_message_body, cm.channel_message_type_name, cm.created_at as channel_message_created_at, cm.updated_at as channel_message_updated_at,
     -- User
     u.uuid as user_uuid, u.username as user_username, u.avatar_src as user_avatar_src, u.created_at as user_created_at, u.updated_at as user_updated_at
 FROM RoomFile rf
