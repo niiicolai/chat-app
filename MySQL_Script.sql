@@ -512,11 +512,11 @@ BEGIN
     DECLARE total_channels_count INTEGER;
 
     -- Count all the channels in the room and get the total number allowed
-    SELECT COUNT(*), rs.total_channels_allowed INTO total_channels_count, total_channels_allowed
+    SELECT COUNT(*), rs.max_channels INTO total_channels_count, total_channels_allowed
     FROM RoomChannelSetting rs
         LEFT JOIN Channel c ON rs.room_uuid = c.room_uuid
     WHERE rs.room_uuid = room_uuid_input
-    GROUP BY rs.total_channels_allowed;
+    GROUP BY rs.max_channels;
     
     -- Check if the number of channels plus a number exceeds the allowed number of channels for a room.
     SET result = ((total_channels_count + number_of_channels_input) > total_channels_allowed);
@@ -538,11 +538,11 @@ BEGIN
     DECLARE total_users_count INTEGER;
 
     -- Count all the users in the room and get the total number allowed
-    SELECT COUNT(*), rs.total_users_allowed INTO total_users_count, total_users_allowed
+    SELECT COUNT(*), rs.max_users INTO total_users_count, total_users_allowed
     FROM RoomUserSetting rs
         LEFT JOIN RoomUser ur ON rs.room_uuid = ur.room_uuid
     WHERE rs.room_uuid = room_uuid_input
-    GROUP BY rs.total_users_allowed;
+    GROUP BY rs.max_users;
     
     -- Check if the number of members plus a number exceeds the allowed number of members for a room.
     SET result = ((total_users_count + number_of_users_input) > total_users_allowed);

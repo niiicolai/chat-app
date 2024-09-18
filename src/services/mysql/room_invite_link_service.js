@@ -136,6 +136,10 @@ class Service extends MysqlBaseFindService {
             throw new ControllerError(400, 'User is already in room');
         }
 
+        if (await RoomPermissionService.roomUserCountExceedsLimit({ room_uuid: existing.room_uuid, add_count: 1 })) {
+            throw new ControllerError(400, 'Room user count exceeds limit. The room cannot have more users');
+        }
+
         await db.sequelize.query('CALL join_room_proc(:user_uuid, :room_uuid, :role_name, @result)', {
             replacements: {
                 user_uuid,

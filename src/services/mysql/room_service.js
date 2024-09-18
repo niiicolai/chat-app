@@ -12,8 +12,8 @@ const dto = (m) => {
         name: m.room_name,
         description: m.room_description,
         room_category_name: m.room_category_name,
-        bytes_used: parseFloat(m.bytes_used),
-        mb_used: parseFloat(m.mb_used),
+        bytes_used: m.bytes_used ? parseFloat(m.bytes_used) : 0,
+        mb_used: m.mb_used ? parseFloat(m.mb_used) : 0,
     };
 
     res.joinSettings = {

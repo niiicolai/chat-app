@@ -81,6 +81,10 @@ class Service extends MysqlBaseFindService {
             throw new ControllerError(403, 'User is not an admin of the room');
         }
 
+        if (await RoomPermissionService.channelCountExceedsLimit({ room_uuid, add_count: 1 })) {
+            throw new ControllerError(400, 'Room channel count exceeds limit. The room cannot have more channels');
+        }
+
         if (file) {
             if ((await RoomPermissionService.fileExceedsTotalFilesLimit({ room_uuid, bytes: file.size }))) {
                 throw new ControllerError(400, 'The room does not have enough space for this file');
