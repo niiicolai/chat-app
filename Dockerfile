@@ -5,6 +5,8 @@ WORKDIR /app
 COPY package*.json ./
 COPY .env* ./
 
+RUN apt-get update && apt-get install -y default-mysql-client
+
 RUN npm install
 
 COPY . .
