@@ -3,7 +3,7 @@ import { exec } from 'child_process';
 import path from 'path';
 
 // Run once a day
-const cronTime = '0 0 0 * * *';
+const cronTime = '* * * * * *';
 
 // Copenhagen timezone
 const timeZone = 'Europe/Copenhagen';
@@ -33,8 +33,9 @@ const onTick = async () => {
     
     console.log(`Dump file will be saved to: ${dumpFileName}`);
     
-    const mysqldumpCommand = `mysqldump --user=${dbConfig.username} --password=${dbConfig.password} --host=${dbConfig.host} --port=${dbConfig.port} --no-tablespaces ${dbConfig.database} > ${dumpFileName}`;    
-    exec(mysqldumpCommand, (error, stdout, stderr) => {
+    const mysqldumpCommand = env === 'production' ? 'docker exec -it mysql mysqldump' : 'mysqldump';
+    const mysqldumpCommandOpt = `--user=${dbConfig.username} --password=${dbConfig.password} --host=${dbConfig.host} --port=${dbConfig.port} --no-tablespaces ${dbConfig.database} > ${dumpFileName}`;    
+    exec(`${mysqldumpCommand} ${mysqldumpCommandOpt}`, (error, stdout, stderr) => {
         if (error) {
             console.error(`Error creating dump: ${error.message}`);
             return;
@@ -45,10 +46,8 @@ const onTick = async () => {
             return;
         }
 
-        console.log(`Database backup successful: ${dumpFileName}`);
+        console.log(`MYSQL_BACKUP: ${Date.now()}: Finished MySQL backup`);
     });
-
-    console.log(`MYSQL_BACKUP: ${Date.now()}: Finished MySQL backup`);
 };
 
 CronJob.from({ cronTime, onTick, start: true, timeZone });

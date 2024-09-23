@@ -2371,9 +2371,9 @@ FLUSH PRIVILEGES;
 
 
 -- Create a user with full database admin privileges
-CREATE USER IF NOT EXISTS 'chat_admin'@'localhost' IDENTIFIED BY 'password';
+CREATE USER IF NOT EXISTS 'chat_admin'@'%' IDENTIFIED BY 'password';
 -- Grant all privileges on chat database
-GRANT ALL PRIVILEGES ON chat.* TO 'chat_admin'@'localhost';
+GRANT ALL PRIVILEGES ON chat.* TO 'chat_admin'@'%';
 -- Flush privileges to apply changes
 FLUSH PRIVILEGES;
 

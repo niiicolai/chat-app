@@ -1,5 +1,6 @@
 services:
   chat_app:
+    container_name: chat_app
     image: chat_app:v1.0
     environment:
       - NODE_ENV=production
@@ -12,6 +13,7 @@ services:
       - chat-network
 
   mysql:
+    container_name: mysql
     image: mysql
     environment:
       - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
