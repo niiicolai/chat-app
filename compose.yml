@@ -6,8 +6,11 @@ services:
     ports:
       - "3000:3000"
       - "3001:3001"
+    volumes:
+      - mysql-dumps:/var/backups/mysql
     networks:
       - chat-network
+
   mysql:
     image: mysql
     environment:
@@ -20,8 +23,11 @@ services:
       - /mysql/my_custom.cnf:/etc/mysql/conf.d/my_custom.cnf
     networks:
       - chat-network
+
 networks:
   chat-network:
     driver: bridge
+
 volumes:
   mysql-volume:
+  mysql-dumps:

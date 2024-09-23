@@ -137,7 +137,7 @@ ctrl.update();
 
 /**
  * @openapi
- * '/api/v1/mongodb/room/:room_uuid/join_settings':
+ * '/api/v1/mongodb/room/:room_uuid/settings':
  *  patch:
  *    tags:
  *     - MongoDB Room Controller

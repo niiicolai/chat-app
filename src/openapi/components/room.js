@@ -169,7 +169,7 @@ export default {
             }
         }
     },
-    roomJoinSettingsInput: {
+    roomSettingsInput: {
         type: 'object',
         properties: {
             join_channel_uuid: {
@@ -177,7 +177,10 @@ export default {
             },
             join_message: {
                 type: 'string'
-            }
+            },
+            rules_text: {
+                type: 'string'
+            },
         }
     },
 };
