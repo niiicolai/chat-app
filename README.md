@@ -33,6 +33,10 @@
 - Environment Variables
     - .env File [x]
     - .env.example File [x]
+- Cron Jobs
+    - File Retention [x]
+    - Message Retention [x]
+    - MySQL Backup [x]
 - Database
     - MySQL
         - Tables [x]
@@ -46,7 +50,7 @@
         - Granular User Permissions [x]
         - Migration []
         - Seeding []
-        - Backup []
+        - Backup [x]
     - MongoDB []
     - Neo4j []
 - Docker
