@@ -54,7 +54,7 @@ jobs:
       - name: Build and tag Docker image
         run: |
           docker build -t ${{ secrets.DOCKER_USERNAME }}/chat-app-backend:latest .
-          docker tag ${{ secrets.DOCKER_USERNAME }}/chat-app-backend:latest ${{ secrets.DOCKER_USERNAME }}/chat-app:${{ github.sha }}
+          docker tag ${{ secrets.DOCKER_USERNAME }}/chat-app-backend:latest ${{ secrets.DOCKER_USERNAME }}/chat-app-backend:${{ github.sha }}
 
       - name: Push image to Docker Hub
         run: |

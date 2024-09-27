@@ -2,6 +2,9 @@
 A Node.js backend designed for a chat application.
 
 ## Deployment Status
+[![VM Publish Production](https://github.com/niiicolai/chat-app/actions/workflows/deploy_vm.yml/badge.svg)](https://github.com/niiicolai/chat-app/actions/workflows/deploy_vm.yml)
+
+[![Docker Hub Deploy](https://github.com/niiicolai/chat-app/actions/workflows/deploy_docker_hub.yml/badge.svg)](https://github.com/niiicolai/chat-app/actions/workflows/deploy_docker_hub.yml)
 
 ## Features
 | Feature                | Subfeature                          | Status  |
