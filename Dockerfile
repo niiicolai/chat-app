@@ -7,8 +7,7 @@ COPY .env* ./
 
 RUN apt-get update && apt-get install -y default-mysql-client
 
-RUN apk add --no-cache bash curl \
-    && curl -o /usr/src/app/wait-for-it.sh https://raw.githubusercontent.com/vishnubob/wait-for-it/master/wait-for-it.sh \
+RUN curl -o /usr/src/app/wait-for-it.sh https://raw.githubusercontent.com/vishnubob/wait-for-it/master/wait-for-it.sh \
     && chmod +x /usr/src/app/wait-for-it.sh
 
 RUN npm install
