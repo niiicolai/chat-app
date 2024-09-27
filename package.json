@@ -7,6 +7,7 @@
   "scripts": {
     "start": "nodemon index.js",
     "test": "vitest",
+    "db:override": "node db_override.js",
     "sequelize:migrate": "sequelize-cli db:migrate",
     "sequelize:migrate:undo": "sequelize-cli db:migrate:undo",
     "sequelize:migrate:undo:all": "sequelize-cli db:migrate:undo:all",

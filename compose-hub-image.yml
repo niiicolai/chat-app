@@ -26,7 +26,7 @@ services:
       - mysql-dumps:/var/backups/mysql
     networks:
       - chat-network
-    command: ["sh", "-c", "npm run sequelize:migrate && npm run sequelize:seed"]
+    command: ["sh", "-c", "npm run db:override"]
     depends_on:
       - mysql
 

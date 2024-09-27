@@ -4,9 +4,6 @@ A Node.js chat backend application.
 # Quickest Way to Test
 The project includes a Compose file named `compose-hub-image.yml`, which is designed to run the entire application in a local environment, including databases, the backend, and the frontend. For more details, refer to [#run-docker-hub-image-in-detached-mode](https://github.com/niiicolai/chat-app?tab=readme-ov-file#run-docker-hub-image-in-detached-mode)
 
-**TODO: Add migrations**
-**TODO: Add seed files**
-
 ## Deployment Status
 [![VM Publish Production](https://github.com/niiicolai/chat-app/actions/workflows/deploy_vm.yml/badge.svg)](https://github.com/niiicolai/chat-app/actions/workflows/deploy_vm.yml)
 
@@ -103,7 +100,11 @@ npm run sequelize:migrate:generate  # Create a new migration file with a timesta
 npm run sequelize:seed              # Run seed files to populate the database with initial data
 npm run sequelize:seed:undo         # Revert the most recent seed operation
 npm run sequelize:seed:generate     # Create a new seed file with a timestamp
+```
 
+# Setup DB
+```bash
+npm run db:override                 # Override the existing db using ./MySQL_Script.sql
 ```
 
 ### API Docs
@@ -131,7 +132,7 @@ docker run -d -p 3000:3000 -p 3001:3001 chat_app:v1.0
 
 ## Docker Compose
 The project contains two Docker compose files:
-- **[compose-hub-image.yml](https://github.com/niiicolai/chat-app/blob/main/compose-hub-image.yml)**: Fetches prebuilt images from Docker Hub for the chat backend, React.js frontend client, and MySQL. This Compose file is designed for quickly testing the chat application as a whole.
+- **[compose-hub-image.yml](https://github.com/niiicolai/chat-app/blob/main/compose-hub-image.yml)**: Fetches prebuilt images from Docker Hub for the chat backend, React.js frontend client, and MySQL. This Compose file is designed for quickly testing the chat application as a whole. Note: *This setup doesn't include configuration for S3 to avoid exposing any secrets, which means file uploads doesn't work.*
 - **[compose-local-image.yml](https://github.com/niiicolai/chat-app/blob/main/compose-local-image.yml)**: Expects the machine to have a local Docker image of the application build. *It only starts an instance of the backend application and MySQL (no frontend)*. Refer to the section on building a Docker image before using this Compose file.
 
 ### Run *Docker Hub Image* in detached mode
