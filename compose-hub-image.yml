@@ -14,7 +14,7 @@ services:
     networks:
       - chat-network
 
-  chat_app:
+  chat_app_backend:
     container_name: chat_app_backend
     image: niiicolaidk/chat-app-backend
     environment:
@@ -38,7 +38,7 @@ services:
     ports:
       - "5174:5174"
     depends_on:
-      - chat_app
+      - chat_app_backend
 
 networks:
   chat-network:
