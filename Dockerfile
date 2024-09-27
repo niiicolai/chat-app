@@ -5,8 +5,11 @@ WORKDIR /app
 COPY package*.json ./
 COPY .env* ./
 
-RUN apt-get update && apt-get install -y default-mysql-client
-
+RUN apt-get update && apt-get install -y \
+    default-mysql-client \
+    bash \
+    curl
+    
 RUN curl -o /usr/src/app/wait-for-it.sh https://raw.githubusercontent.com/vishnubob/wait-for-it/master/wait-for-it.sh \
     && chmod +x /usr/src/app/wait-for-it.sh
 
