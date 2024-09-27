@@ -12,7 +12,7 @@ const dbConfig = {
 const mysqlScript = './MySQL_Script.sql';
 
 async function migrateDBFromScript() {
-    const mysqlCommand = `mysql --user=${dbConfig.username} --password=${dbConfig.password} --host=${dbConfig.host} --port=3306 ${dbConfig.database} < ${mysqlScript}`;
+    const mysqlCommand = `mysql --user=${dbConfig.username} --password=${dbConfig.password} --host=${dbConfig.host} --port=3307 ${dbConfig.database} < ${mysqlScript}`;
 
     exec(mysqlCommand, (error, stdout, stderr) => {
         if (error) {
