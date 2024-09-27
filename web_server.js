@@ -7,11 +7,7 @@ import useNeo4jControllers from './src/controllers/v1/neo4j/_neo4j_controllers.j
 import useWebsocketControllers from './src/controllers/v1/websocket/_websocket_controllers.js'
 import swaggerController from './src/controllers/swagger_controller.js'
 
-const port = process.env.WEB_PORT
-if (!port) {
-    console.error('WEB_PORT is not defined in .env')
-    process.exit(1)
-}
+const port = process.env.WEB_PORT || 3000
 const app = express()
 
 app.use(cors({ origin: '*' }))
@@ -26,5 +22,5 @@ useWebsocketControllers(app);
 
 app.listen(port, () => {
     console.log(`Web Server is running on port http://localhost:${port}`)
-    console.log(`API docs: http://localhost:${process.env.WEB_PORT}/api-docs`)
+    console.log(`API docs: http://localhost:${port}/api-docs`)
 })

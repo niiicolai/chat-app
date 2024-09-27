@@ -14,7 +14,7 @@ const server = http.createServer(requestListeners);
 
 server.listen(port, () => {
     console.log(`WebSocket Server is listening on port ${port}`);
-    console.log(`Websocket API docs: http://localhost:${process.env.WEB_PORT}/websocket/api-docs`);
+    console.log(`Websocket API docs: http://localhost:${port}/websocket/api-docs`);
 });
 
 const wsServer = new WebSocketServer.server({
