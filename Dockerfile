@@ -19,4 +19,4 @@ COPY . .
 
 EXPOSE 3000 3001
 
-CMD ["sh", "-c", "./wait-for-it.sh mysql:3306 -- npm run db:override && exec node index.js"]
+CMD ["node", "index.js"]

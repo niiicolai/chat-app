@@ -18,7 +18,7 @@ services:
     container_name: chat_app_backend
     image: niiicolaidk/chat-app-backend
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=production
     ports:
       - "3000:3000"
       - "3001:3001"
