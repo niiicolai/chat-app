@@ -1,7 +1,7 @@
 # Chat App Backend
 A Node.js chat backend application.
 
-# Quickest Way to Test
+# Quickest Way to Try the Application
 The project includes a Compose file named `compose-hub-image.yml`, which is designed to run the entire application in a local environment, including databases, the backend, and the frontend. For more details, refer to [#run-docker-hub-image-in-detached-mode](https://github.com/niiicolai/chat-app?tab=readme-ov-file#run-docker-hub-image-in-detached-mode)
 
 ## Deployment Status
@@ -21,9 +21,9 @@ The project includes a Compose file named `compose-hub-image.yml`, which is desi
 |                        | CORS Middleware                     | [ ]     |
 |                        | File Middleware                     | [x]     |
 |                        | File Upload                         | [x]     |
-|                        | MySQL API                          | [x]     |
-|                        | MongoDB API                        | [ ]     |
-|                        | Neo4j API                         | [ ]     |
+|                        | MySQL API                           | [x]     |
+|                        | MongoDB API                         | [ ]     |
+|                        | Neo4j API                           | [ ]     |
 | **Websockets**         | Real-time Chat Messaging            | [x]     |
 |                        | Join/Leave Channel                  | [x]     |
 | **WebRTC**             | Video Call                          | [ ]     |
@@ -38,12 +38,12 @@ The project includes a Compose file named `compose-hub-image.yml`, which is desi
 |                        | Two Factor Authentication           | [ ]     |
 | **File Storage**       | S3 File Storage                     | [x]     |
 |                        | CDN                                 | [x]     |
-| **Environment Variables** | .env File                        | [x]     |
+| **Environment Var.**   | .env File                           | [x]     |
 |                        | .env.example File                   | [x]     |
 | **Cron Jobs**          | File Retention                      | [x]     |
 |                        | Message Retention                   | [x]     |
 |                        | MySQL Backup                        | [x]     |
-| **Database**           | MySQL                               |         |
+| **Database**           | MySQL                               | [x]     |
 |                        | Tables                              | [x]     |
 |                        | Views                               | [x]     |
 |                        | Stored Procedures                   | [x]     |
