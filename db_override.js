@@ -1,17 +1,12 @@
 import 'dotenv/config'
 import { exec } from 'child_process';
 
-// Load MySQL connection details from environment variables
-const env = process.env.NODE_ENV || 'development';
-const e = { development: 'DEV', production: 'PROD' };
-const connectionString = process.env[`SEQUELIZE_ROOT_${e[env]}_DATABASE_URL`];
-
 // Parse the connection string
 const dbConfig = {
-    username: connectionString.split(':')[1].split('//')[1],
-    password: connectionString.split(':')[2].split('@')[0],
-    host: connectionString.split('@')[1].split(':')[0],
-    database: connectionString.split('/')[3],
+    username: process.env.ROOT_MYSQL_USER,
+    password: process.env.ROOT_MYSQL_PASSWORD,
+    host: process.env.ROOT_MYSQL_HOST,
+    database: process.env.ROOT_MYSQL_DB,
 };
 
 const mysqlScript = './MySQL_Script.sql';
