@@ -10,9 +10,8 @@ RUN apt-get update && apt-get install -y \
     bash \
     curl
 
-RUN mkdir -p /usr/src/app \
-    && curl -o /usr/src/app/wait-for-it.sh https://raw.githubusercontent.com/vishnubob/wait-for-it/master/wait-for-it.sh \
-    && chmod +x /usr/src/app/wait-for-it.sh
+RUN curl -o /app/wait-for-it.sh https://raw.githubusercontent.com/vishnubob/wait-for-it/master/wait-for-it.sh \
+    && chmod +x /app/wait-for-it.sh
 
 RUN npm install
 
