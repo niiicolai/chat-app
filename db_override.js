@@ -6,7 +6,7 @@ const dbConfig = {
     username: process.env.ROOT_MYSQL_USER,
     password: process.env.ROOT_MYSQL_PASSWORD,
     host: process.env.ROOT_MYSQL_HOST,
-    database: process.env.ROOT_MYSQL_DB,
+    database: process.env.ROOT_MYSQL_DATABASE,
 };
 
 const mysqlScript = './MySQL_Script.sql';
