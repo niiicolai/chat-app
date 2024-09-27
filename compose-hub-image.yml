@@ -26,7 +26,7 @@ services:
       - mysql-dumps:/var/backups/mysql
     networks:
       - chat-network
-    command: ["sh", "-c", "./wait-for-it.sh mysql:3306 -- npm run db:override"]
+    command: ["sh", "-c", "./wait-for-it.sh mysql:3306 -- npm run db:override && exec node index.js"]
     depends_on:
       - mysql
 

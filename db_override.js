@@ -7,12 +7,13 @@ const dbConfig = {
     password: process.env.ROOT_MYSQL_PASSWORD,
     host: process.env.ROOT_MYSQL_HOST,
     database: process.env.ROOT_MYSQL_DATABASE,
+    port: process.env.ROOT_MYSQL_PORT || 3306,
 };
 
 const mysqlScript = './MySQL_Script.sql';
 
 async function migrateDBFromScript() {
-    const mysqlCommand = `mysql --user=${dbConfig.username} --password=${dbConfig.password} --host=${dbConfig.host} --port=3306 ${dbConfig.database} < ${mysqlScript}`;
+    const mysqlCommand = `mysql --user=${dbConfig.username} --password=${dbConfig.password} --host=${dbConfig.host} --port=${dbConfig.port} ${dbConfig.database} < ${mysqlScript}`;
 
     exec(mysqlCommand, (error, stdout, stderr) => {
         if (error) {
