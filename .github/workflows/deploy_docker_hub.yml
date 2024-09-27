@@ -36,9 +36,9 @@ jobs:
           echo "SEQUELIZE_DEV_DATABASE_URL=mysql://chat_user:password@mysql/chat" >> .env
           echo "SEQUELIZE_TEST_DATABASE_URL=sqlite::memory:" >> .env
           echo "SEQUELIZE_PROD_DATABASE_URL=mysql://chat_user:password@mysql/chat" >> .env
-          echo "SEQUELIZE_BACKUP_DEV_DATABASE_URL=mysql://chat_admin:password@mysql/chat" >> .env
-          echo "SEQUELIZE_BACKUP_TEST_DATABASE_URL=sqlite::memory:" >> .env
-          echo "SEQUELIZE_BACKUP_PROD_DATABASE_URL=mysql://chat_admin:password@mysql/chat" >> .env
+          echo "SEQUELIZE_ADMIN_DEV_DATABASE_URL=mysql://chat_admin:password@mysql/chat" >> .env
+          echo "SEQUELIZE_ADMIN_TEST_DATABASE_URL=sqlite::memory:" >> .env
+          echo "SEQUELIZE_ADMIN_PROD_DATABASE_URL=mysql://chat_admin:password@mysql/chat" >> .env
           echo "MYSQL_BACKUP_LOCATION=/var/backups/mysql" >> .env
           echo "ROLLBAR_ACCESS_TOKEN=secret" >> .env
 

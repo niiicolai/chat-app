@@ -14,7 +14,7 @@ const backupDir = process.env.MYSQL_BACKUP_LOCATION;
 // Define connection string
 const env = process.env.NODE_ENV || 'development';
 const e = { development: 'DEV', production: 'PROD' };
-const connectionString = process.env[`SEQUELIZE_BACKUP_${e[env]}_DATABASE_URL`];
+const connectionString = process.env[`SEQUELIZE_ADMIN_${e[env]}_DATABASE_URL`];
 const dbUrl = new URL(connectionString);
 const dbConfig = {
     username: dbUrl.username,

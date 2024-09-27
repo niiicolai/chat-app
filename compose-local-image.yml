@@ -1,16 +1,4 @@
 services:
-  chat_app:
-    container_name: chat_app
-    image: chat_app:v1.0
-    environment:
-      - NODE_ENV=production
-    ports:
-      - "3000:3000"
-      - "3001:3001"
-    volumes:
-      - mysql-dumps:/var/backups/mysql
-    networks:
-      - chat-network
 
   mysql:
     container_name: mysql
@@ -25,6 +13,21 @@ services:
       - /mysql/my_custom.cnf:/etc/mysql/conf.d/my_custom.cnf
     networks:
       - chat-network
+
+  chat_app:
+    container_name: chat_app
+    image: chat_app:v1.0
+    environment:
+      - NODE_ENV=production
+    ports:
+      - "3000:3000"
+      - "3001:3001"
+    volumes:
+      - mysql-dumps:/var/backups/mysql
+    networks:
+      - chat-network
+    depends_on:
+      - mysql
 
 networks:
   chat-network:

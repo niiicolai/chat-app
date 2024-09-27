@@ -1,24 +1,4 @@
 services:
-  chat_app:
-    container_name: chat_app_backend
-    image: niiicolaidk/chat-app-backend:latest
-    environment:
-      - NODE_ENV=production
-    ports:
-      - "3000:3000"
-      - "3001:3001"
-    volumes:
-      - mysql-dumps:/var/backups/mysql
-    networks:
-      - chat-network
-
-  chat_client_react:
-    container_name: chat_client_react
-    image: niiicolaidk/chat-app:latest
-    environment:
-      - NODE_ENV=production
-    ports:
-      - "5174:5174"
 
   mysql:
     container_name: mysql
@@ -33,6 +13,32 @@ services:
       - /mysql/my_custom.cnf:/etc/mysql/conf.d/my_custom.cnf
     networks:
       - chat-network
+
+  chat_app:
+    container_name: chat_app_backend
+    image: niiicolaidk/chat-app-backend
+    environment:
+      - NODE_ENV=production
+    ports:
+      - "3000:3000"
+      - "3001:3001"
+    volumes:
+      - mysql-dumps:/var/backups/mysql
+    networks:
+      - chat-network
+    command: ["sh", "-c", "npm run sequelize:migrate && npm run sequelize:seed"]
+    depends_on:
+      - mysql
+
+  chat_client_react:
+    container_name: chat_client_react
+    image: niiicolaidk/chat-app
+    environment:
+      - NODE_ENV=production
+    ports:
+      - "5174:5174"
+    depends_on:
+      - chat_app
 
 networks:
   chat-network:

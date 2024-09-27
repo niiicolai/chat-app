@@ -1,0 +1,17 @@
+{
+    "recurseDepth": 10,
+    "sourceType": "module",
+    "source": {
+        "include": [
+            "./src/"
+        ],
+        "includePattern": ".+\\.js(doc|x)?$",
+        "excludePattern": "(node_modules/|docs)",
+        "recursive": true
+    },
+    "opts": {
+        "recurse": true,
+        "destination": "./jsdocs",
+        "readme": "README.md"
+    }
+}

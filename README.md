@@ -1,10 +1,13 @@
 # Chat App Backend
-A Node.js backend designed for a chat application.
+A Node.js chat backend application.
+
+# Quickest Way to Test
+The project includes a Compose file named `compose-hub-image.yml`, which is designed to run the entire application in a local environment, including databases, the backend, and the frontend. For more details, refer to [#run-docker-hub-image-in-detached-mode](https://github.com/niiicolai/chat-app?tab=readme-ov-file#run-docker-hub-image-in-detached-mode)
 
 ## Deployment Status
 [![VM Publish Production](https://github.com/niiicolai/chat-app/actions/workflows/deploy_vm.yml/badge.svg)](https://github.com/niiicolai/chat-app/actions/workflows/deploy_vm.yml)
 
-[![Docker Hub Deploy](https://github.com/niiicolai/chat-app/actions/workflows/deploy_docker_hub.yml/badge.svg)](https://github.com/niiicolai/chat-app/actions/workflows/deploy_docker_hub.yml)
+[![Docker Hub Deploy](https://github.com/niiicolai/chat-app/actions/workflows/deploy_docker_hub.yml/badge.svg?branch=main)](https://github.com/niiicolai/chat-app/actions/workflows/deploy_docker_hub.yml)
 
 ## Features
 | Feature                | Subfeature                          | Status  |
@@ -126,7 +129,7 @@ docker run -d -p 3000:3000 -p 3001:3001 chat_app:v1.0
 ## Docker Compose
 The project contains two Docker compose files:
 - **[compose-hub-image.yml](https://github.com/niiicolai/chat-app/blob/main/compose-hub-image.yml)**: Fetches prebuilt images from Docker Hub for the chat backend, React.js frontend client, and MySQL. This Compose file is designed for quickly testing the chat application as a whole.
-- **[compose-local-image.yml](https://github.com/niiicolai/chat-app/blob/main/compose-local-image.yml)**: Expects the machine to have a local Docker image of the application build. Refer to the section on building a Docker image before using this Compose file.
+- **[compose-local-image.yml](https://github.com/niiicolai/chat-app/blob/main/compose-local-image.yml)**: Expects the machine to have a local Docker image of the application build. *It only starts an instance of the backend application and MySQL (no frontend)*. Refer to the section on building a Docker image before using this Compose file.
 
 ### Run *Docker Hub Image* in detached mode
 ```
