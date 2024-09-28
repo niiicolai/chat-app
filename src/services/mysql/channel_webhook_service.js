@@ -91,7 +91,7 @@ class Service extends MysqlBaseFindService {
             throw new ControllerError(400, 'Channel already has a webhook');
         }
 
-        if (file) {
+        if (file && file.size > 0) {
             if ((await RoomPermissionService.fileExceedsTotalFilesLimit({ room_uuid: channel.room_uuid, bytes: file.size }))) {
                 throw new ControllerError(400, 'The room does not have enough space for this file');
             }
@@ -144,7 +144,7 @@ class Service extends MysqlBaseFindService {
             body.description = existing.channel_webhook_description;
         }
 
-        if (file) {
+        if (file && file.size > 0) {
             if ((await RoomPermissionService.fileExceedsTotalFilesLimit({ room_uuid: existing.room_uuid, bytes: file.size }))) {
                 throw new ControllerError(400, 'The room does not have enough space for this file');
             }

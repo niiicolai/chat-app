@@ -119,7 +119,7 @@ class Service extends MysqlBaseFindService {
             throw new ControllerError(400, 'Room with this name already exists');
         }
 
-        if (file) {
+        if (file && file.size > 0) {
             if (file.size > parseFloat(process.env.ROOM_TOTAL_UPLOAD_SIZE)) {
                 throw new ControllerError(400, 'The room does not have enough space for this file');
             }
@@ -175,7 +175,7 @@ class Service extends MysqlBaseFindService {
             body.room_category_name = existing.room_category_name;
         }
 
-        if (file) {
+        if (file && file.size > 0) {
             if ((await RoomPermissionService.fileExceedsTotalFilesLimit({ room_uuid, bytes: file.size }))) {
                 throw new ControllerError(400, 'The room does not have enough space for this file');
             }

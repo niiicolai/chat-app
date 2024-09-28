@@ -15,7 +15,7 @@ const service = new MysqlBaseFindService(
             uuid: m.user_uuid,
             username: m.user_username,
             email: m.user_email,
-            user_avatar_src: m.user_avatar_src,
+            avatar_src: m.user_avatar_src,
             created_at: m.user_created_at,
             updated_at: m.user_updated_at,
         };
@@ -43,7 +43,7 @@ service.create = async (options={ body: null, file: null }) => {
         throw new ControllerError(400, 'No password provided');
     }
 
-    if (file) {
+    if (file && file.size > 0) {
         if (file.size > parseFloat(process.env.ROOM_UPLOAD_SIZE)) {
             throw new ControllerError(400, 'File exceeds single file size limit');
         }
@@ -96,7 +96,7 @@ service.update = async (options={ body: null, file: null, user: null }) => {
         body.password = bcrypt.hashSync(body.password, saltRounds);
     }
 
-    if (file) {
+    if (file && file.size > 0) {
         if (file.size > parseFloat(process.env.ROOM_UPLOAD_SIZE)) {
             throw new ControllerError(400, 'File exceeds single file size limit');
         }
@@ -158,6 +158,21 @@ service.destroy = async (options={ user_uuid: null }) => {
     }
 
     await db.sequelize.query('CALL delete_user_proc(:user_uuid, @result)', {
+        replacements: {
+            user_uuid,
+        },
+    });
+}
+
+service.destroyAvatar = async (options={ user_uuid: null }) => {
+    const { user_uuid } = options;
+    
+    const user = await service.findOne({user_uuid});
+    if (!user) {
+        throw new ControllerError(404, 'User not found');
+    }
+
+    await db.sequelize.query('CALL delete_user_avatar_proc(:user_uuid, @result)', {
         replacements: {
             user_uuid,
         },

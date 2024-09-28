@@ -148,10 +148,10 @@ ctrl.destroy();
 /**
  * @openapi
  *  '/api/v1/neo4j/user/me/avatar':
- *   post:
+ *   delete:
  *    tags:
  *     - Neo4j User Controller
- *    summary: Upload an Avatar for the authorized User
+ *    summary: Remove authorized User's Avatar
  *    security:
  *     - bearerAuth: []
  *    responses:

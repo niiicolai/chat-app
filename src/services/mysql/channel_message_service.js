@@ -125,7 +125,7 @@ class Service extends MysqlBaseFindService {
             throw new ControllerError(403, 'User is not in the room');
         }
 
-        if (file) {
+        if (file && file.size > 0) {
             if ((await RoomPermissionService.fileExceedsTotalFilesLimit({ room_uuid: channel.room_uuid, bytes: file.size }))) {
                 throw new ControllerError(400, 'The room does not have enough space for this file');
             }

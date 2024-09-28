@@ -4,6 +4,8 @@ A Node.js chat backend application.
 # Quickest Way to Try the Application
 The project includes a Compose file named `compose-hub-image.yml`, which is designed to run the entire application in a local environment, including databases, the backend, and the frontend. For more details, refer to [#run-docker-hub-image-in-detached-mode](https://github.com/niiicolai/chat-app?tab=readme-ov-file#run-docker-hub-image-in-detached-mode)
 
+After starting the Docker compose, the application will be available at http://127.0.0.1:5174 with complete test data.
+
 ## Deployment Status
 [![VM Publish Production](https://github.com/niiicolai/chat-app/actions/workflows/deploy_vm.yml/badge.svg)](https://github.com/niiicolai/chat-app/actions/workflows/deploy_vm.yml)
 
@@ -102,7 +104,7 @@ npm run sequelize:seed:undo         # Revert the most recent seed operation
 npm run sequelize:seed:generate     # Create a new seed file with a timestamp
 ```
 
-# Setup DB
+### Setup DB
 ```bash
 npm run db:override                 # Override the existing db using ./MySQL_Script.sql
 ```

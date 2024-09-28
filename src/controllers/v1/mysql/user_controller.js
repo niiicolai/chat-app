@@ -148,10 +148,10 @@ ctrl.destroy();
 /**
  * @openapi
  *  '/api/v1/mysql/user/me/avatar':
- *   post:
+ *   delete:
  *    tags:
  *     - MySQL User Controller
- *    summary: Upload an Avatar for the authorized User
+ *    summary: Remove authorized User's Avatar
  *    security:
  *     - bearerAuth: []
  *    responses:

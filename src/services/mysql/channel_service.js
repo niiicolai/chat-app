@@ -85,7 +85,7 @@ class Service extends MysqlBaseFindService {
             throw new ControllerError(400, 'Room channel count exceeds limit. The room cannot have more channels');
         }
 
-        if (file) {
+        if (file && file.size > 0) {
             if ((await RoomPermissionService.fileExceedsTotalFilesLimit({ room_uuid, bytes: file.size }))) {
                 throw new ControllerError(400, 'The room does not have enough space for this file');
             }
@@ -148,7 +148,7 @@ class Service extends MysqlBaseFindService {
         const room_uuid = existing.room_uuid;
         body.channel_type_name = existing.channel_type_name;
         
-        if (file) {
+        if (file && file.size > 0) {
             if ((await RoomPermissionService.fileExceedsTotalFilesLimit({ room_uuid, bytes: file.size }))) {
                 throw new ControllerError(400, 'The room does not have enough space for this file');
             }
