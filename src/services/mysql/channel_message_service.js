@@ -178,7 +178,7 @@ class Service extends MysqlBaseFindService {
         if (!existing) {
             throw new ControllerError(404, 'Channel Message not found');
         }
-        console.log(existing, user_uuid);
+
         if (existing.user?.uuid !== user_uuid &&
             !(await RoomPermissionService.isInRoomByChannel({ channel_uuid: existing.channel_uuid, user, role_name: 'Moderator' })) &&
             !(await RoomPermissionService.isInRoomByChannel({ channel_uuid: existing.channel_uuid, user, role_name: 'Admin' }))) {
@@ -203,7 +203,7 @@ class Service extends MysqlBaseFindService {
           * Broadcast the channel message to all users
           * in the room where the channel message was updated.
           */
-        broadcastChannel(`channel-${channel_uuid}`, 'chat_message_updated', { channel_uuid });
+        broadcastChannel(`channel-${channel_uuid}`, 'chat_message_updated', ch);
 
         return ch;
     }
@@ -239,7 +239,7 @@ class Service extends MysqlBaseFindService {
           * Broadcast the channel message to all users
           * in the room where the channel message was deleted.
           */
-        broadcastChannel(`channel-${channel_uuid}`, 'chat_message_deleted', { channel_uuid });
+        broadcastChannel(`channel-${channel_uuid}`, 'chat_message_deleted', { uuid: channel_message_uuid });
     }
 }
 
