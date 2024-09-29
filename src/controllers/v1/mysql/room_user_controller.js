@@ -132,4 +132,33 @@ ctrl.update();
  */
 ctrl.destroy();
 
+/**
+ * @openapi
+ *  '/api/v1/mysql/room_user/me/:room_uuid':
+ *   get:
+ *    tags:
+ *     - MySQL Room User Controller
+ *    summary: Get authenticated user in a room
+ *    security:
+ *     - bearerAuth: []
+ *    parameters:
+ *     - in: path
+ *       name: room_uuid
+ *       required: true
+ *       schema:
+ *        type: string
+ *    responses:
+ *     200:
+ *      description: OK
+ *      content:
+ *       application/json:
+ *        schema:
+ *         $ref: '#/components/schemas/roomUser'
+ *     400:
+ *      description: Bad Request
+ *     500:
+ *     description: Internal Server Error
+ */
+ctrl.findAuthenticatedUser();
+
 export default ctrl.router;

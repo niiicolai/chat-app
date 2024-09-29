@@ -15,6 +15,15 @@ export default (crudService) => {
         });
     }
 
+    ctrl.findAuthenticatedUser = () => {
+        router.get('/room_user/me/:room_uuid', [authMiddleware], async (req, res) => {
+            await errorHandler(res, async () => {
+                const result = await crudService.findAuthenticatedUser({ room_uuid: req.params.room_uuid, user: req.user });
+                res.json(result);
+            });
+        });
+    }
+
     ctrl.findAll = () => {
         router.get('/room_users', [authMiddleware], async (req, res) => {
             await errorHandler(res, async () => {

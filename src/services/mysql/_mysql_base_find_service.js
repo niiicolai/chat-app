@@ -71,7 +71,7 @@ export default class MysqlBaseFindService {
             params.include = options.include;
         }
 
-        const total = await this.model.count();
+        const total = await this.model.count(params);
         const data = (await this.model.findAll(params)).map((m) => this.dto(m));
         const res = { total, data };
 

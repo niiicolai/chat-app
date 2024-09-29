@@ -36,6 +36,24 @@ class Service extends MysqlBaseFindService {
         return await super.findOne({ ...options });
     }
 
+    async findAuthenticatedUser(options = { room_uuid: null, user: null }) {
+        const { room_uuid, user } = options;
+        const { sub: user_uuid } = user;
+        
+        if (!room_uuid) {
+            throw new ControllerError(400, 'No room_uuid provided');
+        }
+        if (!(await RoomPermissionService.isInRoom({ room_uuid, user, role_name: null }))) {
+            throw new ControllerError(403, 'User is not in the room');
+        }
+        const m = await this.model.findOne({ where: { room_uuid, user_uuid } });
+        if (!m) {
+            throw new ControllerError(404, 'Room user not found');
+        }
+
+        return dto(m);
+    }
+
     async findAll(options = { room_uuid: null, user: null }) {
         const { room_uuid, user } = options;
         if (!room_uuid) {
