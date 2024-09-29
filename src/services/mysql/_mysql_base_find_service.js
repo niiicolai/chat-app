@@ -77,6 +77,7 @@ export default class MysqlBaseFindService {
 
         if (page) res.page = parseInt(page);
         if (limit) res.limit = params.limit;
+        if (page && limit) res.pages = Math.ceil(total / limit);
 
         return res;
     }
