@@ -136,12 +136,8 @@ service.login = async (options={ body: null }) => {
         },
     });
 
-    if (!user) {
-        throw new ControllerError(404, 'User not found');
-    }
-
-    if (!await bcrypt.compare(body.password, user.dataValues.user_password)) {
-        throw new ControllerError(400, 'Invalid password');
+    if (!user || !await bcrypt.compare(body.password, user.dataValues.user_password)) {
+        throw new ControllerError(400, 'Invalid email or password');
     }
 
     const token = JwtService.sign(user.dataValues.user_uuid);

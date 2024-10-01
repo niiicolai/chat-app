@@ -15,15 +15,22 @@ class RoomPermissionService {
             throw new ControllerError(400, 'isInRoom: No user_uuid provided');
         }
 
-        await db.sequelize.query('CALL check_user_in_room_with_role_proc(:user_uuid, :room_uuid, :role_name, @result)', {
-            replacements: {
-                user_uuid,
+        const exists = await db.RoomUserView.findOne({
+            where: {
                 room_uuid,
-                role_name: options.role_name || null,
+                user_uuid,
             },
         });
-        const [ [ { result } ] ] = await db.sequelize.query('SELECT @result AS result');
-        return result === 1;
+
+        if (exists) {
+            if (options.role_name && exists.room_user_role_name !== options.role_name) {
+                return false;
+            }
+
+            return true;
+        }
+
+        return false;
     }
 
     async isInRoomByChannel(options = { channel_uuid: null, user: null, role_name: null }) {
@@ -36,15 +43,27 @@ class RoomPermissionService {
             throw new ControllerError(400, 'isInRoomByChannel: No user_uuid provided');
         }
 
-        await db.sequelize.query('CALL check_user_by_channel_uuid_in_room_with_role_proc(:user_uuid, :channel_uuid, :role_name, @result)', {
-            replacements: {
-                user_uuid,
+        const ch = await db.ChannelView.findOne({
+            where: {
                 channel_uuid,
-                role_name: options.role_name || null,
             },
         });
-        const [[{ result }]] = await db.sequelize.query('SELECT @result AS result');
-        return result === 1;
+        const exists = await db.RoomUserView.findOne({
+            where: {
+                room_uuid: ch.room_uuid,
+                user_uuid,
+            },
+        });
+
+        if (exists) {
+            if (options.role_name && exists.room_user_role_name !== options.role_name) {
+                return false;
+            }
+
+            return true;
+        }
+
+        return false;
     }
 
     async fileExceedsTotalFilesLimit(options = { room_uuid: null, bytes: null }) {
@@ -63,7 +82,8 @@ class RoomPermissionService {
             },
         });
         const [[{ result }]] = await db.sequelize.query('SELECT @result AS result');
-        return (result === 1);
+        const exceeds = result === 1;
+        return exceeds;
     }
 
     async fileExceedsSingleFileSize(options = { room_uuid: null, bytes: null }) {
@@ -82,7 +102,8 @@ class RoomPermissionService {
             },
         });
         const [[{ result }]] = await db.sequelize.query('SELECT @result AS result');
-        return result === 1;
+        const exceeds = result === 1;
+        return exceeds;
     }
 
     async roomUserCountExceedsLimit(options = { room_uuid: null, add_count: null }) {
@@ -101,7 +122,8 @@ class RoomPermissionService {
             },
         });
         const [[{ result }]] = await db.sequelize.query('SELECT @result AS result');
-        return result === 1;
+        const exceeds = result === 1;
+        return exceeds;
     }
 
     async channelCountExceedsLimit(options = { room_uuid: null, add_count: null }) {
@@ -120,7 +142,8 @@ class RoomPermissionService {
             },
         });
         const [[{ result }]] = await db.sequelize.query('SELECT @result AS result');
-        return result === 1;
+        const exceeds = result === 1;
+        return exceeds;
     }
 }
 

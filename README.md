@@ -7,9 +7,7 @@ The project includes a Compose file named `compose-hub-image.yml`, which is desi
 After starting the Docker compose, the application will be available at http://127.0.0.1:5174 with complete test data.
 
 ## Deployment Status
-[![VM Publish Production](https://github.com/niiicolai/chat-app/actions/workflows/deploy_vm.yml/badge.svg)](https://github.com/niiicolai/chat-app/actions/workflows/deploy_vm.yml)
-
-[![Docker Hub Deploy](https://github.com/niiicolai/chat-app/actions/workflows/deploy_docker_hub.yml/badge.svg?branch=main)](https://github.com/niiicolai/chat-app/actions/workflows/deploy_docker_hub.yml)
+[![VM Publish Production and Docker Hub ](https://github.com/niiicolai/chat-app/actions/workflows/deploy_vm.yml/badge.svg)](https://github.com/niiicolai/chat-app/actions/workflows/deploy_vm.yml)
 
 ## Features
 | Feature                | Subfeature                          | Status  |
