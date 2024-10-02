@@ -1792,6 +1792,8 @@ FOR EACH ROW
 BEGIN    
     -- Add information to the audit log
     INSERT INTO ChannelAudit (uuid, body, channel_uuid, channel_audit_type_name) VALUES (UUID(), 'Webhook deleted.', OLD.channel_uuid, 'WEBHOOK_DELETED');
+    -- Delete all related rows
+    DELETE FROM ChannelWebhookMessage WHERE channel_webhook_uuid = OLD.uuid;
 END //
 DELIMITER ;
 

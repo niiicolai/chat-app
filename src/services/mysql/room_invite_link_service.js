@@ -45,9 +45,13 @@ class Service extends MysqlBaseFindService {
         if (!body.uuid) {
             throw new ControllerError(400, 'No UUID provided');
         }
-        console.log(body);
+
         if (!body.room_uuid) {
             throw new ControllerError(400, 'No room_uuid provided');
+        }
+
+        if (body.expires_at && new Date(body.expires_at) < new Date()) {
+            throw new ControllerError(400, 'The expiration date cannot be in the past');
         }
 
         if (!(await RoomPermissionService.isInRoom({ room_uuid: body.room_uuid, user, role_name: 'Admin' }))) {
@@ -76,6 +80,10 @@ class Service extends MysqlBaseFindService {
         const existing = await this.model.findOne({ where: { room_invite_link_uuid } });
         if (!existing) {
             throw new ControllerError(404, 'Room Invite Link not found');
+        }
+
+        if (expires_at && new Date(expires_at) < new Date()) {
+            throw new ControllerError(400, 'The expiration date cannot be in the past');
         }
 
         if (!(await RoomPermissionService.isInRoom({ room_uuid: existing.room_uuid, user, role_name: 'Admin' }))) {
