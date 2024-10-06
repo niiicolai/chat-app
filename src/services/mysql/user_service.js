@@ -16,6 +16,7 @@ const service = new MysqlBaseFindService(
             username: m.user_username,
             email: m.user_email,
             avatar_src: m.user_avatar_src,
+            email_verified: m.user_email_verified,
             created_at: m.user_created_at,
             updated_at: m.user_updated_at,
         };

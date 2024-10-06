@@ -22,18 +22,20 @@ After starting the Docker compose, the application will be available at http://1
 |                        | File Middleware                     | [x]     |
 |                        | File Upload                         | [x]     |
 |                        | MySQL API                           | [x]     |
-|                        | MongoDB API                         | [ ]     |
-|                        | Neo4j API                           | [ ]     |
+|                        | MongoDB API                         | [x]     |
+|                        | Neo4j API                           | [x]     |
 | **Websockets**         | Real-time Chat Messaging            | [x]     |
 |                        | Join/Leave Channel                  | [x]     |
+|                        | Real-time typing                    | [ ]     |
 | **WebRTC**             | Video Call                          | [ ]     |
 |                        | Audio Call                          | [ ]     |
 |                        | Screen Sharing                      | [ ]     |
 | **Authentication**     | JWT Token                           | [x]     |
 |                        | User Registration                   | [x]     |
 |                        | User Login                          | [x]     |
+|                        | User Online Status                  | [ ]     |
 |                        | Bcrypt Password Hashing             | [x]     |
-|                        | Forgot Password                     | [ ]     |
+|                        | Reset Password                      | [ ]     |
 |                        | Email Verification                  | [ ]     |
 |                        | Two Factor Authentication           | [ ]     |
 | **File Storage**       | S3 File Storage                     | [x]     |
@@ -62,7 +64,8 @@ After starting the Docker compose, the application will be available at http://1
 |                        | Docker Compose                      | [x]     |
 | **CI/CD**              | GitHub Actions                      | [x]     |
 |                        | GitHub Secrets                      | [x]     |
-| **Deployment**         | DigitalOcean                        | [x]     |
+|                        | Virtual Machine                     | [x]     |
+|                        | Docker Hub                          | [x]     |
 | **Testing**            | Unit Testing                        | [ ]     |
 |                        | Integration Testing                 | [ ]     |
 

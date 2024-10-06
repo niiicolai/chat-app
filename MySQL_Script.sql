@@ -363,12 +363,61 @@ CREATE TABLE ChannelWebhookMessage (
     FOREIGN KEY (channel_webhook_message_type_name) REFERENCES ChannelWebhookMessageType(name)
 );
 
+-- A user password reset is used to reset a user's password.
+CREATE TABLE UserPasswordReset (
+    uuid VARCHAR(36) PRIMARY KEY,
+    user_uuid VARCHAR(36) NOT NULL,
+    expires_at DATETIME NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_uuid) REFERENCES User(uuid)
+);
 
+-- A user email verification is used to verify a user's email.
+CREATE TABLE UserEmailVerification (
+    uuid VARCHAR(36) PRIMARY KEY,
+    user_uuid VARCHAR(36) NOT NULL,
+    is_verified BOOLEAN DEFAULT FALSE,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_uuid) REFERENCES User(uuid)
+);
 
+-- A user status state is used to determine if a user is online or offline.
+CREATE TABLE UserStatusState (
+    name VARCHAR(255) PRIMARY KEY,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- A user status is used to determine if a user is online or offline.
+CREATE TABLE UserStatus (
+    uuid VARCHAR(36) PRIMARY KEY,
+    user_uuid VARCHAR(36) NOT NULL,
+    user_status_state_name VARCHAR(255) NOT NULL,
+    last_seen_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    message TEXT DEFAULT NULL,
+    total_online_hours INTEGER DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_status_state_name) REFERENCES UserStatusState(name),
+    FOREIGN KEY (user_uuid) REFERENCES User(uuid)
+);
+
+-- A channel message reaction is used to react to a message.
+CREATE TABLE ChannelMessageReaction (
+    uuid VARCHAR(36) PRIMARY KEY,
+    channel_message_uuid VARCHAR(36) NOT NULL,
+    user_uuid VARCHAR(36) NOT NULL,
+    reaction VARCHAR(255) NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (channel_message_uuid) REFERENCES ChannelMessage(uuid),
+    FOREIGN KEY (user_uuid) REFERENCES User(uuid),
+    UNIQUE KEY unique_reaction (channel_message_uuid, user_uuid, reaction)
+);
 
 -- ### EVENTS ###
-
-
 
 -- Event to delete expired room invite links
 DROP EVENT IF EXISTS delete_expired_room_invite_links;
@@ -378,6 +427,17 @@ ON SCHEDULE EVERY 1 DAY
 DO
 BEGIN
     DELETE FROM RoomInviteLink WHERE expires_at < NOW();
+END //
+DELIMITER ;
+
+-- Event to delete expired user password resets
+DROP EVENT IF EXISTS delete_expired_user_password_resets;
+DELIMITER //
+CREATE EVENT delete_expired_user_password_resets
+ON SCHEDULE EVERY 1 DAY
+DO
+BEGIN
+    DELETE FROM UserPasswordReset WHERE expires_at < NOW();
 END //
 DELIMITER ;
 
@@ -446,8 +506,38 @@ END;
 DELIMITER ;
 
 
+-- ### STORED PROCEDURES ###
 
+-- Create a channel message reaction
+DROP PROCEDURE IF EXISTS create_channel_message_reaction_proc;
+DELIMITER //
+CREATE PROCEDURE create_channel_message_reaction_proc(
+    IN channel_message_uuid_input VARCHAR(36),
+    IN user_uuid_input VARCHAR(36),
+    IN reaction_input VARCHAR(255),
+    OUT result BOOLEAN
+)
+BEGIN
+    -- Insert the channel message reaction
+    INSERT INTO ChannelMessageReaction (uuid, channel_message_uuid, user_uuid, reaction) 
+    VALUES (UUID(), channel_message_uuid_input, user_uuid_input, reaction_input);
+    SET result = TRUE;
+END //
+DELIMITER ;
 
+-- Delete a channel message reaction
+DROP PROCEDURE IF EXISTS delete_channel_message_reaction_proc;
+DELIMITER //
+CREATE PROCEDURE delete_channel_message_reaction_proc(
+    IN reaction_uuid_input VARCHAR(36),
+    OUT result BOOLEAN
+)
+BEGIN
+    -- Delete the channel message reaction
+    DELETE FROM ChannelMessageReaction WHERE uuid = reaction_uuid_input;
+    SET result = TRUE;
+END //
+DELIMITER ;
 
 -- Check if the total size + the new upload size exceeds the allowed total size for a room
 DROP PROCEDURE IF EXISTS check_upload_exceeds_total_proc;
@@ -1424,11 +1514,66 @@ BEGIN
 END //
 DELIMITER ;
 
+-- Set a user's email as verified
+DROP PROCEDURE IF EXISTS set_user_email_verification_proc;
+DELIMITER //
+CREATE PROCEDURE set_user_email_verification_proc(
+    IN user_uuid_input VARCHAR(36),
+    IN user_is_verified_input BOOLEAN,
+    OUT result BOOLEAN
+)
+BEGIN
+    UPDATE UserEmailVerification SET is_verified = user_is_verified_input WHERE user_uuid = user_uuid_input;
+    SET result = TRUE;
+END //
+DELIMITER ;
 
+-- Create a new UserPasswordReset
+DROP PROCEDURE IF EXISTS create_user_password_reset_proc;
+DELIMITER //
+CREATE PROCEDURE create_user_password_reset_proc(
+    IN user_password_reset_uuid_input VARCHAR(36),
+    IN user_uuid_input VARCHAR(36),
+    IN user_password_reset_expires_at_input DATETIME,
+    OUT result BOOLEAN
+)
+BEGIN
+    INSERT INTO UserPasswordReset (uuid, user_uuid, expires_at) VALUES (user_password_reset_uuid_input, user_uuid_input, user_password_reset_expires_at_input);
+    SET result = TRUE;
+END //
+DELIMITER ;
 
+-- Delete a UserPasswordReset
+DROP PROCEDURE IF EXISTS delete_user_password_reset_proc;
+DELIMITER //
+CREATE PROCEDURE delete_user_password_reset_proc(
+    IN user_password_reset_uuid_input VARCHAR(36),
+    OUT result BOOLEAN
+)
+BEGIN
+    DELETE FROM UserPasswordReset WHERE uuid = user_password_reset_uuid_input;
+    SET result = TRUE;
+END //
+DELIMITER ;
+
+-- Update a user's status
+DROP PROCEDURE IF EXISTS update_user_status_proc;
+DELIMITER //
+CREATE PROCEDURE update_user_status_proc(
+    IN user_uuid_input VARCHAR(36),
+    IN status_state_name_input VARCHAR(255),
+    IN status_message_input TEXT,
+    IN status_last_seen_at DATETIME,
+    IN status_total_online_time BIGINT, 
+    OUT result BOOLEAN
+)
+BEGIN
+    UPDATE UserStatus SET status_state_name = status_state_name_input, message = status_message_input, last_seen_at = status_last_seen_at, total_online_time = status_total_online_time WHERE user_uuid = user_uuid_input;
+    SET result = TRUE;
+END //
+DELIMITER ;
 
 -- ### TRIGGERS ###
-
 
 -- Trigger to delete all related rows when a user is deleted
 DROP TRIGGER IF EXISTS user_before_delete;
@@ -1439,9 +1584,24 @@ FOR EACH ROW
 BEGIN
     DELETE FROM RoomUser WHERE user_uuid = OLD.uuid;
     DELETE FROM ChannelMessage WHERE user_uuid = OLD.uuid;
+    DELETE FROM UserEmailVerification WHERE user_uuid = OLD.uuid;
+    DELETE FROM UserPasswordReset WHERE user_uuid = OLD.uuid;
+    DELETE FROM UserStatus WHERE user_uuid = OLD.uuid;
 END //
 DELIMITER ;
 
+DROP TRIGGER IF EXISTS user_after_insert;
+DELIMITER //
+CREATE TRIGGER user_after_insert
+AFTER INSERT ON User
+FOR EACH ROW
+BEGIN
+    -- Insert UserEmailVerification
+    INSERT INTO UserEmailVerification (uuid, user_uuid) VALUES (UUID(), NEW.uuid);
+    -- Insert UserStatus
+    INSERT INTO UserStatus (uuid, user_uuid, status_state_name, message) VALUES (UUID(), NEW.uuid, 'OFFLINE', 'No status message yet.');
+END //
+DELIMITER ;
 
 
 -- Trigger to insert a new row into roomsetting when a new room is created
@@ -1568,7 +1728,7 @@ AFTER INSERT ON RoomUser
 FOR EACH ROW
 BEGIN
     -- Add information to the audit log
-    INSERT INTO RoomAudit (uuid, body, room_uuid, room_audit_type_name) VALUES (UUID(), 'User added.', NEW.room_uuid, 'USER_ADDED');
+    INSERT INTO RoomAudit (uuid, body, room_uuid, room_audit_type_name) VALUES (UUID(), 'User added.', NEW.room_uuid, 'USER_ADDED');    
 END //
 DELIMITER ;
 
@@ -1800,15 +1960,61 @@ DELIMITER ;
 
 -- ### VIEWS ###
 
+-- Get all User status states
+DROP VIEW IF EXISTS user_status_state_view;
+CREATE VIEW user_status_state_view AS
+SELECT 
+    uss.name as user_status_state_name, uss.created_at as user_status_state_created_at, uss.updated_at as user_status_state_updated_at
+FROM UserStatusState uss;
 
 -- Get all users
 DROP VIEW IF EXISTS user_view;
 CREATE VIEW user_view AS
 SELECT 
-    u.uuid as user_uuid, u.username as user_username, u.email as user_email, u.password as user_password, u.avatar_src as user_avatar_src, u.created_at as user_created_at, u.updated_at as user_updated_at
-FROM User u;
+    u.uuid as user_uuid, u.username as user_username, u.email as user_email, u.password as user_password, u.avatar_src as user_avatar_src, u.created_at as user_created_at, u.updated_at as user_updated_at,
+    -- UserEmailVerification
+    uev.is_verified as user_email_verified,
+    -- UserStatus
+    us.uuid as user_status_uuid, us.user_status_state_name, us.message as user_status_message, us.last_seen_at as user_status_last_seen_at, us.total_online_hours as user_status_total_online_hours
+FROM User u
+LEFT JOIN UserEmailVerification uev ON u.uuid = uev.user_uuid
+LEFT JOIN UserStatus us ON u.uuid = us.user_uuid;
 
 
+-- Get all UserEmailVerifications
+DROP VIEW IF EXISTS user_email_verification_view;
+CREATE VIEW user_email_verification_view AS
+SELECT 
+    uev.uuid as user_email_verification_uuid, uev.is_verified as user_email_verified, uev.created_at as user_email_verification_created_at, uev.updated_at as user_email_verification_updated_at,
+    -- User
+    u.uuid as user_uuid
+FROM UserEmailVerification uev
+JOIN User u ON uev.user_uuid = u.uuid;
+
+-- Get all UserPasswordResets
+DROP VIEW IF EXISTS user_password_reset_view;
+CREATE VIEW user_password_reset_view AS
+SELECT 
+    upr.uuid as user_password_reset_uuid, upr.expires_at as user_password_reset_expires_at, upr.created_at as user_password_reset_created_at, upr.updated_at as user_password_reset_updated_at,
+    -- User
+    u.uuid as user_uuid
+FROM UserPasswordReset upr
+JOIN User u ON upr.user_uuid = u.uuid;
+
+-- Get all UserStatuses
+DROP VIEW IF EXISTS user_status_view;
+CREATE VIEW user_status_view AS
+SELECT 
+    us.uuid as user_status_uuid, 
+    us.user_status_state_name, 
+    us.message as user_status_message, 
+    us.last_seen_at as user_status_last_seen_at, 
+    us.total_online_hours as user_status_total_online_hours,
+    us.created_at as user_status_created_at,
+    us.updated_at as user_status_updated_at,
+    us.user_uuid
+FROM UserStatus us; 
+    
 
 -- Get room with all settings
 DROP VIEW IF EXISTS room_view;
@@ -2059,9 +2265,7 @@ FROM ChannelMessage cm
     LEFT JOIN RoomFile rf on mu.room_file_uuid = rf.uuid
     LEFT JOIN ChannelWebhookMessage cwm ON cm.uuid = cwm.channel_message_uuid
     LEFT JOIN ChannelWebhook cw ON cwm.channel_webhook_uuid = cw.uuid
-    LEFT JOIN RoomFile cwrf ON cw.room_file_uuid = cwrf.uuid;
-
-
+    LEFT JOIN RoomFile cwrf ON cw.room_file_uuid = cwrf.uuids;
 
 -- Get channel message types
 DROP VIEW IF EXISTS channel_message_type_view;
@@ -2071,7 +2275,18 @@ SELECT
     cmt.name as channel_message_type_name, cmt.created_at as channel_message_type_created_at, cmt.updated_at as channel_message_type_updated_at
 FROM ChannelMessageType cmt;
 
-
+-- Get channel message reactions
+DROP VIEW IF EXISTS channel_message_reaction_view;
+CREATE VIEW channel_message_reaction_view AS
+SELECT 
+    -- ChannelMessageReaction
+    cmr.uuid as channel_message_reaction_uuid, 
+    cmr.reaction, 
+    cmr.user_uuid,
+    cmr.channel_message_uuid,
+    cmr.created_at as channel_message_reaction_created_at, 
+    cmr.updated_at as channel_message_reaction_updated_at
+FROM ChannelMessageReaction cmr;
 
 -- Get channel webhooks
 DROP VIEW IF EXISTS channel_webhook_view;
@@ -2250,6 +2465,12 @@ INSERT INTO RoomFileType (name) VALUES
 ('RoomAvatar');
 
 
+INSERT INTO UserStatusState (name) VALUES
+('Online'),
+('Away'),
+('Do Not Disturb'),
+('Offline');
+
 
 -- Create the admin, moderator, and member users
 call create_user_proc(@user_uuid, 'admin', 'admin@example.com', @password, @upload_src2, @result);
@@ -2341,6 +2562,12 @@ GRANT EXECUTE ON PROCEDURE `chat`.`edit_channel_webhook_proc` TO 'chat_user'@'%'
 GRANT EXECUTE ON PROCEDURE `chat`.`delete_channel_webhook_proc` TO 'chat_user'@'%';
 GRANT EXECUTE ON PROCEDURE `chat`.`create_webhook_message_proc` TO 'chat_user'@'%';
 GRANT EXECUTE ON PROCEDURE `chat`.`edit_room_setting_proc` TO 'chat_user'@'%';
+GRANT EXECUTE ON PROCEDURE `chat`.`set_user_email_verification_proc` TO 'chat_user'@'%';
+GRANT EXECUTE ON PROCEDURE `chat`.`create_user_password_reset_proc` TO 'chat_user'@'%';
+GRANT EXECUTE ON PROCEDURE `chat`.`delete_user_password_reset_proc` TO 'chat_user'@'%';
+GRANT EXECUTE ON PROCEDURE `chat`.`update_user_status_proc` TO 'chat_user'@'%';
+GRANT EXECUTE ON PROCEDURE `chat`.`create_channel_message_reaction_proc` TO 'chat_user'@'%';
+GRANT EXECUTE ON PROCEDURE `chat`.`delete_channel_message_reaction_proc` TO 'chat_user'@'%';
 -- Grant SELECT privilege on views only
 GRANT SELECT ON `chat`.`user_view` TO 'chat_user'@'%';
 GRANT SELECT ON `chat`.`room_view` TO 'chat_user'@'%';
@@ -2362,6 +2589,11 @@ GRANT SELECT ON `chat`.`channel_message_type_view` TO 'chat_user'@'%';
 GRANT SELECT ON `chat`.`channel_webhook_view` TO 'chat_user'@'%';
 GRANT SELECT ON `chat`.`channel_webhook_message_view` TO 'chat_user'@'%';
 GRANT SELECT ON `chat`.`channel_webhook_message_type_view` TO 'chat_user'@'%';
+GRANT SELECT ON `chat`.`user_status_state_view` TO 'chat_user'@'%';
+GRANT SELECT ON `chat`.`user_email_verification_view` TO 'chat_user'@'%';
+GRANT SELECT ON `chat`.`user_password_reset_view` TO 'chat_user'@'%';
+GRANT SELECT ON `chat`.`user_status_view` TO 'chat_user'@'%';
+GRANT SELECT ON `chat`.`channel_message_reaction_view` TO 'chat_user'@'%';
 -- Flush privileges to apply changes
 FLUSH PRIVILEGES;
 
@@ -2400,6 +2632,11 @@ GRANT SELECT ON `chat`.`channel_message_upload_type_view` TO 'chat_user'@'%';
 GRANT SELECT ON `chat`.`channel_webhook_view` TO 'chat_guest'@'%';
 GRANT SELECT ON `chat`.`channel_webhook_message_view` TO 'chat_guest'@'%';
 GRANT SELECT ON `chat`.`channel_webhook_message_type_view` TO 'chat_guest'@'%';
+GRANT SELECT ON `chat`.`user_status_state_view` TO 'chat_guest'@'%';
+GRANT SELECT ON `chat`.`user_email_verification_view` TO 'chat_guest'@'%';
+GRANT SELECT ON `chat`.`user_password_reset_view` TO 'chat_guest'@'%';
+GRANT SELECT ON `chat`.`user_status_view` TO 'chat_guest'@'%';
+GRANT SELECT ON `chat`.`channel_message_reaction_view` TO 'chat_guest'@'%';
 -- Flush privileges to apply changes
 FLUSH PRIVILEGES;
 
