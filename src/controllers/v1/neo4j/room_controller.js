@@ -1,11 +1,11 @@
-import crudService from '../../../services/mysql/room_service.js';
+import crudService from '../../../services/neo4j/room_service.js';
 import roomController from '../abstract/room_controller.js';
 
 const ctrl = roomController(crudService);
 
 /**
  * @openapi
- * '/api/v1/neo4j/room/:room_uuid':
+ * '/api/v1/neo4j/room/{uuid}':
  *  get:
  *    tags:
  *     - Neo4j Room Controller
@@ -14,7 +14,7 @@ const ctrl = roomController(crudService);
  *     - bearerAuth: []
  *    parameters:
  *      - in: path
- *        name: room_uuid
+ *        name: uuid
  *        required: true
  *    responses:
  *     200:
@@ -101,7 +101,7 @@ ctrl.create();
 
 /**
  * @openapi
- * '/api/v1/neo4j/room/:room_uuid':
+ * '/api/v1/neo4j/room/{uuid}':
  *  patch:
  *    tags:
  *     - Neo4j Room Controller
@@ -110,7 +110,7 @@ ctrl.create();
  *     - bearerAuth: []
  *    parameters:
  *      - in: path
- *        name: room_uuid
+ *        name: uuid
  *        required: true
  *    requestBody:
  *     required: true
@@ -137,7 +137,7 @@ ctrl.update();
 
 /**
  * @openapi
- * '/api/v1/neo4j/room/:room_uuid/settings':
+ * '/api/v1/neo4j/room/{uuid}/settings':
  *  patch:
  *    tags:
  *     - Neo4j Room Controller
@@ -146,7 +146,7 @@ ctrl.update();
  *     - bearerAuth: []
  *    parameters:
  *      - in: path
- *        name: room_uuid
+ *        name: uuid
  *        required: true
  *    requestBody:
  *     required: true
@@ -173,7 +173,7 @@ ctrl.editSettings();
 
 /**
  * @openapi
- * '/api/v1/neo4j/room/:room_uuid/leave':
+ * '/api/v1/neo4j/room/{uuid}/leave':
  *  delete:
  *    tags:
  *     - Neo4j Room Controller
@@ -182,7 +182,7 @@ ctrl.editSettings();
  *     - bearerAuth: []
  *    parameters:
  *      - in: path
- *        name: room_uuid
+ *        name: uuid
  *        required: true
  *    responses:
  *     204:
@@ -196,7 +196,7 @@ ctrl.leave();
 
 /**
  * @openapi
- * '/api/v1/neo4j/room/:room_uuid':
+ * '/api/v1/neo4j/room/{uuid}':
  *  delete:
  *    tags:
  *     - Neo4j Room Controller
@@ -205,7 +205,7 @@ ctrl.leave();
  *     - bearerAuth: []
  *    parameters:
  *      - in: path
- *        name: room_uuid
+ *        name: uuid
  *        required: true
  *    responses:
  *     204:

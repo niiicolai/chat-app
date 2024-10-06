@@ -19,25 +19,26 @@ class Service extends MysqlBaseFindService {
         super(db.RoomAuditView, dto);
     }
 
-    async findOne(options = { room_uuid: null, user: null }) {
-        const { room_uuid, user } = options;
-        if (!room_uuid) {
-            throw new ControllerError(400, 'No room_uuid provided');
-        }
-        if (!(await RoomPermissionService.isInRoom({ room_uuid, user, role_name: null }))) {
+    async findOne(options = { user: null }) {
+        const { user } = options;
+        const r = await super.findOne({ ...options });
+        if (!(await RoomPermissionService.isInRoom({ room_uuid: r.room_uuid, user, role_name: null }))) {
             throw new ControllerError(403, 'User is not in the room');
         }
-        return await super.findOne({ ...options });
+
+        return r;
     }
 
     async findAll(options = { room_uuid: null, user: null }) {
         const { room_uuid } = options;
+
         if (!room_uuid) {
             throw new ControllerError(400, 'No room_uuid provided');
         }
         if (!(await RoomPermissionService.isInRoom({ room_uuid, user, role_name: null }))) {
             throw new ControllerError(403, 'User is not in the room');
         }
+        
         return await super.findAll({ ...options, where: { room_uuid } });
     }
 }

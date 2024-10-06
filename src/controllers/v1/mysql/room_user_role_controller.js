@@ -5,7 +5,7 @@ const ctrl = roomUserRoleController(crudService);
 
 /**
  * @openapi
- * '/api/v1/mysql/room_user_role/:name':
+ * '/api/v1/mysql/room_user_role/{name}':
  *  get:
  *     tags:
  *       - MySQL Room User Role Controller

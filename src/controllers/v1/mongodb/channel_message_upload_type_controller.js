@@ -1,11 +1,11 @@
-import crudService from '../../../services/mysql/channel_message_upload_type_service.js';
+import crudService from '../../../services/mongodb/channel_message_upload_type_service.js';
 import channelMessageUploadTypeController from '../abstract/channel_message_upload_type_controller.js';
 
 const ctrl = channelMessageUploadTypeController(crudService);
 
 /**
  * @openapi
- * '/api/v1/mongodb/channel_message_upload_type/:name':
+ * '/api/v1/mongodb/channel_message_upload_type/{name}':
  *  get:
  *     tags:
  *       - MongoDB Channel Message Upload Type Controller

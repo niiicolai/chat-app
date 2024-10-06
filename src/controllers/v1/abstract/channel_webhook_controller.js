@@ -9,9 +9,9 @@ export default (crudService) => {
     const ctrl = { router };
 
     ctrl.findOne = () => {
-        router.get('/channel_webhook/:channel_webhook_uuid', [authMiddleware], async (req, res) => {
+        router.get('/channel_webhook/:uuid', [authMiddleware], async (req, res) => {
             await errorHandler(res, async () => {
-                const result = await crudService.findOne({ channel_webhook_uuid: req.params.channel_webhook_uuid, user: req.user });
+                const result = await crudService.findOne({ uuid: req.params.uuid, user: req.user });
                 res.json(result);
             });
         });
@@ -28,9 +28,9 @@ export default (crudService) => {
     }
 
     ctrl.message = () => {
-        router.post('/channel_webhook/:channel_webhook_uuid', async (req, res) => {
+        router.post('/channel_webhook/:uuid', async (req, res) => {
             await errorHandler(res, async () => {
-                await crudService.message({ channel_webhook_uuid: req.params.channel_webhook_uuid, body: req.body });
+                await crudService.message({ uuid: req.params.uuid, body: req.body });
                 res.sendStatus(204);
             });
         });
@@ -46,18 +46,18 @@ export default (crudService) => {
     }
 
     ctrl.update = () => {
-        router.patch('/channel_webhook/:channel_webhook_uuid', [authMiddleware, uploadMiddleware], async (req, res) => {
+        router.patch('/channel_webhook/:uuid', [authMiddleware, uploadMiddleware], async (req, res) => {
             await errorHandler(res, async () => {
-                const result = await crudService.update({ body: req.body, channel_webhook_uuid: req.params.channel_webhook_uuid, user: req.user, file: req.file });
+                const result = await crudService.update({ body: req.body, uuid: req.params.uuid, user: req.user, file: req.file });
                 res.json(result);
             });
         });
     }
 
     ctrl.destroy = () => {
-        router.delete('/channel_webhook/:channel_webhook_uuid', [authMiddleware], async (req, res) => {
+        router.delete('/channel_webhook/:uuid', [authMiddleware], async (req, res) => {
             await errorHandler(res, async () => {
-                await crudService.destroy({ channel_webhook_uuid: req.params.channel_webhook_uuid, user: req.user });
+                await crudService.destroy({ uuid: req.params.uuid, user: req.user });
                 res.sendStatus(204);
             });
         });

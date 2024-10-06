@@ -11,7 +11,7 @@ export default (crudService) => {
     ctrl.findOne = () => {
         router.get('/user/me', [authMiddleware], async (req, res) => {
             await errorHandler(res, async () => {
-                const result = await crudService.findOne({user_uuid: req.user.sub});
+                const result = await crudService.findOne({ uuid: req.user.sub });
                 res.json(result);
             });
         });
@@ -47,7 +47,7 @@ export default (crudService) => {
     ctrl.destroy = () => {
         router.delete('/user/me', [authMiddleware], async (req, res) => {
             await errorHandler(res, async () => {
-                await crudService.destroy({ user_uuid: req.user.sub });
+                await crudService.destroy({ uuid: req.user.sub });
                 res.sendStatus(204);
             });
         });
@@ -56,7 +56,7 @@ export default (crudService) => {
     ctrl.destroyAvatar = () => {
         router.delete('/user/me/avatar', [authMiddleware], async (req, res) => {
             await errorHandler(res, async () => {
-                await crudService.destroyAvatar({ user_uuid: req.user.sub });
+                await crudService.destroyAvatar({ uuid: req.user.sub });
                 res.sendStatus(204);
             });
         });

@@ -1,11 +1,11 @@
-import crudService from '../../../services/mysql/room_user_service.js';
+import crudService from '../../../services/neo4j/room_user_service.js';
 import roomUserController from '../abstract/room_user_controller.js';
 
 const ctrl = roomUserController(crudService);
 
 /**
  * @openapi
- * '/api/v1/neo4j/room_user/:room_user_uuid':
+ * '/api/v1/neo4j/room_user/{uuid}':
  *  get:
  *    tags:
  *     - Neo4j Room User Controller
@@ -14,7 +14,7 @@ const ctrl = roomUserController(crudService);
  *     - bearerAuth: []
  *    parameters:
  *     - in: path
- *       name: room_user_uuid
+ *       name: uuid
  *       required: true
  *    responses:
  *     200:
@@ -73,7 +73,7 @@ ctrl.findAll();
 
 /**
  * @openapi
- * '/api/v1/neo4j/room_user/:room_user_uuid':
+ * '/api/v1/neo4j/room_user/{uuid}':
  *  patch:
  *   tags:
  *    - Neo4j Room User Controller
@@ -82,7 +82,7 @@ ctrl.findAll();
  *    - bearerAuth: []
  *   parameters:
  *    - in: path
- *      name: room_user_uuid
+ *      name: uuid
  *      required: true
  *      schema:
  *       type: string
@@ -108,7 +108,7 @@ ctrl.update();
 
 /**
  * @openapi
- *  '/api/v1/neo4j/room_user/:room_user_uuid':
+ *  '/api/v1/neo4j/room_user/{uuid}':
  *   delete:
  *    tags:
  *     - Neo4j Room User Controller
@@ -117,7 +117,7 @@ ctrl.update();
  *     - bearerAuth: []
  *    parameters:
  *     - in: path
- *       name: room_user_uuid
+ *       name: uuid
  *       required: true
  *       schema:
  *        type: string
@@ -133,7 +133,7 @@ ctrl.destroy();
 
 /**
  * @openapi
- *  '/api/v1/neo4j/room_user/me/:room_uuid':
+ *  '/api/v1/neo4j/room_user/me/{room_uuid}':
  *   get:
  *    tags:
  *     - Neo4j Room User Controller

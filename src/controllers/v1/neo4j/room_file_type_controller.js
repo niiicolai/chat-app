@@ -1,11 +1,11 @@
-import crudService from '../../../services/mysql/room_file_type_service.js';
+import crudService from '../../../services/neo4j/room_file_type_service.js';
 import roomFileTypeController from '../abstract/room_file_type_controller.js';
 
 const ctrl = roomFileTypeController(crudService);
 
 /**
  * @openapi
- * '/api/v1/neo4j/room_file_type/:name':
+ * '/api/v1/neo4j/room_file_type/{name}':
  *  get:
  *     tags:
  *       - Neo4j Room File Type Controller

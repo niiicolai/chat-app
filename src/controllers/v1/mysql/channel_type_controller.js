@@ -5,7 +5,7 @@ const ctrl = channelTypeController(crudService);
 
 /**
  * @openapi
- * '/api/v1/mysql/channel_type/:name':
+ * '/api/v1/mysql/channel_type/{name}':
  *  get:
  *     tags:
  *       - MySQL Channel Type Controller

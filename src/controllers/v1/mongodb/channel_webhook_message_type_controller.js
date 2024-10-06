@@ -1,11 +1,11 @@
-import crudService from '../../../services/mysql/channel_webhook_message_type_service.js';
+import crudService from '../../../services/mongodb/channel_webhook_message_type_service.js';
 import channelWebhookMessageTypeController from '../abstract/channel_webhook_message_type_controller.js';
 
 const ctrl = channelWebhookMessageTypeController(crudService);
 
 /**
  * @openapi
- * '/api/v1/mongodb/channel_webhook_message_type/:name':
+ * '/api/v1/mongodb/channel_webhook_message_type/{name}':
  *  get:
  *     tags:
  *       - MongoDB Channel Webhook Message Type Controller

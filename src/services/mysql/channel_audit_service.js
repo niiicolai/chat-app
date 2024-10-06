@@ -20,15 +20,13 @@ class Service extends MysqlBaseFindService {
         super(db.ChannelMessageView, dto);
     }
 
-    async findOne(options = { channel_uuid: null, user: null }) {
-        const { channel_uuid, user } = options;
-        if (!channel_uuid) {
-            throw new ControllerError(400, 'No channel_uuid provided');
-        }
-        if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid, user, role_name: null }))) {
+    async findOne(options = { user: null }) {
+        const { user } = options;
+        const r = await super.findOne({ ...options });
+        if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid: r.channel_uuid, user, role_name: null }))) {
             throw new ControllerError(403, 'User is not in the room');
         }
-        return await super.findOne({ ...options, where: { channel_uuid } });
+        return r;
     }
 
     async findAll(options = { channel_uuid: null, user: null }) {

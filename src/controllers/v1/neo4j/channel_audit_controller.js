@@ -1,11 +1,11 @@
-import crudService from '../../../services/mysql/channel_audit_service.js';
+import crudService from '../../../services/neo4j/channel_audit_service.js';
 import channelAuditController from '../abstract/channel_audit_controller.js';
 
 const ctrl = channelAuditController(crudService);
 
 /**
  * @openapi
- * '/api/v1/neo4j/channel_audit/:channel_audit_uuid':
+ * '/api/v1/neo4j/channel_audit/{uuid}':
  *  get:
  *    tags:
  *     - Neo4j Channel Audit Controller
@@ -14,7 +14,7 @@ const ctrl = channelAuditController(crudService);
  *     - bearerAuth: []
  *    parameters:
  *     - in: path
- *       name: channel_audit_uuid
+ *       name: uuid
  *       required: true
  *    responses:
  *     200:

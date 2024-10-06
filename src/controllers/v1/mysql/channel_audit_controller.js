@@ -5,7 +5,7 @@ const ctrl = channelAuditController(crudService);
 
 /**
  * @openapi
- * '/api/v1/mysql/channel_audit/:channel_audit_uuid':
+ * '/api/v1/mysql/channel_audit/{uuid}':
  *  get:
  *    tags:
  *     - MySQL Channel Audit Controller
@@ -14,7 +14,7 @@ const ctrl = channelAuditController(crudService);
  *     - bearerAuth: []
  *    parameters:
  *     - in: path
- *       name: channel_audit_uuid
+ *       name: uuid
  *       required: true
  *    responses:
  *     200:

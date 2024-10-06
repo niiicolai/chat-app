@@ -5,7 +5,7 @@ const ctrl = channelMessageUploadTypeController(crudService);
 
 /**
  * @openapi
- * '/api/v1/mysql/channel_message_upload_type/:name':
+ * '/api/v1/mysql/channel_message_upload_type/{name}':
  *  get:
  *     tags:
  *       - MySQL Channel Message Upload Type Controller

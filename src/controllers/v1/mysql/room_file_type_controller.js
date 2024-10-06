@@ -5,7 +5,7 @@ const ctrl = roomFileTypeController(crudService);
 
 /**
  * @openapi
- * '/api/v1/mysql/room_file_type/:name':
+ * '/api/v1/mysql/room_file_type/{name}':
  *  get:
  *     tags:
  *       - MySQL Room File Type Controller

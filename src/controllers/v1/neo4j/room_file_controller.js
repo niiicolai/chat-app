@@ -1,11 +1,11 @@
-import crudService from '../../../services/mysql/room_file_service.js';
+import crudService from '../../../services/neo4j/room_file_service.js';
 import roomFileController from '../abstract/room_file_controller.js';
 
 const ctrl = roomFileController(crudService);
 
 /**
  * @openapi
- * '/api/v1/neo4j/room_file/:room_file_uuid':
+ * '/api/v1/neo4j/room_file/{uuid}':
  *  get:
  *    tags:
  *     - Neo4j Room File Controller
@@ -14,7 +14,7 @@ const ctrl = roomFileController(crudService);
  *     - bearerAuth: []
  *    parameters:
  *     - in: path
- *       name: room_file_uuid
+ *       name: uuid
  *       required: true
  *    responses:
  *     200:
@@ -72,7 +72,7 @@ ctrl.findAll();
 
 /**
  * @openapi
- * '/api/v1/neo4j/room_file':
+ * '/api/v1/neo4j/room_file/{uuid}':
  *  delete:
  *      tags:
  *       - Neo4j Room File Controller
@@ -81,7 +81,7 @@ ctrl.findAll();
  *       - bearerAuth: []
  *      parameters:
  *       - in: path
- *         name: room_file_uuid
+ *         name: uuid
  *         required: true
  *      responses:
  *          204:

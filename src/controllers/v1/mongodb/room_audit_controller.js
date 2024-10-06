@@ -5,7 +5,7 @@ const ctrl = roomAuditController(crudService);
 
 /**
  * @openapi
- * '/api/v1/mongodb/room_audit/:room_audit_uuid':
+ * '/api/v1/mongodb/room_audit/{uuid}':
  *  get:
  *    tags:
  *     - MongoDB Room Audit Controller
@@ -14,7 +14,7 @@ const ctrl = roomAuditController(crudService);
  *     - bearerAuth: []
  *    parameters:
  *     - in: path
- *       name: room_audit_uuid
+ *       name: uuid
  *       required: true
  *    responses:
  *     200:

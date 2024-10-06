@@ -1,11 +1,11 @@
-import crudService from '../../../services/mysql/room_user_role_service.js';
+import crudService from '../../../services/mongodb/room_user_role_service.js';
 import roomUserRoleController from '../abstract/room_user_role_controller.js';
 
 const ctrl = roomUserRoleController(crudService);
 
 /**
  * @openapi
- * '/api/v1/mongodb/room_user_role/:name':
+ * '/api/v1/mongodb/room_user_role/{name}':
  *  get:
  *     tags:
  *       - MongoDB Room User Role Controller

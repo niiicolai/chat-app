@@ -5,7 +5,7 @@ const ctrl = channelController(crudService);
 
 /**
  * @openapi
- * '/api/v1/mysql/channel/:channel_uuid':
+ * '/api/v1/mysql/channel/{uuid}':
  *  get:
  *    tags:
  *     - MySQL Channel Controller
@@ -14,7 +14,7 @@ const ctrl = channelController(crudService);
  *     - bearerAuth: []
  *    parameters:
  *     - in: path
- *       name: channel_uuid
+ *       name: uuid
  *       required: true
  *    responses:
  *     200:
@@ -101,7 +101,7 @@ ctrl.create();
 
 /**
  * @openapi
- *  '/api/v1/mysql/channel/:channel_uuid':
+ *  '/api/v1/mysql/channel/{uuid}':
  *   patch:
  *    tags:
  *     - MySQL Channel Controller
@@ -110,7 +110,7 @@ ctrl.create();
  *     - bearerAuth: []
  *    parameters:
  *     - in: path
- *       name: channel_uuid
+ *       name: uuid
  *       required: true
  *    requestBody:
  *     required: true
@@ -134,7 +134,7 @@ ctrl.update();
 
 /**
  * @openapi
- *  '/api/v1/mysql/channel/:channel_uuid':
+ *  '/api/v1/mysql/channel/{uuid}':
  *   delete:
  *    tags:
  *     - MySQL Channel Controller
@@ -143,7 +143,7 @@ ctrl.update();
  *     - bearerAuth: []
  *    parameters:
  *     - in: path
- *       name: channel_uuid
+ *       name: uuid
  *       required: true
  *    responses:
  *     204:

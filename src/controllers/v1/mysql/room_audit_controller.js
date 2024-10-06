@@ -5,7 +5,7 @@ const ctrl = roomAuditController(crudService);
 
 /**
  * @openapi
- * '/api/v1/mysql/room_audit/:room_audit_uuid':
+ * '/api/v1/mysql/room_audit/{uuid}':
  *  get:
  *    tags:
  *     - MySQL Room Audit Controller
@@ -14,7 +14,7 @@ const ctrl = roomAuditController(crudService);
  *     - bearerAuth: []
  *    parameters:
  *     - in: path
- *       name: room_audit_uuid
+ *       name: uuid
  *       required: true
  *    responses:
  *     200:

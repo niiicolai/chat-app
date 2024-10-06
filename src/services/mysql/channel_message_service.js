@@ -71,15 +71,9 @@ class Service extends MysqlBaseFindService {
     }
 
     async findOne(options = { channel_message_uuid: null, user: null }) {
-        const { channel_message_uuid, user } = options;
-
-        if (!channel_message_uuid) {
-            throw new ControllerError(400, 'No channel_message_uuid provided');
-        }
+        const { user } = options;
         const existing = await super.findOne({ ...options });
-        if (!existing) {
-            throw new ControllerError(404, 'Channel Message not found');
-        }
+
         if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid: existing.channel_uuid, user, role_name: null }))) {
             throw new ControllerError(403, 'User is not in the room');
         }
@@ -89,12 +83,14 @@ class Service extends MysqlBaseFindService {
 
     async findAll(options = { channel_uuid: null, user: null }) {
         const { channel_uuid, user } = options;
+
         if (!channel_uuid) {
             throw new ControllerError(400, 'No channel_uuid provided');
         }
         if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid, user, role_name: null }))) {
             throw new ControllerError(403, 'User is not in the room');
         }
+
         return await super.findAll({ ...options, where: { channel_uuid } });
     }
 
@@ -151,7 +147,7 @@ class Service extends MysqlBaseFindService {
             },
         });
 
-        const ch = await service.findOne({ channel_message_uuid: uuid, user });
+        const ch = await service.findOne({ uuid, user });
 
         /**
           * Broadcast the channel message to all users
@@ -162,22 +158,19 @@ class Service extends MysqlBaseFindService {
         return ch;
     }
 
-    async update(options = { channel_message_uuid: null, body: null, user: null }) {
-        const { channel_message_uuid, body, user } = options;
+    async update(options = { uuid: null, body: null, user: null }) {
+        const { uuid, body, user } = options;
         const { body: msg } = body;
         const { sub: user_uuid } = user;
 
         if (!body) {
             throw new ControllerError(400, 'No body provided');
         }
-        if (!channel_message_uuid) {
-            throw new ControllerError(400, 'No channel_message_uuid provided');
+        if (!uuid) {
+            throw new ControllerError(400, 'No uuid provided');
         }
 
-        const existing = await service.findOne({ channel_message_uuid, user });
-        if (!existing) {
-            throw new ControllerError(404, 'Channel Message not found');
-        }
+        const existing = await service.findOne({ uuid, user });
 
         if (existing.user?.uuid !== user_uuid &&
             !(await RoomPermissionService.isInRoomByChannel({ channel_uuid: existing.channel_uuid, user, role_name: 'Moderator' })) &&
@@ -189,14 +182,14 @@ class Service extends MysqlBaseFindService {
             body.body = existing.body;
         }
 
-        await db.sequelize.query('CALL edit_channel_message_proc(:channel_message_uuid, :msg, @result)', {
+        await db.sequelize.query('CALL edit_channel_message_proc(:uuid, :msg, @result)', {
             replacements: {
-                channel_message_uuid,
+                uuid,
                 msg: body.body,
             },
         });
 
-        const ch = await service.findOne({ channel_message_uuid, user });
+        const ch = await service.findOne({ uuid, user });
         const channel_uuid = ch.channel_uuid;
 
         /**
@@ -208,19 +201,15 @@ class Service extends MysqlBaseFindService {
         return ch;
     }
 
-    async destroy(options = { channel_message_uuid: null, user: null }) {
-        const { channel_message_uuid, user } = options;
+    async destroy(options = { uuid: null, user: null }) {
+        const { uuid, user } = options;
         const { sub: user_uuid } = user;
 
-        if (!channel_message_uuid) {
-            throw new ControllerError(400, 'No channel_message_uuid provided');
+        if (!uuid) {
+            throw new ControllerError(400, 'No uuid provided');
         }
 
-        const existing = await service.model.findOne({ where: { channel_message_uuid } });
-        if (!existing) {
-            throw new ControllerError(404, 'Channel Message not found');
-        }
-
+        const existing = await service.findOne({ uuid, user });
         const channel_uuid = existing.channel_uuid;
 
         if (existing.user_uuid !== user_uuid &&
@@ -229,9 +218,9 @@ class Service extends MysqlBaseFindService {
             throw new ControllerError(403, 'User is not an owner of the message, or an admin or moderator of the room');
         }
 
-        await db.sequelize.query('CALL delete_channel_message_proc(:channel_message_uuid, @result)', {
+        await db.sequelize.query('CALL delete_channel_message_proc(:uuid, @result)', {
             replacements: {
-                channel_message_uuid,
+                uuid,
             },
         });
 
@@ -239,7 +228,7 @@ class Service extends MysqlBaseFindService {
           * Broadcast the channel message to all users
           * in the room where the channel message was deleted.
           */
-        broadcastChannel(`channel-${channel_uuid}`, 'chat_message_deleted', { uuid: channel_message_uuid });
+        broadcastChannel(`channel-${channel_uuid}`, 'chat_message_deleted', { uuid });
     }
 }
 

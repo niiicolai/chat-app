@@ -5,7 +5,7 @@ const ctrl = channelMessageTypeController(crudService);
 
 /**
  * @openapi
- * '/api/v1/mysql/channel_message_type/:name':
+ * '/api/v1/mysql/channel_message_type/{name}':
  *  get:
  *     tags:
  *       - MySQL Channel Message Type Controller

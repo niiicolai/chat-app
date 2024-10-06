@@ -1,11 +1,11 @@
-import crudService from '../../../services/mysql/room_audit_type_service.js';
+import crudService from '../../../services/mongodb/room_audit_type_service.js';
 import roomAuditTypeController from '../abstract/room_audit_type_controller.js';
 
 const ctrl = roomAuditTypeController(crudService);
 
 /**
  * @openapi
- * '/api/v1/mongodb/room_audit_type/:name':
+ * '/api/v1/mongodb/room_audit_type/{name}':
  *  get:
  *     tags:
  *       - MongoDB Room Audit Type Controller

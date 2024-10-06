@@ -5,7 +5,7 @@ const ctrl = channelWebhookController(crudService);
 
 /**
  * @openapi
- * '/api/v1/mysql/channel_webhook/:channel_webhook_uuid':
+ * '/api/v1/mysql/channel_webhook/{uuid}':
  *  get:
  *    tags:
  *     - MySQL Channel Webhook Controller
@@ -14,7 +14,7 @@ const ctrl = channelWebhookController(crudService);
  *     - bearerAuth: []
  *    parameters:
  *     - in: path
- *       name: channel_webhook_uuid
+ *       name: uuid
  *       required: true
  *    responses:
  *     200:
@@ -72,14 +72,14 @@ ctrl.findAll();
 
 /**
  * @openapi
- *  '/api/v1/mysql/channel_webhook/{channel_webhook_uuid}':
+ *  '/api/v1/mysql/channel_webhook/{uuid}':
  *   post:
  *    tags:
  *     - MySQL Channel Webhook Controller
  *    summary: Send a message to a channel webhook
  *    parameters:
  *     - in: path
- *       name: channel_webhook_uuid
+ *       name: uuid
  *       required: true
  *    requestBody:
  *     required: true
@@ -132,7 +132,7 @@ ctrl.create();
 
 /**
  * @openapi
- *  '/api/v1/mysql/channel_webhook/{channel_webhook_uuid}':
+ *  '/api/v1/mysql/channel_webhook/{uuid}':
  *   patch:
  *    tags:
  *     - MySQL Channel Webhook Controller
@@ -141,7 +141,7 @@ ctrl.create();
  *     - bearerAuth: []
  *    parameters:
  *     - in: path
- *       name: channel_webhook_uuid
+ *       name: uuid
  *       required: true
  *    requestBody:
  *     required: true
@@ -165,7 +165,7 @@ ctrl.update();
 
 /**
  * @openapi
- *  '/api/v1/mysql/channel_webhook/{channel_webhook_uuid}':
+ *  '/api/v1/mysql/channel_webhook/{uuid}':
  *   delete:
  *    tags:
  *     - MySQL Channel Webhook Controller
@@ -174,7 +174,7 @@ ctrl.update();
  *     - bearerAuth: []
  *    parameters:
  *     - in: path
- *       name: channel_webhook_uuid
+ *       name: uuid
  *       required: true
  *    responses:
  *     204:

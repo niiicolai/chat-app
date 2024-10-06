@@ -1,11 +1,11 @@
-import crudService from '../../../services/mysql/channel_type_service.js';
+import crudService from '../../../services/mongodb/channel_type_service.js';
 import channelTypeController from '../abstract/channel_type_controller.js';
 
 const ctrl = channelTypeController(crudService);
 
 /**
  * @openapi
- * '/api/v1/mongodb/channel_type/:name':
+ * '/api/v1/mongodb/channel_type/{name}':
  *  get:
  *     tags:
  *       - MongoDB Channel Type Controller

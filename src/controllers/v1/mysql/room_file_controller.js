@@ -5,7 +5,7 @@ const ctrl = roomFileController(crudService);
 
 /**
  * @openapi
- * '/api/v1/mysql/room_file/:room_file_uuid':
+ * '/api/v1/mysql/room_file/{uuid}':
  *  get:
  *    tags:
  *     - MySQL Room File Controller
@@ -14,7 +14,7 @@ const ctrl = roomFileController(crudService);
  *     - bearerAuth: []
  *    parameters:
  *     - in: path
- *       name: room_file_uuid
+ *       name: uuid
  *       required: true
  *    responses:
  *     200:
@@ -72,7 +72,7 @@ ctrl.findAll();
 
 /**
  * @openapi
- * '/api/v1/mysql/room_file':
+ * '/api/v1/mysql/room_file/{uuid}':
  *  delete:
  *      tags:
  *       - MySQL Room File Controller
@@ -81,7 +81,7 @@ ctrl.findAll();
  *       - bearerAuth: []
  *      parameters:
  *       - in: path
- *         name: room_file_uuid
+ *         name: uuid
  *         required: true
  *      responses:
  *          204:

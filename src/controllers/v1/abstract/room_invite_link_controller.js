@@ -7,9 +7,9 @@ export default (crudService) => {
     const ctrl = { router };
 
     ctrl.findOne = () => {
-        router.get('/room_invite_link/:room_invite_link_uuid', [authMiddleware], async (req, res) => {
+        router.get('/room_invite_link/:uuid', [authMiddleware], async (req, res) => {
             await errorHandler(res, async () => {
-                const result = await crudService.findOne({ room_invite_link_uuid: req.params.room_invite_link_uuid, user: req.user });
+                const result = await crudService.findOne({ uuid: req.params.uuid, user: req.user });
                 res.json(result);
             });
         });
@@ -26,9 +26,9 @@ export default (crudService) => {
     }
 
     ctrl.join = () => {
-        router.post('/room_invite_link/:room_invite_link_uuid/join', [authMiddleware], async (req, res) => {
+        router.post('/room_invite_link/:uuid/join', [authMiddleware], async (req, res) => {
             await errorHandler(res, async () => {
-                await crudService.join({ room_invite_link_uuid: req.params.room_invite_link_uuid, user: req.user });
+                await crudService.join({ uuid: req.params.uuid, user: req.user });
                 res.sendStatus(204);
             });
         });
@@ -44,18 +44,18 @@ export default (crudService) => {
     }
 
     ctrl.update = () => {
-        router.patch('/room_invite_link/:room_invite_link_uuid', [authMiddleware], async (req, res) => {
+        router.patch('/room_invite_link/:uuid', [authMiddleware], async (req, res) => {
             await errorHandler(res, async () => {
-                const result = await crudService.update({ room_invite_link_uuid: req.params.room_invite_link_uuid, body: req.body, user: req.user });
+                const result = await crudService.update({ uuid: req.params.uuid, body: req.body, user: req.user });
                 res.json(result);
             });
         });
     }
 
     ctrl.destroy = () => {
-        router.delete('/room_invite_link/:room_invite_link_uuid', [authMiddleware], async (req, res) => {
+        router.delete('/room_invite_link/:uuid', [authMiddleware], async (req, res) => {
             await errorHandler(res, async () => {
-                await crudService.destroy({ room_invite_link_uuid: req.params.room_invite_link_uuid, user: req.user });
+                await crudService.destroy({ uuid: req.params.uuid, user: req.user });
                 res.sendStatus(204);
             });
         });

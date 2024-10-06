@@ -1,11 +1,11 @@
-import crudService from '../../../services/mysql/channel_service.js';
+import crudService from '../../../services/neo4j/channel_service.js';
 import channelController from '../abstract/channel_controller.js';
 
 const ctrl = channelController(crudService);
 
 /**
  * @openapi
- * '/api/v1/neo4j/channel/:channel_uuid':
+ * '/api/v1/neo4j/channel/{uuid}':
  *  get:
  *    tags:
  *     - Neo4j Channel Controller
@@ -14,7 +14,7 @@ const ctrl = channelController(crudService);
  *     - bearerAuth: []
  *    parameters:
  *     - in: path
- *       name: channel_uuid
+ *       name: uuid
  *       required: true
  *    responses:
  *     200:
@@ -101,7 +101,7 @@ ctrl.create();
 
 /**
  * @openapi
- *  '/api/v1/neo4j/channel/:channel_uuid':
+ *  '/api/v1/neo4j/channel/{uuid}':
  *   patch:
  *    tags:
  *     - Neo4j Channel Controller
@@ -110,7 +110,7 @@ ctrl.create();
  *     - bearerAuth: []
  *    parameters:
  *     - in: path
- *       name: channel_uuid
+ *       name: uuid
  *       required: true
  *    requestBody:
  *     required: true
@@ -134,7 +134,7 @@ ctrl.update();
 
 /**
  * @openapi
- *  '/api/v1/neo4j/channel/:channel_uuid':
+ *  '/api/v1/neo4j/channel/{uuid}':
  *   delete:
  *    tags:
  *     - Neo4j Channel Controller
@@ -143,7 +143,7 @@ ctrl.update();
  *     - bearerAuth: []
  *    parameters:
  *     - in: path
- *       name: channel_uuid
+ *       name: uuid
  *       required: true
  *    responses:
  *     204:

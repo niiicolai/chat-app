@@ -7,9 +7,9 @@ export default (crudService) => {
     const ctrl = { router };
 
     ctrl.findOne = () => {
-        router.get('/room_audit/:room_audit_uuid', [authMiddleware], async (req, res) => {
+        router.get('/room_audit/:uuid', [authMiddleware], async (req, res) => {
             await errorHandler(res, async () => {
-                const result = await crudService.findOne({ room_audit_uuid: req.params.room_audit_uuid, user: req.user });
+                const result = await crudService.findOne({ uuid: req.params.uuid, user: req.user });
                 res.json(result);
             });
         });

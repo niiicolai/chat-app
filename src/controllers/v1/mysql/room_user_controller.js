@@ -5,7 +5,7 @@ const ctrl = roomUserController(crudService);
 
 /**
  * @openapi
- * '/api/v1/mysql/room_user/:room_user_uuid':
+ * '/api/v1/mysql/room_user/{uuid}':
  *  get:
  *    tags:
  *     - MySQL Room User Controller
@@ -14,7 +14,7 @@ const ctrl = roomUserController(crudService);
  *     - bearerAuth: []
  *    parameters:
  *     - in: path
- *       name: room_user_uuid
+ *       name: uuid
  *       required: true
  *    responses:
  *     200:
@@ -74,7 +74,7 @@ ctrl.findAll();
 
 /**
  * @openapi
- * '/api/v1/mysql/room_user/:room_user_uuid':
+ * '/api/v1/mysql/room_user/{uuid}':
  *  patch:
  *   tags:
  *    - MySQL Room User Controller
@@ -83,7 +83,7 @@ ctrl.findAll();
  *    - bearerAuth: []
  *   parameters:
  *    - in: path
- *      name: room_user_uuid
+ *      name: uuid
  *      required: true
  *      schema:
  *       type: string
@@ -109,7 +109,7 @@ ctrl.update();
 
 /**
  * @openapi
- *  '/api/v1/mysql/room_user/:room_user_uuid':
+ *  '/api/v1/mysql/room_user/{uuid}':
  *   delete:
  *    tags:
  *     - MySQL Room User Controller
@@ -118,7 +118,7 @@ ctrl.update();
  *     - bearerAuth: []
  *    parameters:
  *     - in: path
- *       name: room_user_uuid
+ *       name: uuid
  *       required: true
  *       schema:
  *        type: string
@@ -134,7 +134,7 @@ ctrl.destroy();
 
 /**
  * @openapi
- *  '/api/v1/mysql/room_user/me/:room_uuid':
+ *  '/api/v1/mysql/room_user/me/{room_uuid}':
  *   get:
  *    tags:
  *     - MySQL Room User Controller

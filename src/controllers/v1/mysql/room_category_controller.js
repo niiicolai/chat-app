@@ -5,7 +5,7 @@ const ctrl = roomCategoryController(crudService);
 
 /**
  * @openapi
- * '/api/v1/mysql/room_category/:name':
+ * '/api/v1/mysql/room_category/{name}':
  *  get:
  *     tags:
  *       - MySQL Room Category Controller

@@ -9,10 +9,11 @@ export default class MysqlBaseFindService {
     }
 
     async findOne(options = { where: null, include: null }) {
-        const { [this.pkName]: pk } = options;
+        const inputName = this.pkName.replace(`${this.name}_`, '');
+        const { [inputName]: pk } = options;
 
         if (!pk) {
-            throw new ControllerError(400, `${this.pkName} is required`);
+            throw new ControllerError(400, `${inputName} is required`);
         }
 
         const params = { where: { [this.pkName]: pk } };
