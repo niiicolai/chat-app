@@ -18,7 +18,7 @@ After starting the Docker compose, the application will be available at http://1
 |                        | Authentication Middleware           | [x]     |
 |                        | Logging Middleware                  | [x]     |
 |                        | CSRF Middleware                     | [ ]     |
-|                        | CORS Middleware                     | [ ]     |
+|                        | Origin Middleware                   | [ ]     |
 |                        | File Middleware                     | [x]     |
 |                        | File Upload                         | [x]     |
 |                        | MySQL API                           | [x]     |
@@ -33,10 +33,10 @@ After starting the Docker compose, the application will be available at http://1
 | **Authentication**     | JWT Token                           | [x]     |
 |                        | User Registration                   | [x]     |
 |                        | User Login                          | [x]     |
-|                        | User Online Status                  | [ ]     |
+|                        | User Online Status                  | [x]     |
 |                        | Bcrypt Password Hashing             | [x]     |
-|                        | Reset Password                      | [ ]     |
-|                        | Email Verification                  | [ ]     |
+|                        | Reset Password                      | [x]     |
+|                        | Email Verification                  | [x]     |
 |                        | Two Factor Authentication           | [ ]     |
 | **File Storage**       | S3 File Storage                     | [x]     |
 |                        | CDN                                 | [x]     |
@@ -58,7 +58,7 @@ After starting the Docker compose, the application will be available at http://1
 |                        | Migration                           | [ ]     |
 |                        | Seeding                             | [ ]     |
 |                        | Backup                              | [x]     |
-|                        | MongoDB                             | [ ]     |
+|                        | MongoDB                             | [x]     |
 |                        | Neo4j                               | [ ]     |
 | **Docker**             | Dockerfile                          | [x]     |
 |                        | Docker Compose                      | [x]     |
@@ -72,6 +72,12 @@ After starting the Docker compose, the application will be available at http://1
 
 ## Development Environment Setup
 The following are the steps to set up the development environment for the chat application.
+
+## Requirements
+- Node.js
+- MySQL
+- MongoDB
+- Neo4j
 
 ### Install
 ```bash
@@ -105,9 +111,16 @@ npm run sequelize:seed:undo         # Revert the most recent seed operation
 npm run sequelize:seed:generate     # Create a new seed file with a timestamp
 ```
 
-### Setup DB
+### Mongoose
 ```bash
-npm run db:override                 # Override the existing db using ./MySQL_Script.sql
+npm run mongoose:seed               # Run seed files to populate the database with initial data
+npm run mongoose:seed:undo          # Revert all seeded data
+```
+
+### Setup DBs
+```bash
+npm run db:override                 # Override the existing MySQL using ./MySQL_Script.sql
+                                    # & Seed the existing MongoDB.
 ```
 
 ### API Docs
@@ -135,7 +148,7 @@ docker run -d -p 3000:3000 -p 3001:3001 chat_app:v1.0
 
 ## Docker Compose
 The project contains two Docker compose files:
-- **[compose-hub-image.yml](https://github.com/niiicolai/chat-app/blob/main/compose-hub-image.yml)**: Fetches prebuilt images from Docker Hub for the chat backend, React.js frontend client, and MySQL. This Compose file is designed for quickly testing the chat application as a whole. Note: *This setup doesn't include configuration for S3 to avoid exposing any secrets, which means file uploads doesn't work.*
+- **[compose-hub-image.yml](https://github.com/niiicolai/chat-app/blob/main/compose-hub-image.yml)**: Fetches prebuilt images from Docker Hub for the chat backend, React.js frontend client, MongoDB, Neo4j and MySQL. This Compose file is designed for quickly testing the chat application as a whole. Note: *This setup doesn't include configuration for S3 to avoid exposing any secrets, which means file uploads doesn't work.*
 - **[compose-local-image.yml](https://github.com/niiicolai/chat-app/blob/main/compose-local-image.yml)**: Expects the machine to have a local Docker image of the application build. *It only starts an instance of the backend application and MySQL (no frontend)*. Refer to the section on building a Docker image before using this Compose file.
 
 ### Run *Docker Hub Image* in detached mode

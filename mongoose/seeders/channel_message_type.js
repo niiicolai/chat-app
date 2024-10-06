@@ -1,17 +1,12 @@
 import ChannelMessageType from '../models/channel_message_type.js';
-
-const data = [
-    { name: 'User' },
-    { name: 'System' },
-    { name: 'Webhook' },
-];
+import data from './data.js';
 
 export default class ChannelMessageTypeSeeder {
     async up() {
-        await ChannelMessageType.insertMany(data);
+        await ChannelMessageType.insertMany(data.channel_message_types);
     }
 
     async down() {
-        await ChannelMessageType.deleteMany({ name: { $in: data.map((d) => d.name) } });
+        await ChannelMessageType.deleteMany({ name: { $in: data.channel_message_types.map((d) => d.name) } });
     }
 }

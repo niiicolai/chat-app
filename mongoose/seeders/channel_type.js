@@ -1,16 +1,12 @@
 import ChannelType from '../models/channel_type.js';
-
-const data = [
-    { name: 'Text' },
-    { name: 'Call' },
-];
+import data from './data.js';
 
 export default class ChannelTypeSeeder {
     async up() {
-        await ChannelType.insertMany(data);
+        await ChannelType.insertMany(data.channel_types);
     }
 
     async down() {
-        await ChannelType.deleteMany({ name: { $in: data.map((d) => d.name) } });
+        await ChannelType.deleteMany({ name: { $in: data.channel_types.map((d) => d.name) } });
     }
 }

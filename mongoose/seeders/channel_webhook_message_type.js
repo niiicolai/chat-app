@@ -1,16 +1,12 @@
 import ChannelWebhookMessageType from '../models/channel_webhook_message_type.js';
-
-const data = [
-    { name: 'Custom' },
-    { name: 'GitHub' },
-];
+import data from './data.js';
 
 export default class ChannelWebhookMessageTypeSeeder {
     async up() {
-        await ChannelWebhookMessageType.insertMany(data);
+        await ChannelWebhookMessageType.insertMany(data.channel_webhook_message_types);
     }
 
     async down() {
-        await ChannelWebhookMessageType.deleteMany({ name: { $in: data.map((d) => d.name) } });
+        await ChannelWebhookMessageType.deleteMany({ name: { $in: data.channel_webhook_message_types.map((d) => d.name) } });
     }
 }

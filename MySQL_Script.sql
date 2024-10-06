@@ -8,6 +8,7 @@ USE chat;
 
 
 -- A category is used for organizing rooms.
+DROP TABLE IF EXISTS RoomCategory;
 CREATE TABLE RoomCategory (
     name VARCHAR(255) PRIMARY KEY,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -17,6 +18,7 @@ CREATE TABLE RoomCategory (
 
 
 -- A role is used for managing permissions in a room.
+DROP TABLE IF EXISTS RoomUserRole;
 CREATE TABLE RoomUserRole (
     name VARCHAR(255) PRIMARY KEY,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -26,6 +28,7 @@ CREATE TABLE RoomUserRole (
 
 
 -- The type of a room audit is used to categorize different types of audits.
+DROP TABLE IF EXISTS RoomAuditType;
 CREATE TABLE RoomAuditType (
     name VARCHAR(255) PRIMARY KEY,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -35,6 +38,7 @@ CREATE TABLE RoomAuditType (
 
 
 -- The type of a room file is used to categorize different types of files.
+DROP TABLE IF EXISTS RoomFileType;
 CREATE TABLE RoomFileType (
     name VARCHAR(255) PRIMARY KEY,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -44,6 +48,7 @@ CREATE TABLE RoomFileType (
 
 
 -- The type of channel determines its functionality.
+DROP TABLE IF EXISTS ChannelType;
 CREATE TABLE ChannelType (
     name VARCHAR(255) PRIMARY KEY,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -53,6 +58,7 @@ CREATE TABLE ChannelType (
 
 
 -- Used to determine if the message was created by the system. 
+DROP TABLE IF EXISTS ChannelMessageType;
 CREATE TABLE ChannelMessageType (
     name VARCHAR(255) PRIMARY KEY,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -62,6 +68,7 @@ CREATE TABLE ChannelMessageType (
 
 
 -- Used to determine what type of message was sent by a webhook.
+DROP TABLE IF EXISTS ChannelWebhookMessageType;
 CREATE TABLE ChannelWebhookMessageType (
     name VARCHAR(255) PRIMARY KEY,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -71,6 +78,7 @@ CREATE TABLE ChannelWebhookMessageType (
 
 
 -- An upload type is used to categorize different types of uploads.
+DROP TABLE IF EXISTS ChannelMessageUploadType;
 CREATE TABLE ChannelMessageUploadType (
     name VARCHAR(255) PRIMARY KEY,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -80,6 +88,7 @@ CREATE TABLE ChannelMessageUploadType (
 
 
 -- The type of a channel audit is used to categorize different types of audits.
+DROP TABLE IF EXISTS ChannelAuditType;
 CREATE TABLE ChannelAuditType (
     name VARCHAR(255) PRIMARY KEY,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -95,6 +104,7 @@ CREATE TABLE ChannelAuditType (
 -- The username must be between 3 and 255 characters.
 -- The email must be between 3 and 255 characters.
 -- The password must be between 8 and 255 characters.
+DROP TABLE IF EXISTS User;
 CREATE TABLE User (
     uuid VARCHAR(36) PRIMARY KEY,
     username VARCHAR(255) NOT NULL,
@@ -113,6 +123,7 @@ CREATE TABLE User (
 
 
 -- Rooms can have members and channels for communication.
+DROP TABLE IF EXISTS Room;
 CREATE TABLE Room (
     uuid VARCHAR(36) PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
@@ -127,6 +138,7 @@ CREATE TABLE Room (
 
 
 -- A room audit is created when a user performs an action in a room.
+DROP TABLE IF EXISTS RoomAudit;
 CREATE TABLE RoomAudit (
     uuid VARCHAR(36) PRIMARY KEY,
     body TEXT NOT NULL,
@@ -141,6 +153,7 @@ CREATE TABLE RoomAudit (
 
 
 -- Room invite links can be sent to others to join a room.
+DROP TABLE IF EXISTS RoomInviteLink;
 CREATE TABLE RoomInviteLink (
     uuid VARCHAR(36) PRIMARY KEY,
     room_uuid VARCHAR(36) NOT NULL,
@@ -153,6 +166,7 @@ CREATE TABLE RoomInviteLink (
 
 
 -- A room file is a file uploaded to a room.
+DROP TABLE IF EXISTS RoomFile;
 CREATE TABLE RoomFile (
     uuid VARCHAR(36) PRIMARY KEY,
     src TEXT NOT NULL,
@@ -168,6 +182,7 @@ CREATE TABLE RoomFile (
 
 
 -- A room avatar is a profile picture for a room.
+DROP TABLE IF EXISTS RoomAvatar;
 CREATE TABLE RoomAvatar (
     uuid VARCHAR(36) PRIMARY KEY,
     room_uuid VARCHAR(36) NOT NULL,
@@ -183,6 +198,7 @@ CREATE TABLE RoomAvatar (
 
 -- A user room is used to define room membership and roles.
 -- The room_role_name is used to determine the user's permissions in the room.
+DROP TABLE IF EXISTS RoomUser;
 CREATE TABLE RoomUser (
     uuid VARCHAR(36) PRIMARY KEY,
     room_uuid VARCHAR(36) NOT NULL,
@@ -201,6 +217,7 @@ CREATE TABLE RoomUser (
 -- Channels are used for communication within a room.
 -- A room can have multiple channels for different purposes.
 -- And a channel can only belong to one room.
+DROP TABLE IF EXISTS Channel;
 CREATE TABLE Channel (
     uuid VARCHAR(36) PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
@@ -219,6 +236,7 @@ CREATE TABLE Channel (
 
 
 -- Each room have a setting for the file uploads.
+DROP TABLE IF EXISTS RoomFileSetting;
 CREATE TABLE RoomFileSetting (
     uuid VARCHAR(36) PRIMARY KEY,
     total_files_bytes_allowed INTEGER DEFAULT 26214400,
@@ -234,6 +252,7 @@ CREATE TABLE RoomFileSetting (
 
 
 -- Each room have a setting for the joining.
+DROP TABLE IF EXISTS RoomJoinSetting;
 CREATE TABLE RoomJoinSetting (
     uuid VARCHAR(36) PRIMARY KEY,
     join_channel_uuid VARCHAR(36) DEFAULT NULL,
@@ -249,6 +268,7 @@ CREATE TABLE RoomJoinSetting (
 
 
 -- Each room have a setting for the rules.
+DROP TABLE IF EXISTS RoomRulesSetting;
 CREATE TABLE RoomRulesSetting (
     uuid VARCHAR(36) PRIMARY KEY,
     rules_text TEXT NOT NULL,
@@ -262,6 +282,7 @@ CREATE TABLE RoomRulesSetting (
 
 
 -- Each room can have a setting for the user.
+DROP TABLE IF EXISTS RoomUserSetting;
 CREATE TABLE RoomUserSetting (
     uuid VARCHAR(36) PRIMARY KEY,
     max_users INTEGER DEFAULT 25,
@@ -275,6 +296,7 @@ CREATE TABLE RoomUserSetting (
 
 
 -- A channel audit is created when a user performs an action in a channel.
+DROP TABLE IF EXISTS ChannelAudit;
 CREATE TABLE ChannelAudit (
     uuid VARCHAR(36) PRIMARY KEY,
     body TEXT NOT NULL,
@@ -289,6 +311,7 @@ CREATE TABLE ChannelAudit (
 
 
 -- Each room have a setting for the channels.
+DROP TABLE IF EXISTS RoomChannelSetting;
 CREATE TABLE RoomChannelSetting (
     uuid VARCHAR(36) PRIMARY KEY,
     max_channels INTEGER DEFAULT 5,
@@ -303,6 +326,7 @@ CREATE TABLE RoomChannelSetting (
 
 
 -- A channel message is a text message sent by a user or the system.
+DROP TABLE IF EXISTS ChannelMessage;
 CREATE TABLE ChannelMessage (
     uuid VARCHAR(36) PRIMARY KEY,
     body TEXT NOT NULL,
@@ -319,6 +343,7 @@ CREATE TABLE ChannelMessage (
 
 
 -- A message upload is a file or image uploaded with a channel message.
+DROP TABLE IF EXISTS ChannelMessageUpload;
 CREATE TABLE ChannelMessageUpload (
     uuid VARCHAR(36) PRIMARY KEY,
     channel_message_upload_type_name VARCHAR(255) NOT NULL,
@@ -335,6 +360,7 @@ CREATE TABLE ChannelMessageUpload (
 
 
 -- A channel webhook is used by external services to send messages to a channel.
+DROP TABLE IF EXISTS ChannelWebhook;
 CREATE TABLE ChannelWebhook (
     uuid VARCHAR(36) PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
@@ -350,6 +376,7 @@ CREATE TABLE ChannelWebhook (
 
 
 -- A channel webhook message is created when a webhook sends a message to a channel.
+DROP TABLE IF EXISTS ChannelWebhookMessage;
 CREATE TABLE ChannelWebhookMessage (
     uuid VARCHAR(36) PRIMARY KEY,
     body TEXT NOT NULL,
@@ -364,6 +391,7 @@ CREATE TABLE ChannelWebhookMessage (
 );
 
 -- A user password reset is used to reset a user's password.
+DROP TABLE IF EXISTS UserPasswordReset;
 CREATE TABLE UserPasswordReset (
     uuid VARCHAR(36) PRIMARY KEY,
     user_uuid VARCHAR(36) NOT NULL,
@@ -374,6 +402,7 @@ CREATE TABLE UserPasswordReset (
 );
 
 -- A user email verification is used to verify a user's email.
+DROP TABLE IF EXISTS UserEmailVerification;
 CREATE TABLE UserEmailVerification (
     uuid VARCHAR(36) PRIMARY KEY,
     user_uuid VARCHAR(36) NOT NULL,
@@ -384,6 +413,7 @@ CREATE TABLE UserEmailVerification (
 );
 
 -- A user status state is used to determine if a user is online or offline.
+DROP TABLE IF EXISTS UserStatusState;
 CREATE TABLE UserStatusState (
     name VARCHAR(255) PRIMARY KEY,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -391,6 +421,7 @@ CREATE TABLE UserStatusState (
 );
 
 -- A user status is used to determine if a user is online or offline.
+DROP TABLE IF EXISTS UserStatus;
 CREATE TABLE UserStatus (
     uuid VARCHAR(36) PRIMARY KEY,
     user_uuid VARCHAR(36) NOT NULL,
@@ -405,6 +436,7 @@ CREATE TABLE UserStatus (
 );
 
 -- A channel message reaction is used to react to a message.
+DROP TABLE IF EXISTS ChannelMessageReaction;
 CREATE TABLE ChannelMessageReaction (
     uuid VARCHAR(36) PRIMARY KEY,
     channel_message_uuid VARCHAR(36) NOT NULL,
@@ -452,6 +484,7 @@ DELIMITER ;
 
 
 -- Convert bytes to kilobytes in SQL
+DROP FUNCTION IF EXISTS bytes_to_kb;
 DELIMITER //
 CREATE FUNCTION bytes_to_kb(bytes BIGINT)
 RETURNS DECIMAL(10,2)
@@ -465,6 +498,7 @@ DELIMITER ;
 
 
 -- Convert bytes to megabytes in SQL
+DROP FUNCTION IF EXISTS bytes_to_mb;
 DELIMITER //
 CREATE FUNCTION bytes_to_mb(bytes BIGINT) 
 RETURNS DECIMAL(10,2)
@@ -478,6 +512,7 @@ DELIMITER ;
 
 
 -- Convert bytes to gigabytes in SQL
+DROP FUNCTION IF EXISTS bytes_to_gb;
 DELIMITER //
 CREATE FUNCTION bytes_to_gb(bytes BIGINT) 
 RETURNS DECIMAL(10,2)
@@ -491,6 +526,7 @@ DELIMITER ;
 
 -- Check if a datetime never expires
 -- Convert null to true and a datetime to false
+DROP FUNCTION IF EXISTS never_expires;
 DELIMITER //
 CREATE FUNCTION never_expires(datetime DATETIME)
 RETURNS BOOLEAN
@@ -1568,7 +1604,7 @@ CREATE PROCEDURE update_user_status_proc(
     OUT result BOOLEAN
 )
 BEGIN
-    UPDATE UserStatus SET status_state_name = status_state_name_input, message = status_message_input, last_seen_at = status_last_seen_at, total_online_time = status_total_online_time WHERE user_uuid = user_uuid_input;
+    UPDATE UserStatus SET user_status_state_name = status_state_name_input, message = status_message_input, last_seen_at = status_last_seen_at, total_online_time = status_total_online_time WHERE user_uuid = user_uuid_input;
     SET result = TRUE;
 END //
 DELIMITER ;
@@ -1599,7 +1635,7 @@ BEGIN
     -- Insert UserEmailVerification
     INSERT INTO UserEmailVerification (uuid, user_uuid) VALUES (UUID(), NEW.uuid);
     -- Insert UserStatus
-    INSERT INTO UserStatus (uuid, user_uuid, status_state_name, message) VALUES (UUID(), NEW.uuid, 'OFFLINE', 'No status message yet.');
+    INSERT INTO UserStatus (uuid, user_uuid, user_status_state_name, message) VALUES (UUID(), NEW.uuid, 'OFFLINE', 'No status message yet.');
 END //
 DELIMITER ;
 
@@ -2265,7 +2301,7 @@ FROM ChannelMessage cm
     LEFT JOIN RoomFile rf on mu.room_file_uuid = rf.uuid
     LEFT JOIN ChannelWebhookMessage cwm ON cm.uuid = cwm.channel_message_uuid
     LEFT JOIN ChannelWebhook cw ON cwm.channel_webhook_uuid = cw.uuid
-    LEFT JOIN RoomFile cwrf ON cw.room_file_uuid = cwrf.uuids;
+    LEFT JOIN RoomFile cwrf ON cw.room_file_uuid = cwrf.uuid;
 
 -- Get channel message types
 DROP VIEW IF EXISTS channel_message_type_view;

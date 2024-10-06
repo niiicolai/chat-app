@@ -1,18 +1,12 @@
 import UserStatusState from '../models/user_status_state.js';
-
-const data = [
-    { name: 'Online' },
-    { name: 'Away' },
-    { name: 'Do Not Disturb' },
-    { name: 'Offline' },
-];
+import data from './data.js';
 
 export default class UserStatusStateSeeder {
     async up() {
-        await UserStatusState.insertMany(data);
+        await UserStatusState.insertMany(data.user_status_states);
     }
 
     async down() {
-        await UserStatusState.deleteMany({ name: { $in: data.map((d) => d.name) } });
+        await UserStatusState.deleteMany({ name: { $in: data.user_status_states.map((d) => d.name) } });
     }
 }

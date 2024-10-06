@@ -14,6 +14,16 @@ services:
     networks:
       - chat-network
 
+  mongodb:
+    container_name: mongodb
+    image: mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb-volume:/data/db
+    networks:
+      - chat-network
+
   chat_app:
     container_name: chat_app
     image: chat_app:v1.0
@@ -28,6 +38,7 @@ services:
       - chat-network
     depends_on:
       - mysql
+      - mongodb
 
 networks:
   chat-network:
@@ -36,3 +47,4 @@ networks:
 volumes:
   mysql-volume:
   mysql-dumps:
+  mongodb-volume:

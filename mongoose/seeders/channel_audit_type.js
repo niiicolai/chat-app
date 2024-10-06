@@ -1,20 +1,12 @@
 import ChannelAuditType from '../models/channel_audit_type.js';
-
-const data = [
-    { name: 'MESSAGE_CREATED' },
-    { name: 'MESSAGE_EDITED' },
-    { name: 'MESSAGE_DELETED' },
-    { name: 'WEBHOOK_CREATED' },
-    { name: 'WEBHOOK_EDITED' },
-    { name: 'WEBHOOK_DELETED' },
-];
+import data from './data.js';
 
 export default class ChannelAuditTypeSeeder {
     async up() {
-        await ChannelAuditType.insertMany(data);
+        await ChannelAuditType.insertMany(data.channel_audit_types);
     }
 
     async down() {
-        await ChannelAuditType.deleteMany({ name: { $in: data.map((d) => d.name) } });
+        await ChannelAuditType.deleteMany({ name: { $in: data.channel_audit_types.map((d) => d.name) } });
     }
 }

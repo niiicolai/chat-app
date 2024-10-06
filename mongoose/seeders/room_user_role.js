@@ -1,17 +1,12 @@
 import RoomUserRole from '../models/room_user_role.js';
-
-const data = [
-    { name: 'Admin' },
-    { name: 'Moderator' },
-    { name: 'Member' },
-];
+import data from './data.js';
 
 export default class RoomUserRoleSeeder {
     async up() {
-        await RoomUserRole.insertMany(data);
+        await RoomUserRole.insertMany(data.room_user_roles);
     }
 
     async down() {
-        await RoomUserRole.deleteMany({ name: { $in: data.map((d) => d.name) } });
+        await RoomUserRole.deleteMany({ name: { $in: data.room_user_roles.map((d) => d.name) } });
     }
 }
