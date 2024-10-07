@@ -866,7 +866,6 @@ DELIMITER ;
 
 
 
--- Edit a room
 DROP PROCEDURE IF EXISTS edit_room_proc;
 DELIMITER //
 CREATE PROCEDURE edit_room_proc(
@@ -890,37 +889,30 @@ BEGIN
             exit_code = RETURNED_SQLSTATE, 
             exit_message = MESSAGE_TEXT;
         ROLLBACK;
-        -- Print the error message and code
         SELECT CONCAT('Error Code: ', exit_code, ' Error Message: ', exit_message) AS error_output;
         SET result = FALSE;
     END;
     START TRANSACTION;
-        -- Update the room
         UPDATE Room 
-        SET name = room_name_input, description = room_description_input, room_category_name = room_category_name_input
-        WHERE uuid = room_uuid_input;
+            SET name = room_name_input, description = room_description_input, room_category_name = room_category_name_input
+            WHERE uuid = room_uuid_input;
 
-        -- Check if the room avatar already exists
         SELECT r.uuid, r.room_file_uuid into existing_avatar_uuid, existing_room_file_uuid
-        FROM RoomAvatar as r
-        WHERE room_uuid = room_uuid_input LIMIT 1;
+            FROM RoomAvatar as r
+            WHERE room_uuid = room_uuid_input LIMIT 1;
 
-        -- Check if a new room avatar needs to be created
         IF room_avatar_src_input IS NOT NULL THEN
-			IF existing_room_file_uuid IS NOT NULL THEN
-				-- Update the existing room file record
-				UPDATE RoomFile
-				SET src = room_avatar_src_input, size = room_avatar_size_input
-				WHERE uuid = existing_room_file_uuid;
-			ELSE
-				-- Otherwise, create a new one and update the avatar
-				SET room_file_uuid = UUID();
-				INSERT INTO RoomFile (uuid, src, size, room_uuid, room_file_type_name)
-				VALUES (room_file_uuid, room_avatar_src_input, room_avatar_size_input, room_uuid_input, 'RoomAvatar');
+            IF existing_room_file_uuid IS NOT NULL THEN
+                UPDATE RoomFile SET src = room_avatar_src_input, size = room_avatar_size_input
+                WHERE uuid = existing_room_file_uuid;
+            ELSE
+                SET room_file_uuid = UUID();
+                INSERT INTO RoomFile (uuid, src, size, room_uuid, room_file_type_name)
+                VALUES (room_file_uuid, room_avatar_src_input, room_avatar_size_input, room_uuid_input, 'RoomAvatar');
                 UPDATE RoomAvatar SET room_file_uuid = room_file_uuid WHERE uuid = existing_avatar_uuid;
-			END IF;
-		ELSE
-			UPDATE RoomAvatar SET room_file_uuid = NULL WHERE uuid = existing_avatar_uuid;
+            END IF;
+        ELSE
+            UPDATE RoomAvatar SET room_file_uuid = NULL WHERE uuid = existing_avatar_uuid;
         END IF;
 
     COMMIT;
@@ -2686,5 +2678,3 @@ GRANT SELECT ON `chat`.`channel_audit_view` TO 'chat_restricted'@'%';
 GRANT SELECT ON `chat`.`channel_audit_type_view` TO 'chat_restricted'@'%';
 -- Flush privileges to apply changes
 FLUSH PRIVILEGES;
-
-
