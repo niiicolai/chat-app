@@ -6,6 +6,13 @@ export default async (res, c) => {
         await c();
     } catch (error) {
         if (error instanceof ControllerError) {
+            if (error.code === 500) {
+                rollbar.error(error);
+                console.log(error);
+                res.status(500).json('Internal Server Error');
+                return;
+            }
+
             res.status(error.code).json(error.message);
         } else {
             rollbar.error(error);

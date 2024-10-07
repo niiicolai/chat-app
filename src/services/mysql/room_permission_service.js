@@ -2,12 +2,11 @@ import db from '../../../sequelize/models/index.cjs';
 import ControllerError from '../../errors/controller_error.js';
 
 class RoomPermissionService {
-    constructor() {
-    }
 
     async isInRoom(options = { room_uuid: null, user: null, role_name: null }) {
         const { room_uuid, user } = options;
         const { sub: user_uuid } = user;
+
         if (!room_uuid) {
             throw new ControllerError(400, 'isInRoom: No room_uuid provided');
         }
@@ -36,6 +35,7 @@ class RoomPermissionService {
     async isInRoomByChannel(options = { channel_uuid: null, user: null, role_name: null }) {
         const { channel_uuid, user } = options;
         const { sub: user_uuid } = user;
+
         if (!channel_uuid) {
             throw new ControllerError(400, 'isInRoomByChannel: No channel_uuid provided');
         }
@@ -68,6 +68,7 @@ class RoomPermissionService {
 
     async fileExceedsTotalFilesLimit(options = { room_uuid: null, bytes: null }) {
         const { room_uuid, bytes } = options;
+
         if (!room_uuid) {
             throw new ControllerError(400, 'fileExceedsTotalFilesLimit: No room_uuid provided');
         }
@@ -81,6 +82,7 @@ class RoomPermissionService {
                 room_uuid,
             },
         });
+        
         const [[{ result }]] = await db.sequelize.query('SELECT @result AS result');
         const exceeds = result === 1;
         return exceeds;
@@ -88,6 +90,7 @@ class RoomPermissionService {
 
     async fileExceedsSingleFileSize(options = { room_uuid: null, bytes: null }) {
         const { room_uuid, bytes } = options;
+
         if (!room_uuid) {
             throw new ControllerError(400, 'fileExceedsSingleFileSize: No room_uuid provided');
         }
@@ -101,6 +104,7 @@ class RoomPermissionService {
                 room_uuid,
             },
         });
+
         const [[{ result }]] = await db.sequelize.query('SELECT @result AS result');
         const exceeds = result === 1;
         return exceeds;
@@ -108,6 +112,7 @@ class RoomPermissionService {
 
     async roomUserCountExceedsLimit(options = { room_uuid: null, add_count: null }) {
         const { room_uuid, add_count } = options;
+
         if (!room_uuid) {
             throw new ControllerError(400, 'roomUserCountExceedsLimit: No room_uuid provided');
         }
@@ -121,6 +126,7 @@ class RoomPermissionService {
                 add_count,
             },
         });
+
         const [[{ result }]] = await db.sequelize.query('SELECT @result AS result');
         const exceeds = result === 1;
         return exceeds;
@@ -128,6 +134,7 @@ class RoomPermissionService {
 
     async channelCountExceedsLimit(options = { room_uuid: null, add_count: null }) {
         const { room_uuid, add_count } = options;
+
         if (!room_uuid) {
             throw new ControllerError(400, 'channelCountExceedsLimit: No room_uuid provided');
         }
@@ -141,6 +148,7 @@ class RoomPermissionService {
                 add_count,
             },
         });
+
         const [[{ result }]] = await db.sequelize.query('SELECT @result AS result');
         const exceeds = result === 1;
         return exceeds;

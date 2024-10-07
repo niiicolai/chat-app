@@ -1,65 +1,43 @@
+import { broadcastChannel } from '../../../websocket_server.js';
 import MysqlBaseFindService from './_mysql_base_find_service.js';
 import db from '../../../sequelize/models/index.cjs';
 import ControllerError from '../../errors/controller_error.js';
 import StorageService from '../storage_service.js';
 import RoomPermissionService from './room_permission_service.js';
-import { broadcastChannel } from '../../../websocket_server.js';
+import channelMessageDto from '../../dto/channel_message_dto.js';
+import channelMessageUploadDto from '../../dto/channel_message_upload_dto.js';
+import channelWebhookMessageDto from '../../dto/channel_webhook_message_dto.js';
+import channelWebhookDto from '../../dto/channel_webhook_dto.js';
+import roomFileDto from '../../dto/room_file_dto.js';
+import userDto from '../../dto/user_dto.js';
+import { getUploadType } from '../../utils/file_utils.js';
 
 const storage = new StorageService('channel_message_upload');
-const getUploadType = (file) => {
-    const mime = file.mimetype;
-    if (mime.startsWith('image')) {
-        return 'Image';
-    } else if (mime.startsWith('video')) {
-        return 'Video';
-    } else {
-        return 'Document';
-    }
-};
 
 const dto = (m) => {
-    const res = {
-        uuid: m.channel_message_uuid,
-        body: m.channel_message_body,
-        channel_message_type_name: m.channel_message_type_name,
-        channel_uuid: m.channel_uuid,
-        room_uuid: m.room_uuid,
-        created_at: m.channel_message_created_at,
-        updated_at: m.channel_message_updated_at,
-
-    };
+    const res = channelMessageDto(m, 'channel_message_');
 
     if (m.channel_message_upload_uuid) {
-        res.channel_message_upload = {};
-        res.channel_message_upload.uuid = m.channel_message_upload_uuid;
-        res.channel_message_upload.channel_message_upload_type_name = m.channel_message_upload_type_name;
+        res.channel_message_upload = channelMessageUploadDto(m, 'channel_message_upload_');
+    }
 
-        if (m.room_file_uuid) {
-            res.channel_message_upload.room_file = {};
-            res.channel_message_upload.room_file.uuid = m.room_file_uuid;
-            res.channel_message_upload.room_file.src = m.room_file_src;
-            res.channel_message_upload.room_file.room_file_type_name = m.room_file_type_name;
-            res.channel_message_upload.room_file.size_bytes = m.room_file_size;
-            res.channel_message_upload.room_file.size_mb = parseFloat(m.room_file_size_mb);
-        }
+    if (m.channel_message_upload_uuid && m.room_file_uuid) {
+        res.channel_message_upload.room_file = roomFileDto(m, 'room_file_');
     }
 
     if (m.user_uuid) {
-        res.user = {};
-        res.user.uuid = m.user_uuid;
-        res.user.username = m.user_username;
-        res.user.avatar_src = m.user_avatar_src;
+        res.user = userDto(m, 'user_');
     }
 
     if (m.channel_webhook_message_uuid) {
-        res.channel_webhook_message = {};
-        res.channel_webhook_message.uuid = m.channel_webhook_message_uuid;
-        res.channel_webhook_message.channel_webhook = {};
-        res.channel_webhook_message.channel_webhook.uuid = m.channel_webhook_uuid;
-        res.channel_webhook_message.channel_webhook.name = m.channel_webhook_name;
-        res.channel_webhook_message.channel_webhook.room_file = {};
-        res.channel_webhook_message.channel_webhook.room_file.uuid = m.channel_webhook_room_file_uuid;
-        res.channel_webhook_message.channel_webhook.room_file.src = m.channel_webhook_room_file_src;
+        res.channel_webhook_message = channelWebhookMessageDto(m, 'channel_webhook_message_');
+    }
+
+    if (m.channel_webhook_message_uuid && m.channel_webhook_uuid) {
+        res.channel_webhook_message.channel_webhook = channelWebhookDto(m, 'channel_webhook_');
+        if (m.channel_webhook_room_file_uuid) {
+            res.channel_webhook_message.channel_webhook.room_file = roomFileDto(m, 'channel_webhook_room_file_');
+        }
     }
 
     return res;
@@ -70,9 +48,13 @@ class Service extends MysqlBaseFindService {
         super(db.ChannelMessageView, dto);
     }
 
-    async findOne(options = { channel_message_uuid: null, user: null }) {
+    async findOne(options = { user: null }) {
         const { user } = options;
         const existing = await super.findOne({ ...options });
+
+        if (!user) {
+            throw new ControllerError(500, 'No user provided');
+        }
 
         if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid: existing.channel_uuid, user, role_name: null }))) {
             throw new ControllerError(403, 'User is not in the room');
@@ -84,6 +66,9 @@ class Service extends MysqlBaseFindService {
     async findAll(options = { channel_uuid: null, user: null }) {
         const { channel_uuid, user } = options;
 
+        if (!user) {
+            throw new ControllerError(500, 'No user provided');
+        }
         if (!channel_uuid) {
             throw new ControllerError(400, 'No channel_uuid provided');
         }
@@ -110,6 +95,9 @@ class Service extends MysqlBaseFindService {
         }
         if (!channel_uuid) {
             throw new ControllerError(400, 'No channel_uuid provided');
+        }
+        if (!user) {
+            throw new ControllerError(500, 'No user provided');
         }
 
         const channel = await db.ChannelView.findOne({ where: { channel_uuid } });
@@ -169,6 +157,9 @@ class Service extends MysqlBaseFindService {
         if (!uuid) {
             throw new ControllerError(400, 'No uuid provided');
         }
+        if (!user) {
+            throw new ControllerError(500, 'No user provided');
+        }
 
         const existing = await service.findOne({ uuid, user });
 
@@ -207,6 +198,9 @@ class Service extends MysqlBaseFindService {
 
         if (!uuid) {
             throw new ControllerError(400, 'No uuid provided');
+        }
+        if (!user) {
+            throw new ControllerError(500, 'No user provided');
         }
 
         const existing = await service.findOne({ uuid, user });

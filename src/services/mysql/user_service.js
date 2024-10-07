@@ -4,23 +4,14 @@ import ControllerError from '../../errors/controller_error.js';
 import JwtService from '../jwt_service.js';
 import StorageService from '../storage_service.js';
 import bcrypt from 'bcrypt';
+import dto from '../../dto/user_dto.js';
 
 const saltRounds = 10;
 const storage = new StorageService('user_avatar');
 
 class UserService extends MysqlBaseFindService {
     constructor() {
-        super(db.UserView, (m) => {
-            return {
-                uuid: m.user_uuid,
-                username: m.user_username,
-                email: m.user_email,
-                avatar_src: m.user_avatar_src,
-                email_verified: m.user_email_verified,
-                created_at: m.user_created_at,
-                updated_at: m.user_updated_at,
-            };
-        });
+        super(db.UserView, (m) => dto(m, 'user_'));
     }
 
     async create(options = { body: null, file: null }) {
@@ -76,18 +67,22 @@ class UserService extends MysqlBaseFindService {
         const { username, email, password } = body;
         const { sub: uuid } = user;
 
-        const existing = await super.findOne({ uuid });
+        // Note: This cannot use the service's findOne method
+        // because the method is designed not to return the password
+        // and in this case, we need the password to ensure if none
+        // is provided, we keep the existing password.
+        const existing = await this.model.findOne({ uuid });
 
         if (!username) {
-            body.username = existing.username;
+            body.username = existing.user_username;
         }
 
         if (!email) {
-            body.email = existing.email;
+            body.email = existing.user_email;
         }
 
         if (!password) {
-            body.password = existing.password;
+            body.password = existing.user_password;
         } else {
             body.password = bcrypt.hashSync(body.password, saltRounds);
         }

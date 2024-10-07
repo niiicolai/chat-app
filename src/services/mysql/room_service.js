@@ -3,58 +3,31 @@ import db from '../../../sequelize/models/index.cjs';
 import ControllerError from '../../errors/controller_error.js';
 import StorageService from '../storage_service.js';
 import RoomPermissionService from './room_permission_service.js';
+import roomDto from '../../dto/room_dto.js';
+import roomJoinSettingsDto from '../../dto/room_join_settings_dto.js';
+import roomFileSettingsDto from '../../dto/room_file_settings_dto.js';
+import roomUserSettingsDto from '../../dto/room_user_settings_dto.js';
+import roomChannelSettingsDto from '../../dto/room_channel_settings_dto.js';
+import roomRulesSettingsDto from '../../dto/room_rules_settings_dto.js';
+import roomAvatarDto from '../../dto/room_avatar_dto.js';
+import roomFileDto from '../../dto/room_file_dto.js';
 
 const storage = new StorageService('room_avatar');
 
 const dto = (m) => {
-    const res = {
-        uuid: m.room_uuid,
-        name: m.room_name,
-        description: m.room_description,
-        room_category_name: m.room_category_name,
-        bytes_used: m.bytes_used ? parseFloat(m.bytes_used) : 0,
-        mb_used: m.mb_used ? parseFloat(m.mb_used) : 0,
-    };
+    const res = roomDto(m, 'room_');
 
-    res.joinSettings = {
-        channelUuid: m.join_channel_uuid,
-        message: m.join_message,
-    };
-
-    res.rulesSettings = {
-        text: m.rules_text,
-    };
-
-    res.userSettings = {
-        maxUsers: m.max_users,
-    };
-
-    res.channelSettings = {
-        maxChannels: m.max_channels,
-        messagesDaysToLive: m.message_days_to_live,
-    };
-
-    res.fileSettings = {
-        totalFilesBytesAllowed: m.total_files_bytes_allowed,
-        singleFileBytesAllowed: m.single_file_bytes_allowed,
-        fileDaysToLive: m.file_days_to_live,
-        totalFilesMb: parseFloat(m.total_files_mb),
-        singleFileMb: parseFloat(m.single_file_mb),
-    };
+    res.joinSettings = roomJoinSettingsDto(m);
+    res.rulesSettings = roomRulesSettingsDto(m);
+    res.userSettings = roomUserSettingsDto(m);
+    res.channelSettings = roomChannelSettingsDto(m);
+    res.fileSettings = roomFileSettingsDto(m);
 
     if (m.room_avatar_uuid) {
-        res.avatar = {
-            uuid: m.room_avatar_uuid,
-        };
+        res.avatar = roomAvatarDto(m, 'room_avatar_');
 
         if (m.room_file_uuid) {
-            res.avatar.room_file = {
-                uuid: m.room_file_uuid,
-                src: m.room_file_src,
-                room_file_type_name: m.room_file_type_name,
-                size: parseFloat(m.room_file_size),
-                sizeMb: parseFloat(m.room_file_size_mb),
-            };
+            res.avatar.room_file = roomFileDto(m, 'room_file_');
         }
     }
 
@@ -67,25 +40,33 @@ class Service extends MysqlBaseFindService {
     }
 
     includeUser(user_uuid) {
+        if (!user_uuid) {
+            throw new ControllerError(500, 'includeUser: No user_uuid provided');
+        }
+
         return [{
             model: db.RoomUserView,
             where: { user_uuid },
         }];
     }
 
-    async findOne(options = { room_uuid: null, user: null }) {
-        const { user, room_uuid } = options;
+    async findOne(options = { user: null }) {
+        const { user } = options;
         const { sub: user_uuid } = user;
-        if (!user_uuid) {
-            throw new ControllerError(400, 'No user_uuid provided');
+
+        if (!user) {
+            throw new ControllerError(500, 'No user provided');
         }
+
         return await super.findOne({ ...options, include: this.includeUser(user_uuid) });
     }
 
     async findAll(options = { user: null }) {
+        const { user } = options;
         const { sub: user_uuid } = options.user;
-        if (!user_uuid) {
-            throw new ControllerError(400, 'No user_uuid provided');
+
+        if (!user) {
+            throw new ControllerError(500, 'No user provided');
         }
 
         return await super.findAll({ ...options, include: this.includeUser(user_uuid) });
@@ -108,6 +89,9 @@ class Service extends MysqlBaseFindService {
         }
         if (!body.room_category_name) {
             throw new ControllerError(400, 'No room_category_name provided');
+        }
+        if (!user) {
+            throw new ControllerError(500, 'No user provided');
         }
 
         if (await db.RoomView.findOne({ where: { room_uuid: body.uuid } })) {
@@ -143,22 +127,25 @@ class Service extends MysqlBaseFindService {
             },
         });
 
-        return await service.findOne({ room_uuid: body.uuid, user });
+        return await service.findOne({ uuid: body.uuid, user });
     }
 
-    async update(options = { room_uuid: null, body: null, file: null, user: null }) {
-        const { room_uuid, body, file, user } = options;
+    async update(options = { uuid: null, body: null, file: null, user: null }) {
+        const { uuid, body, file, user } = options;
         const { name, description, room_category_name } = body;
 
-        if (!room_uuid) {
-            throw new ControllerError(400, 'No room_uuid provided');
+        if (!uuid) {
+            throw new ControllerError(400, 'No uuid provided');
+        }
+        if (!user) {
+            throw new ControllerError(500, 'No user provided');
         }
 
-        if (!(await RoomPermissionService.isInRoom({ room_uuid, user, role_name: 'Admin' }))) {
+        if (!(await RoomPermissionService.isInRoom({ room_uuid: uuid, user, role_name: 'Admin' }))) {
             throw new ControllerError(403, 'User is not an admin of the room');
         }
 
-        const existing = await service.findOne({ room_uuid, user });
+        const existing = await service.findOne({ uuid, user });
         if (!existing) {
             throw new ControllerError(404, 'Room not found');
         }
@@ -176,22 +163,22 @@ class Service extends MysqlBaseFindService {
         }
 
         if (file && file.size > 0) {
-            if ((await RoomPermissionService.fileExceedsTotalFilesLimit({ room_uuid, bytes: file.size }))) {
+            if ((await RoomPermissionService.fileExceedsTotalFilesLimit({ room_uuid: uuid, bytes: file.size }))) {
                 throw new ControllerError(400, 'The room does not have enough space for this file');
             }
-            if ((await RoomPermissionService.fileExceedsSingleFileSize({ room_uuid, bytes: file.size }))) {
+            if ((await RoomPermissionService.fileExceedsSingleFileSize({ room_uuid: uuid, bytes: file.size }))) {
                 throw new ControllerError(400, 'File exceeds single file size limit');
             }
-            body.src = await storage.uploadFile(file, room_uuid);
+            body.src = await storage.uploadFile(file, uuid);
             body.bytes = file.size;
         } else {
             body.src = existing.avatar?.room_file?.src;
             body.bytes = existing.avatar?.room_file?.size;
         }
 
-        await db.sequelize.query('CALL edit_room_proc(:room_uuid, :name, :description, :room_category_name, :src, :bytes, @result)', {
+        await db.sequelize.query('CALL edit_room_proc(:uuid, :name, :description, :room_category_name, :src, :bytes, @result)', {
             replacements: {
-                room_uuid,
+                uuid,
                 name: body.name,
                 description: body.description,
                 room_category_name: body.room_category_name,
@@ -200,48 +187,47 @@ class Service extends MysqlBaseFindService {
             },
         });
 
-        return await service.findOne({ room_uuid, user });
+        return await service.findOne({ uuid, user });
     }
 
-    async destroy(options = { room_uuid: null, user: null }) {
-        const { room_uuid, user } = options;
+    async destroy(options = { uuid: null, user: null }) {
+        const { uuid, user } = options;
 
-        if (!room_uuid) {
-            throw new ControllerError(400, 'No room_uuid provided');
+        if (!uuid) {
+            throw new ControllerError(400, 'No uuid provided');
         }
 
-        if (!(await RoomPermissionService.isInRoom({ room_uuid, user, role_name: 'Admin' }))) {
+        if (!user) {
+            throw new ControllerError(500, 'No user provided');
+        }
+
+        if (!(await RoomPermissionService.isInRoom({ room_uuid: uuid, user, role_name: 'Admin' }))) {
             throw new ControllerError(403, 'User is not an admin of the room');
         }
 
-        const existing = await service.findOne({ room_uuid, user });
-        if (!existing) {
-            throw new ControllerError(404, 'Room not found');
-        }
-
-        await db.sequelize.query('CALL delete_room_proc(:room_uuid, @result)', {
-            replacements: {
-                room_uuid,
-            },
+        await service.findOne({ uuid, user });
+        await db.sequelize.query('CALL delete_room_proc(:uuid, @result)', {
+            replacements: { uuid }
         });
     }
 
-    async editSettings(options = { room_uuid: null, body: null, user: null }) {
-        const { room_uuid, body, user } = options;
+    async editSettings(options = { uuid: null, body: null, user: null }) {
+        const { uuid, body, user } = options;
         const { join_message, rules_text, join_channel_uuid } = body;
 
-        if (!room_uuid) {
-            throw new ControllerError(400, 'No room_uuid provided');
+        if (!uuid) {
+            throw new ControllerError(400, 'No uuid provided');
         }
 
-        if (!(await RoomPermissionService.isInRoom({ room_uuid, user, role_name: 'Admin' }))) {
+        if (!user) {
+            throw new ControllerError(500, 'No user provided');
+        }
+
+        if (!(await RoomPermissionService.isInRoom({ room_uuid: uuid, user, role_name: 'Admin' }))) {
             throw new ControllerError(403, 'User is not an admin of the room');
         }
 
-        const existing = await service.findOne({ room_uuid, user });
-        if (!existing) {
-            throw new ControllerError(404, 'Room not found');
-        }
+        const existing = await service.findOne({ uuid, user });
 
         if (!join_message) {
             body.join_message = existing.join_message;
@@ -262,9 +248,9 @@ class Service extends MysqlBaseFindService {
             body.join_channel_uuid = existing.join_channel_uuid;
         }
 
-        await db.sequelize.query('CALL edit_room_setting_proc(:room_uuid, :join_message, :join_channel_uuid, :rules_text, @result)', {
+        await db.sequelize.query('CALL edit_room_setting_proc(:uuid, :join_message, :join_channel_uuid, :rules_text, @result)', {
             replacements: {
-                room_uuid,
+                uuid,
                 join_message: body.join_message,
                 join_channel_uuid: body.join_channel_uuid || null,
                 rules_text: body.rules_text,
@@ -272,31 +258,27 @@ class Service extends MysqlBaseFindService {
         });
     }
 
-    async leave(options = { room_uuid: null, user: null }) {
-        const { room_uuid, user } = options;
+    async leave(options = { uuid: null, user: null }) {
+        const { uuid, user } = options;
         const { sub: user_uuid } = user;
 
-        if (!room_uuid) {
-            throw new ControllerError(400, 'No room_uuid provided');
+        if (!uuid) {
+            throw new ControllerError(400, 'No uuid provided');
         }
 
-        if (!user_uuid) {
-            throw new ControllerError(400, 'No user_uuid provided');
+        if (!user) {
+            throw new ControllerError(500, 'No user provided');
         }
 
-        if (!(await RoomPermissionService.isInRoom({ room_uuid, user, role_name: null }))) {
+        if (!(await RoomPermissionService.isInRoom({ room_uuid: uuid, user, role_name: null }))) {
             throw new ControllerError(403, 'User is not in the room');
         }
 
-        const existing = await service.findOne({ room_uuid, user });
-        if (!existing) {
-            throw new ControllerError(404, 'Room not found');
-        }
-
-        await db.sequelize.query('CALL leave_room_proc(:user_uuid, :room_uuid, @result)', {
+        await service.findOne({ uuid, user });
+        await db.sequelize.query('CALL leave_room_proc(:user_uuid, :uuid, @result)', {
             replacements: {
                 user_uuid,
-                room_uuid,
+                uuid,
             },
         });
     }

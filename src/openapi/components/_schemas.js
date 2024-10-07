@@ -10,6 +10,7 @@ import channelMessage from './channel_message.js';
 import channelMessageUpload from './channel_message_upload.js';
 import channelWebhook from './channel_webhook.js';
 import channelWebhookMessage from './channel_webhook_message.js';
+import userStatus from './user_status.js';
 import channel from './channel.js';
 
 export default {
@@ -25,5 +26,6 @@ export default {
     ...channelMessageUpload,
     ...channelWebhook,
     ...channelWebhookMessage,
-    ...channel
+    ...channel,
+    ...userStatus,
 };
