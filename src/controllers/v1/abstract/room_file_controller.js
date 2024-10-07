@@ -7,9 +7,9 @@ export default (crudService) => {
     const ctrl = { router };
 
     ctrl.findOne = () => {
-        router.get('/room_file/:room_file_uuid', [authMiddleware], async (req, res) => {
+        router.get('/room_file/:uuid', [authMiddleware], async (req, res) => {
             await errorHandler(res, async () => {
-                const result = await crudService.findOne({ room_file_uuid: req.params.room_file_uuid, user: req.user });
+                const result = await crudService.findOne({ uuid: req.params.uuid, user: req.user });
                 res.json(result);
             });
         });
@@ -26,9 +26,9 @@ export default (crudService) => {
     }
 
     ctrl.destroy = () => {
-        router.delete('/room_file/:room_file_uuid', [authMiddleware], async (req, res) => {
+        router.delete('/room_file/:uuid', [authMiddleware], async (req, res) => {
             await errorHandler(res, async () => {
-                await crudService.destroy({ room_file_uuid: req.params.room_file_uuid, user: req.user });
+                await crudService.destroy({ uuid: req.params.uuid, user: req.user });
                 res.sendStatus(204);
             });
         });

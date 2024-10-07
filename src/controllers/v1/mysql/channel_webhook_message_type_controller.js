@@ -5,7 +5,7 @@ const ctrl = channelWebhookMessageTypeController(crudService);
 
 /**
  * @openapi
- * '/api/v1/mysql/channel_webhook_message_type/:name':
+ * '/api/v1/mysql/channel_webhook_message_type/{name}':
  *  get:
  *     tags:
  *       - MySQL Channel Webhook Message Type Controller

@@ -1,11 +1,11 @@
-import crudService from '../../../services/mysql/room_audit_service.js';
+import crudService from '../../../services/neo4j/room_audit_service.js';
 import roomAuditController from '../abstract/room_audit_controller.js';
 
 const ctrl = roomAuditController(crudService);
 
 /**
  * @openapi
- * '/api/v1/neo4j/room_audit/:room_audit_uuid':
+ * '/api/v1/neo4j/room_audit/{uuid}':
  *  get:
  *    tags:
  *     - Neo4j Room Audit Controller
@@ -14,7 +14,7 @@ const ctrl = roomAuditController(crudService);
  *     - bearerAuth: []
  *    parameters:
  *     - in: path
- *       name: room_audit_uuid
+ *       name: uuid
  *       required: true
  *    responses:
  *     200:

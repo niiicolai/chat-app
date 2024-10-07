@@ -9,11 +9,11 @@ export default (crudService) => {
     const ctrl = { router };
 
     ctrl.findOne = () => {
-        router.get('/room/:room_uuid', [authMiddleware], async (req, res) => {
+        router.get('/room/:uuid', [authMiddleware], async (req, res) => {
             await errorHandler(res, async () => {
-                const { room_uuid } = req.params;
+                const { uuid } = req.params;
                 const { user } = req;
-                const result = await crudService.findOne({ room_uuid, user });
+                const result = await crudService.findOne({ uuid, user });
                 res.json(result);
             });
         });
@@ -40,36 +40,36 @@ export default (crudService) => {
     }
 
     ctrl.update = () => {
-        router.patch('/room/:room_uuid', [authMiddleware, uploadMiddleware], async (req, res) => {
+        router.patch('/room/:uuid', [authMiddleware, uploadMiddleware], async (req, res) => {
             await errorHandler(res, async () => {
-                const result = await crudService.update({ room_uuid: req.params.room_uuid, body: req.body, user: req.user, file: req.file });
+                const result = await crudService.update({ uuid: req.params.uuid, body: req.body, user: req.user, file: req.file });
                 res.json(result);
             });
         });
     }
 
     ctrl.editSettings = () => {
-        router.patch('/room/:room_uuid/settings', [authMiddleware], async (req, res) => {
+        router.patch('/room/:uuid/settings', [authMiddleware], async (req, res) => {
             await errorHandler(res, async () => {
-                await crudService.editSettings({ room_uuid: req.params.room_uuid, body: req.body, user: req.user });
+                await crudService.editSettings({ uuid: req.params.uuid, body: req.body, user: req.user });
                 res.sendStatus(204);
             });
         });
     }
 
     ctrl.leave = () => {
-        router.delete('/room/:room_uuid/leave', [authMiddleware], async (req, res) => {
+        router.delete('/room/:uuid/leave', [authMiddleware], async (req, res) => {
             await errorHandler(res, async () => {
-                await crudService.leave({ room_uuid: req.params.room_uuid, user: req.user });
+                await crudService.leave({ uuid: req.params.uuid, user: req.user });
                 res.sendStatus(204);
             });
         });
     }
 
     ctrl.destroy = () => {
-        router.delete('/room/:room_uuid', [authMiddleware], async (req, res) => {
+        router.delete('/room/:uuid', [authMiddleware], async (req, res) => {
             await errorHandler(res, async () => {
-                await crudService.destroy({ room_uuid: req.params.room_uuid, user: req.user });
+                await crudService.destroy({ uuid: req.params.uuid, user: req.user });
                 res.sendStatus(204);
             });
         });

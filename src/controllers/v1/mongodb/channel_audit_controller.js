@@ -5,7 +5,7 @@ const ctrl = channelAuditController(crudService);
 
 /**
  * @openapi
- * '/api/v1/mongodb/channel_audit/:channel_audit_uuid':
+ * '/api/v1/mongodb/channel_audit/{uuid}':
  *  get:
  *    tags:
  *     - MongoDB Channel Audit Controller

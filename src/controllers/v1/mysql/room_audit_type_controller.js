@@ -5,7 +5,7 @@ const ctrl = roomAuditTypeController(crudService);
 
 /**
  * @openapi
- * '/api/v1/mysql/room_audit_type/:name':
+ * '/api/v1/mysql/room_audit_type/{name}':
  *  get:
  *     tags:
  *       - MySQL Room Audit Type Controller

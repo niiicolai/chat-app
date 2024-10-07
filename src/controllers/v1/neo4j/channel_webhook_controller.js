@@ -1,11 +1,11 @@
-import crudService from '../../../services/mysql/channel_webhook_service.js';
+import crudService from '../../../services/neo4j/channel_webhook_service.js';
 import channelWebhookController from '../abstract/channel_webhook_controller.js';
 
 const ctrl = channelWebhookController(crudService);
 
 /**
  * @openapi
- * '/api/v1/neo4j/channel_webhook/:channel_webhook_uuid':
+ * '/api/v1/neo4j/channel_webhook/{uuid}':
  *  get:
  *    tags:
  *     - Neo4j Channel Webhook Controller
@@ -14,7 +14,7 @@ const ctrl = channelWebhookController(crudService);
  *     - bearerAuth: []
  *    parameters:
  *     - in: path
- *       name: channel_webhook_uuid
+ *       name: uuid
  *       required: true
  *    responses:
  *     200:
@@ -72,14 +72,14 @@ ctrl.findAll();
 
 /**
  * @openapi
- *  '/api/v1/neo4j/channel_webhook/{channel_webhook_uuid}':
+ *  '/api/v1/neo4j/channel_webhook/{uuid}':
  *   post:
  *    tags:
  *     - Neo4j Channel Webhook Controller
  *    summary: Send a message to a channel webhook
  *    parameters:
  *     - in: path
- *       name: channel_webhook_uuid
+ *       name: uuid
  *       required: true
  *    requestBody:
  *     required: true
@@ -132,7 +132,7 @@ ctrl.create();
 
 /**
  * @openapi
- *  '/api/v1/neo4j/channel_webhook/{channel_webhook_uuid}':
+ *  '/api/v1/neo4j/channel_webhook/{uuid}':
  *   patch:
  *    tags:
  *     - Neo4j Channel Webhook Controller
@@ -141,7 +141,7 @@ ctrl.create();
  *     - bearerAuth: []
  *    parameters:
  *     - in: path
- *       name: channel_webhook_uuid
+ *       name: uuid
  *       required: true
  *    requestBody:
  *     required: true
@@ -165,7 +165,7 @@ ctrl.update();
 
 /**
  * @openapi
- *  '/api/v1/neo4j/channel_webhook/{channel_webhook_uuid}':
+ *  '/api/v1/neo4j/channel_webhook/{uuid}':
  *   delete:
  *    tags:
  *     - Neo4j Channel Webhook Controller
@@ -174,7 +174,7 @@ ctrl.update();
  *     - bearerAuth: []
  *    parameters:
  *     - in: path
- *       name: channel_webhook_uuid
+ *       name: uuid
  *       required: true
  *    responses:
  *     204:

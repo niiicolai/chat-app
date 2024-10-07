@@ -5,7 +5,7 @@ const ctrl = roomInviteLinkController(crudService);
 
 /**
  * @openapi
- * '/api/v1/mongodb/room_invite_link/:room_invite_link_uuid':
+ * '/api/v1/mongodb/room_invite_link/{uuid}':
  *  get:
  *    tags:
  *     - MongoDB Room Invite Link Controller
@@ -14,7 +14,7 @@ const ctrl = roomInviteLinkController(crudService);
  *     - bearerAuth: []
  *    parameters:
  *      - in: path
- *        name: room_uuid
+ *        name: uuid
  *        required: true
  *    responses:
  *     200:
@@ -72,7 +72,7 @@ ctrl.findAll();
 
 /**
  * @openapi
- * '/api/v1/mongodb/room_invite_link/:room_invite_link_uuid/join':
+ * '/api/v1/mongodb/room_invite_link/{uuid}/join':
  *  post:
  *    tags:
  *     - MongoDB Room Invite Link Controller
@@ -81,7 +81,7 @@ ctrl.findAll();
  *     - bearerAuth: []
  *    parameters:
  *     - in: path
- *       name: room_invite_link_uuid
+ *       name: uuid
  *       required: true
  *       schema:
  *        type: string
@@ -129,7 +129,7 @@ ctrl.create();
 
 /**
  * @openapi
- * '/api/v1/mongodb/room_invite_link/:room_invite_link_uuid':
+ * '/api/v1/mongodb/room_invite_link/{uuid}':
  *  patch:
  *    tags:
  *     - MongoDB Room Invite Link Controller
@@ -138,7 +138,7 @@ ctrl.create();
  *     - bearerAuth: []
  *    parameters:
  *      - in: path
- *        name: room_invite_link_uuid
+ *        name: uuid
  *        required: true
  *    requestBody:
  *     required: true
@@ -165,7 +165,7 @@ ctrl.update();
 
 /**
  * @openapi
- * '/api/v1/mongodb/room_invite_link/:room_invite_link_uuid':
+ * '/api/v1/mongodb/room_invite_link/{uuid}':
  *  delete:
  *    tags:
  *     - MongoDB Room Invite Link Controller
@@ -174,7 +174,7 @@ ctrl.update();
  *     - bearerAuth: []
  *    parameters:
  *      - in: path
- *        name: room_invite_link_uuid
+ *        name: uuid
  *        required: true
  *    responses:
  *     204:

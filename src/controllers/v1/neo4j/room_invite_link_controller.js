@@ -1,11 +1,11 @@
-import crudService from '../../../services/mysql/room_invite_link_service.js';
+import crudService from '../../../services/neo4j/room_invite_link_service.js';
 import roomInviteLinkController from '../abstract/room_invite_link_controller.js';
 
 const ctrl = roomInviteLinkController(crudService);
 
 /**
  * @openapi
- * '/api/v1/neo4j/room_invite_link/:room_invite_link_uuid':
+ * '/api/v1/neo4j/room_invite_link/{uuid}':
  *  get:
  *    tags:
  *     - Neo4j Room Invite Link Controller
@@ -14,7 +14,7 @@ const ctrl = roomInviteLinkController(crudService);
  *     - bearerAuth: []
  *    parameters:
  *      - in: path
- *        name: room_uuid
+ *        name: uuid
  *        required: true
  *    responses:
  *     200:
@@ -72,7 +72,7 @@ ctrl.findAll();
 
 /**
  * @openapi
- * '/api/v1/neo4j/room_invite_link/:room_invite_link_uuid/join':
+ * '/api/v1/neo4j/room_invite_link/{uuid}/join':
  *  post:
  *    tags:
  *     - Neo4j Room Invite Link Controller
@@ -81,7 +81,7 @@ ctrl.findAll();
  *     - bearerAuth: []
  *    parameters:
  *     - in: path
- *       name: room_invite_link_uuid
+ *       name: uuid
  *       required: true
  *       schema:
  *        type: string
@@ -129,7 +129,7 @@ ctrl.create();
 
 /**
  * @openapi
- * '/api/v1/neo4j/room_invite_link/:room_invite_link_uuid':
+ * '/api/v1/neo4j/room_invite_link/{uuid}':
  *  patch:
  *    tags:
  *     - Neo4j Room Invite Link Controller
@@ -138,7 +138,7 @@ ctrl.create();
  *     - bearerAuth: []
  *    parameters:
  *      - in: path
- *        name: room_invite_link_uuid
+ *        name: uuid
  *        required: true
  *    requestBody:
  *     required: true
@@ -165,7 +165,7 @@ ctrl.update();
 
 /**
  * @openapi
- * '/api/v1/neo4j/room_invite_link/:room_invite_link_uuid':
+ * '/api/v1/neo4j/room_invite_link/{uuid}':
  *  delete:
  *    tags:
  *     - Neo4j Room Invite Link Controller
@@ -174,7 +174,7 @@ ctrl.update();
  *     - bearerAuth: []
  *    parameters:
  *      - in: path
- *        name: room_invite_link_uuid
+ *        name: uuid
  *        required: true
  *    responses:
  *     204:

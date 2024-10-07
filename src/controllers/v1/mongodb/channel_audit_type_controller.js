@@ -1,11 +1,11 @@
-import crudService from '../../../services/mysql/channel_audit_type_service.js';
+import crudService from '../../../services/mongodb/channel_audit_type_service.js';
 import channelAuditTypeController from '../abstract/channel_audit_type_controller.js';
 
 const ctrl = channelAuditTypeController(crudService);
 
 /**
  * @openapi
- * '/api/v1/mongodb/channel_audit_type/:name':
+ * '/api/v1/mongodb/channel_audit_type/{name}':
  *  get:
  *     tags:
  *       - MongoDB Channel Audit Type Controller

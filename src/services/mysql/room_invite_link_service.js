@@ -2,24 +2,20 @@ import MysqlBaseFindService from './_mysql_base_find_service.js';
 import db from '../../../sequelize/models/index.cjs';
 import ControllerError from '../../errors/controller_error.js';
 import RoomPermissionService from './room_permission_service.js';
-
-const dto = (m) => {
-    return {
-        uuid: m.room_invite_link_uuid,
-        expires_at: m.room_invite_link_expires_at,
-        never_expires: m.room_invite_link_never_expires,
-        room_uuid: m.room_uuid,
-    };
-};
+import dto from '../../dto/room_invite_link_dto.js';
 
 class Service extends MysqlBaseFindService {
     constructor() {
-        super(db.RoomInviteLinkView, dto);
+        super(db.RoomInviteLinkView, (m) => dto(m, 'room_invite_link_'));
     }
 
     async findOne(options = { user: null }) {
         const { user } = options;
         const link = await super.findOne({ ...options });
+
+        if (!user) {
+            throw new ControllerError(500, 'No user provided');
+        }
         if (!(await RoomPermissionService.isInRoom({ room_uuid: link.room_uuid, user, role_name: null }))) {
             throw new ControllerError(403, 'User is not in the room');
         }
@@ -28,17 +24,23 @@ class Service extends MysqlBaseFindService {
 
     async findAll(options = { room_uuid: null, user: null }) {
         const { room_uuid, user } = options;
+
         if (!room_uuid) {
             throw new ControllerError(400, 'No room_uuid provided');
+        }
+        if (!user) {
+            throw new ControllerError(500, 'No user provided');
         }
         if (!(await RoomPermissionService.isInRoom({ room_uuid, user, role_name: null }))) {
             throw new ControllerError(403, 'User is not in the room');
         }
+
         return await super.findAll({ ...options, where: { room_uuid } });
     }
 
     async create(options = { body: null, user: null }) {
         const { body, user } = options;
+
         if (!body) {
             throw new ControllerError(400, 'No body provided');
         }
@@ -57,30 +59,33 @@ class Service extends MysqlBaseFindService {
         if (!(await RoomPermissionService.isInRoom({ room_uuid: body.room_uuid, user, role_name: 'Admin' }))) {
             throw new ControllerError(403, 'User is not an admin of the room');
         }
+
+        if (!user) {
+            throw new ControllerError(500, 'No user provided');
+        }
+
+        let { uuid, room_uuid, expires_at } = body;
+        expires_at = expires_at || null;
         
         await db.sequelize.query('CALL create_room_invite_link_proc(:uuid, :room_uuid, :expires_at, @result)', {
-            replacements: {
-                uuid: body.uuid,
-                room_uuid: body.room_uuid,
-                expires_at: body.expires_at || null,
-            },
+            replacements: { uuid, room_uuid, expires_at }
         });
 
-        return await this.findOne({ room_invite_link_uuid: body.uuid, user });
+        return await this.findOne({ uuid: body.uuid, user });
     }
 
-    async update(options = { room_invite_link_uuid: null, body: null, user: null }) {
-        const { room_invite_link_uuid, body, user } = options;
-        const { expires_at } = body;
+    async update(options = { uuid: null, body: null, user: null }) {
+        const { uuid, body, user } = options;
+        let { expires_at } = body;
 
-        if (!room_invite_link_uuid) {
-            throw new ControllerError(400, 'No room_invite_link_uuid provided');
+        if (!uuid) {
+            throw new ControllerError(400, 'No uuid provided');
+        }
+        if (!user) {
+            throw new ControllerError(500, 'No user provided');
         }
 
-        const existing = await this.model.findOne({ where: { room_invite_link_uuid } });
-        if (!existing) {
-            throw new ControllerError(404, 'Room Invite Link not found');
-        }
+        const existing = await this.findOne({ uuid, user });
 
         if (expires_at && new Date(expires_at) < new Date()) {
             throw new ControllerError(400, 'The expiration date cannot be in the past');
@@ -90,53 +95,54 @@ class Service extends MysqlBaseFindService {
             throw new ControllerError(403, 'User is not an admin of the room');
         }
 
-        await db.sequelize.query('CALL edit_room_invite_link_proc(:room_invite_link_uuid, :expires_at, @result)', {
-            replacements: {
-                room_invite_link_uuid,
-                expires_at: expires_at || null,
-            },
+        expires_at = expires_at || null;
+
+        await db.sequelize.query('CALL edit_room_invite_link_proc(:uuid, :expires_at, @result)', {
+            replacements: { uuid, expires_at }
         });
 
-        return await this.findOne({ room_invite_link_uuid, user });
+        return await this.findOne({ uuid, user });
     }
 
-    async destroy(options = { room_invite_link_uuid: null, user: null }) {
-        const { room_invite_link_uuid, user } = options;
+    async destroy(options = { uuid: null, user: null }) {
+        const { uuid, user } = options;
 
-        if (!room_invite_link_uuid) {
-            throw new ControllerError(400, 'No room_invite_link_uuid provided');
+        if (!uuid) {
+            throw new ControllerError(400, 'No uuid provided');
+        }
+        if (!user) {
+            throw new ControllerError(500, 'No user provided');
         }
 
-        const existing = await this.model.findOne({ where: { room_invite_link_uuid } });
-        if (!existing) {
-            throw new ControllerError(404, 'Room Invite Link not found');
-        }
+        const existing = await this.findOne({ uuid, user });
 
         if (!(await RoomPermissionService.isInRoom({ room_uuid: existing.room_uuid, user, role_name: 'Admin' }))) {
             throw new ControllerError(403, 'User is not an admin of the room');
         }
 
-        await db.sequelize.query('CALL delete_room_invite_link_proc(:room_invite_link_uuid, @result)', {
-            replacements: {
-                room_invite_link_uuid,
-            },
+        await db.sequelize.query('CALL delete_room_invite_link_proc(:uuid, @result)', {
+            replacements: { uuid }
         });
     }
 
-    async join(options = { room_invite_link_uuid: null, user: null }) {
-        const { room_invite_link_uuid, user } = options;
+    async join(options = { uuid: null, user: null }) {
+        const { uuid, user } = options;
         const { sub: user_uuid } = user;
 
-        if (!room_invite_link_uuid) {
-            throw new ControllerError(400, 'No room_invite_link_uuid provided');
+        if (!uuid) {
+            throw new ControllerError(400, 'No uuid provided');
+        }
+        if (!user) {
+            throw new ControllerError(500, 'No user provided');
         }
 
-        const existing = await this.model.findOne({ where: { room_invite_link_uuid } });
-        if (!existing) {
-            throw new ControllerError(404, 'Room Invite Link not found');
-        }
+        // Note: This cannot use the 'findOne' service method,
+        // because that method checks if the user is in the room
+        // and the user is currently trying to join the room.
+        let existing = await this.model.findOne({ where: { room_invite_link_uuid: uuid } });
+        existing = this.dto(existing);
 
-        if (existing.room_invite_link_expires_at && new Date(existing.room_invite_link_expires_at) < new Date()) {
+        if (existing.expires_at && new Date(existing.expires_at) < new Date()) {
             throw new ControllerError(400, 'Room Invite Link has expired');
         }
 
@@ -148,12 +154,11 @@ class Service extends MysqlBaseFindService {
             throw new ControllerError(400, 'Room user count exceeds limit. The room cannot have more users');
         }
 
+        const room_uuid = existing.room_uuid;
+        const role_name = 'Member';
+
         await db.sequelize.query('CALL join_room_proc(:user_uuid, :room_uuid, :role_name, @result)', {
-            replacements: {
-                user_uuid,
-                room_uuid: existing.room_uuid,
-                role_name: 'Member',
-            },
+            replacements: { user_uuid, room_uuid, role_name }
         });
     }
 }

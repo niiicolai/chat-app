@@ -1,11 +1,11 @@
-import crudService from '../../../services/mysql/room_audit_type_service.js';
+import crudService from '../../../services/neo4j/room_audit_type_service.js';
 import roomAuditTypeController from '../abstract/room_audit_type_controller.js';
 
 const ctrl = roomAuditTypeController(crudService);
 
 /**
  * @openapi
- * '/api/v1/neo4j/room_audit_type/:name':
+ * '/api/v1/neo4j/room_audit_type/{name}':
  *  get:
  *     tags:
  *       - Neo4j Room Audit Type Controller

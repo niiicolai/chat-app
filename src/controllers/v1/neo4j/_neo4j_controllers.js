@@ -1,3 +1,4 @@
+/*
 import channelAuditController from "./channel_audit_controller.js";
 import channelAuditTypeController from "./channel_audit_type_controller.js";
 import channelController from "./channel_controller.js";
@@ -17,9 +18,15 @@ import roomInviteLinkController from "./room_invite_link_controller.js";
 import roomUserController from "./room_user_controller.js";
 import roomUserRoleController from "./room_user_role_controller.js";
 import userController from "./user_controller.js";
+import userEmailVerificationController from "./user_email_verification_controller.js";
+import userPasswordResetController from "./user_password_reset_controller.js";
+import userStatusController from "./user_status_controller.js";
+import userStatusStateController from "./user_status_state_controller.js";
+*/
 
 const prefix = '/api/v1/neo4j';
 const controllers = [
+    /*
     channelAuditController,
     channelAuditTypeController,
     channelController,
@@ -39,7 +46,13 @@ const controllers = [
     roomUserController,
     roomUserRoleController,
     userController,
+    userEmailVerificationController,
+    userPasswordResetController,
+    userStatusController,
+    userStatusStateController
+    */
 ];
+console.log("WARNING: _neo4j_controllers.js commented out until services are implemented");
 
 export default (app) => {
     for (const controller of controllers) {

@@ -15,6 +15,8 @@
     "sequelize:seed": "sequelize-cli db:seed:all",
     "sequelize:seed:undo": "sequelize-cli db:seed:undo:all",
     "sequelize:seed:generate": "sequelize-cli seed:generate",
+    "mongoose:seed": "node ./mongoose/seeders/seed_all.js up",
+    "mongoose:seed:undo": "node ./mongoose/seeders/seed_all.js down",
     "jsdoc": "npx jsdoc -c jsdoc.json"
   },
   "author": "",
@@ -29,6 +31,7 @@
     "express": "^4.19.2",
     "jsdoc": "^4.0.3",
     "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.7.0",
     "multer": "^1.4.5-lts.1",
     "mysql2": "^3.11.0",
     "nodemon": "^3.1.4",

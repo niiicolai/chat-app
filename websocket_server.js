@@ -4,6 +4,7 @@ import WebSocketServer from 'websocket';
 import http from 'http';
 
 const allowedOrigins = process.env.ALLOWED_ORIGINS.split(',');
+const web_port = process.env.WEB_PORT || 3000
 const port = process.env.WEBSOCKET_PORT || 3001;
 const requestListeners = (req, res) => {
     res.writeHead(404)
@@ -14,7 +15,7 @@ const server = http.createServer(requestListeners);
 
 server.listen(port, () => {
     console.log(`WebSocket Server is listening on port ${port}`);
-    console.log(`Websocket API docs: http://localhost:${port}/websocket/api-docs`);
+    console.log(`Websocket API docs: http://localhost:${web_port}/websocket/api-docs`);
 });
 
 const wsServer = new WebSocketServer.server({

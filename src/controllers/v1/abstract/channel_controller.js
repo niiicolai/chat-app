@@ -9,9 +9,9 @@ export default (crudService) => {
     const ctrl = { router };
 
     ctrl.findOne = () => {
-        router.get(`/channel/:channel_uuid`, [authMiddleware], async (req, res) => {
+        router.get(`/channel/:uuid`, [authMiddleware], async (req, res) => {
             await errorHandler(res, async () => {
-                const result = await crudService.findOne({ channel_uuid: req.params.channel_uuid, user: req.user });
+                const result = await crudService.findOne({ uuid: req.params.uuid, user: req.user });
                 res.json(result);
             });
         });
@@ -37,18 +37,18 @@ export default (crudService) => {
     }
 
     ctrl.update = () => {
-        router.patch('/channel/:channel_uuid', [authMiddleware, uploadMiddleware], async (req, res) => {
+        router.patch('/channel/:uuid', [authMiddleware, uploadMiddleware], async (req, res) => {
             await errorHandler(res, async () => {
-                const result = await crudService.update({ channel_uuid: req.params.channel_uuid, file: req.file, body: req.body, user: req.user });
+                const result = await crudService.update({ uuid: req.params.uuid, file: req.file, body: req.body, user: req.user });
                 res.json(result);
             });
         });
     }
 
     ctrl.destroy = () => {
-        router.delete('/channel/:channel_uuid', [authMiddleware], async (req, res) => {
+        router.delete('/channel/:uuid', [authMiddleware], async (req, res) => {
             await errorHandler(res, async () => {
-                await crudService.destroy({ channel_uuid: req.params.channel_uuid, user: req.user });
+                await crudService.destroy({ uuid: req.params.uuid, user: req.user });
                 res.sendStatus(204);
             });
         });

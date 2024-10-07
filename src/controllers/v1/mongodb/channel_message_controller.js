@@ -5,7 +5,7 @@ const ctrl = channelMessageController(crudService);
 
 /**
  * @openapi
- * '/api/v1/mongodb/channel_message/:channel_message_uuid':
+ * '/api/v1/mongodb/channel_message/{uuid}':
  *  get:
  *    tags:
  *     - MongoDB Channel Message Controller
@@ -14,7 +14,7 @@ const ctrl = channelMessageController(crudService);
  *     - bearerAuth: []
  *    parameters:
  *     - in: path
- *       name: channel_message_uuid
+ *       name: uuid
  *       required: true
  *    responses:
  *     200:
@@ -101,7 +101,7 @@ ctrl.create();
 
 /**
  * @openapi
- *  '/api/v1/mongodb/channel_message/:channel_message_uuid':
+ *  '/api/v1/mongodb/channel_message/{uuid}':
  *   patch:
  *    tags:
  *     - MongoDB Channel Message Controller
@@ -110,7 +110,7 @@ ctrl.create();
  *     - bearerAuth: []
  *    parameters:
  *     - in: path
- *       name: channel_message_uuid
+ *       name: uuid
  *       required: true
  *    requestBody:
  *     required: true
@@ -134,7 +134,7 @@ ctrl.update();
 
 /**
  * @openapi
- *  '/api/v1/mongodb/channel_message/:channel_message_uuid':
+ *  '/api/v1/mongodb/channel_message/{uuid}':
  *   delete:
  *    tags:
  *     - MongoDB Channel Message Controller
@@ -143,7 +143,7 @@ ctrl.update();
  *     - bearerAuth: []
  *    parameters:
  *     - in: path
- *       name: channel_message_uuid
+ *       name: uuid
  *       required: true
  *    responses:
  *     204:

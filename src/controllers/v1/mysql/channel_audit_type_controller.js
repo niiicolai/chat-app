@@ -5,7 +5,7 @@ const ctrl = channelAuditTypeController(crudService);
 
 /**
  * @openapi
- * '/api/v1/mysql/channel_audit_type/:name':
+ * '/api/v1/mysql/channel_audit_type/{name}':
  *  get:
  *     tags:
  *       - MySQL Channel Audit Type Controller

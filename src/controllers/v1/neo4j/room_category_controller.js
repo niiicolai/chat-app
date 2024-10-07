@@ -1,11 +1,11 @@
-import crudService from '../../../services/mysql/room_category_service.js';
+import crudService from '../../../services/neo4j/room_category_service.js';
 import roomCategoryController from '../abstract/room_category_controller.js';
 
 const ctrl = roomCategoryController(crudService);
 
 /**
  * @openapi
- * '/api/v1/neo4j/room_category/:name':
+ * '/api/v1/neo4j/room_category/{name}':
  *  get:
  *     tags:
  *       - Neo4j Room Category Controller

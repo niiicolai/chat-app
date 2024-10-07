@@ -3,27 +3,18 @@ import db from '../../../sequelize/models/index.cjs';
 import ControllerError from '../../errors/controller_error.js';
 import StorageService from '../storage_service.js';
 import RoomPermissionService from './room_permission_service.js';
+import channelDto from '../../dto/channel_dto.js';
+import roomFileDto from '../../dto/room_file_dto.js';
 
 const storage = new StorageService('channel_avatar');
 
 const dto = (m) => {
-    const res = {
-        uuid: m.channel_uuid,
-        name: m.channel_name,
-        description: m.channel_description,
-        channel_type_name: m.channel_type_name,
-        created_at: m.channel_created_at,
-        updated_at: m.channel_updated_at,
-        room_uuid: m.room_uuid,
-    };
+    const res = channelDto(m, 'channel_');
+    
     if (m.room_file_uuid) {
-        res.room_file = {};
-        res.room_file.uuid = m.room_file_uuid;
-        res.room_file.src = m.room_file_src;
-        res.room_file.room_file_type_name = m.room_file_type_name;
-        res.room_file.size_bytes = m.room_file_size;
-        res.room_file.size_mb = parseFloat(m.room_file_size_mb);
+        res.room_file = roomFileDto(m, 'room_file_');
     }
+
     return res;
 };
 
@@ -32,35 +23,44 @@ class Service extends MysqlBaseFindService {
         super(db.ChannelView, dto);
     }
 
-    async findOne(options = { channel_uuid: null, user: null }) {
-        const { channel_uuid, user } = options;
-        if (!channel_uuid) {
-            throw new ControllerError(400, 'No channel_uuid provided');
+    async findOne(options = { user: null }) {
+        const { user } = options;
+        const r = await super.findOne({ ...options });
+
+        if (!user) {
+            throw new ControllerError(500, 'No user provided');
         }
-        if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid, user, role_name: null }))) {
+
+        if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid: r.uuid, user, role_name: null }))) {
             throw new ControllerError(403, 'User is not in the room');
         }
-        return await super.findOne({ ...options });
+
+        return r;
     }
 
     async findAll(options = { room_uuid: null, user: null }) {
         const { room_uuid, user } = options;
+
+        if (!user) {
+            throw new ControllerError(500, 'No user provided');
+        }
         if (!room_uuid) {
             throw new ControllerError(400, 'No room_uuid provided');
         }
         if (!(await RoomPermissionService.isInRoom({ room_uuid, user, role_name: null }))) {
             throw new ControllerError(403, 'User is not in the room');
         }
+
         return await super.findAll({...options, where: { room_uuid }});
     }
 
     async create(options={ body: null, file: null, user: null }) {
         const { body, file, user } = options;
         const { uuid, name, description, channel_type_name, room_uuid } = body;
+
         if (!body) {
             throw new ControllerError(400, 'No body provided');
         }
-        
         if (!uuid) {
             throw new ControllerError(400, 'No UUID provided');
         }
@@ -75,6 +75,9 @@ class Service extends MysqlBaseFindService {
         }
         if (!room_uuid) {
             throw new ControllerError(400, 'No room_uuid provided');
+        }
+        if (!user) {
+            throw new ControllerError(500, 'No user provided');
         }
 
         if (!(await RoomPermissionService.isInRoom({ room_uuid, user, role_name: 'Admin' }))) {
@@ -117,32 +120,32 @@ class Service extends MysqlBaseFindService {
             },
         });
 
-        return await service.findOne({ channel_uuid: body.uuid, user });
+        return await service.findOne({ uuid, user });
     }
 
-    async update(options={ channel_uuid: null, body: null, file: null, user: null }) {
-        const { channel_uuid, body, file, user } = options;
+    async update(options={ uuid: null, body: null, file: null, user: null }) {
+        const { uuid, body, file, user } = options;
         const { name, description } = body;
 
-        if (!channel_uuid) {
-            throw new ControllerError(400, 'No channel_uuid provided');
+        if (!uuid) {
+            throw new ControllerError(400, 'No uuid provided');
+        }
+        if (!user) {
+            throw new ControllerError(500, 'No user provided');
         }
 
-        if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid, user, role_name: 'Admin' }))) {
+        if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid: uuid, user, role_name: 'Admin' }))) {
             throw new ControllerError(403, 'User is not an admin of the room');
         }
 
-        const existing = await service.model.findOne({ where: { channel_uuid } });
-        if (!existing) {
-            throw new ControllerError(404, 'Channel not found');
-        }
+        const existing = await service.findOne({ uuid, user });
 
         if (!name) {
-            body.name = existing.channel_name;
+            body.name = existing.name;
         }
 
         if (!description) {
-            body.description = existing.channel_description;
+            body.description = existing.description;
         }
         
         const room_uuid = existing.room_uuid;
@@ -155,16 +158,16 @@ class Service extends MysqlBaseFindService {
             if ((await RoomPermissionService.fileExceedsSingleFileSize({ room_uuid, bytes: file.size }))) {
                 throw new ControllerError(400, 'File exceeds single file size limit');
             }
-            body.src = await storage.uploadFile(file, channel_uuid);
+            body.src = await storage.uploadFile(file, uuid);
             body.bytes = file.size;
         } else {
             body.src = existing.room_file_src;
             body.bytes = existing.room_file_size;
         }
 
-        await db.sequelize.query('CALL edit_channel_proc(:channel_uuid, :name, :description, :channel_type_name, :bytes, :src, :room_uuid, @result)', {
+        await db.sequelize.query('CALL edit_channel_proc(:uuid, :name, :description, :channel_type_name, :bytes, :src, :room_uuid, @result)', {
             replacements: {
-                channel_uuid,
+                uuid,
                 name: body.name,
                 description: body.description,
                 channel_type_name: body.channel_type_name,
@@ -174,28 +177,28 @@ class Service extends MysqlBaseFindService {
             },
         });
 
-        return await service.findOne({ channel_uuid, room_uuid, user });
+        return await service.findOne({ uuid, user });
     }
 
-    async destroy(options={ channel_uuid: null, user: null }) {
-        const { channel_uuid, user } = options;
+    async destroy(options={ uuid: null, user: null }) {
+        const { uuid, user } = options;
 
-        if (!channel_uuid) {
-            throw new ControllerError(400, 'No channel_uuid provided');
+        if (!uuid) {
+            throw new ControllerError(400, 'No uuid provided');
+        }
+        if (!user) {
+            throw new ControllerError(500, 'No user provided');
         }
 
-        if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid, user, role_name: 'Admin' }))) {
+        if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid: uuid, user, role_name: 'Admin' }))) {
             throw new ControllerError(403, 'User is not an admin of the room');
         }
 
-        const existing = await service.model.findOne({ where: { channel_uuid } });
-        if (!existing) {
-            throw new ControllerError(404, 'Channel not found');
-        }
-
-        await db.sequelize.query('CALL delete_channel_proc(:channel_uuid, @result)', {
+        // Ensure the channel exists
+        await service.findOne({ uuid, user });
+        await db.sequelize.query('CALL delete_channel_proc(:uuid, @result)', {
             replacements: {
-                channel_uuid,
+                uuid,
             },
         });
     }

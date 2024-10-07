@@ -1,11 +1,11 @@
-import crudService from '../../../services/mysql/room_category_service.js';
+import crudService from '../../../services/mongodb/room_category_service.js';
 import roomCategoryController from '../abstract/room_category_controller.js';
 
 const ctrl = roomCategoryController(crudService);
 
 /**
  * @openapi
- * '/api/v1/mongodb/room_category/:name':
+ * '/api/v1/mongodb/room_category/{name}':
  *  get:
  *     tags:
  *       - MongoDB Room Category Controller
