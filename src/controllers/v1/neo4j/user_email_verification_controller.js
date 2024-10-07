@@ -25,12 +25,10 @@ ctrl.resend();
 /**
  * @openapi
  * '/api/v1/neo4j/user_email_verification/{uuid}/confirm':
- *  patch:
+ *  get:
  *    tags:
  *     - Neo4j User Email Verification Controller
  *    summary: Confirm email verification by user email verification UUID (send by email)
- *    security:
- *     - bearerAuth: []
  *    responses:
  *     204:
  *      description: No Content
@@ -40,3 +38,5 @@ ctrl.resend();
  *      description: Internal Server Error
  */
 ctrl.confirm();
+
+export default ctrl.router;

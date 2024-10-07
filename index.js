@@ -12,3 +12,6 @@ import './websocket_server.js'
 
 // Initialize the cron jobs
 import './cron.js'
+
+// Initialize the email client
+import './google-cloud/load_auth.js';

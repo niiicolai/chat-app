@@ -5,6 +5,7 @@ import JwtService from '../jwt_service.js';
 import StorageService from '../storage_service.js';
 import bcrypt from 'bcrypt';
 import dto from '../../dto/user_dto.js';
+import UserEmailVerificationService from './user_email_verification_service.js';
 
 const saltRounds = 10;
 const storage = new StorageService('user_avatar');
@@ -37,6 +38,21 @@ class UserService extends MysqlBaseFindService {
             throw new ControllerError(400, 'No password provided');
         }
 
+        const emailExisting = await db.UserView.findOne({ where: { user_email: body.email } });
+        if (emailExisting) {
+            throw new ControllerError(400, 'Email already exists');
+        }
+
+        const usernameExisting = await db.UserView.findOne({ where: { user_username: body.username } });
+        if (usernameExisting) {
+            throw new ControllerError(400, 'Username already exists');
+        }
+
+        const uuidExisting = await db.UserView.findOne({ where: { user_uuid: body.uuid } });
+        if (uuidExisting) {
+            throw new ControllerError(400, 'UUID already exists');
+        }
+
         if (file && file.size > 0) {
             if (file.size > parseFloat(process.env.ROOM_UPLOAD_SIZE)) {
                 throw new ControllerError(400, 'File exceeds single file size limit');
@@ -55,6 +71,8 @@ class UserService extends MysqlBaseFindService {
                 user_avatar_src: body.user_avatar_src || null,
             },
         });
+
+        await UserEmailVerificationService.resend({ user_uuid: body.uuid });
 
         const user = await this.findOne({ uuid: body.uuid });
         const token = JwtService.sign(body.uuid);

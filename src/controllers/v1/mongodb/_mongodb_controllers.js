@@ -55,7 +55,7 @@ const controllers = [
     */
 ];
 
-console.log('WARNING: some controllers in _mongodb_controllers.js are commented out until services are implemented');
+console.warn('WARNING: some controllers in _mongodb_controllers.js are commented out until services are implemented');
 
 export default (app) => {
     for (const controller of controllers) {

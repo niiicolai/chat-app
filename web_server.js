@@ -21,6 +21,6 @@ useNeo4jControllers(app);
 useWebsocketControllers(app);
 
 app.listen(port, () => {
-    console.log(`Web Server is running on port http://localhost:${port}`)
-    console.log(`API docs: http://localhost:${port}/api-docs`)
+    console.log(`INFO: Web Server is running on port http://localhost:${port}`)
+    console.log(`INFO: API docs: http://localhost:${port}/api-docs`)
 })

@@ -85,6 +85,23 @@ npm install
 cp .env.example .env
 ```
 
+### Configure Gmail
+This is required before e-mail verification and password reset works as intended.
+
+Need information about how to create a new Google Cloud Project, Credentials, etc.?
+Check out the following link: https://developers.google.com/gmail/api/quickstart/nodejs
+
+NOTE: *Do not share, move to another location or rename any of the following json files.
+It will cause the configuration-script to break, and the files will no longer be ignored by the
+gitignore file.*
+```
+touch gmail_credentials.json        # Create Credentials for a Google Cloud Project and insert. 
+touch gmail_token.json              # Automatically filled out when executing the next step.
+
+npm run configure:gmail             # Opens Google Authentication in the browser. The account selected
+                                    # will be used for sending emails.
+```
+
 ### Run
 ```bash
 npm start
@@ -135,6 +152,11 @@ The chat application has been implemented using different frontend frameworks. T
 
 ## Docker
 Build and run the backend using Docker.
+
+**Requirements**
+- .env file must be created.
+- gmail_credentials.json must be created.
+- gmail_token.json must be created.
 
 ### Build
 ```

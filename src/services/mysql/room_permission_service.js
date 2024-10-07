@@ -3,6 +3,23 @@ import ControllerError from '../../errors/controller_error.js';
 
 class RoomPermissionService {
 
+    async isVerified(options = { user: null }) {
+        const { user } = options;
+        const { sub: user_uuid } = user;
+
+        if (!user_uuid) {
+            throw new ControllerError(400, 'isVerified: No user_uuid provided');
+        }
+
+        const exists = await db.UserEmailVerificationView.findOne({
+            where: {
+                user_uuid,
+            },
+        });
+
+        return exists && exists.user_email_verified;
+    }
+
     async isInRoom(options = { room_uuid: null, user: null, role_name: null }) {
         const { room_uuid, user } = options;
         const { sub: user_uuid } = user;

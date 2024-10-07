@@ -142,6 +142,10 @@ class Service extends MysqlBaseFindService {
         let existing = await this.model.findOne({ where: { room_invite_link_uuid: uuid } });
         existing = this.dto(existing);
 
+        if (!(await RoomPermissionService.isVerified({ user }))) {
+            throw new ControllerError(403, 'You must verify your email before you can join a room');
+        }
+
         if (existing.expires_at && new Date(existing.expires_at) < new Date()) {
             throw new ControllerError(400, 'Room Invite Link has expired');
         }

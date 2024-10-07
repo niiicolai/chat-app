@@ -18,9 +18,9 @@ module.exports = (sequelize, DataTypes) => {
             field: 'user_email_verification_uuid',
             primaryKey: true,
         },
-        user_email_verified_at: {
+        user_email_verified: {
             type: DataTypes.DATE,
-            field: 'user_email_verified_at',
+            field: 'user_email_verified',
         },
         user_uuid: {
             type: DataTypes.UUID,

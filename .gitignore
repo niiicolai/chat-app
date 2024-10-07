@@ -135,3 +135,7 @@ dist
 # JS Docs
 jsdocs/
 docs/
+
+# gmail
+gmail_credentials.json
+gmail_token.json

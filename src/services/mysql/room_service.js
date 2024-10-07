@@ -94,6 +94,10 @@ class Service extends MysqlBaseFindService {
             throw new ControllerError(500, 'No user provided');
         }
 
+        if (!(await RoomPermissionService.isVerified({ user }))) {
+            throw new ControllerError(403, 'You must verify your email before you can create a room');
+        }
+
         if (await db.RoomView.findOne({ where: { room_uuid: body.uuid } })) {
             throw new ControllerError(400, 'Room with this UUID already exists');
         }

@@ -4,6 +4,8 @@ WORKDIR /app
 
 COPY package*.json ./
 COPY .env* ./
+COPY gmail_credentials.json ./
+COPY gmail_token.json ./
 
 RUN apt-get update && apt-get install -y \
     default-mysql-client \

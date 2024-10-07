@@ -40,3 +40,6 @@ ctrl.create();
  *      description: Internal Server Error
  */
 ctrl.resetPassword();
+ctrl.resetPasswordEdit();
+
+export default ctrl.router;

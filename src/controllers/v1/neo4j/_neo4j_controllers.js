@@ -52,7 +52,7 @@ const controllers = [
     userStatusStateController
     */
 ];
-console.log("WARNING: _neo4j_controllers.js commented out until services are implemented");
+console.warn("WARNING: _neo4j_controllers.js commented out until services are implemented");
 
 export default (app) => {
     for (const controller of controllers) {

@@ -9,17 +9,19 @@ export default (crudService) => {
     ctrl.resend = () => {
         router.post('/user_email_verification/me/resend', [authMiddleware], async (req, res) => {
             await errorHandler(res, async () => {
-                await crudService.resend({ user: req.user });
-                res.sendStatus(204);
+                const { sub: user_uuid } = req.user;
+                await crudService.resend({ user_uuid });
+                res.json({ message: 'Email verification sent' });
             });
         });
     }
 
     ctrl.confirm = () => {
-        router.patch('/user_email_verification/:uuid/confirm', [authMiddleware], async (req, res) => {
+        router.get('/user_email_verification/:uuid/confirm', [], async (req, res) => {
             await errorHandler(res, async () => {
-                await crudService.confirm({ user: req.user, uuid: req.params.uuid });
-                res.sendStatus(204);
+                const { uuid } = req.params;
+                await crudService.confirm({ uuid });
+                res.json({ message: 'Email verified! You can close this page now.' });
             });
         });
     }

@@ -60,3 +60,5 @@ ctrl.findOne();
  *      description: Internal Server Error
  */
 ctrl.update();
+
+export default ctrl.router;

@@ -18,7 +18,7 @@ export default (crudService) => {
     ctrl.update = () => {
         router.patch('/user_status/me', [authMiddleware], async (req, res) => {
             await errorHandler(res, async () => {
-                const result = await crudService.update({ body: req.body, user: req.user });
+                const result = await crudService.update({ body: req.body, user_uuid: req.user.sub });
                 res.json(result);
             });
         });
