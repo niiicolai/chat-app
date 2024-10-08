@@ -435,20 +435,6 @@ CREATE TABLE UserStatus (
     FOREIGN KEY (user_uuid) REFERENCES User(uuid)
 );
 
--- A channel message reaction is used to react to a message.
-DROP TABLE IF EXISTS ChannelMessageReaction;
-CREATE TABLE ChannelMessageReaction (
-    uuid VARCHAR(36) PRIMARY KEY,
-    channel_message_uuid VARCHAR(36) NOT NULL,
-    user_uuid VARCHAR(36) NOT NULL,
-    reaction VARCHAR(255) NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (channel_message_uuid) REFERENCES ChannelMessage(uuid),
-    FOREIGN KEY (user_uuid) REFERENCES User(uuid),
-    UNIQUE KEY unique_reaction (channel_message_uuid, user_uuid, reaction)
-);
-
 -- ### EVENTS ###
 
 -- Event to delete expired room invite links
@@ -544,36 +530,6 @@ DELIMITER ;
 
 -- ### STORED PROCEDURES ###
 
--- Create a channel message reaction
-DROP PROCEDURE IF EXISTS create_channel_message_reaction_proc;
-DELIMITER //
-CREATE PROCEDURE create_channel_message_reaction_proc(
-    IN channel_message_uuid_input VARCHAR(36),
-    IN user_uuid_input VARCHAR(36),
-    IN reaction_input VARCHAR(255),
-    OUT result BOOLEAN
-)
-BEGIN
-    -- Insert the channel message reaction
-    INSERT INTO ChannelMessageReaction (uuid, channel_message_uuid, user_uuid, reaction) 
-    VALUES (UUID(), channel_message_uuid_input, user_uuid_input, reaction_input);
-    SET result = TRUE;
-END //
-DELIMITER ;
-
--- Delete a channel message reaction
-DROP PROCEDURE IF EXISTS delete_channel_message_reaction_proc;
-DELIMITER //
-CREATE PROCEDURE delete_channel_message_reaction_proc(
-    IN reaction_uuid_input VARCHAR(36),
-    OUT result BOOLEAN
-)
-BEGIN
-    -- Delete the channel message reaction
-    DELETE FROM ChannelMessageReaction WHERE uuid = reaction_uuid_input;
-    SET result = TRUE;
-END //
-DELIMITER ;
 
 -- Check if the total size + the new upload size exceeds the allowed total size for a room
 DROP PROCEDURE IF EXISTS check_upload_exceeds_total_proc;
@@ -2303,18 +2259,6 @@ SELECT
     cmt.name as channel_message_type_name, cmt.created_at as channel_message_type_created_at, cmt.updated_at as channel_message_type_updated_at
 FROM ChannelMessageType cmt;
 
--- Get channel message reactions
-DROP VIEW IF EXISTS channel_message_reaction_view;
-CREATE VIEW channel_message_reaction_view AS
-SELECT 
-    -- ChannelMessageReaction
-    cmr.uuid as channel_message_reaction_uuid, 
-    cmr.reaction, 
-    cmr.user_uuid,
-    cmr.channel_message_uuid,
-    cmr.created_at as channel_message_reaction_created_at, 
-    cmr.updated_at as channel_message_reaction_updated_at
-FROM ChannelMessageReaction cmr;
 
 -- Get channel webhooks
 DROP VIEW IF EXISTS channel_webhook_view;
@@ -2594,8 +2538,7 @@ GRANT EXECUTE ON PROCEDURE `chat`.`set_user_email_verification_proc` TO 'chat_us
 GRANT EXECUTE ON PROCEDURE `chat`.`create_user_password_reset_proc` TO 'chat_user'@'%';
 GRANT EXECUTE ON PROCEDURE `chat`.`delete_user_password_reset_proc` TO 'chat_user'@'%';
 GRANT EXECUTE ON PROCEDURE `chat`.`update_user_status_proc` TO 'chat_user'@'%';
-GRANT EXECUTE ON PROCEDURE `chat`.`create_channel_message_reaction_proc` TO 'chat_user'@'%';
-GRANT EXECUTE ON PROCEDURE `chat`.`delete_channel_message_reaction_proc` TO 'chat_user'@'%';
+
 -- Grant SELECT privilege on views only
 GRANT SELECT ON `chat`.`user_view` TO 'chat_user'@'%';
 GRANT SELECT ON `chat`.`room_view` TO 'chat_user'@'%';
@@ -2621,7 +2564,6 @@ GRANT SELECT ON `chat`.`user_status_state_view` TO 'chat_user'@'%';
 GRANT SELECT ON `chat`.`user_email_verification_view` TO 'chat_user'@'%';
 GRANT SELECT ON `chat`.`user_password_reset_view` TO 'chat_user'@'%';
 GRANT SELECT ON `chat`.`user_status_view` TO 'chat_user'@'%';
-GRANT SELECT ON `chat`.`channel_message_reaction_view` TO 'chat_user'@'%';
 -- Flush privileges to apply changes
 FLUSH PRIVILEGES;
 
@@ -2664,7 +2606,6 @@ GRANT SELECT ON `chat`.`user_status_state_view` TO 'chat_guest'@'%';
 GRANT SELECT ON `chat`.`user_email_verification_view` TO 'chat_guest'@'%';
 GRANT SELECT ON `chat`.`user_password_reset_view` TO 'chat_guest'@'%';
 GRANT SELECT ON `chat`.`user_status_view` TO 'chat_guest'@'%';
-GRANT SELECT ON `chat`.`channel_message_reaction_view` TO 'chat_guest'@'%';
 -- Flush privileges to apply changes
 FLUSH PRIVILEGES;
 
