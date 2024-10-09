@@ -1,32 +1,30 @@
 
-export default (entity = {}, prefix = '') => {
-    const {
-        [`${prefix}uuid`]: uuid,
-        [`${prefix}name`]: name,
-        [`${prefix}description`]: description,
-        [`room_category_name`]: room_category_name,
-        [`bytes_used`]: bytes_used,
-        [`mb_used`]: mb_used,
-        [`${prefix}created_at`]: created_at,
-        [`${prefix}updated_at`]: updated_at,
-    } = entity;
-
-    if (!uuid) throw new Error(`room_dto: ${prefix}uuid is required`);
-    if (!name) throw new Error(`room_dto: ${prefix}name is required`);
-    if (!description) throw new Error(`room_dto: ${prefix}description is required`);
-    if (!room_category_name) throw new Error(`room_dto: room_category_name is required`);
-
-    const res = { 
-        uuid, 
-        name, 
-        description,
-        room_category_name, 
-    };
-
-    if (bytes_used) res.bytes_used = bytes_used;
-    if (mb_used) res.mb_used = mb_used;
-    if (created_at) res.created_at = created_at;
-    if (updated_at) res.updated_at = updated_at;
+export default (entity = {}, type = 'mysql') => {
+    const res = {};
+    
+    if (type === 'mysql') {
+        if (entity.room_uuid) res.uuid = entity.room_uuid;
+        if (entity.room_name) res.name = entity.room_name;
+        if (entity.room_description) res.description = entity.room_description;
+        if (entity.room_category_name) res.room_category_name = entity.room_category_name;
+        if (entity.room_bytes_used) res.bytes_used = entity.room_bytes_used;
+        if (entity.room_mb_used) res.mb_used = entity.room_mb_used;
+        if (entity.room_created_at) res.created_at = entity.room_created_at;
+        if (entity.room_updated_at) res.updated_at = entity.room_updated_at;
+    }
+    else if (type === 'mongodb') {
+        if (entity.uuid) res.uuid = entity.uuid;
+        if (entity.name) res.name = entity.name;
+        if (entity.description) res.description = entity.description;
+        if (entity.room_category?.name) res.room_category_name = entity.room_category.name;
+        if (entity.bytes_used) res.bytes_used = entity.bytes_used;
+        if (entity.mb_used) res.mb_used = entity.mb_used;
+        if (entity.created_at) res.created_at = entity.created_at;
+        if (entity.updated_at) res.updated_at = entity.updated_at;
+    }
+    else if (type === 'neo4j') {
+        console.warn('neo4j: not implemented yet');
+    }
 
     return res;
 }

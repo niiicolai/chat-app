@@ -1,15 +1,18 @@
 
-export default (entity = {}, prefix = '') => {
-    const {
-        [`${prefix}max_channels`]: max_channels,
-        [`${prefix}message_days_to_live`]: message_days_to_live,
-    } = entity;
+export default (entity = {}, type = 'mysql') => {
+    const res = {};
+    
+    if (type === 'mysql') {
+        if (entity.max_channels) res.max_channels = entity.max_channels;
+        if (entity.message_days_to_live) res.message_days_to_live = entity.message_days_to_live;
+    }
+    else if (type === 'mongodb') {
+        if (entity.max_channels) res.max_channels = entity.max_channels;
+        if (entity.message_days_to_live) res.message_days_to_live = entity.message_days_to_live;
+    }
+    else if (type === 'neo4j') {
+        console.warn('neo4j: not implemented yet');
+    }
 
-    if (!max_channels) throw new Error(`room_dto: ${prefix}max_channels is required`);
-    if (!message_days_to_live) throw new Error(`room_dto: ${prefix}message_days_to_live is required`);
-
-    return { 
-        max_channels,
-        message_days_to_live,
-    };
+    return res;
 }

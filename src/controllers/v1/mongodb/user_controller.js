@@ -1,4 +1,4 @@
-import crudService from '../../../services/mysql/user_service.js';
+import crudService from '../../../services/mongodb/user_service.js';
 import userController from '../abstract/user_controller.js';
 
 const ctrl = userController(crudService);

@@ -11,10 +11,10 @@ import channelMessageDto from '../../dto/channel_message_dto.js';
 const storage = new StorageService('room_file');
 
 const dto = (m) => {
-    const res = roomFileDto(m, 'room_file_');
+    const res = roomFileDto(m, 'mysql');
 
     if (m.user_uuid) {
-        res.user = userDto(m, 'user_');
+        res.user = userDto(m, 'mysql');
     }
 
     if (m.channel_message_upload_uuid) {

@@ -15,19 +15,16 @@ import roomFileDto from '../../dto/room_file_dto.js';
 const storage = new StorageService('room_avatar');
 
 const dto = (m) => {
-    const res = roomDto(m, 'room_');
-
-    res.joinSettings = roomJoinSettingsDto(m);
-    res.rulesSettings = roomRulesSettingsDto(m);
-    res.userSettings = roomUserSettingsDto(m);
-    res.channelSettings = roomChannelSettingsDto(m);
-    res.fileSettings = roomFileSettingsDto(m);
-
+    const res = roomDto(m, 'mysql');
+    res.joinSettings = roomJoinSettingsDto(m, 'mysql');
+    res.rulesSettings = roomRulesSettingsDto(m, 'mysql');
+    res.userSettings = roomUserSettingsDto(m, 'mysql');
+    res.channelSettings = roomChannelSettingsDto(m, 'mysql');
+    res.fileSettings = roomFileSettingsDto(m, 'mysql');
     if (m.room_avatar_uuid) {
-        res.avatar = roomAvatarDto(m, 'room_avatar_');
-
+        res.avatar = roomAvatarDto(m, 'mysql');
         if (m.room_file_uuid) {
-            res.avatar.room_file = roomFileDto(m, 'room_file_');
+            res.avatar.room_file = roomFileDto(m, 'mysql');
         }
     }
 

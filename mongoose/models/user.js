@@ -6,6 +6,8 @@ export default mongoose.model("User", new mongoose.Schema({
     email: { type: String, required: true },
     password: { type: String, required: true },
     avatar_src: { type: String, required: false },
+    user_email_verification: { type: mongoose.Schema.Types.ObjectId, ref: 'UserEmailVerification', required: true },
+    user_status: { type: mongoose.Schema.Types.ObjectId, ref: 'UserStatus', required: true },
     created_at: { type: Date, default: Date.now },
     updated_at: { type: Date, default: Date.now },
 }));

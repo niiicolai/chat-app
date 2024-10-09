@@ -1,12 +1,16 @@
 
-export default (entity = {}, prefix = '') => {
-    const {
-        [`${prefix}max_users`]: max_users,
-    } = entity;
+export default (entity = {}, type = 'mysql') => {
+    const res = {};
+    
+    if (type === 'mysql') {
+        if (entity.max_users) res.max_users = entity.max_users;
+    }
+    else if (type === 'mongodb') {
+        if (entity.max_users) res.max_users = entity.max_users;
+    }
+    else if (type === 'neo4j') {
+        console.warn('neo4j: not implemented yet');
+    }
 
-    if (!max_users) throw new Error(`room_dto: ${prefix}max_users is required`);
-
-    return { 
-        max_users,
-    };
+    return res;
 }

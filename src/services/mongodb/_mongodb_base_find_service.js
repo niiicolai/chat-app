@@ -2,19 +2,34 @@ import ControllerError from '../../errors/controller_error.js';
 
 export default class MongodbBaseFindService {
     constructor(model, dto, pkName) {
+        if (!model) {
+            throw new Error('model is required');
+        }
+        if (!dto) {
+            throw new Error('dto is required');
+        }
+        if (!pkName) {
+            throw new Error('pkName is required');
+        }
+        
         this.model = model;
         this.dto = dto;
         this.pkName = pkName;
     }
 
-    async findOne(options = {}) {
+    async findOne(options = {}, onBeforeFind = (query) => query) {
         const { [this.pkName]: pk } = options;
 
         if (!pk) {
             throw new ControllerError(400, `${this.pkName} is required`);
         }
 
-        const m = await this.model.findOne({ [this.pkName]: pk });
+        if (typeof onBeforeFind !== 'function') {
+            throw new ControllerError(500, 'onBeforeFind must be a function');
+        }
+
+        const query = this.model.findOne({ [this.pkName]: pk });
+        const m = await onBeforeFind(query);
         if (!m) {
             throw new ControllerError(404, `${this.model.modelName} not found`);
         }
@@ -22,8 +37,12 @@ export default class MongodbBaseFindService {
         return this.dto(m);
     }
 
-    async findAll(options = { page: null, limit: null }) {
+    async findAll(options = { page: null, limit: null }, onBeforeFind = (query) => query) {
         let { page, limit } = options;
+
+        if (typeof onBeforeFind !== 'function') {
+            throw new ControllerError(500, 'onBeforeFind must be a function');
+        }
 
         if (page && isNaN(page)) {
             throw new ControllerError(400, 'page must be a number');
@@ -61,6 +80,8 @@ export default class MongodbBaseFindService {
             query = query.skip(offset);
             result.page = page;
         }
+
+        query = onBeforeFind(query);
 
         result.data = (await query).map((m) => this.dto(m));
         result.total = await this.model.countDocuments();

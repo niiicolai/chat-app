@@ -18,11 +18,10 @@ import roomUserController from "./room_user_controller.js";
 import roomUserRoleController from "./room_user_role_controller.js";
 import userController from "./user_controller.js";
 import userStatusStateController from "./user_status_state_controller.js";
-/*
 import userEmailVerificationController from "./user_email_verification_controller.js";
+/*
 import userPasswordResetController from "./user_password_reset_controller.js";
 import userStatusController from "./user_status_controller.js";
-
 */
 
 const prefix = '/api/v1/mongodb';
@@ -47,8 +46,8 @@ const controllers = [
     roomUserRoleController,
     userController,
     userStatusStateController,
-    /*
     userEmailVerificationController,
+    /*
     userPasswordResetController,
     userStatusController,
     

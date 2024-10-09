@@ -1,34 +1,39 @@
-import MysqlBaseFindService from './_mysql_base_find_service.js';
-import db from '../../../sequelize/models/index.cjs';
+import MongodbBaseFindService from './_mongodb_base_find_service.js';
 import ControllerError from '../../errors/controller_error.js';
 import RoomPermissionService from './room_permission_service.js';
 import roomUserDto from '../../dto/room_user_dto.js';
 import userDto from '../../dto/user_dto.js';
+import RoomUser from '../../../mongoose/models/room_user.js';
+import RoomUserRole from '../../../mongoose/models/room_user_role.js';
+import Room from '../../../mongoose/models/room.js';
+import User from '../../../mongoose/models/user.js';
 
 const dto = (m) => {
-    const res = roomUserDto(m, 'mysql');
-
-    if (m.user_uuid) {
-        res.user = userDto(m, 'mysql');
+    const res = roomUserDto(m, 'mongodb');
+    if (m.user) {
+        res.user = userDto(m.user, 'mongodb');
+        delete res.user.email;
     }
-
     return res;
 };
 
-class Service extends MysqlBaseFindService {
+class Service extends MongodbBaseFindService {
     constructor() {
-        super(db.RoomUserView, dto);
+        super(RoomUser, dto, 'uuid');
     }
 
     async findOne(options = { user: null }) {
         const { user } = options;
-        const r = await super.findOne({ ...options });
+        const r = await super.findOne({ uuid: options.uuid }, (query) => query
+            .populate('room')
+            .populate('room_user_role')
+            .populate('user'));
 
         if (!user) {
             throw new ControllerError(500, 'No user provided');
         }
         
-        if (!(await RoomPermissionService.isInRoom({ room_uuid: r.room_uuid, user, role_name: null }))) {
+        if (!(await RoomPermissionService.isInRoom({ room_uuid: r.room.uuid, user, role_name: null }))) {
             throw new ControllerError(403, 'User is not in the room');
         }
 
@@ -51,17 +56,23 @@ class Service extends MysqlBaseFindService {
             throw new ControllerError(403, 'User is not in the room');
         }
 
-        const m = await this.model.findOne({ where: { room_uuid, user_uuid } });
+        const savedRoom = await Room.findOne({ uuid: room_uuid });
+        const savedUser = await User.findOne({ uuid: user_uuid });
+
+        const m = await RoomUser.findOne({ room: savedRoom._id, user: savedUser._id }).populate('room_user_role');
 
         if (!m) {
             throw new ControllerError(404, 'Room user not found');
         }
 
+        m.room = savedRoom;
+        m.user = savedUser;
+
         return this.dto(m);
     }
 
-    async findAll(options = { room_uuid: null, user: null }) {
-        const { room_uuid, user } = options;
+    async findAll(options = { room_uuid: null, user: null, page: null, limit: null }) {
+        const { room_uuid, user, page, limit } = options;
 
         if (!room_uuid) {
             throw new ControllerError(400, 'No room_uuid provided');
@@ -75,7 +86,10 @@ class Service extends MysqlBaseFindService {
             throw new ControllerError(403, 'User is not in the room');
         }
 
-        return await super.findAll({ ...options, where: { room_uuid } });
+        return await super.findAll({ page, limit }, (query) => query
+            .populate('room_user_role')
+            .populate('room')
+            .populate('user'));
     }
 
     async update(options = { uuid: null, body: null, user: null }) {
@@ -92,22 +106,21 @@ class Service extends MysqlBaseFindService {
             throw new ControllerError(500, 'No user provided');
         }
 
-        const existing = await db.RoomUserView.findOne({ where: { room_user_uuid: uuid } });
+        const existingRole = await RoomUserRole.findOne({ name: room_user_role_name });
+        if (!existingRole) {
+            throw new ControllerError(404, 'Room user role not found');
+        }
+
+        const existing = await RoomUser.findOne({ uuid }).populate('room')
         if (!existing) {
             throw new ControllerError(404, 'Room user not found');
         }
 
-        if (!(await RoomPermissionService.isInRoom({ room_uuid: existing.room_uuid, user, role_name: 'Admin' }))) {
+        if (!(await RoomPermissionService.isInRoom({ room_uuid: existing.room.uuid, user, role_name: 'Admin' }))) {
             throw new ControllerError(403, 'User is not an admin of the room');
         }
 
-        await db.sequelize.query('CALL edit_room_user_role_proc(:user_uuid, :room_uuid, :role_name, @result)', {
-            replacements: {
-                user_uuid: existing.user_uuid,
-                room_uuid: existing.room_uuid,
-                role_name: room_user_role_name,
-            },
-        });
+        await RoomUser.findOneAndUpdate({ uuid }, { room_user_role: existingRole._id });
     }
 
     async destroy(options = { uuid: null, user: null }) {
@@ -119,24 +132,16 @@ class Service extends MysqlBaseFindService {
             throw new ControllerError(500, 'No user provided');
         }
 
-        const existing = await db.RoomUserView.findOne({ where: { room_user_uuid: uuid } });
+        const existing = await RoomUser.findOne({ uuid }).populate('room').populate('user');
         if (!existing) {
             throw new ControllerError(404, 'Room user not found');
         }
 
-        const room_uuid = existing.room_uuid;
-        const user_uuid = existing.user_uuid;
-
-        if (!(await RoomPermissionService.isInRoom({ room_uuid, user, role_name: 'Admin' }))) {
+        if (!(await RoomPermissionService.isInRoom({ room_uuid: existing.room.uuid, user, role_name: 'Admin' }))) {
             throw new ControllerError(403, 'User is not an admin of the room');
         }
 
-        await db.sequelize.query('CALL leave_room_proc(:user_uuid, :room_uuid, @result)', {
-            replacements: {
-                user_uuid,
-                room_uuid,
-            },
-        });
+        await RoomUser.findOneAndDelete({ uuid });
     }
 }
 

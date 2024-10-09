@@ -1,4 +1,4 @@
-import crudService from '../../../services/mysql/room_user_service.js';
+import crudService from '../../../services/mongodb/room_user_service.js';
 import roomUserController from '../abstract/room_user_controller.js';
 
 const ctrl = roomUserController(crudService);

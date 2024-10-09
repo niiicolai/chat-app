@@ -1,8 +1,9 @@
-import MysqlBaseFindService from './_mysql_base_find_service.js';
-import db from '../../../sequelize/models/index.cjs';
+import MongodbBaseFindService from './_mongodb_base_find_service.js';
 import ControllerError from '../../errors/controller_error.js';
 import MailService from '../mail_service.js';
 import dto from '../../dto/user_email_verification_dto.js';
+import UserEmailVerification from '../../../mongoose/models/user_email_verification.js';
+import User from '../../../mongoose/models/user.js';
 
 const WEBSITE_HOST = process.env.WEBSITE_HOST;
 if (!WEBSITE_HOST) {
@@ -14,7 +15,7 @@ const getContent = (verification_uuid, username) => `
 Hi ${username},
 
 Please verify your email address by clicking the link below:
-${WEBSITE_HOST}/api/v1/mysql/user_email_verification/${verification_uuid}/confirm
+${WEBSITE_HOST}/api/v1/mongodb/user_email_verification/${verification_uuid}/confirm
 
 If you did not sign up for an account, please ignore this email.
 
@@ -22,59 +23,58 @@ Thanks,
 The Team
 `;
 
-
-class UserEmailVerificationService extends MysqlBaseFindService {
+class UserEmailVerificationService extends MongodbBaseFindService {
     constructor() {
-        super(db.UserEmailVerificationView, (m) => dto(m, 'mysql'));
+        super(UserEmailVerification, (m) => dto(m, 'mongodb'), 'uuid');
     }
 
     async resend(options = { user_uuid: null }) {
-        if (!options.user_uuid) {
+        const { user_uuid } = options;
+
+        if (!user_uuid) {
             throw new ControllerError(500, 'No user_uuid provided');
         }
 
-        const user = await db.UserView.findOne({ where: { user_uuid: options.user_uuid } });
+        const user = await User.findOne({ uuid: user_uuid }).populate('user_email_verification');
+        
         if (!user) {
             throw new ControllerError(404, 'User not found');
         }
 
-        const existing = await db.UserEmailVerificationView.findOne({ where: { user_uuid: options.user_uuid } });
-        if (!existing) {
-            throw new ControllerError(500, 'User has no email verification');
+        if (!user.user_email_verification) {
+            throw new ControllerError(500, 'User email verification not found');
         }
 
-        if (existing.user_email_verified) {
+        if (user.user_email_verification.is_verified) {
             throw new ControllerError(400, 'User email already verified');
         }
 
-        const verification_uuid = existing.user_email_verification_uuid;
-        const username = user.user_username;
+        const verification_uuid = user.user_email_verification.uuid;
+        const username = user.username;
         const subject = getSubject();
         const content = getContent(verification_uuid, username);
 
-        await MailService.sendMail(content, subject, user.user_email);
+        await MailService.sendMail(content, subject, user.email);
     }
 
     async confirm(options = { uuid: null }) {
-        if (!options.uuid) {
+        const { uuid } = options;
+
+        if (!uuid) {
             throw new ControllerError(400, 'No uuid provided');
         }
 
-        const existing = await db.UserEmailVerificationView.findOne({ where: { user_email_verification_uuid: options.uuid } });
-        if (!existing) {
+        const userEmailVerification = await UserEmailVerification.findOne({ uuid });
+        if (!userEmailVerification) {
             throw new ControllerError(404, 'User email verification not found. Ensure the link is correct.');
         }
 
-        if (existing.user_email_verified) {
+        if (userEmailVerification.is_verified) {
             throw new ControllerError(400, 'User email already verified');
         }
 
-        await db.sequelize.query('CALL set_user_email_verification_proc(:user_uuid, :user_is_verified, @result)', {
-            replacements: {
-                user_uuid: existing.user_uuid,
-                user_is_verified: true,
-            },
-        });
+        userEmailVerification.is_verified = true;
+        await userEmailVerification.save();
     }
 }
 

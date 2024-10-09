@@ -11,23 +11,8 @@ import RoomCategorySeeder from './room_category.js';
 import RoomFileTypeSeeder from './room_file_type.js';
 import RoomUserRoleSeeder from './room_user_role.js';
 import UserStatusStateSeeder from './user_status_state.js';
-
-import ChannelAuditSeeder from './channel_audit.js';
-import ChannelMessageReactionSeeder from './channel_message_reaction.js';
-import ChannelMessageUploadSeeder from './channel_message_upload.js';
-import ChannelMessageSeeder from './channel_message.js';
-import ChannelWebhookMessageSeeder from './channel_webhook_message.js';
-import ChannelWebhookSeeder from './channel_webhook.js';
 import ChannelSeeder from './channel.js';
-import RoomAuditSeeder from './room_audit.js';
-import RoomAvatarSeeder from './room_avatar.js';
-import RoomFileSeeder from './room_file.js';
-import RoomInviteLinkSeeder from './room_invite_link.js';
-import RoomUserSeeder from './room_user.js';
 import RoomSeeder from './room.js';
-import UserEmailVerificationSeeder from './user_email_verification.js';
-import UserPasswordResetSeeder from './user_password_reset.js';
-import UserStatusSeeder from './user_status.js';
 import UserSeeder from './user.js';
 
 const seeders = [
@@ -41,24 +26,9 @@ const seeders = [
     new RoomFileTypeSeeder(),
     new RoomUserRoleSeeder(),
     new UserStatusStateSeeder(),
-
     new UserSeeder(),
-    new UserEmailVerificationSeeder(),
-    new UserPasswordResetSeeder(),
-    new UserStatusSeeder(),
     new RoomSeeder(),
-    new RoomAuditSeeder(),
-    new RoomAvatarSeeder(),
-    new RoomFileSeeder(),
-    new RoomInviteLinkSeeder(),
-    new RoomUserSeeder(),
     new ChannelSeeder(),
-    new ChannelAuditSeeder(),
-    new ChannelMessageSeeder(),
-    new ChannelMessageUploadSeeder(),
-    new ChannelMessageReactionSeeder(),
-    new ChannelWebhookSeeder(),
-    new ChannelWebhookMessageSeeder(),
 ]
 
 export const execute = async (command) => {
@@ -66,6 +36,10 @@ export const execute = async (command) => {
     console.log(`${now} - Executing ${command} on all seeders`);
     
     for (const seeder of seeders) {
+        if (command === 'up') {
+            await seeder.down(); // Clean up first
+        }
+
         await seeder[command]();
     }
 

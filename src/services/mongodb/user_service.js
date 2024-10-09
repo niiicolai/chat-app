@@ -1,55 +1,46 @@
-import MysqlBaseFindService from './_mysql_base_find_service.js';
-import db from '../../../sequelize/models/index.cjs';
+import MongodbBaseFindService from './_mongodb_base_find_service.js';
 import ControllerError from '../../errors/controller_error.js';
 import JwtService from '../jwt_service.js';
 import StorageService from '../storage_service.js';
 import bcrypt from 'bcrypt';
 import dto from '../../dto/user_dto.js';
 import UserEmailVerificationService from './user_email_verification_service.js';
+import User from '../../../mongoose/models/user.js';
+import UserEmailVerification from '../../../mongoose/models/user_email_verification.js';
+import UserStatus from '../../../mongoose/models/user_status.js';
+import UserStatusState from '../../../mongoose/models/user_status_state.js';
+import { v4 as uuidv4 } from 'uuid';
 
 const saltRounds = 10;
 const storage = new StorageService('user_avatar');
 
-class UserService extends MysqlBaseFindService {
+class UserService extends MongodbBaseFindService {
     constructor() {
-        super(db.UserView, (m) => dto(m, 'mysql'));
+        super(User, (m) => dto(m, 'mongodb'), 'uuid');
+    }
+
+    async findOne(options = { uuid: null }) {
+        return super.findOne(options, (query) => query.populate('user_email_verification').populate('user_status'));
     }
 
     async create(options = { body: null, file: null }) {
         const { body, file } = options;
 
-        if (!body) {
-            throw new ControllerError(400, 'No body provided');
-        }
+        if (!body) throw new ControllerError(400, 'No body provided');
+        if (!body.uuid) throw new ControllerError(400, 'No UUID provided');
+        if (!body.username) throw new ControllerError(400, 'No username provided');
+        if (!body.email) throw new ControllerError(400, 'No email provided');
+        if (!body.password) throw new ControllerError(400, 'No password provided');
 
-        if (!body.uuid) {
-            throw new ControllerError(400, 'No UUID provided');
-        }
-
-        if (!body.username) {
-            throw new ControllerError(400, 'No username provided');
-        }
-
-        if (!body.email) {
-            throw new ControllerError(400, 'No email provided');
-        }
-
-        if (!body.password) {
-            throw new ControllerError(400, 'No password provided');
-        }
-
-        const emailExisting = await db.UserView.findOne({ where: { user_email: body.email } });
-        if (emailExisting) {
+        if (await User.findOne({ email: body.email })) {
             throw new ControllerError(400, 'Email already exists');
         }
 
-        const usernameExisting = await db.UserView.findOne({ where: { user_username: body.username } });
-        if (usernameExisting) {
+        if (await User.findOne({ username: body.username })) {
             throw new ControllerError(400, 'Username already exists');
         }
 
-        const uuidExisting = await db.UserView.findOne({ where: { user_uuid: body.uuid } });
-        if (uuidExisting) {
+        if (await User.findOne({ uuid: body.uuid })) {
             throw new ControllerError(400, 'UUID already exists');
         }
 
@@ -57,25 +48,25 @@ class UserService extends MysqlBaseFindService {
             if (file.size > parseFloat(process.env.ROOM_UPLOAD_SIZE)) {
                 throw new ControllerError(400, 'File exceeds single file size limit');
             }
-            body.user_avatar_src = await storage.uploadFile(file, body.uuid);
+            body.avatar_src = await storage.uploadFile(file, body.uuid);
         }
-
+        
         body.password = bcrypt.hashSync(body.password, saltRounds);
-
-        await db.sequelize.query('CALL create_user_proc(:uuid, :username, :email, :password, :user_avatar_src, @result)', {
-            replacements: {
-                uuid: body.uuid,
-                username: body.username,
-                email: body.email,
-                password: body.password,
-                user_avatar_src: body.user_avatar_src || null,
-            },
-        });
+        const token = JwtService.sign(body.uuid);
+        const userStatusState = await UserStatusState.findOne({ name: "Offline" });
+        const userEmailVerification = await new UserEmailVerification({ uuid: uuidv4(), is_verified: false }).save();
+        const userStatus = await new UserStatus({ uuid: uuidv4(), last_seen_at: new Date(), message: "No msg yet.", total_online_hours: 0, user_status_state: userStatusState._id }).save();
+        const user = await new User({
+            uuid: body.uuid,
+            username: body.username,
+            email: body.email,
+            password: body.password,
+            avatar_src: body.avatar_src || null,
+            user_email_verification: userEmailVerification._id,
+            user_status: userStatus._id
+        }).save();
 
         await UserEmailVerificationService.resend({ user_uuid: body.uuid });
-
-        const user = await this.findOne({ uuid: body.uuid });
-        const token = JwtService.sign(body.uuid);
 
         return { user, token };
     }
@@ -89,7 +80,7 @@ class UserService extends MysqlBaseFindService {
         // because the method is designed not to return the password
         // and in this case, we need the password to ensure if none
         // is provided, we keep the existing password.
-        const existing = await this.model.findOne({ uuid });
+        const existing = await User.findOne({ uuid });
         if (!existing) {
             throw new ControllerError(404, 'User not found');
         }
@@ -114,20 +105,17 @@ class UserService extends MysqlBaseFindService {
             }
             body.user_avatar_src = await storage.uploadFile(file, uuid);
         } else {
-            body.user_avatar_src = existing.user_avatar_src;
+            body.user_avatar_src = existing.avatar_src;
         }
 
-        await db.sequelize.query('CALL edit_user_proc(:uuid, :username, :email, :password, :user_avatar_src, @result)', {
-            replacements: {
-                uuid,
-                username: body.username,
-                email: body.email,
-                password: body.password,
-                user_avatar_src: body.user_avatar_src || null,
-            },
+        const updatedUser = await existing.updateOne({
+            username: body.username,
+            email: body.email,
+            password: body.password,
+            avatar_src: body.user_avatar_src,
         });
 
-        return await super.findOne({ uuid });
+        return this.dto(updatedUser);
     }
 
     async login(options = { body: null }) {
@@ -143,13 +131,12 @@ class UserService extends MysqlBaseFindService {
             throw new ControllerError(400, 'No password provided');
         }
 
-        const user = await db.UserView.findOne({ where: { user_email: body.email }});
-
-        if (!user || !await bcrypt.compare(body.password, user.dataValues.user_password)) {
+        const user = await User.findOne({ email: body.email });
+        if (!user || !await bcrypt.compare(body.password, user.password)) {
             throw new ControllerError(400, 'Invalid email or password');
         }
 
-        const token = JwtService.sign(user.dataValues.user_uuid);
+        const token = JwtService.sign(user.uuid);
 
         return { user: this.dto(user), token };
     }
@@ -158,22 +145,14 @@ class UserService extends MysqlBaseFindService {
         const { uuid } = options;
 
         await this.findOne({ uuid });
-        await db.sequelize.query('CALL delete_user_proc(:uuid, @result)', {
-            replacements: {
-                uuid,
-            },
-        });
+        await User.findOneAndDelete({ uuid });
     }
 
     async destroyAvatar(options = { uuid: null }) {
         const { uuid } = options;
 
         await this.findOne({ uuid });
-        await db.sequelize.query('CALL delete_user_avatar_proc(:uuid, @result)', {
-            replacements: {
-                uuid,
-            },
-        });
+        await User.findOneAndUpdate({ uuid }, { avatar_src: null });
     }
 }
 

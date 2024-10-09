@@ -22,24 +22,6 @@ export default {
             avatar_src: "https://ghostchat.fra1.cdn.digitaloceanspaces.com/static/mobile-park-character-animating.png",
         }
     ],
-    rooms: [
-    ],
-    channels: [],
-    channel_audits: [],
-    channel_messages: [],
-    channel_message_reactions: [],
-    channel_message_uploads: [],
-    channel_webhooks: [],
-    channel_webhook_messages: [],
-    room_audits: [],
-    room_files: [],
-    room_invite_links: [],
-    room_users: [],
-    room_avatars: [],
-    user_email_verifications: [],
-    user_password_resets: [],
-    user_statuses: [],
-
     user_status_states: [
         { name: 'Online' },
         { name: 'Away' },

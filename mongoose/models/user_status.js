@@ -6,7 +6,6 @@ export default mongoose.model("UserStatus", new mongoose.Schema({
     message: { type: String, required: true },
     total_online_hours: { type: Number, required: true },
     user_status_state: { type: mongoose.Schema.Types.ObjectId, ref: 'UserStatusState', required: true },
-    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     created_at: { type: Date, default: Date.now },
     updated_at: { type: Date, default: Date.now },
 }));

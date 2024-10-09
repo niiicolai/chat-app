@@ -1,17 +1,18 @@
 
-export default (entity = {}, prefix = '') => {
-    const {
-        [`${prefix}join_channel_uuid`]: join_channel_uuid,
-        [`${prefix}join_message`]: join_message,
-    } = entity;
+export default (entity = {}, type = 'mysql') => {
+    const res = {};
     
-    if (!join_message) throw new Error(`room_dto: ${prefix}join_message is required`);
-
-    const res = { 
-        join_message
-    };
-
-    if (join_channel_uuid) res.join_channel_uuid = join_channel_uuid;
+    if (type === 'mysql') {
+        if (entity.join_channel_uuid) res.join_channel_uuid = entity.join_channel_uuid;
+        if (entity.join_message) res.join_message = entity.join_message;
+    }
+    else if (type === 'mongodb') {
+        if (entity.join_channel_uuid) res.join_channel_uuid = entity.join_channel_uuid;
+        if (entity.join_message) res.join_message = entity.join_message;
+    }
+    else if (type === 'neo4j') {
+        console.warn('neo4j: not implemented yet');
+    }
 
     return res;
 }

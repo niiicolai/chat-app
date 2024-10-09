@@ -1,12 +1,16 @@
 
-export default (entity = {}, prefix = '') => {
-    const {
-        [`${prefix}rules_text`]: rules_text,
-    } = entity;
+export default (entity = {}, type = 'mysql') => {
+    const res = {};
+    
+    if (type === 'mysql') {
+        if (entity.rules_text) res.rules_text = entity.rules_text;
+    }
+    else if (type === 'mongodb') {
+        if (entity.rules_text) res.rules_text = entity.rules_text;
+    }
+    else if (type === 'neo4j') {
+        console.warn('neo4j: not implemented yet');
+    }
 
-    if (!rules_text) throw new Error(`room_dto: ${prefix}rules_text is required`);
-
-    return { 
-        rules_text,
-    };
+    return res;
 }
