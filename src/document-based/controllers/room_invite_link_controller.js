@@ -1,5 +1,5 @@
 import crudService from '../services/room_invite_link_service.js';
-import roomInviteLinkController from '../../controllers/v1/abstract/room_invite_link_controller.js';
+import roomInviteLinkController from '../../shared/controllers/room_invite_link_controller.js';
 
 const ctrl = roomInviteLinkController(crudService);
 

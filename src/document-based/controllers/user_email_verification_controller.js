@@ -1,5 +1,5 @@
 import crudService from '../services/user_email_verification_service.js';
-import userEmailVerificationController from '../../controllers/v1/abstract/user_email_verification_controller.js';
+import userEmailVerificationController from '../../shared/controllers/user_email_verification_controller.js';
 
 const ctrl = userEmailVerificationController(crudService);
 

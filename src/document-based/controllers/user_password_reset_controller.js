@@ -1,5 +1,5 @@
 import crudService from '../services/user_password_reset_service.js';
-import userPasswordResetController from '../../controllers/v1/abstract/user_password_reset_controller.js';
+import userPasswordResetController from '../../shared/controllers/user_password_reset_controller.js';
 
 const ctrl = userPasswordResetController(crudService);
 

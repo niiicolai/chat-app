@@ -1,29 +1,22 @@
 import MongodbBaseFindService from './_mongodb_base_find_service.js';
-import ControllerError from '../../errors/controller_error.js';
-import StorageService from '../storage_service.js';
+import ControllerError from '../../shared/errors/controller_error.js';
+import StorageService from '../../shared/services/storage_service.js';
 import RoomPermissionService from './room_permission_service.js';
-import roomDto from '../dto/room_dto.js';
-import roomJoinSettingsDto from '../dto/room_join_settings_dto.js';
-import roomFileSettingsDto from '../dto/room_file_settings_dto.js';
-import roomUserSettingsDto from '../dto/room_user_settings_dto.js';
-import roomChannelSettingsDto from '../dto/room_channel_settings_dto.js';
-import roomRulesSettingsDto from '../dto/room_rules_settings_dto.js';
-import roomAvatarDto from '../dto/room_avatar_dto.js';
-import roomFileDto from '../dto/room_file_dto.js';
-import Room from '../../../mongoose/models/room.js';
-import RoomJoinSettings from '../../../mongoose/models/room_join_settings.js';
-import RoomFileSettings from '../../../mongoose/models/room_file_settings.js';
-import RoomChannelSettings from '../../../mongoose/models/room_channel_settings.js';
-import RoomUserSettings from '../../../mongoose/models/room_user_settings.js';
-import RoomRulesSettings from '../../../mongoose/models/room_rules_settings.js';
-import RoomAvatar from '../../../mongoose/models/room_avatar.js';
-import RoomCategory from '../../../mongoose/models/room_category.js';
-import RoomFile from '../../../mongoose/models/room_file.js';
-import RoomFileType from '../../../mongoose/models/room_file_type.js';
-import RoomUser from '../../../mongoose/models/room_user.js';
-import RoomUserRole from '../../../mongoose/models/room_user_role.js';
-import Channel from '../../../mongoose/models/channel.js';
-import User from '../../../mongoose/models/user.js';
+import dto from '../dto/room_dto.js';
+import Room from '../mongoose/models/room.js';
+import RoomJoinSettings from '../mongoose/models/room_join_settings.js';
+import RoomFileSettings from '../mongoose/models/room_file_settings.js';
+import RoomChannelSettings from '../mongoose/models/room_channel_settings.js';
+import RoomUserSettings from '../mongoose/models/room_user_settings.js';
+import RoomRulesSettings from '../mongoose/models/room_rules_settings.js';
+import RoomAvatar from '../mongoose/models/room_avatar.js';
+import RoomCategory from '../mongoose/models/room_category.js';
+import RoomFile from '../mongoose/models/room_file.js';
+import RoomFileType from '../mongoose/models/room_file_type.js';
+import RoomUser from '../mongoose/models/room_user.js';
+import RoomUserRole from '../mongoose/models/room_user_role.js';
+import Channel from '../mongoose/models/channel.js';
+import User from '../mongoose/models/user.js';
 import { v4 as uuidv4 } from 'uuid';
 
 const max_users = parseInt(process.env.ROOM_MAX_MEMBERS || 25);
@@ -36,24 +29,6 @@ const join_message = process.env.ROOM_JOIN_MESSAGE || "Welcome to the room!";
 const rules_text = process.env.ROOM_RULES_TEXT || "# Rules\n 1. No Spamming!";
 
 const storage = new StorageService('room_avatar');
-
-const dto = (m) => {
-    const res = roomDto(m);
-
-    res.joinSettings = roomJoinSettingsDto(m.room_join_settings);
-    res.rulesSettings = roomRulesSettingsDto(m.room_rules_settings);
-    res.userSettings = roomUserSettingsDto(m.room_user_settings);
-    res.channelSettings = roomChannelSettingsDto(m.room_channel_settings);
-    res.fileSettings = roomFileSettingsDto(m.room_file_settings);
-    if (m.room_avatar) {
-        res.avatar = roomAvatarDto(m);
-        if (m.room_avatar.room_file) {
-            res.avatar.room_file = roomFileDto(m);
-        }
-    }
-
-    return res;
-};
 
 class Service extends MongodbBaseFindService {
     constructor() {

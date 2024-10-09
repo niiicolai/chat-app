@@ -1,5 +1,5 @@
 import crudService from '../services/channel_type_service.js';
-import channelTypeController from '../../controllers/v1/abstract/channel_type_controller.js';
+import channelTypeController from '../../shared/controllers/channel_type_controller.js';
 
 const ctrl = channelTypeController(crudService);
 

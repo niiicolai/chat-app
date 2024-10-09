@@ -1,5 +1,5 @@
 import crudService from '../services/room_file_type_service.js';
-import roomFileTypeController from '../../controllers/v1/abstract/room_file_type_controller.js';
+import roomFileTypeController from '../../shared/controllers/room_file_type_controller.js';
 
 const ctrl = roomFileTypeController(crudService);
 

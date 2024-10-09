@@ -1,4 +1,4 @@
-import RoomFileType from '../../../mongoose/models/room_file_type.js';
+import RoomFileType from '../mongoose/models/room_file_type.js';
 import MongodbBaseFindService from './_mongodb_base_find_service.js';
 import dto from '../dto/type_dto.js';
 

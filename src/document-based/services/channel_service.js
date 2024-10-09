@@ -1,13 +1,13 @@
 import MongodbBaseFindService from './_mongodb_base_find_service.js';
-import ControllerError from '../../errors/controller_error.js';
-import StorageService from '../../services/storage_service.js';
+import ControllerError from '../../shared/errors/controller_error.js';
+import StorageService from '../../shared/services/storage_service.js';
 import RoomPermissionService from './room_permission_service.js';
 import dto from '../dto/channel_dto.js';
-import Channel from '../../../mongoose/models/channel.js';
-import ChannelType from '../../../mongoose/models/channel_type.js';
-import Room from '../../../mongoose/models/room.js';
-import RoomFileType from '../../../mongoose/models/room_file_type.js';
-import RoomFile from '../../../mongoose/models/room_file.js';
+import Channel from '../mongoose/models/channel.js';
+import ChannelType from '../mongoose/models/channel_type.js';
+import Room from '../mongoose/models/room.js';
+import RoomFileType from '../mongoose/models/room_file_type.js';
+import RoomFile from '../mongoose/models/room_file.js';
 
 const storage = new StorageService('channel_avatar');
 

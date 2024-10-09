@@ -1,5 +1,5 @@
 import crudService from '../services/room_category_service.js';
-import roomCategoryController from '../../controllers/v1/abstract/room_category_controller.js';
+import roomCategoryController from '../../shared/controllers/room_category_controller.js';
 
 const ctrl = roomCategoryController(crudService);
 

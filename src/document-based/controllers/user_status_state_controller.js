@@ -1,5 +1,5 @@
 import crudService from '../services/user_status_state_service.js';
-import userStatusStateController from '../../controllers/v1/abstract/user_status_state_controller.js';
+import userStatusStateController from '../../shared/controllers/user_status_state_controller.js';
 
 const ctrl = userStatusStateController(crudService);
 

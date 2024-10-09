@@ -1,9 +1,9 @@
 import MongodbBaseFindService from './_mongodb_base_find_service.js';
-import ControllerError from '../../errors/controller_error.js';
-import MailService from '../mail_service.js';
+import ControllerError from '../../shared/errors/controller_error.js';
+import MailService from '../../shared/services/mail_service.js';
 import dto from '../dto/user_email_verification_dto.js';
-import UserEmailVerification from '../../../mongoose/models/user_email_verification.js';
-import User from '../../../mongoose/models/user.js';
+import UserEmailVerification from '../mongoose/models/user_email_verification.js';
+import User from '../mongoose/models/user.js';
 
 const WEBSITE_HOST = process.env.WEBSITE_HOST;
 if (!WEBSITE_HOST) {

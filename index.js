@@ -2,7 +2,7 @@
 import 'dotenv/config'
 
 // Initialize the MongoDB database connection
-import './mongoose/index.js'
+import './src/document-based/mongoose/index.js'
 
 // Initialize the Web Server
 import './web_server.js'

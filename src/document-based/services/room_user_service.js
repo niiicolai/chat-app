@@ -1,21 +1,12 @@
 import MongodbBaseFindService from './_mongodb_base_find_service.js';
-import ControllerError from '../../errors/controller_error.js';
+import ControllerError from '../../shared/errors/controller_error.js';
 import RoomPermissionService from './room_permission_service.js';
-import roomUserDto from '../dto/room_user_dto.js';
-import userDto from '../dto/user_dto.js';
-import RoomUser from '../../../mongoose/models/room_user.js';
-import RoomUserRole from '../../../mongoose/models/room_user_role.js';
-import Room from '../../../mongoose/models/room.js';
-import User from '../../../mongoose/models/user.js';
+import dto from '../dto/user_dto.js';
+import RoomUser from '../mongoose/models/room_user.js';
+import RoomUserRole from '../mongoose/models/room_user_role.js';
+import Room from '../mongoose/models/room.js';
+import User from '../mongoose/models/user.js';
 
-const dto = (m) => {
-    const res = roomUserDto(m);
-    if (m.user) {
-        res.user = userDto(m.user);
-        delete res.user.email;
-    }
-    return res;
-};
 
 class Service extends MongodbBaseFindService {
     constructor() {

@@ -1,5 +1,5 @@
 import crudService from '../services/channel_webhook_service.js';
-import channelWebhookController from '../../controllers/v1/abstract/channel_webhook_controller.js';
+import channelWebhookController from '../../shared/controllers/channel_webhook_controller.js';
 
 const ctrl = channelWebhookController(crudService);
 

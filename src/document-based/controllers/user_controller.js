@@ -1,5 +1,5 @@
 import crudService from '../services/user_service.js';
-import userController from '../../controllers/v1/abstract/user_controller.js';
+import userController from '../../shared/controllers/user_controller.js';
 
 const ctrl = userController(crudService);
 

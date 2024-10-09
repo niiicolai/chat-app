@@ -1,4 +1,4 @@
-import ControllerError from '../../errors/controller_error.js';
+import ControllerError from '../../shared/errors/controller_error.js';
 
 export default class MongodbBaseFindService {
     constructor(model, dto, pkName) {

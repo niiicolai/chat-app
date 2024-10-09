@@ -1,9 +1,14 @@
 import MongodbBaseFindService from './_mongodb_base_find_service.js';
-import ControllerError from '../../errors/controller_error.js';
+import ControllerError from '../../shared/errors/controller_error.js';
 import RoomPermissionService from './room_permission_service.js';
 import dto from '../dto/room_invite_link_dto.js';
-import RoomInviteLink from '../../../mongoose/models/room_invite_link.js';
-import Room from '../../../mongoose/models/room.js';
+import RoomInviteLink from '../mongoose/models/room_invite_link.js';
+import Room from '../mongoose/models/room.js';
+import RoomUser from '../mongoose/models/room_user.js';
+import RoomUserRole from '../mongoose/models/room_user_role.js';
+import User from '../mongoose/models/user.js';
+import { v4 as uuidv4 } from 'uuid';
+
 
 class Service extends MongodbBaseFindService {
     constructor() {
@@ -50,107 +55,87 @@ class Service extends MongodbBaseFindService {
 
     async create(options = { body: null, user: null }) {
         const { body, user } = options;
+        const { uuid, room_uuid, expires_at } = body;
 
-        if (!body) {
-            throw new ControllerError(400, 'No body provided');
-        }
-        if (!body.uuid) {
-            throw new ControllerError(400, 'No UUID provided');
-        }
-
-        if (!body.room_uuid) {
-            throw new ControllerError(400, 'No room_uuid provided');
-        }
-
-        if (body.expires_at && new Date(body.expires_at) < new Date()) {
-            throw new ControllerError(400, 'The expiration date cannot be in the past');
-        }
-
-        if (!(await RoomPermissionService.isInRoom({ room_uuid: body.room_uuid, user, role_name: 'Admin' }))) {
-            throw new ControllerError(403, 'User is not an admin of the room');
-        }
-
-        if (!user) {
-            throw new ControllerError(500, 'No user provided');
-        }
-
-        let { uuid, room_uuid, expires_at } = body;
-        expires_at = expires_at || null;
-        
-        await db.sequelize.query('CALL create_room_invite_link_proc(:uuid, :room_uuid, :expires_at, @result)', {
-            replacements: { uuid, room_uuid, expires_at }
-        });
-
-        return await this.findOne({ uuid: body.uuid, user });
-    }
-
-    async update(options = { uuid: null, body: null, user: null }) {
-        const { uuid, body, user } = options;
-        let { expires_at } = body;
-
-        if (!uuid) {
-            throw new ControllerError(400, 'No uuid provided');
-        }
-        if (!user) {
-            throw new ControllerError(500, 'No user provided');
-        }
-
-        const existing = await this.findOne({ uuid, user });
+        if (!user) throw new ControllerError(500, 'No user provided');
+        if (!body) throw new ControllerError(400, 'No body provided');
+        if (!uuid) throw new ControllerError(400, 'No UUID provided');
+        if (!room_uuid) throw new ControllerError(400, 'No room_uuid provided');
 
         if (expires_at && new Date(expires_at) < new Date()) {
             throw new ControllerError(400, 'The expiration date cannot be in the past');
         }
 
-        if (!(await RoomPermissionService.isInRoom({ room_uuid: existing.room_uuid, user, role_name: 'Admin' }))) {
+        const room = await Room.findOne({ uuid: room_uuid });
+        if (!room) {
+            throw new ControllerError(404, 'Room not found');
+        }
+
+        if (!(await RoomPermissionService.isInRoom({ room_uuid, user, role_name: 'Admin' }))) {
             throw new ControllerError(403, 'User is not an admin of the room');
         }
 
-        expires_at = expires_at || null;
+        return this.dto((await new RoomInviteLink({
+            uuid,
+            room: room._id,
+            expires_at,
+        }).save()));
+    }
 
-        await db.sequelize.query('CALL edit_room_invite_link_proc(:uuid, :expires_at, @result)', {
-            replacements: { uuid, expires_at }
-        });
+    async update(options = { uuid: null, body: null, user: null }) {
+        const { uuid, body, user } = options;
+        const { expires_at } = body;
 
-        return await this.findOne({ uuid, user });
+        if (!uuid) throw new ControllerError(400, 'No uuid provided');
+        if (!user) throw new ControllerError(500, 'No user provided');
+
+        const existing = await RoomInviteLink.findOne({ uuid }).populate('room');
+        if (!existing) {
+            throw new ControllerError(404, 'Room Invite Link not found');
+        }
+
+        if (expires_at && new Date(expires_at) < new Date()) {
+            throw new ControllerError(400, 'The expiration date cannot be in the past');
+        }
+
+        if (!(await RoomPermissionService.isInRoom({ room_uuid: existing.room.uuid, user, role_name: 'Admin' }))) {
+            throw new ControllerError(403, 'User is not an admin of the room');
+        }
+
+        existing.expires_at = expires_at;
+
+        return this.dto((await existing.save()));
     }
 
     async destroy(options = { uuid: null, user: null }) {
         const { uuid, user } = options;
 
-        if (!uuid) {
-            throw new ControllerError(400, 'No uuid provided');
-        }
-        if (!user) {
-            throw new ControllerError(500, 'No user provided');
+        if (!uuid) throw new ControllerError(400, 'No uuid provided');
+        if (!user) throw new ControllerError(500, 'No user provided');
+
+        const existing = await RoomInviteLink.findOne({ uuid }).populate('room');
+        if (!existing) {
+            throw new ControllerError(404, 'Room Invite Link not found');
         }
 
-        const existing = await this.findOne({ uuid, user });
-
-        if (!(await RoomPermissionService.isInRoom({ room_uuid: existing.room_uuid, user, role_name: 'Admin' }))) {
+        if (!(await RoomPermissionService.isInRoom({ room_uuid: existing.room.uuid, user, role_name: 'Admin' }))) {
             throw new ControllerError(403, 'User is not an admin of the room');
         }
 
-        await db.sequelize.query('CALL delete_room_invite_link_proc(:uuid, @result)', {
-            replacements: { uuid }
-        });
+        await existing.remove();
     }
 
     async join(options = { uuid: null, user: null }) {
         const { uuid, user } = options;
         const { sub: user_uuid } = user;
 
-        if (!uuid) {
-            throw new ControllerError(400, 'No uuid provided');
-        }
-        if (!user) {
-            throw new ControllerError(500, 'No user provided');
-        }
+        if (!uuid) throw new ControllerError(400, 'No uuid provided');
+        if (!user) throw new ControllerError(500, 'No user provided');
 
-        // Note: This cannot use the 'findOne' service method,
-        // because that method checks if the user is in the room
-        // and the user is currently trying to join the room.
-        let existing = await this.model.findOne({ where: { room_invite_link_uuid: uuid } });
-        existing = this.dto(existing);
+        const existing = await RoomInviteLink.findOne({ uuid }).populate('room');
+        if (!existing) {
+            throw new ControllerError(404, 'Room Invite Link not found');
+        }
 
         if (!(await RoomPermissionService.isVerified({ user }))) {
             throw new ControllerError(403, 'You must verify your email before you can join a room');
@@ -160,20 +145,32 @@ class Service extends MongodbBaseFindService {
             throw new ControllerError(400, 'Room Invite Link has expired');
         }
 
-        if (await RoomPermissionService.isInRoom({ room_uuid: existing.room_uuid, user, role_name: null })) {
+        if (await RoomPermissionService.isInRoom({ room_uuid: existing.room.uuid, user, role_name: null })) {
             throw new ControllerError(400, 'User is already in room');
         }
 
-        if (await RoomPermissionService.roomUserCountExceedsLimit({ room_uuid: existing.room_uuid, add_count: 1 })) {
+        if (await RoomPermissionService.roomUserCountExceedsLimit({ room_uuid: existing.room.uuid, add_count: 1 })) {
             throw new ControllerError(400, 'Room user count exceeds limit. The room cannot have more users');
         }
 
-        const room_uuid = existing.room_uuid;
-        const role_name = 'Member';
+        const roomUserRole = await RoomUserRole.findOne({ name: 'User' });
+        if (!roomUserRole) {
+            throw new ControllerError(500, 'RoomUserRole not found');
+        }
 
-        await db.sequelize.query('CALL join_room_proc(:user_uuid, :room_uuid, :role_name, @result)', {
-            replacements: { user_uuid, room_uuid, role_name }
-        });
+        const savedUser = await User.findOne({ uuid: user_uuid });
+        if (!savedUser) {
+            throw new ControllerError(404, 'User not found');
+        }
+
+        await new RoomUser({
+            uuid: uuidv4(),
+            room: existing.room._id,
+            user: savedUser._id,
+            role: roomUserRole._id,
+        }).save();
+
+        console.warn('mongo db room_invite_link_service.js join message not implemented on join');
     }
 }
 

@@ -1,14 +1,14 @@
 import MongodbBaseFindService from './_mongodb_base_find_service.js';
-import ControllerError from '../../errors/controller_error.js';
-import JwtService from '../jwt_service.js';
-import StorageService from '../storage_service.js';
+import ControllerError from '../../shared/errors/controller_error.js';
+import JwtService from '../../shared/services/jwt_service.js';
+import StorageService from '../../shared/services/storage_service.js';
 import bcrypt from 'bcrypt';
 import dto from '../dto/user_dto.js';
 import UserEmailVerificationService from './user_email_verification_service.js';
-import User from '../../../mongoose/models/user.js';
-import UserEmailVerification from '../../../mongoose/models/user_email_verification.js';
-import UserStatus from '../../../mongoose/models/user_status.js';
-import UserStatusState from '../../../mongoose/models/user_status_state.js';
+import User from '../mongoose/models/user.js';
+import UserEmailVerification from '../mongoose/models/user_email_verification.js';
+import UserStatus from '../mongoose/models/user_status.js';
+import UserStatusState from '../mongoose/models/user_status_state.js';
 import { v4 as uuidv4 } from 'uuid';
 
 const saltRounds = 10;

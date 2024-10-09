@@ -15,8 +15,8 @@
     "sequelize:seed": "sequelize-cli db:seed:all",
     "sequelize:seed:undo": "sequelize-cli db:seed:undo:all",
     "sequelize:seed:generate": "sequelize-cli seed:generate",
-    "mongoose:seed": "node ./mongoose/seeders/seed.js up",
-    "mongoose:seed:undo": "node ./mongoose/seeders/seed.js down",
+    "mongoose:seed": "node ./src/document-based/mongoose/seeders/seed.js up",
+    "mongoose:seed:undo": "node ./src/document-based/mongoose/seeders/seed.js down",
     "jsdoc": "npx jsdoc -c jsdoc.json",
     "npm run configure:gmail": "node ./google-cloud/setup_gmail.cjs"
   },

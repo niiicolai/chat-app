@@ -1,5 +1,5 @@
 import crudService from '../services/channel_message_service.js';
-import channelMessageController from '../../controllers/v1/abstract/channel_message_controller.js';
+import channelMessageController from '../../shared/controllers/channel_message_controller.js';
 
 const ctrl = channelMessageController(crudService);
 

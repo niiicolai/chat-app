@@ -1,5 +1,5 @@
 import crudService from '../services/channel_message_upload_type_service.js';
-import channelMessageUploadTypeController from '../../controllers/v1/abstract/channel_message_upload_type_controller.js';
+import channelMessageUploadTypeController from '../../shared/controllers/channel_message_upload_type_controller.js';
 
 const ctrl = channelMessageUploadTypeController(crudService);
 

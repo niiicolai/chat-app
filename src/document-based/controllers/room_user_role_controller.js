@@ -1,5 +1,5 @@
 import crudService from '../services/room_user_role_service.js';
-import roomUserRoleController from '../../controllers/v1/abstract/room_user_role_controller.js';
+import roomUserRoleController from '../../shared/controllers/room_user_role_controller.js';
 
 const ctrl = roomUserRoleController(crudService);
 

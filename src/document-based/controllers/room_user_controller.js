@@ -1,5 +1,5 @@
 import crudService from '../services/room_user_service.js';
-import roomUserController from '../../controllers/v1/abstract/room_user_controller.js';
+import roomUserController from '../../shared/controllers/room_user_controller.js';
 
 const ctrl = roomUserController(crudService);
 

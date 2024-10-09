@@ -1,9 +1,9 @@
-import ControllerError from '../../errors/controller_error.js';
-import User from '../../../mongoose/models/user.js';
-import Room from '../../../mongoose/models/room.js';
-import RoomUser from '../../../mongoose/models/room_user.js';
-import Channel from '../../../mongoose/models/channel.js';
-import RoomFile from '../../../mongoose/models/room_file.js';
+import ControllerError from '../../shared/errors/controller_error.js';
+import User from '../mongoose/models/user.js';
+import Room from '../mongoose/models/room.js';
+import RoomUser from '../mongoose/models/room_user.js';
+import Channel from '../mongoose/models/channel.js';
+import RoomFile from '../mongoose/models/room_file.js';
 
 class RoomPermissionService {
 

@@ -1,4 +1,4 @@
-import RoomAuditType from '../../../mongoose/models/room_audit_type.js';
+import RoomAuditType from '../mongoose/models/room_audit_type.js';
 import MongodbBaseFindService from './_mongodb_base_find_service.js';
 import dto from '../dto/type_dto.js';
 

@@ -1,17 +1,6 @@
 import fs from "fs";
-
-// Find all controllers in the current directory
-const files = fs.readdirSync(__dirname);
-const controllers = files
-    .filter(file => file.endsWith('_controller.js'))
-    .map(file => require(`./${file}`).default);
-
-/**
- * @constant apiPrefix
- * @description Prefix prepended to all MongoDB API routes
- * @type {string}
- */
-const apiPrefix = '/api/v1/mongodb';
+import path from "path";
+import { pathToFileURL } from 'url';
 
 /**
  * @function mongodbControllers
@@ -20,7 +9,17 @@ const apiPrefix = '/api/v1/mongodb';
  * @returns {void}
  */
 export default (app) => {
-    for (const controller of controllers) {
-        app.use(apiPrefix, controller);
-    }
+    const dir = path.resolve('src', 'document-based', 'controllers');
+    fs.readdirSync(dir)
+        .filter(file => file.endsWith('_controller.js'))
+        .forEach(async file => {
+            try {
+                const fileDir = path.join(dir, file);
+                const filePath = pathToFileURL(fileDir);
+                const controller = await import(filePath.href);
+                app.use('/api/v1/mongodb', controller.default);
+            } catch (error) {
+                console.error('_mongodb_controllers.js', error);
+            }
+        })
 }

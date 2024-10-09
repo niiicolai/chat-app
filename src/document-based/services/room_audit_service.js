@@ -1,9 +1,9 @@
 import MongodbBaseFindService from './_mongodb_base_find_service.js';
-import ControllerError from '../../errors/controller_error.js';
+import ControllerError from '../../shared/errors/controller_error.js';
 import RoomPermissionService from './room_permission_service.js';
 import dto from '../dto/room_audit_dto.js';
-import RoomAudit from '../../../mongoose/models/room_audit.js';
-import Room from '../../../mongoose/models/room.js';
+import RoomAudit from '../mongoose/models/room_audit.js';
+import Room from '../mongoose/models/room.js';
 
 class Service extends MongodbBaseFindService {
     constructor() {

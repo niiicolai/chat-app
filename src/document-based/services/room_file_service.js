@@ -1,11 +1,11 @@
 import MongodbBaseFindService from './_mongodb_base_find_service.js';
-import ControllerError from '../../errors/controller_error.js';
-import StorageService from '../../services/storage_service.js';
+import ControllerError from '../../shared/errors/controller_error.js';
+import StorageService from '../../shared/services/storage_service.js';
 import RoomPermissionService from './room_permission_service.js';
 import dto from '../dto/room_file_dto.js';
-import RoomFile from '../../mongoose/models/room_file.js';
-import Room from '../../mongoose/models/room.js';
-import ChannelMessageUpload from '../../mongoose/models/channel_message_upload.js';
+import RoomFile from '../mongoose/models/room_file.js';
+import Room from '../mongoose/models/room.js';
+import ChannelMessageUpload from '../mongoose/models/channel_message_upload.js';
 
 const storage = new StorageService('room_file');
 

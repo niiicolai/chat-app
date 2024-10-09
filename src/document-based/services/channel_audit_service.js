@@ -1,8 +1,8 @@
 import MongodbBaseFindService from './_mongodb_base_find_service.js';
-import ControllerError from '../../errors/controller_error.js';
+import ControllerError from '../../shared/errors/controller_error.js';
 import RoomPermissionService from './room_permission_service.js';
-import ChannelAudit from '../../../mongoose/models/channel_audit.js';
-import Channel from '../../../mongoose/models/channel.js';
+import ChannelAudit from '../mongoose/models/channel_audit.js';
+import Channel from '../mongoose/models/channel.js';
 import dto from '../dto/channel_audit_dto.js';
 
 class Service extends MongodbBaseFindService {

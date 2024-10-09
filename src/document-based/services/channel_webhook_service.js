@@ -1,15 +1,15 @@
 import MongodbBaseFindService from './_mongodb_base_find_service.js';
-import ControllerError from '../../errors/controller_error.js';
-import StorageService from '../storage_service.js';
+import ControllerError from '../../shared/errors/controller_error.js';
+import StorageService from '../../shared/services/storage_service.js';
 import RoomPermissionService from './room_permission_service.js';
 import dto from '../dto/channel_webhook_dto.js';
-import ChannelWebhook from '../../../mongoose/models/channel_webhook.js';
-import Channel from '../../../mongoose/models/channel.js';
-import Room from '../../../mongoose/models/room.js';
-import RoomFileType from '../../../mongoose/models/room_file_type.js';
-import RoomFile from '../../../mongoose/models/room_file.js';
-import ChannelMessage from '../../../mongoose/models/channel_message.js';
-import ChannelMessageType from '../../../mongoose/models/channel_message_type.js';
+import ChannelWebhook from '../mongoose/models/channel_webhook.js';
+import Channel from '../mongoose/models/channel.js';
+import Room from '../mongoose/models/room.js';
+import RoomFileType from '../mongoose/models/room_file_type.js';
+import RoomFile from '../mongoose/models/room_file.js';
+import ChannelMessage from '../mongoose/models/channel_message.js';
+import ChannelMessageType from '../mongoose/models/channel_message_type.js';
 import { broadcastChannel } from '../../../websocket_server.js';
 import { v4 as uuidv4 } from 'uuid';
 

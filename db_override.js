@@ -1,6 +1,6 @@
 import 'dotenv/config'
 import { exec } from 'child_process';
-import { execute as seedMongoDB } from './mongoose/seeders/seed_all.js';
+import { execute as seedMongoDB } from './src/document-based/mongoose/seeders/seed_all.js';
 
 async function migrateAndSeedMySQL() {
     const dbConfig = {

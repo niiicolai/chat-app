@@ -1,5 +1,5 @@
 import crudService from '../services/room_audit_service.js';
-import roomAuditController from '../../controllers/v1/abstract/room_audit_controller.js';
+import roomAuditController from '../../shared/controllers/room_audit_controller.js';
 
 const ctrl = roomAuditController(crudService);
 

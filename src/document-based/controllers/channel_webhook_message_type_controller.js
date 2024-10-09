@@ -1,5 +1,5 @@
 import crudService from '../services/channel_webhook_message_type_service.js';
-import channelWebhookMessageTypeController from '../../controllers/v1/abstract/channel_webhook_message_type_controller.js';
+import channelWebhookMessageTypeController from '../../shared/controllers/channel_webhook_message_type_controller.js';
 
 const ctrl = channelWebhookMessageTypeController(crudService);
 
