@@ -2,8 +2,8 @@ require('dotenv').config();
 const path = require('path');
 
 module.exports = {
-  config: path.resolve('sequelize', 'config', 'admin.json'), // Only used by sequelize-cli
-  'models-path': path.resolve('sequelize', 'models'),
-  'seeders-path': path.resolve('sequelize', 'seeders'),
-  'migrations-path': path.resolve('sequelize', 'migrations'),
+  config: path.resolve('src', 'relational-based', 'sequelize', 'config', 'admin.json'), // Only used by sequelize-cli
+  'models-path': path.resolve('src', 'relational-based', 'sequelize', 'models'),
+  'seeders-path': path.resolve('src', 'relational-based', 'sequelize', 'seeders'),
+  'migrations-path': path.resolve('src', 'relational-based', 'sequelize', 'migrations'),
 };

@@ -45,6 +45,8 @@ After starting the Docker compose, the application will be available at http://1
 | **Cron Jobs**          | File Retention                      | [x]     |
 |                        | Message Retention                   | [x]     |
 |                        | MySQL Backup                        | [x]     |
+|                        | MongoDB Backup                      | [ ]     |
+|                        | Neo4j Backup                        | [ ]     |
 | **Database**           | MySQL                               | [x]     |
 |                        | Tables                              | [x]     |
 |                        | Views                               | [x]     |
@@ -68,7 +70,6 @@ After starting the Docker compose, the application will be available at http://1
 |                        | Docker Hub                          | [x]     |
 | **Testing**            | Unit Testing                        | [ ]     |
 |                        | Integration Testing                 | [ ]     |
-
 
 ## Development Environment Setup
 The following are the steps to set up the development environment for the chat application.
@@ -94,6 +95,9 @@ Check out the following link: https://developers.google.com/gmail/api/quickstart
 NOTE: *Do not share, move to another location or rename any of the following json files.
 It will cause the configuration-script to break, and the files will no longer be ignored by the
 gitignore file.*
+
+NOTE: *Emails are only send in production. However, if you need information in a email in dev. 
+you can find it printed to the server log.*
 ```
 touch gmail_credentials.json        # Create Credentials for a Google Cloud Project and insert. 
 touch gmail_token.json              # Automatically filled out when executing the next step.

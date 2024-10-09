@@ -1,5 +1,5 @@
 import 'dotenv/config'
-import { useWebsocketControllers } from './src/controllers/v1/websocket/_websocket_controllers.js';
+import { useWebsocketControllers } from './src/shared/websocket/controllers/_websocket_controllers.js';
 import WebSocketServer from 'websocket';
 import http from 'http';
 

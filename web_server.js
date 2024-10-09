@@ -1,11 +1,11 @@
 import cors from 'cors'
 import express from 'express'
 
-import useMysqlControllers from './src/controllers/v1/mysql/_mysql_controllers.js'
-import useMongodbControllers from './src/controllers/v1/mongodb/_mongodb_controllers.js'
-import useNeo4jControllers from './src/controllers/v1/neo4j/_neo4j_controllers.js'
-import useWebsocketControllers from './src/controllers/v1/websocket/_websocket_controllers.js'
-import swaggerController from './src/controllers/swagger_controller.js'
+import useNeo4jControllers from './src/graph-based/controllers/_neo4j_controllers.js'
+import useMysqlControllers from './src/relational-based/controllers/_mysql_controllers.js'
+import useMongodbControllers from './src/document-based/controllers/_mongodb_controllers.js'
+import useWebsocketControllers from './src/shared/websocket/controllers/_websocket_controllers.js'
+import swaggerController from './src/shared/controllers/swagger_controller.js'
 
 const port = process.env.WEB_PORT || 3000
 const app = express()
