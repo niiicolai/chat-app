@@ -55,7 +55,7 @@ class Service extends MongodbBaseFindService {
             .populate('room_rules_settings')
             .populate('room_user_settings')
             .populate('room_channel_settings')
-            .populate('room_file_settings')            
+            .populate('room_file_settings')
             .populate('room_category')
             .populate('room_avatar')
             .populate('room_avatar.room_file')
@@ -71,15 +71,17 @@ class Service extends MongodbBaseFindService {
 
         console.warn('room_service.findAll: no permissions check here');
 
-        return await super.findAll({ page, limit }, (query) => query
-            .populate('room_join_settings')
-            .populate('room_rules_settings')
-            .populate('room_user_settings')
-            .populate('room_channel_settings')
-            .populate('room_file_settings')     
-            .populate('room_category')
-            .populate('room_avatar')
-            .populate('room_avatar.room_file')
+        return await super.findAll(
+            { page, limit, where: { } },
+            ( query ) => query
+                .populate('room_join_settings')
+                .populate('room_rules_settings')
+                .populate('room_user_settings')
+                .populate('room_channel_settings')
+                .populate('room_file_settings')
+                .populate('room_category')
+                .populate('room_avatar')
+                .populate('room_avatar.room_file')
         );
     }
 
@@ -137,7 +139,7 @@ class Service extends MongodbBaseFindService {
             uuid: body.uuid,
             name: body.name,
             description: body.description,
-            room_category_name: roomCategory._id,
+            room_category: roomCategory._id,
             room_join_settings: roomJoinSettings._id,
             room_file_settings: roomFileSettings._id,
             room_user_settings: roomUserSettings._id,
@@ -149,8 +151,9 @@ class Service extends MongodbBaseFindService {
         /**
          * Add the user to the room as an admin
          */
+        const savedUser = await User.findOne({ uuid: user.sub });
         const roomUserRole = await RoomUserRole.findOne({ name: 'Admin' });
-        await new RoomUser({ uuid: uuidv4(), room: room._id, user: user._id, room_user_role: roomUserRole._id }).save();
+        await new RoomUser({ uuid: uuidv4(), room: room._id, user: savedUser._id, room_user_role: roomUserRole._id }).save();
 
         /**
          * Upload the avatar if it exists
@@ -180,7 +183,7 @@ class Service extends MongodbBaseFindService {
             await roomAvatar.save();
         }
 
-        return this.dto(room, 'mongodb');
+        return this.dto(room);
     }
 
     async update(options = { uuid: null, body: null, file: null, user: null }) {
@@ -249,7 +252,7 @@ class Service extends MongodbBaseFindService {
             room_category: roomCategory._id,
         });
 
-        return this.dto(updatedRoom, 'mongodb');
+        return this.dto(updatedRoom);
     }
 
     async destroy(options = { uuid: null, user: null }) {
@@ -345,7 +348,7 @@ class Service extends MongodbBaseFindService {
         if (!existingUser) {
             throw new ControllerError(404, 'User not found');
         }
-        
+
         await RoomUser.findOneAndDelete({ room: existing._id, user: existingUser._id });
     }
 };

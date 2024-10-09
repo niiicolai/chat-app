@@ -11,7 +11,7 @@ export default class MongodbBaseFindService {
         if (!pkName) {
             throw new Error('pkName is required');
         }
-        
+
         this.model = model;
         this.dto = dto;
         this.pkName = pkName;
@@ -37,7 +37,16 @@ export default class MongodbBaseFindService {
         return this.dto(m);
     }
 
-    async findAll(options = { page: null, limit: null }, onBeforeFind = (query) => query, where = {}) {
+    /**
+     * @function findAll
+     * @param {Object} options
+     * @param {Number} options.page
+     * @param {Number} options.limit
+     * @param {Object} options.where
+     * @param {Object} options.aggregate
+     * @param {Function} onBeforeFind
+     */
+    async findAll(options = { page: null, limit: null, where: null, aggregate: null }, onBeforeFind = (query) => query) {
         let { page, limit } = options;
 
         if (typeof onBeforeFind !== 'function') {
@@ -64,15 +73,24 @@ export default class MongodbBaseFindService {
             throw new ControllerError(400, 'page requires limit');
         }
 
-        const descendingByPK = { [this.pkName]: 1, ...where };
-        let query = this.model.find().sort(descendingByPK);
+        const descendingByDate = { created_at: -1 };
+        let params = {};
+        if (options.where) params = { ...params, ...options.where };
+
+        let query = this.model.find(params).sort(descendingByDate);
+
         const result = {};
+
+        if (Array.isArray(options.aggregate)) {
+            query = query.aggregate(options.aggregate);
+        }
 
         if (limit) {
             limit = parseInt(limit);
             query = query.limit(limit);
             result.limit = limit
         }
+
 
         if (page && !isNaN(page) && limit) {
             page = parseInt(page);
@@ -84,7 +102,11 @@ export default class MongodbBaseFindService {
         query = onBeforeFind(query);
 
         result.data = (await query).map((m) => this.dto(m));
-        result.total = await this.model.countDocuments();
+        result.total = await this.model.countDocuments(params);
+
+        if (page && !isNaN(page) && limit) {
+            result.pages = Math.ceil(result.total / limit);
+        }
 
         return result;
     }

@@ -24,7 +24,7 @@ class Service extends MongodbBaseFindService {
             throw new ControllerError(500, 'No user provided');
         }
 
-        if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid: channel.uuid, user, role_name: null }))) {
+        if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid: uuid, user, role_name: null }))) {
             throw new ControllerError(403, 'User is not in the room');
         }
 
@@ -46,10 +46,21 @@ class Service extends MongodbBaseFindService {
             throw new ControllerError(403, 'User is not in the room');
         }
 
-        return await super.findAll({ page, limit }, (query) => query.populate('room_file'), { room_uuid });
+        const room = await Room.findOne({ uuid: room_uuid });
+        if (!room) {
+            throw new ControllerError(404, 'Room not found');
+        }
+
+        return await super.findAll(
+            { page, limit, where: { room: room._id } },
+            ( query ) => query
+                .populate('room_file')
+                .populate('channel_type')
+                .populate('room')
+        );
     }
 
-    async create(options={ body: null, file: null, user: null }) {
+    async create(options = { body: null, file: null, user: null }) {
         const { body, file, user } = options;
         const { uuid, name, description, channel_type_name, room_uuid } = body;
 
@@ -118,10 +129,16 @@ class Service extends MongodbBaseFindService {
             channel.room_file = roomFile._id;
         }
 
-        return this.dto((await channel.save()));
+        await channel.save()
+        
+        return await Channel.findOne({ uuid })
+            .populate('room')
+            .populate('channel_type')
+            .populate('room_file')
+            .then((result) => this.dto(result));
     }
 
-    async update(options={ uuid: null, body: null, file: null, user: null }) {
+    async update(options = { uuid: null, body: null, file: null, user: null }) {
         const { uuid, body, file, user } = options;
         const { name, description } = body;
 
@@ -139,7 +156,7 @@ class Service extends MongodbBaseFindService {
 
         if (name) existing.name = name;
         if (description) existing.description = description;
-        
+
         if (file && file.size > 0) {
             const { room_uuid } = existing.room;
             const { size } = file;
@@ -164,10 +181,12 @@ class Service extends MongodbBaseFindService {
             existing.room_file = roomFile._id;
         }
 
-        return this.dto((await existing.save()));
+        const result = await existing.save();
+
+        return this.dto(result);
     }
 
-    async destroy(options={ uuid: null, user: null }) {
+    async destroy(options = { uuid: null, user: null }) {
         const { uuid, user } = options;
 
         if (!uuid) {

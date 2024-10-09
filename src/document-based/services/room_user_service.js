@@ -1,7 +1,7 @@
 import MongodbBaseFindService from './_mongodb_base_find_service.js';
 import ControllerError from '../../shared/errors/controller_error.js';
 import RoomPermissionService from './room_permission_service.js';
-import dto from '../dto/user_dto.js';
+import dto from '../dto/room_user_dto.js';
 import RoomUser from '../mongoose/models/room_user.js';
 import RoomUserRole from '../mongoose/models/room_user_role.js';
 import Room from '../mongoose/models/room.js';
@@ -23,7 +23,7 @@ class Service extends MongodbBaseFindService {
         if (!user) {
             throw new ControllerError(500, 'No user provided');
         }
-        
+
         if (!(await RoomPermissionService.isInRoom({ room_uuid: r.room.uuid, user, role_name: null }))) {
             throw new ControllerError(403, 'User is not in the room');
         }
@@ -34,7 +34,7 @@ class Service extends MongodbBaseFindService {
     async findAuthenticatedUser(options = { room_uuid: null, user: null }) {
         const { room_uuid, user } = options;
         const { sub: user_uuid } = user;
-        
+
         if (!user) {
             throw new ControllerError(500, 'No user provided');
         }
@@ -73,14 +73,22 @@ class Service extends MongodbBaseFindService {
             throw new ControllerError(500, 'No user provided');
         }
 
+        const room = await Room.findOne({ uuid: room_uuid });
+        if (!room) {
+            throw new ControllerError(404, 'Room not found');
+        }
+
         if (!(await RoomPermissionService.isInRoom({ room_uuid, user, role_name: null }))) {
             throw new ControllerError(403, 'User is not in the room');
         }
 
-        return await super.findAll({ page, limit }, (query) => query
-            .populate('room_user_role')
-            .populate('room')
-            .populate('user'));
+        return await super.findAll(
+            { page, limit, where: { room: room._id } },
+            ( query ) => query
+                .populate('room_user_role')
+                .populate('room')
+                .populate('user')
+        );
     }
 
     async update(options = { uuid: null, body: null, user: null }) {

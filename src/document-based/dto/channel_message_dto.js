@@ -8,15 +8,18 @@ export default (entity = {}) => {
     const dto = {
         uuid: entity.uuid,
         body: entity.body,
-        channel_message_type_name: entity.channel_message_type_name,
-        channel_uuid: entity.channel_uuid,
-        room_uuid: entity.room_uuid,
-        user_uuid: entity.user_uuid,
+        channel_message_type_name: entity.channel_message_type?.name,
+        channel_uuid: entity.channel?.uuid,
+        room_uuid: entity.room?.uuid,
+        user_uuid: entity.user?.uuid,
         created_at: entity.created_at,
         updated_at: entity.updated_at,
     };
 
-    if (entity.user) dto.user = userDto(entity.user);
+    if (entity.user) {
+        dto.user = userDto(entity.user);
+        delete dto.user.email;
+    }
 
     if (entity.channel_message_upload) {
         dto.channel_message_upload = channelMessageUploadDto(entity.channel_message_upload);

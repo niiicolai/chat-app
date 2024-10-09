@@ -24,7 +24,9 @@ class Service extends MongodbBaseFindService {
 
     async findOne(options = { uuid: null, user: null }) {
         const { user, uuid } = options;
-        const msg = await super.findOne({ uuid });
+        const msg = await super.findOne({ uuid }, (query) => query
+            .populate('channel_message_type')
+            .populate('user'));
 
         if (!user) {
             throw new ControllerError(500, 'No user provided');
@@ -48,11 +50,21 @@ class Service extends MongodbBaseFindService {
             throw new ControllerError(400, 'No channel_uuid provided');
         }
 
+        const channel = await Channel.findOne({ uuid: channel_uuid });
+        if (!channel) {
+            throw new ControllerError(404, 'Channel not found');
+        }
+
         if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid, user, role_name: null }))) {
             throw new ControllerError(403, 'User is not in the room');
         }
 
-        return await super.findAll({ page, limit }, (query) => query, { channel_uuid });
+        return await super.findAll(
+            { page, limit, where: { channel: channel._id } },
+            (query) => query
+                .populate('channel_message_type')
+                .populate('user')
+        );
     }
 
     async create(options = { body: null, file: null, user: null }) {
@@ -66,7 +78,7 @@ class Service extends MongodbBaseFindService {
         if (!channel_uuid) throw new ControllerError(400, 'No channel_uuid provided');
         if (!user) throw new ControllerError(500, 'No user provided');
 
-        const channel = await Channel.findOne({ channel_uuid }).populate('room');
+        const channel = await Channel.findOne({ uuid: channel_uuid }).populate('room');
         if (!channel) {
             throw new ControllerError(404, 'Channel not found');
         }
@@ -80,7 +92,7 @@ class Service extends MongodbBaseFindService {
         const channelMessage = await new ChannelMessage({
             uuid,
             body: msg,
-            channel_uuid: channel._id,
+            channel: channel._id,
             channel_message_type: channelMessageType._id,
             user: savedUser._id,
         }).save();
@@ -95,12 +107,11 @@ class Service extends MongodbBaseFindService {
             if ((await RoomPermissionService.fileExceedsSingleFileSize({ room_uuid: channel.room.uuid, bytes: size }))) {
                 throw new ControllerError(400, 'File exceeds single file size limit');
             }
-            
-            const roomFileType = RoomFileType.findOne({ name: 'ChannelMessage' });
+
+            const roomFileType = await RoomFileType.findOne({ name: 'ChannelMessageUpload' });
             const src = await storage.uploadFile(file, uuid);
             const roomFile = await new RoomFile({
                 uuid: uuidv4(),
-                room_uuid: channel.room._id,
                 room_file_type: roomFileType._id,
                 src,
                 size: size,
@@ -113,7 +124,7 @@ class Service extends MongodbBaseFindService {
                 uuid: uuidv4(),
                 channel_message_upload_type: chUploadType._id,
                 channel_message: channelMessage._id,
-                room_file_uuid: roomFile._id,
+                room_file: roomFile._id,
             }).save();
         }
 

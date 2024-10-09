@@ -62,8 +62,9 @@ class RoomPermissionService {
             throw new ControllerError(400, 'isInRoomByChannel: No user_uuid provided');
         }
 
-        const ch = await Channel.findOne({ uuid: channel_uuid });
-        const exists = await RoomUser.findOne({ room_uuid: ch.room_uuid, user_uuid }).populate('room_user_role');
+        const savedUser = await User.findOne({ uuid: user_uuid });
+        const ch = await Channel.findOne({ uuid: channel_uuid }).populate('room');
+        const exists = await RoomUser.findOne({ room: ch.room._id, user: savedUser._id }).populate('room_user_role');
         if(!exists) return false;
 
         if (options.role_name && exists.room_user_role.name !== options.role_name) {
@@ -89,7 +90,7 @@ class RoomPermissionService {
         }
 
         const { total_files_bytes_allowed } = room.room_file_settings;
-        const roomFiles = await RoomFile.find({ room_uuid });
+        const roomFiles = await RoomFile.find({ room: room._id });
         const totalBytes = roomFiles.reduce((acc, file) => acc + file.size, 0);
         const exceeds = totalBytes + bytes > total_files_bytes_allowed;
 
@@ -135,7 +136,7 @@ class RoomPermissionService {
         }
 
         const { max_users } = room.room_user_settings;
-        const roomUsers = await RoomUser.countDocuments({ room_uuid });
+        const roomUsers = await RoomUser.countDocuments({ room: room._id });
         const exceeds = roomUsers + add_count > max_users;
 
         return exceeds;
@@ -158,7 +159,7 @@ class RoomPermissionService {
         }
 
         const { max_channels } = room.room_channel_settings;
-        const roomChannels = await Channel.countDocuments({ room_uuid });
+        const roomChannels = await Channel.countDocuments({ room: room._id });
         const exceeds = roomChannels + add_count > max_channels;
 
         return exceeds;

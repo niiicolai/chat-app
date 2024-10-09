@@ -5,8 +5,8 @@ export default (entity = {}) => {
         uuid: entity.uuid,
         name: entity.name,
         description: entity.description,
-        channel_type_name: entity.channel_type_name,
-        room_uuid: entity.room_uuid,
+        channel_type_name: entity.channel_type?.name,
+        room_uuid: entity.room?.uuid,
         created_at: entity.created_at,
         updated_at: entity.updated_at,
     };

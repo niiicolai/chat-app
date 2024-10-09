@@ -50,7 +50,10 @@ class Service extends MongodbBaseFindService {
             throw new ControllerError(404, 'Room not found');
         }
 
-        return await super.findAll({ page, limit }, (query) => query, { room: room._id });
+        return await super.findAll(
+            { page, limit, where: { room: room._id } }, 
+            ( query ) => query.populate('room')
+        );
     }
 
     async create(options = { body: null, user: null }) {
