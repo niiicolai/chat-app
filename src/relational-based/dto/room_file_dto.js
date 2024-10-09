@@ -1,6 +1,5 @@
 import userDto from './user_dto.js';
 import channelMessageUploadDto from './channel_message_upload_dto.js';
-import channelMessageDto from './channel_message_dto.js';
 
 export default (entity = {}) => {
     const dto = {
@@ -18,9 +17,12 @@ export default (entity = {}) => {
         dto.user = userDto(entity);
     }
 
-    if (m.channel_message_upload_uuid) {
+    if (entity.channel_message_upload_uuid) {
         dto.channel_message_upload = channelMessageUploadDto(entity);
-        dto.channel_message_upload.channel_message = channelMessageDto(entity);
+        dto.channel_message_upload.channel_message = {
+            uuid: entity.channel_message_uuid,
+            body: entity.channel_message_body,
+        }
     }
 
     return dto;

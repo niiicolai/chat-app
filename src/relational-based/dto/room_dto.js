@@ -18,32 +18,16 @@ export default (entity = {}) => {
         updated_at: entity.room_updated_at,
     };
 
-    if (entity.room_join_settings_uuid) {
-        dto.joinSettings = roomJoinSettingsDto(entity);
-    }
 
-    if (entity.room_rules_settings_uuid) {
-        dto.rulesSettings = roomRulesSettingsDto(entity);
-    }
+    dto.joinSettings = roomJoinSettingsDto(entity);
+    dto.rulesSettings = roomRulesSettingsDto(entity);
+    dto.userSettings = roomUserSettingsDto(entity);
+    dto.channelSettings = roomChannelSettingsDto(entity);
+    dto.fileSettings = roomFileSettingsDto(entity);
+    dto.avatar = roomAvatarDto(entity);
 
-    if (entity.room_user_settings_uuid) {
-        dto.userSettings = roomUserSettingsDto(entity);
-    }
-
-    if (entity.room_channel_settings_uuid) {
-        dto.channelSettings = roomChannelSettingsDto(entity);
-    }
-
-    if (entity.room_file_settings_uuid) {
-        dto.fileSettings = roomFileSettingsDto(entity);
-    }
-
-    if (entity.room_avatar_uuid) {
-        dto.avatar = roomAvatarDto(entity);
-
-        if (entity.room_file_uuid) {
-            dto.avatar.room_file = roomFileDto(entity);
-        }
+    if (entity.room_file_uuid) {
+        dto.avatar.room_file = roomFileDto(entity);
     }
 
     return dto;

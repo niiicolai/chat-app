@@ -20,7 +20,7 @@ export default (entity = {}) => {
         dto.channel_message_upload = channelMessageUploadDto(entity);
     }
 
-    if (entity.channel_message_upload_uuid && m.room_file_uuid) {
+    if (entity.channel_message_upload_uuid && entity.room_file_uuid) {
         dto.channel_message_upload.room_file = roomFileDto(entity);
     }
 

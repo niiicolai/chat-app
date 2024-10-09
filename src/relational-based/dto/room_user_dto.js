@@ -1,3 +1,4 @@
+import userDto from './user_dto.js';
 
 export default (entity = {}) => {
     const dto = {
@@ -11,6 +12,7 @@ export default (entity = {}) => {
 
     if (entity.user_uuid) {
         dto.user = userDto(entity);
+        delete dto.user.email;
     }
 
     return dto;
