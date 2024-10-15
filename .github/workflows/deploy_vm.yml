@@ -57,10 +57,10 @@ jobs:
       run: echo "${{ secrets.ENV_FILE }}" > .env
 
     - name: Create gmail_credentials.json file
-      run: echo "${{ secrets.GMAIL_CREDENTIALS }}" > gmail_credentials.json
+      run: echo '${{ secrets.GMAIL_CREDENTIALS }}' > gmail_credentials.json
 
     - name: Create gmail_token.json file
-      run: echo "${{ secrets.GMAIL_TOKEN }}" > gmail_token.json
+      run: echo '${{ secrets.GMAIL_TOKEN }}' > gmail_token.json
 
     - name: SSH and Remove old files
       uses: appleboy/ssh-action@master
