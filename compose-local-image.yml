@@ -18,12 +18,12 @@ services:
     container_name: mongodb
     image: mongo
     ports:
-      - "27017:27017"
+      - "127.0.0.1:27017:27017"
     volumes:
       - mongodb-volume:/data/db
     networks:
       - chat-network
-    command: ["mongod", "--bind_ip", "127.0.0.1"] # to bind to localhost
+    command: ["mongod", "--bind_ip_all"]
 
   chat_app:
     container_name: chat_app
