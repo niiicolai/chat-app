@@ -45,7 +45,7 @@ After starting the Docker compose, the application will be available at http://1
 | **Cron Jobs**          | File Retention                      | [x]     |
 |                        | Message Retention                   | [x]     |
 |                        | MySQL Backup                        | [x]     |
-|                        | MongoDB Backup                      | [ ]     |
+|                        | MongoDB Backup                      | [x]     |
 |                        | Neo4j Backup                        | [ ]     |
 | **Database**           | MySQL                               | [x]     |
 |                        | Tables                              | [x]     |

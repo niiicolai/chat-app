@@ -30,7 +30,7 @@ const loadChannelMessagesBatch = async (room_uuid, msg_days_to_live, offset) => 
 
 // Job
 const onTick = async () => {
-    console.log(`MESSAGE_RETENTION_CHECK: ${Date.now()}: Starting message retention check`);
+    console.log(`MESSAGE_RETENTION_CHECK (mysql): ${Date.now()}: Starting message retention check`);
 
     try {
         const storage = new StorageService('channel_message_upload');
@@ -70,10 +70,10 @@ const onTick = async () => {
         };
 
         await recursiveRoomCheck(0);
-        console.log(`MESSAGE_RETENTION_CHECK: ${Date.now()}: Finished message retention check`);
+        console.log(`MESSAGE_RETENTION_CHECK (mysql): ${Date.now()}: Finished message retention check`);
     } catch (error) {
         rollbar.error(error);
-        console.error(`MESSAGE_RETENTION_CHECK: ${Date.now()}: Error in message retention check: ${error}`);
+        console.error(`MESSAGE_RETENTION_CHECK (mysql): ${Date.now()}: Error in message retention check: ${error}`);
     }
 };
 

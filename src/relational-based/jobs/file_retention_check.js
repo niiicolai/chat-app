@@ -29,7 +29,7 @@ const loadRoomFileBatch = async (room_uuid, file_days_to_live, offset) => {
 
 // Job
 const onTick = async () => {
-    console.log(`FILE_RETENTION_CHECK: ${Date.now()}: Starting file retention check`);
+    console.log(`FILE_RETENTION_CHECK (mysql): ${Date.now()}: Starting file retention check`);
 
     try {
         const storage = new StorageService('channel_message_upload');
@@ -67,11 +67,11 @@ const onTick = async () => {
 
         await recursiveRoomCheck(0);
 
-        console.log(`FILE_RETENTION_CHECK: ${Date.now()}: Finished file retention check`);
+        console.log(`FILE_RETENTION_CHECK (mysql): ${Date.now()}: Finished file retention check`);
 
     } catch (error) {
         rollbar.error(error);
-        console.error(`FILE_RETENTION_CHECK: ${Date.now()}: Error in file retention check: ${error}`);
+        console.error(`FILE_RETENTION_CHECK (mysql): ${Date.now()}: Error in file retention check: ${error}`);
     }
 };
 

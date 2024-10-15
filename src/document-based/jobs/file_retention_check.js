@@ -1,7 +1,8 @@
 import { CronJob } from 'cron';
-import StorageService from "../services/storage_service.js";
-import db from "../../sequelize/models/index.cjs";
-import rollbar from '../../rollbar.js';
+import StorageService from "../../shared/services/storage_service.js";
+import Room from '../mongoose/models/room.js';
+import RoomFile from '../mongoose/models/room_file.js';
+import rollbar from '../../../rollbar.js';
 
 const roomBatch = 10;
 const fileBatch = 10;
@@ -13,52 +14,42 @@ const cronTime = '0 0 0 * * *';
 const timeZone = 'Europe/Copenhagen';
 
 // Load a batch of files older than file_days_to_live
-const loadRoomFileBatch = async (room_uuid, file_days_to_live, offset) => {
-    return await db.RoomFileView.findAll({
-        where: {
-            room_uuid,
-            room_file_type_name: 'ChannelMessageUpload',
-            room_file_created_at: {
-                [db.Sequelize.Op.lt]: db.Sequelize.literal(`NOW() - INTERVAL ${file_days_to_live} DAY`)
-            }
-        },
-        offset,
-        limit: fileBatch
-    });
+const loadRoomFileBatch = async (room_id, file_days_to_live, offset) => {
+    return await RoomFile.find({ room: room_id, created_at: { $lt: new Date(Date.now() - file_days_to_live * 24 * 60 * 60 * 1000) } })
+        .limit(fileBatch)
+        .skip(offset)
+        .sort({ created_at: 1 });
 };
 
 // Job
 const onTick = async () => {
-    console.log(`FILE_RETENTION_CHECK: ${Date.now()}: Starting file retention check`);
+    console.log(`FILE_RETENTION_CHECK (mongodb): ${Date.now()}: Starting file retention check`);
 
     try {
         const storage = new StorageService('channel_message_upload');
         const recursiveRoomCheck = async (offset) => {
-            const rooms = await db.RoomView.findAll({
-                offset,
-                limit: roomBatch
-            });
-
+            const rooms = await Room.find()
+                .populate('room_file_settings')
+                .limit(roomBatch)
+                .skip(offset);
             if (rooms.length === 0) {
                 return;
             }
 
             for (const room of rooms) {
-                const { room_uuid, file_days_to_live } = room;
-
-                let files = await loadRoomFileBatch(room_uuid, file_days_to_live, 0);
+                const room_id = room._id;
+                const file_days_to_live = room.room_file_settings?.file_days_to_live || 30;
+                
+                let files = await loadRoomFileBatch(room_id, file_days_to_live, 0);
+                
                 while (files.length > 0) {
                     for (const file of files) {
-                        const key = storage.parseKey(file.room_file_src);
+                        const key = storage.parseKey(file.src);
                         await storage.deleteFile(key);
-                        await db.sequelize.query('CALL delete_room_file_proc(:room_file_uuid, @result)', {
-                            replacements: {
-                                room_file_uuid: file.room_file_uuid,
-                            },
-                        });
-                        console.log(`${Date.now()}: Deleted file ${file.room_file_uuid} because it exceeded the retention period of ${file_days_to_live} days`);
+                        await RoomFile.deleteOne({ uuid: file.uuid });
+                        console.log(`${Date.now()}: Deleted file ${file.uuid} because it exceeded the retention period of ${file_days_to_live} days`);
                     }
-                    files = await loadRoomFileBatch(room_uuid, file_days_to_live, files.length);
+                    files = await loadRoomFileBatch(room_id, file_days_to_live, files.length);
                 }
             }
 
@@ -66,13 +57,12 @@ const onTick = async () => {
         };
 
         await recursiveRoomCheck(0);
-
-        console.log(`FILE_RETENTION_CHECK: ${Date.now()}: Finished file retention check`);
-
+        console.log(`FILE_RETENTION_CHECK (mongodb): ${Date.now()}: Finished file retention check`);
     } catch (error) {
         rollbar.error(error);
-        console.error(`FILE_RETENTION_CHECK: ${Date.now()}: Error in file retention check: ${error}`);
+        console.error(`FILE_RETENTION_CHECK (mongodb): ${Date.now()}: Error during file retention check: ${error.message}`);
     }
+
 };
 
 CronJob.from({ cronTime, onTick, start: true, timeZone });

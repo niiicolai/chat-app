@@ -34,6 +34,8 @@ services:
       - "3001:3001"
     volumes:
       - mysql-dumps:/var/backups/mysql
+      - mongodb-dumps:/var/backups/mongodb
+      - neo4j-dumps:/var/backups/neo4j
     networks:
       - chat-network
     depends_on:
@@ -48,3 +50,6 @@ volumes:
   mysql-volume:
   mysql-dumps:
   mongodb-volume:
+  mongodb-dumps:
+  neo4j-volume:
+  neo4j-dumps:
