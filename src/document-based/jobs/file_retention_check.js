@@ -38,7 +38,7 @@ const onTick = async () => {
 
             for (const room of rooms) {
                 const room_id = room._id;
-                const file_days_to_live = room.room_file_settings?.file_days_to_live || 30;
+                const file_days_to_live = room.room_file_settings?.file_days_to_live || process.env.ROOM_FILE_DAYS_TO_LIVE || 30;
                 
                 let files = await loadRoomFileBatch(room_id, file_days_to_live, 0);
                 

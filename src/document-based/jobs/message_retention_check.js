@@ -52,7 +52,7 @@ const onTick = async () => {
 
             for (const room of rooms) {
                 const room_id = room._id;
-                const message_days_to_live = room.room_channel_settings?.message_days_to_live || 30;
+                const message_days_to_live = room.room_channel_settings?.message_days_to_live || process.env.ROOM_MESSAGE_DAYS_TO_LIVE || 30;
                 const channels = await Channel.find({ room: room_id });
 
                 for (const channel of channels) {

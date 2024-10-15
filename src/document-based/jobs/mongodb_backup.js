@@ -3,8 +3,8 @@ import { exec } from 'child_process';
 import path from 'path';
 import rollbar from '../../../rollbar.js';
 
-// Run once every minute
-const cronTime = '0 * * * * *';
+// Run once a day
+const cronTime = '0 0 0 * * *';
 
 // Copenhagen timezone
 const timeZone = 'Europe/Copenhagen';
