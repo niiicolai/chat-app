@@ -20,8 +20,8 @@ const SCOPES = ['https://www.googleapis.com/auth/gmail.send'];
 const TOKEN_FILE = 'gmail_token.json';
 const CREDENTIALS_FILE = 'gmail_credentials.json';
 
-const TOKEN_PATH = path.join(process.cwd(), TOKEN_FILE);
-const CREDENTIALS_PATH = path.join(process.cwd(), CREDENTIALS_FILE);
+const TOKEN_PATH = path.join(__dirname, '..', TOKEN_FILE);
+const CREDENTIALS_PATH = path.join(__dirname, '..', CREDENTIALS_FILE);
 
 /**
  * Reads previously authorized credentials from the save file.
