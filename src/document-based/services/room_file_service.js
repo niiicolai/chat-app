@@ -6,6 +6,10 @@ import dto from '../dto/room_file_dto.js';
 import RoomFile from '../mongoose/models/room_file.js';
 import Room from '../mongoose/models/room.js';
 import ChannelMessageUpload from '../mongoose/models/channel_message_upload.js';
+import ChannelMessage from '../mongoose/models/channel_message.js';
+import ChannelWebhook from '../mongoose/models/channel_webhook.js';
+import RoomAvatar from '../mongoose/models/room_avatar.js';
+import Channel from '../mongoose/models/channel.js';
 
 const storage = new StorageService('room_file');
 
@@ -77,7 +81,7 @@ class Service extends MongodbBaseFindService {
             throw new ControllerError(404, 'Room file not found');
         }
 
-        const isMessageUpload = existing.room_file_type.name === 'MessageUpload';
+        const isMessageUpload = existing.room_file_type.name === 'ChannelMessageUpload';
 
         if (isMessageUpload &&
             !this.isOwner({ uuid, user }) &&
@@ -86,7 +90,26 @@ class Service extends MongodbBaseFindService {
             throw new ControllerError(403, 'User is not an owner of the file, or an admin or moderator of the room');
         }
 
-        await existing.remove();
+        if (isMessageUpload) {
+            const channelMessageUpload = await ChannelMessageUpload.findOne({ room_file: existing._id });
+            if (!channelMessageUpload) throw new ControllerError(404, 'Channel message upload not found');
+            const channelMessage = await ChannelMessage.findOne({ channel_message_upload: channelMessageUpload._id });
+            if (!channelMessage) throw new ControllerError(404, 'Channel message not found');
+
+            await ChannelMessage.findOne({ uuid: channelMessage.uuid }).updateOne({ channel_message_upload: null });
+            await ChannelMessageUpload.deleteOne({ uuid: channelMessageUpload.uuid });
+        }
+        else if (existing.room_file_type.name === 'ChannelWebhookAvatar') {
+            await ChannelWebhook.findOne({ room_file: existing._id }).updateOne({ room_file: null });
+        }
+        else if (existing.room_file_type.name === 'ChannelAvatar') {
+            await Channel.findOne({ room_file: existing._id }).updateOne({ room_file: null });
+        }
+        else if (existing.room_file_type.name === 'RoomAvatar') {
+            await RoomAvatar.findOne({ room_file: existing._id }).updateOne({ room_file: null });
+        }
+       
+        await RoomFile.deleteOne({ uuid });
 
         /**
          * Delete the file from storage as well

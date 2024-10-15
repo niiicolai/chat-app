@@ -6,6 +6,9 @@ import RoomInviteLink from '../mongoose/models/room_invite_link.js';
 import Room from '../mongoose/models/room.js';
 import RoomUser from '../mongoose/models/room_user.js';
 import RoomUserRole from '../mongoose/models/room_user_role.js';
+import Channel from '../mongoose/models/channel.js';
+import ChannelMessage from '../mongoose/models/channel_message.js';
+import ChannelMessageType from '../mongoose/models/channel_message_type.js';
 import User from '../mongoose/models/user.js';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -17,13 +20,15 @@ class Service extends MongodbBaseFindService {
 
     async findOne(options = { uuid: null, user: null }) {
         const { user, uuid } = options;
-        const link = await super.findOne({ uuid }, (query) => query.populate('room'));
+        const link = await super.findOne({ uuid }, (query) => 
+            query.populate('room')
+        );
 
         if (!user) {
             throw new ControllerError(500, 'No user provided');
         }
 
-        if (!(await RoomPermissionService.isInRoom({ room_uuid: link.room.uuid, user, role_name: null }))) {
+        if (!(await RoomPermissionService.isInRoom({ room_uuid: link.room_uuid, user, role_name: null }))) {
             throw new ControllerError(403, 'User is not in the room');
         }
 
@@ -125,7 +130,7 @@ class Service extends MongodbBaseFindService {
             throw new ControllerError(403, 'User is not an admin of the room');
         }
 
-        await existing.remove();
+        await RoomInviteLink.deleteOne({ uuid });
     }
 
     async join(options = { uuid: null, user: null }) {
@@ -135,7 +140,18 @@ class Service extends MongodbBaseFindService {
         if (!uuid) throw new ControllerError(400, 'No uuid provided');
         if (!user) throw new ControllerError(500, 'No user provided');
 
-        const existing = await RoomInviteLink.findOne({ uuid }).populate('room');
+        const existing = await RoomInviteLink.findOne({ uuid })
+            .populate({
+                path: 'room',
+                populate: {
+                    path: 'room_join_settings',
+                    model: 'RoomJoinSettings',
+                    populate: {
+                        path: 'join_channel',
+                        model: 'Channel',
+                    },
+                }
+            });
         if (!existing) {
             throw new ControllerError(404, 'Room Invite Link not found');
         }
@@ -156,7 +172,7 @@ class Service extends MongodbBaseFindService {
             throw new ControllerError(400, 'Room user count exceeds limit. The room cannot have more users');
         }
 
-        const roomUserRole = await RoomUserRole.findOne({ name: 'User' });
+        const roomUserRole = await RoomUserRole.findOne({ name: 'Member' });
         if (!roomUserRole) {
             throw new ControllerError(500, 'RoomUserRole not found');
         }
@@ -170,10 +186,32 @@ class Service extends MongodbBaseFindService {
             uuid: uuidv4(),
             room: existing.room._id,
             user: savedUser._id,
-            role: roomUserRole._id,
+            room_user_role: roomUserRole._id,
         }).save();
 
-        console.warn('mongo db room_invite_link_service.js join message not implemented on join');
+        let channelId = existing.room.room_join_settings?.join_channel?._id;
+        if (!channelId) {
+            const channels = await Channel.find({ room: existing.room._id });
+            if (channels.length > 0) {
+                channelId = channels[0]._id;
+            }
+        }
+
+        if (channelId) {
+            // Check if {name} is in the message
+            let body = existing.room.room_join_settings.join_message;
+            if (body.includes('{name}')) {
+                // replace {name} with the user's username
+                body = body.replace('{name}', savedUser.username);
+            }
+            const channelMessageType = await ChannelMessageType.findOne({ name: 'System' });
+            await new ChannelMessage({
+                uuid: uuidv4(),
+                channel: channelId,
+                channel_message_type: channelMessageType._id,
+                body,
+            }).save();
+        }
     }
 }
 

@@ -8,6 +8,11 @@ import ChannelType from '../mongoose/models/channel_type.js';
 import Room from '../mongoose/models/room.js';
 import RoomFileType from '../mongoose/models/room_file_type.js';
 import RoomFile from '../mongoose/models/room_file.js';
+import ChannelWebhook from '../mongoose/models/channel_webhook.js';
+import ChannelWebhookMessage from '../mongoose/models/channel_webhook_message.js';
+import ChannelMessage from '../mongoose/models/channel_message.js';
+import ChannelMessageUpload from '../mongoose/models/channel_message_upload.js';
+import RoomJoinSettings from '../mongoose/models/room_join_settings.js';
 
 const storage = new StorageService('channel_avatar');
 
@@ -18,7 +23,11 @@ class Service extends MongodbBaseFindService {
 
     async findOne(options = { uuid: null, user: null }) {
         const { user, uuid } = options;
-        const channel = await super.findOne({ uuid });
+        const channel = await super.findOne({ uuid }, (query) => query
+            .populate('room')
+            .populate('channel_type')
+            .populate('room_file')
+        );
 
         if (!user) {
             throw new ControllerError(500, 'No user provided');
@@ -131,11 +140,7 @@ class Service extends MongodbBaseFindService {
 
         await channel.save()
         
-        return await Channel.findOne({ uuid })
-            .populate('room')
-            .populate('channel_type')
-            .populate('room_file')
-            .then((result) => this.dto(result));
+        return await this.findOne({ uuid, user });
     }
 
     async update(options = { uuid: null, body: null, file: null, user: null }) {
@@ -158,7 +163,7 @@ class Service extends MongodbBaseFindService {
         if (description) existing.description = description;
 
         if (file && file.size > 0) {
-            const { room_uuid } = existing.room;
+            const { uuid: room_uuid } = existing.room;
             const { size } = file;
 
             if ((await RoomPermissionService.fileExceedsTotalFilesLimit({ room_uuid, bytes: size }))) {
@@ -181,9 +186,9 @@ class Service extends MongodbBaseFindService {
             existing.room_file = roomFile._id;
         }
 
-        const result = await existing.save();
+        await existing.save();
 
-        return this.dto(result);
+        return this.findOne({ uuid, user });
     }
 
     async destroy(options = { uuid: null, user: null }) {
@@ -200,12 +205,53 @@ class Service extends MongodbBaseFindService {
             throw new ControllerError(403, 'User is not an admin of the room');
         }
 
-        const channel = await Channel.findOne({ uuid });
+        const channel = await Channel.findOne({ uuid })
+            .populate('room_file')
+            .populate('room');
         if (!channel) {
             throw new ControllerError(404, 'Channel not found');
         }
 
-        await channel.remove();
+        if (channel.room_file) {
+            await storage.deleteFile(storage.parseKey(channel.room_file.src));
+            await RoomFile.deleteOne({ uuid: channel.room_file.uuid });
+        }
+
+        const channelWebhooks = await ChannelWebhook.find({ channel: channel._id }).populate('room_file');
+        const channelWebhookRoomFileIds = channelWebhooks.filter((channelWebhook) => channelWebhook.room_file).map((channelWebhook) => channelWebhook.room_file._id);
+        if (channelWebhookRoomFileIds.length) {
+            await RoomFile.deleteMany({ _id: { $in: channelWebhookRoomFileIds } });
+        }
+        await ChannelWebhookMessage.deleteMany({ channel_webhook: { $in: channelWebhooks.map((channelWebhook) => channelWebhook._id) } });
+        await ChannelWebhook.deleteMany({ channel: channel._id });
+
+        const channelMessages = await ChannelMessage.find({ channel: channel._id })
+            .populate({
+                path: 'channel_message_upload',
+                model: 'ChannelMessageUpload',
+                populate: {
+                    path: 'room_file',
+                    model: 'RoomFile',
+                },
+            });
+
+        const roomFileIds = [];
+        const channelMessageUploadIds = [];
+        channelMessages.forEach((channelMessage) => {
+            if (channelMessage.channel_message_upload) {
+                channelMessageUploadIds.push(channelMessage.channel_message_upload._id);                
+                roomFileIds.push(channelMessage.channel_message_upload.room_file._id);
+
+                storage.deleteFile(storage.parseKey(channelMessage.channel_message_upload.room_file.src));
+            }
+        });
+        
+        await ChannelMessage.deleteMany({ channel: channel._id });
+        await ChannelMessageUpload.deleteMany({ _id: { $in: channelMessageUploadIds } });
+        await RoomFile.deleteMany({ _id: { $in: roomFileIds } });
+        await RoomJoinSettings.findOne({ join_channel: channel._id }).updateOne({ join_channel: null });
+
+        await Channel.deleteOne({ uuid });
     }
 }
 

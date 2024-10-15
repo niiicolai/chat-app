@@ -18,6 +18,8 @@ import RoomUserRole from '../mongoose/models/room_user_role.js';
 import Channel from '../mongoose/models/channel.js';
 import User from '../mongoose/models/user.js';
 import { v4 as uuidv4 } from 'uuid';
+import ChannelService from './channel_service.js';
+import RoomFileService from './room_file_service.js';
 
 const max_users = parseInt(process.env.ROOM_MAX_MEMBERS || 25);
 const max_channels = parseInt(process.env.ROOM_MAX_CHANNELS || 5);
@@ -58,31 +60,88 @@ class Service extends MongodbBaseFindService {
             .populate('room_file_settings')
             .populate('room_category')
             .populate('room_avatar')
-            .populate('room_avatar.room_file')
+            .populate({
+                path: 'room_avatar',
+                populate: {
+                    path: 'room_file',
+                    model: 'RoomFile' 
+                }
+            })
         );
     }
 
     async findAll(options = { user: null, page: null, limit: null }) {
-        const { user, page, limit } = options;
+        let { user, page, limit } = options;
+
+        if (page && isNaN(page)) throw new ControllerError(400, 'page must be a number');
+        if (page && page < 1) throw new ControllerError(400, 'page must be greater than 0');
+        if (limit && limit < 1) throw new ControllerError(400, 'limit must be greater than 0');
+        if (limit && isNaN(limit)) throw new ControllerError(400, 'limit must be a number');
+        if (page && !limit) throw new ControllerError(400, 'page requires limit');
 
         if (!user) {
             throw new ControllerError(500, 'No user provided');
         }
 
-        console.warn('room_service.findAll: no permissions check here');
+        const savedUser = await User.findOne({ uuid: user.sub });
+        if (!savedUser) {
+            throw new ControllerError(404, 'User not found');
+        }
 
-        return await super.findAll(
-            { page, limit, where: { } },
-            ( query ) => query
-                .populate('room_join_settings')
-                .populate('room_rules_settings')
-                .populate('room_user_settings')
-                .populate('room_channel_settings')
-                .populate('room_file_settings')
-                .populate('room_category')
-                .populate('room_avatar')
-                .populate('room_avatar.room_file')
+        const params = [
+            { $match: { user: savedUser._id } },
+            { $lookup: { from: 'rooms', localField: 'room', foreignField: '_id', as: 'room' } },
+            { $unwind: '$room' },
+            { $sort: { 'room.created_at': -1 } }, // Sort by the room's created_at
+        ];
+        let query = RoomUser.aggregate(params);
+
+        const result = {};
+
+        if (limit) {
+            limit = parseInt(limit);
+            query = query.limit(limit);
+            result.limit = limit
+        }
+
+        if (page && !isNaN(page) && limit) {
+            page = parseInt(page);
+            const offset = ((page - 1) * limit);
+            query = query.skip(offset);
+            result.page = page;
+        }
+
+        query = await query.exec();
+        query = await Room.find({ _id: { $in: query.map((m) => m.room._id) } })
+            .populate('room_category')
+            .populate('room_join_settings')
+            .populate('room_rules_settings')
+            .populate('room_user_settings')
+            .populate('room_channel_settings')
+            .populate('room_file_settings')
+            .populate({
+                path: 'room_avatar',
+                populate: {
+                    path: 'room_file',
+                    model: 'RoomFile' 
+                }
+            });
+
+        result.data = await Promise.all(
+            query.map(async (m) => {
+                const roomFiles = await RoomFile.find({ room: m._id });
+                const bytes_used = roomFiles.reduce((acc, curr) => acc + curr.size, 0);
+                
+                return dto({ ...m._doc, bytes_used });
+            })
         );
+        result.total = await this.model.aggregate(params).count('total');
+
+        if (page && !isNaN(page) && limit) {
+            result.pages = Math.ceil(result.total / limit);
+        }
+
+        return result;
     }
 
     async create(options = { body: null, file: null, user: null }) {
@@ -203,7 +262,14 @@ class Service extends MongodbBaseFindService {
 
         const existing = await Room.findOne({ uuid })
             .populate('room_category')
-            .populate('room_avatar');
+            .populate('room_avatar')
+            .populate({
+                path: 'room_avatar',
+                populate: {
+                    path: 'room_file',
+                    model: 'RoomFile' 
+                }
+            });
         if (!existing) {
             throw new ControllerError(404, 'Room not found');
         }
@@ -246,13 +312,14 @@ class Service extends MongodbBaseFindService {
             await existing.room_avatar.save();
         }
 
-        const updatedRoom = await existing.updateOne({
+        await existing.updateOne({
             name: body.name,
             description: body.description,
             room_category: roomCategory._id,
         });
 
-        return this.dto(updatedRoom);
+
+        return this.findOne({ uuid, user });
     }
 
     async destroy(options = { uuid: null, user: null }) {
@@ -275,7 +342,27 @@ class Service extends MongodbBaseFindService {
             throw new ControllerError(404, 'Room not found');
         }
 
-        console.warn('room_service.destroy: not implemented yet');
+        const channels = await Channel.find({ room: existing._id });
+        const channelUuids = channels.map((m) => m.uuid);
+        for (const channelUuid of channelUuids) {
+            await ChannelService.destroy({ uuid: channelUuid, user });
+        }
+
+        const roomFiles = await RoomFile.find({ room: existing._id });
+        const roomFileUuids = roomFiles.map((m) => m.uuid);
+        for (const roomFileUuid of roomFileUuids) {
+            await RoomFileService.destroy({ uuid: roomFileUuid, user });
+        }
+
+        await RoomUser.deleteMany({ room: existing._id });
+        await Channel.deleteMany({ room: existing._id });
+        await RoomAvatar.deleteOne({ _id: existing.room_avatar });
+        await RoomRulesSettings.deleteOne({ _id: existing.room_rules_settings });
+        await RoomJoinSettings.deleteOne({ _id: existing.room_join_settings });
+        await RoomFileSettings.deleteOne({ _id: existing.room_file_settings });
+        await RoomUserSettings.deleteOne({ _id: existing.room_user_settings });
+        await RoomChannelSettings.deleteOne({ _id: existing.room_channel_settings });
+        await Room.deleteOne({ uuid });
     }
 
     async editSettings(options = { uuid: null, body: null, user: null }) {

@@ -195,5 +195,28 @@ ctrl.editSettings();
 ctrl.leave();
 
 
+/**
+ * @openapi
+ * '/api/v1/mongodb/room/{uuid}':
+ *  delete:
+ *    tags:
+ *     - MongoDB Room Controller
+ *    summary: Destroy a Room
+ *    security:
+ *     - bearerAuth: []
+ *    parameters:
+ *      - in: path
+ *        name: uuid
+ *        required: true
+ *    responses:
+ *     204:
+ *      description: No Content
+ *     400:
+ *      description: Bad Request
+ *     500:
+ *      description: Internal Server Error
+ */
+ctrl.destroy();
+
 
 export default ctrl.router; 

@@ -13,7 +13,7 @@ export default (entity = {}) => {
         description: entity.description,
         room_category_name: entity.room_category?.name,
         bytes_used: entity.bytes_used,
-        mb_used: entity.mb_used,
+        mb_used: entity.bytes_used ? (entity.bytes_used / 1024 / 1024).toFixed(2) : 0,
         created_at: entity.created_at,
         updated_at: entity.updated_at,
     };

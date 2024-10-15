@@ -7,10 +7,12 @@ import ChannelMessage from '../mongoose/models/channel_message.js';
 import ChannelMessageType from '../mongoose/models/channel_message_type.js';
 import ChannelMessageUpload from '../mongoose/models/channel_message_upload.js';
 import ChannelMessageUploadType from '../mongoose/models/channel_message_upload_type.js';
+import ChannelWebhookMessage from '../mongoose/models/channel_webhook_message.js';
 import Channel from '../mongoose/models/channel.js';
 import RoomFile from '../mongoose/models/room_file.js';
 import RoomFileType from '../mongoose/models/room_file_type.js';
 import User from '../mongoose/models/user.js';
+import mongoose from 'mongoose';
 import { v4 as uuidv4 } from 'uuid';
 import { getUploadType } from '../../shared/utils/file_utils.js';
 import { broadcastChannel } from '../../../websocket_server.js';
@@ -26,7 +28,16 @@ class Service extends MongodbBaseFindService {
         const { user, uuid } = options;
         const msg = await super.findOne({ uuid }, (query) => query
             .populate('channel_message_type')
-            .populate('user'));
+            .populate('user')
+            .populate('channel')
+            .populate({
+                path: 'channel_message_upload',
+                populate: [
+                    { path: 'room_file', model: 'RoomFile' },
+                    { path: 'channel_message_upload_type', model: 'ChannelMessageUploadType' }
+                ]
+            })
+        );
 
         if (!user) {
             throw new ControllerError(500, 'No user provided');
@@ -64,6 +75,23 @@ class Service extends MongodbBaseFindService {
             (query) => query
                 .populate('channel_message_type')
                 .populate('user')
+                .populate('channel')
+                .populate({
+                    path: 'channel_message_upload',
+                    populate: [
+                        { path: 'room_file', model: 'RoomFile' },
+                        { path: 'channel_message_upload_type', model: 'ChannelMessageUploadType' }
+                    ]
+                })
+                .populate({
+                    path: 'channel_webhook_message',
+                    populate: [
+                        { path: 'channel_webhook_message_type', model: 'ChannelWebhookMessageType' },
+                        { path: 'channel_webhook', model: 'ChannelWebhook', populate: [
+                            { path: 'room_file', model: 'RoomFile' }
+                        ]},
+                    ]
+                })
         );
     }
 
@@ -89,13 +117,14 @@ class Service extends MongodbBaseFindService {
 
         const savedUser = await User.findOne({ uuid: user_uuid });
         const channelMessageType = await ChannelMessageType.findOne({ name: 'User' });
-        const channelMessage = await new ChannelMessage({
+        const channelMessage = new ChannelMessage({
             uuid,
             body: msg,
             channel: channel._id,
             channel_message_type: channelMessageType._id,
             user: savedUser._id,
-        }).save();
+            channel_message_upload: null,
+        });
 
 
         if (file && file.size > 0) {
@@ -120,15 +149,18 @@ class Service extends MongodbBaseFindService {
 
             const chUploadTypeName = getUploadType(file);
             const chUploadType = await ChannelMessageUploadType.findOne({ name: chUploadTypeName });
-            await new ChannelMessageUpload({
+            const chUpload = await new ChannelMessageUpload({
                 uuid: uuidv4(),
                 channel_message_upload_type: chUploadType._id,
-                channel_message: channelMessage._id,
                 room_file: roomFile._id,
             }).save();
+
+            channelMessage.channel_message_upload = chUpload._id;
         }
 
-        const result = this.dto(channelMessage);
+        await channelMessage.save();
+
+        const result = this.findOne({ uuid, user });
 
         /**
           * Broadcast the channel message to all users
@@ -164,7 +196,9 @@ class Service extends MongodbBaseFindService {
 
         if (msg) existing.body = msg;
 
-        const result = this.dto((await existing.save()));
+        await existing.save();
+
+        const result = this.findOne({ uuid, user });
 
         /**
           * Broadcast the channel message to all users
@@ -186,7 +220,19 @@ class Service extends MongodbBaseFindService {
             throw new ControllerError(500, 'No user provided');
         }
 
-        const existing = await ChannelMessage.findOne({ uuid }).populate('channel');
+        const existing = await ChannelMessage.findOne({ uuid })
+            .populate('channel_message_type')
+            .populate('user')
+            .populate('channel')
+            .populate('channel_webhook_message')
+            .populate({
+                path: 'channel_message_upload',
+                populate: [
+                    { path: 'room_file', model: 'RoomFile' },
+                    { path: 'channel_message_upload_type', model: 'ChannelMessageUploadType' }
+                ]
+            });
+            
         if (!existing) {
             throw new ControllerError(404, 'Channel message not found');
         }
@@ -200,7 +246,20 @@ class Service extends MongodbBaseFindService {
             throw new ControllerError(403, 'User is not an owner of the message, or an admin or moderator of the room');
         }
 
-        await existing.remove();
+        if (existing.channel_message_upload) {
+            const roomFile = await RoomFile.findOne({ _id: existing.channel_message_upload.room_file });
+            if (roomFile) {
+                await storage.deleteFile(storage.parseKey(roomFile.src));
+                await RoomFile.deleteOne({ _id: roomFile._id });
+            }
+            await ChannelMessageUpload.deleteOne({ _id: existing.channel_message_upload._id });
+        }
+
+        if (existing.channel_webhook_message) {
+            await ChannelWebhookMessage.deleteOne({ _id: existing.channel_webhook_message._id });
+        }
+
+        await ChannelMessage.deleteOne({ uuid });
 
         /**
           * Broadcast the channel message to all users
