@@ -23,6 +23,7 @@ services:
       - mongodb-volume:/data/db
     networks:
       - chat-network
+    command: ["mongod", "--bind_ip", "127.0.0.1"] # to bind to localhost
 
   chat_app:
     container_name: chat_app
