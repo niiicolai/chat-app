@@ -46,4 +46,13 @@ Object.keys(db).forEach(modelName => {
 db.sequelize = sequelize;
 db.Sequelize = Sequelize;
 
+sequelize
+  .authenticate()
+  .then(() => {
+    console.log('INFO: Connected to MySQL');
+  })
+  .catch(err => {
+    console.error('ERROR: Unable to connect to the MySQL database:', err);
+  });
+
 module.exports = db;
