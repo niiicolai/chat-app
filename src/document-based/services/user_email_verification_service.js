@@ -1,27 +1,13 @@
 import MongodbBaseFindService from './_mongodb_base_find_service.js';
 import ControllerError from '../../shared/errors/controller_error.js';
-import MailService from '../../shared/services/mail_service.js';
 import dto from '../dto/user_email_verification_dto.js';
 import UserEmailVerification from '../mongoose/models/user_email_verification.js';
+import UserEmailVerificationMailer from '../../shared/mailers/user_email_verification_mailer.js';
 import User from '../mongoose/models/user.js';
 
 const WEBSITE_HOST = process.env.WEBSITE_HOST;
-if (!WEBSITE_HOST) {
-    throw new Error('ERROR: WEBSITE_HOST not set in .env');
-}
+if (!WEBSITE_HOST) console.error('WEBSITE_HOST is not defined in the .env file.\n  - Email verification is currently not configured correct.\n  - Add WEBSITE_HOST=http://localhost:3000 to the .env file.');
 
-const getSubject = () => 'Demo Chat App: Please verify your email address';
-const getContent = (verification_uuid, username) => `
-Hi ${username},
-
-Please verify your email address by clicking the link below:
-${WEBSITE_HOST}/api/v1/mongodb/user_email_verification/${verification_uuid}/confirm
-
-If you did not sign up for an account, please ignore this email.
-
-Thanks,
-The Team
-`;
 
 class UserEmailVerificationService extends MongodbBaseFindService {
     constructor() {
@@ -49,12 +35,12 @@ class UserEmailVerificationService extends MongodbBaseFindService {
             throw new ControllerError(400, 'User email already verified');
         }
 
-        const verification_uuid = user.user_email_verification.uuid;
+        const confirmUrl = `${WEBSITE_HOST}/api/v1/mongodb/user_email_verification/${user.user_email_verification.uuid}/confirm`;
         const username = user.username;
-        const subject = getSubject();
-        const content = getContent(verification_uuid, username);
-
-        await MailService.sendMail(content, subject, user.email);
+        const to = user.email;
+        
+        const mail = new UserEmailVerificationMailer({ confirmUrl, username, to });
+        await mail.send();
     }
 
     async confirm(options = { uuid: null }) {

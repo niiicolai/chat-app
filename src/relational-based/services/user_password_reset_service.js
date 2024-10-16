@@ -1,7 +1,8 @@
 import MysqlBaseFindService from './_mysql_base_find_service.js';
 import db from '../sequelize/models/index.cjs';
 import ControllerError from '../../shared/errors/controller_error.js';
-import MailService from '../../shared/services/mail_service.js';
+import UserCreatePasswordResetMailer from '../../shared/mailers/user_create_password_reset_mailer.js';
+import UserConfirmPasswordResetMailer from '../../shared/mailers/user_confirm_password_reset_mailer.js';
 import dto from '../dto/user_password_reset_dto.js';
 import bcrypt from 'bcrypt';
 import { v4 as v4uuid } from 'uuid';
@@ -9,9 +10,8 @@ import { v4 as v4uuid } from 'uuid';
 const saltRounds = 10;
 
 const WEBSITE_HOST = process.env.WEBSITE_HOST;
-if (!WEBSITE_HOST) {
-    throw new Error('ERROR: WEBSITE_HOST not set in .env');
-}
+if (!WEBSITE_HOST) console.error('WEBSITE_HOST is not defined in the .env file.\n  - Email verification is currently not configured correct.\n  - Add WEBSITE_HOST=http://localhost:3000 to the .env file.');
+
 
 const getSubjectCreate = () => 'Demo Chat App: Password Reset';
 const getContentCreate = (reset_uuid, username) => `
@@ -74,11 +74,11 @@ class UserEmailVerificationService extends MysqlBaseFindService {
             },
         });
 
-        const subject = getSubjectCreate();
-        const content = getContentCreate(uuid, user.user_username);
         const to = user.user_email;
-
-        await MailService.sendMail(content, subject, to);
+        const username = user.user_username;
+        const confirmUrl = `${WEBSITE_HOST}/api/v1/mysql/user_password_reset/${uuid}/reset_password`;
+        const mail = new UserCreatePasswordResetMailer({ confirmUrl, username, to });
+        await mail.send();
     }
 
     async resetPassword(options = { uuid: null, body: null }) {
@@ -118,11 +118,10 @@ class UserEmailVerificationService extends MysqlBaseFindService {
             },
         });
 
-        const subject = getSubjectReset();
-        const content = getContentReset(user.user_username);
+        const username = user.user_username;
         const to = user.user_email;
-
-        await MailService.sendMail(content, subject, to);
+        const mail = new UserConfirmPasswordResetMailer({ username, to });
+        await mail.send();
     }
 }
 

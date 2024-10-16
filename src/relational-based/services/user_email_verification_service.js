@@ -1,26 +1,11 @@
 import MysqlBaseFindService from './_mysql_base_find_service.js';
 import db from '../sequelize/models/index.cjs';
 import ControllerError from '../../shared/errors/controller_error.js';
-import MailService from '../../shared/services/mail_service.js';
+import UserEmailVerificationMailer from '../../shared/mailers/user_email_verification_mailer.js';
 import dto from '../dto/user_email_verification_dto.js';
 
 const WEBSITE_HOST = process.env.WEBSITE_HOST;
-if (!WEBSITE_HOST) {
-    throw new Error('ERROR: WEBSITE_HOST not set in .env');
-}
-
-const getSubject = () => 'Demo Chat App: Please verify your email address';
-const getContent = (verification_uuid, username) => `
-Hi ${username},
-
-Please verify your email address by clicking the link below:
-${WEBSITE_HOST}/api/v1/mysql/user_email_verification/${verification_uuid}/confirm
-
-If you did not sign up for an account, please ignore this email.
-
-Thanks,
-The Team
-`;
+if (!WEBSITE_HOST) console.error('WEBSITE_HOST is not defined in the .env file.\n  - Email verification is currently not configured correct.\n  - Add WEBSITE_HOST=http://localhost:3000 to the .env file.');
 
 
 class UserEmailVerificationService extends MysqlBaseFindService {
@@ -47,12 +32,12 @@ class UserEmailVerificationService extends MysqlBaseFindService {
             throw new ControllerError(400, 'User email already verified');
         }
 
-        const verification_uuid = existing.user_email_verification_uuid;
+        const confirmUrl = `${WEBSITE_HOST}/api/v1/mysql/user_email_verification/${existing.user_email_verification_uuid}/confirm`;
         const username = user.user_username;
-        const subject = getSubject();
-        const content = getContent(verification_uuid, username);
-
-        await MailService.sendMail(content, subject, user.user_email);
+        const to = user.user_email;
+        
+        const mail = new UserEmailVerificationMailer({ confirmUrl, username, to });
+        await mail.send();
     }
 
     async confirm(options = { uuid: null }) {
