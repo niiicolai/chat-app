@@ -14,7 +14,7 @@ controller.join_channel = (connection, payload) => {
         return;
     }
 
-    const user = jwtService.getUserFromToken({ authorization: token });
+    const user = jwtService.verifyAndDecodeHTTPHeader({ authorization: token });
     if (!user) {
         connection.sendUTF(JSON.stringify({ error: 'Unauthorized' }));
         return;
@@ -23,6 +23,8 @@ controller.join_channel = (connection, payload) => {
     connection.userData = { user, channel };
     if (process.env.DEBUG === 'true') 
         console.log((new Date()) + ` Peer ${user.sub} joined channel ${channel}`);
+
+    connection.sendUTF(JSON.stringify({ type: 'joined_channel', payload: { channel } }));
 }
 
 controller.leave_channel = (connection) => {
