@@ -63,9 +63,10 @@ class UserService extends MongodbBaseFindService {
             user_status_state: userStatusState._id 
         }).save();
 
+        const env = process.env.NODE_ENV || 'development';
         const userEmailVerification = await new UserEmailVerification({ 
             uuid: uuidv4(), 
-            is_verified: false 
+            is_verified: (env === 'test')
         }).save();
         
         const { uuid, email, username, password } = body;

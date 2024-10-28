@@ -9,8 +9,6 @@ import { pathToFileURL } from 'url';
  * @returns {void}
  */
 export default (app) => {
-    console.warn("WARNING: _neo4j_controllers.js commented out until services are implemented");
-    /*
     const dir = path.resolve('src', 'graph-based', 'controllers');
     fs.readdirSync(dir)
         .filter(file => file.endsWith('_controller.js'))
@@ -23,5 +21,5 @@ export default (app) => {
             } catch (error) {
                 console.error('_neo4j_controllers.js', error);
             }
-        })*/
+        })
 }

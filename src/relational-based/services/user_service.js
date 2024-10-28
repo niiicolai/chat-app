@@ -44,7 +44,19 @@ class UserService extends MysqlBaseFindService {
             replacements: { uuid, username, email, password, avatar },
         });
 
-        await UserEmailVerificationService.resend({ user_uuid: uuid });
+        /**
+         * Set the email as verified if the environment is test,
+         * to avoid having to confirm the email verification
+         * when running end-to-end tests.
+         */
+        const env = process.env.NODE_ENV || 'development';
+        if (env === 'test') {
+            await db.sequelize.query('CALL set_user_email_verification_proc(:user_uuid, :user_is_verified, @result)', {
+                replacements: { user_uuid: uuid, user_is_verified: true }
+            });
+        } else {
+            await UserEmailVerificationService.resend({ user_uuid: uuid });
+        }
 
         const user = await this.findOne({ uuid });
         const token = JwtService.sign(uuid);

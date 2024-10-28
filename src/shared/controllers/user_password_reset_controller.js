@@ -14,7 +14,7 @@ export default (crudService) => {
         });
     }
 
-    ctrl.resetPasswordEdit = () => {
+    ctrl.resetPasswordEdit = (dbpath='mysql') => {
         router.get('/user_password_reset/:uuid/reset_password', async (req, res) => {
             await errorHandler(res, async () => {
                 // Quick solution to show a form to reset password
@@ -34,7 +34,7 @@ export default (crudService) => {
                                     alert('Password is required and must be at least 8 characters');
                                     return;
                                 }
-                                const response = await fetch('/api/v1/mysql/user_password_reset/${req.params.uuid}/reset_password', {
+                                const response = await fetch('/api/v1/${dbpath}/user_password_reset/${req.params.uuid}/reset_password', {
                                     method: 'PATCH',
                                     headers: { 'Content-Type': 'application/json' },
                                     body: JSON.stringify({ password }),
