@@ -5,9 +5,6 @@ import NeodeBaseFindService from './neode_base_find_service.js';
 import neodeInstance from '../neode/index.js';
 import neo4j from 'neo4j-driver';
 
-console.error('TODO: implement update in room_user_service.js');
-console.error('TODO: implement destroy in room_user_service.js');
-
 class Service extends NeodeBaseFindService {
     constructor() {
         super('uuid', 'RoomUser', dto);
@@ -141,55 +138,53 @@ class Service extends NeodeBaseFindService {
     }
 
     async update(options = { uuid: null, body: null, user: null }) {
+        if (!options) throw new ControllerError(500, 'No options provided');
+        if (!options.uuid) throw new ControllerError(400, 'No uuid provided');
+        if (!options.body) throw new ControllerError(400, 'No body provided');
+        if (!options.user) throw new ControllerError(500, 'No user provided');
+        if (!options.body.room_user_role_name) throw new ControllerError(400, 'No room_user_role_name provided');
+
         const { uuid, body, user } = options;
         const { room_user_role_name } = body;
 
-        if (!uuid) {
-            throw new ControllerError(400, 'No uuid provided');
-        }
-        if (!room_user_role_name) {
-            throw new ControllerError(400, 'No room_user_role_name provided');
-        }
-        if (!user) {
-            throw new ControllerError(500, 'No user provided');
-        }
+        const newRoleInstance = await neodeInstance.model('RoomUserRole').find(room_user_role_name);
+        if (!newRoleInstance) throw new ControllerError(404, 'Room user role not found');
 
-        const existingRole = await RoomUserRole.findOne({ name: room_user_role_name });
-        if (!existingRole) {
-            throw new ControllerError(404, 'Room user role not found');
-        }
+        const roomUserInstance = await neodeInstance.model('RoomUser').find(uuid);
+        if (!roomUserInstance) throw new ControllerError(404, 'Room user not found');
 
-        const existing = await RoomUser.findOne({ uuid }).populate('room')
-        if (!existing) {
-            throw new ControllerError(404, 'Room user not found');
-        }
+        const room = roomUserInstance.get('room').endNode().properties();
+        if (!room) throw new ControllerError(500, 'Room not found');
 
-        if (!(await RoomPermissionService.isInRoom({ room_uuid: existing.room.uuid, user, role_name: 'Admin' }))) {
+        if (!(await RoomPermissionService.isInRoom({ room_uuid: room.uuid, user, role_name: 'Admin' }))) {
             throw new ControllerError(403, 'User is not an admin of the room');
         }
 
-        await RoomUser.findOneAndUpdate({ uuid }, { room_user_role: existingRole._id });
+        const oldRole = roomUserInstance.get('room_user_role').endNode().properties();
+        if (!oldRole) throw new ControllerError(500, 'Room user role not found');
+        const oldRoleInstance = await neodeInstance.model('RoomUserRole').find(oldRole.name);
+        await roomUserInstance.detachFrom(oldRoleInstance);
+        await roomUserInstance.relateTo(newRoleInstance, 'room_user_role');
     }
 
     async destroy(options = { uuid: null, user: null }) {
+        if (!options) throw new ControllerError(500, 'No options provided');
+        if (!options.uuid) throw new ControllerError(400, 'No uuid provided');
+        if (!options.user) throw new ControllerError(500, 'No user provided');
+
         const { uuid, user } = options;
-        if (!uuid) {
-            throw new ControllerError(400, 'No uuid provided');
-        }
-        if (!user) {
-            throw new ControllerError(500, 'No user provided');
-        }
+        
+        const roomUserInstance = await neodeInstance.model('RoomUser').find(uuid);
+        if (!roomUserInstance) throw new ControllerError(404, 'Room user not found');
 
-        const existing = await RoomUser.findOne({ uuid }).populate('room').populate('user');
-        if (!existing) {
-            throw new ControllerError(404, 'Room user not found');
-        }
+        const room = roomUserInstance.get('room').endNode().properties();
+        if (!room) throw new ControllerError(500, 'Room not found');
 
-        if (!(await RoomPermissionService.isInRoom({ room_uuid: existing.room.uuid, user, role_name: 'Admin' }))) {
+        if (!(await RoomPermissionService.isInRoom({ room_uuid: room.uuid, user, role_name: 'Admin' }))) {
             throw new ControllerError(403, 'User is not an admin of the room');
         }
 
-        await RoomUser.findOneAndDelete({ uuid });
+        await roomUserInstance.delete();
     }
 }
 

@@ -20,9 +20,6 @@ const rules_text = process.env.ROOM_RULES_TEXT || "# Rules\n 1. No Spamming!";
 
 const storage = new StorageService('room_avatar');
 
-console.error("TODO: Implement leave method in room_service.js");
-console.error('TODO: Implement destroy method in room_service.js');
-
 class Service extends NeodeBaseFindService {
     constructor() {
         super('uuid', 'Room', dto);
@@ -333,46 +330,40 @@ class Service extends NeodeBaseFindService {
     }
 
     async destroy(options = { uuid: null, user: null }) {
-        const { uuid, user } = options;
+        if (!options) throw new ControllerError(500, 'No options provided');
+        if (!options.uuid) throw new ControllerError(400, 'No options.uuid provided');
+        if (!options.user) throw new ControllerError(500, 'No options.user provided');
         
-        if (!uuid) {
-            throw new ControllerError(400, 'No uuid provided');
-        }
-
-        if (!user) {
-            throw new ControllerError(500, 'No user provided');
-        }
+        const { uuid, user } = options;
 
         if (!(await RoomPermissionService.isInRoom({ room_uuid: uuid, user, role_name: 'Admin' }))) {
             throw new ControllerError(403, 'User is not an admin of the room');
         }
 
-        const existing = await Room.findOne({ uuid });
-        if (!existing) {
-            throw new ControllerError(404, 'Room not found');
-        }
+        const session = neodeInstance.session();
+        session.writeTransaction(async (transaction) => {
+            await transaction.run(
+                `MATCH (r:Room {uuid: $uuid})
+                 MATCH (r)-[:HAS_JOIN_SETTINGS]->(rjs:RoomJoinSettings)
+                 MATCH (r)-[:HAS_RULES_SETTINGS]->(rrs:RoomRulesSettings)
+                 MATCH (r)-[:HAS_FILE_SETTINGS]->(rfs:RoomFileSettings)
+                 MATCH (r)-[:HAS_USER_SETTINGS]->(rus:RoomUserSettings)
+                 MATCH (r)-[:HAS_CHANNEL_SETTINGS]->(rcs:RoomChannelSettings)
+                 MATCH (r)-[:HAS_ROOM_AVATAR]->(ra:RoomAvatar)
+                 OPTIONAL MATCH (ra)-[:HAS_FILE]->(raf:RoomFile)
+                 OPTIONAL MATCH (ril:RoomInviteLink)-[:HAS_ROOM]->(r)
+                 OPTIONAL MATCH (ru:RoomUser)-[:HAS_ROOM]->(r)
+                 OPTIONAL MATCH (c:Channel)-[:HAS_ROOM]->(r)
+                 OPTIONAL MATCH (cw:ChannelWebhook)-[:HAS_CHANNEL]->(c)
+                 OPTIONAL MATCH (cwm:ChannelWebhookMessage)-[:HAS_CHANNEL_WEBHOOK]->(cw)
+                 OPTIONAL MATCH (cm:ChannelMessage)-[:HAS_CHANNEL]->(c)
+                 OPTIONAL MATCH (cmu:ChannelMessageUpload)-[:HAS_CHANNEL_MESSAGE]->(cm)
+                 DETACH DELETE r, rjs, rrs, rfs, rus, rcs, ra, raf, ril, ru, c, cw, cwm, cm, cmu`,
+                { uuid }
+            );
+        });
 
-        const channels = await Channel.find({ room: existing._id });
-        const channelUuids = channels.map((m) => m.uuid);
-        for (const channelUuid of channelUuids) {
-            await ChannelService.destroy({ uuid: channelUuid, user });
-        }
-
-        const roomFiles = await RoomFile.find({ room: existing._id });
-        const roomFileUuids = roomFiles.map((m) => m.uuid);
-        for (const roomFileUuid of roomFileUuids) {
-            await RoomFileService.destroy({ uuid: roomFileUuid, user });
-        }
-
-        await RoomUser.deleteMany({ room: existing._id });
-        await Channel.deleteMany({ room: existing._id });
-        await RoomAvatar.deleteOne({ _id: existing.room_avatar });
-        await RoomRulesSettings.deleteOne({ _id: existing.room_rules_settings });
-        await RoomJoinSettings.deleteOne({ _id: existing.room_join_settings });
-        await RoomFileSettings.deleteOne({ _id: existing.room_file_settings });
-        await RoomUserSettings.deleteOne({ _id: existing.room_user_settings });
-        await RoomChannelSettings.deleteOne({ _id: existing.room_channel_settings });
-        await Room.deleteOne({ uuid });
+        console.warn('TODO: DELETE FILES in room_service.js');
     }
 
     async editSettings(options = { uuid: null, body: null, user: null }) {
@@ -428,32 +419,31 @@ class Service extends NeodeBaseFindService {
     }
 
     async leave(options = { uuid: null, user: null }) {
+        if (!options) throw new ControllerError(500, 'No options provided');
+        if (!options.uuid) throw new ControllerError(400, 'No options.uuid provided');
+        if (!options.user) throw new ControllerError(500, 'No options.user provided');
+
         const { uuid, user } = options;
         const { sub: user_uuid } = user;
-        
-        if (!uuid) {
-            throw new ControllerError(400, 'No uuid provided');
-        }
-
-        if (!user) {
-            throw new ControllerError(500, 'No user provided');
-        }
 
         if (!(await RoomPermissionService.isInRoom({ room_uuid: uuid, user, role_name: null }))) {
             throw new ControllerError(403, 'User is not in the room');
         }
 
-        const existing = await Room.findOne({ uuid });
-        if (!existing) {
-            throw new ControllerError(404, 'Room not found');
-        }
+        const dbResult = await neodeInstance.cypher(
+            `MATCH (ru:RoomUser)-[:HAS_USER]->(u:User {uuid: $user_uuid})
+             MATCH (ru)-[:HAS_ROOM]->(r:Room {uuid: $uuid})
+             MATCH (ru)-[:HAS_ROLE]->(rur:RoomUserRole)
+             RETURN ru, r, rur`,
+            { user_uuid, uuid }
+        );
 
-        const existingUser = await User.findOne({ uuid: user_uuid });
-        if (!existingUser) {
-            throw new ControllerError(404, 'User not found');
-        }
+        if (!dbResult.records.length) throw new ControllerError(404, 'Room User not found');
 
-        await RoomUser.findOneAndDelete({ room: existing._id, user: existingUser._id });
+        const roomUser = dbResult.records[0].get('ru').properties;
+        const roomUserInstance = await neodeInstance.model('RoomUser').find(roomUser.uuid);
+
+        await roomUserInstance.delete();
     }
 };
 

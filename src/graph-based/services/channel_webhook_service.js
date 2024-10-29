@@ -9,8 +9,6 @@ import { v4 as uuidv4 } from 'uuid';
 
 const storage = new StorageService('channel_avatar');
 
-console.error('TODO: delete file and relationships in the destroy method in channel_webhook_service.js');
-
 class Service {
 
     async findOne(options = { uuid: null, user: null }) {
@@ -238,9 +236,25 @@ class Service {
         if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid: channel.uuid, user, role_name: 'Admin' }))) {
             throw new ControllerError(403, 'User is not an admin in the room');
         }
-        
-        await webhookInstance.delete();
-        
+
+        const src = webhookInstance.get('room_file')?.endNode()?.properties()?.src;
+
+        const session = neodeInstance.session();
+        session.writeTransaction(async (transaction) => {
+            await transaction.run(
+                `MATCH (cw:ChannelWebhook { uuid: $uuid }) ` +
+                `OPTIONAL MATCH (rf:RoomFile)-[:HAS_ROOM_FILE]->(cw) ` +
+                `OPTIONAL MATCH (cw)-[:HAS_CHANNEL_WEBHOOK_MESSAGE]->(cwm:ChannelWebhookMessage) ` +
+                `OPTIONAL MATCH (cm:ChannelMessage)-[:HAS_CHANNEL_WEBHOOK_MESSAGE]->(cwm) ` +
+                `DETACH DELETE cw, rf, cwm, cm`,
+                { uuid }
+            );
+
+            if (src) {
+                const key = storage.parseKey(src);
+                await storage.deleteFile(key);
+            }
+        });
     }
 
     async message(options = { uuid: null, body: null }) {

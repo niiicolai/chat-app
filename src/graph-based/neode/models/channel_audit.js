@@ -18,14 +18,16 @@ export default {
     channel: {
         type: 'relationship',
         target: 'Channel',
-        relationship: 'HAS_AUDIT',
+        relationship: 'HAS_CHANNEL',
         direction: 'out',
+        eager: true
     },
     user: {
         type: 'relationship',
         target: 'User',
-        relationship: 'HAS_AUDIT',
+        relationship: 'HAS_USER',
         direction: 'out',
+        eager: true
     },
     created_at: {
         type: 'datetime',

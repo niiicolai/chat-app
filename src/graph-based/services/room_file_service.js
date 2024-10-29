@@ -7,8 +7,6 @@ import neo4j from 'neo4j-driver';
 
 const storage = new StorageService('room_file');
 
-console.error('TODO: Implement destroy method in room_file_service');
-
 class Service {
 
     async findOne(options = { uuid: null, user: null }) {
@@ -109,76 +107,66 @@ class Service {
     }
 
     async destroy(options = { uuid: null, user: null }) {
+        if (!options) throw new ControllerError(500, 'No options provided');
+        if (!options.uuid) throw new ControllerError(400, 'No uuid provided');
+        if (!options.user) throw new ControllerError(500, 'No user provided');
+        if (!options.user.sub) throw new ControllerError(500, 'No user.sub provided');
+
         const { uuid, user } = options;
-        
-        if (!uuid) {
-            throw new ControllerError(400, 'No uuid provided');
-        }
 
-        if (!user) {
-            throw new ControllerError(500, 'No user provided');
-        }
+        const roomFileInstance = await neodeInstance.model('RoomFile').find(uuid);
+        if (!roomFileInstance) throw new ControllerError(404, 'Room file not found');
 
-        const existing = await RoomFile.findOne({ uuid })
-            .populate('room')
-            .populate('room_file_type');
-        if (!existing) {
-            throw new ControllerError(404, 'Room file not found');
-        }
+        const roomFileType = roomFileInstance.get('room_file_type').endNode().properties();
+        if (!roomFileType) throw new ControllerError(500, 'Room file type not found');
 
-        const isMessageUpload = existing.room_file_type.name === 'ChannelMessageUpload';
+        const room = roomFileInstance.get('room').endNode().properties();
+        if (!room) throw new ControllerError(500, 'Room not found');
+
+        const isMessageUpload = roomFileType.name === 'ChannelMessageUpload';
 
         if (isMessageUpload &&
             !this.isOwner({ uuid, user }) &&
-            !(await RoomPermissionService.isInRoom({ room_uuid: existing.room.uuid, user, role_name: 'Moderator' })) &&
-            !(await RoomPermissionService.isInRoom({ room_uuid: existing.room.uuid, user, role_name: 'Admin' }))) {
+            !(await RoomPermissionService.isInRoom({ room_uuid: room.uuid, user, role_name: 'Moderator' })) &&
+            !(await RoomPermissionService.isInRoom({ room_uuid: room.uuid, user, role_name: 'Admin' }))) {
             throw new ControllerError(403, 'User is not an owner of the file, or an admin or moderator of the room');
         }
 
-        if (isMessageUpload) {
-            const channelMessageUpload = await ChannelMessageUpload.findOne({ room_file: existing._id });
-            if (!channelMessageUpload) throw new ControllerError(404, 'Channel message upload not found');
-            const channelMessage = await ChannelMessage.findOne({ channel_message_upload: channelMessageUpload._id });
-            if (!channelMessage) throw new ControllerError(404, 'Channel message not found');
+        const src = roomFileInstance.properties().src;
+        const session = neodeInstance.session();
+        session.writeTransaction(async (transaction) => {
+            await transaction.run(
+                `MATCH (rf:RoomFile { uuid: $uuid }) ` +
+                `OPTIONAL MATCH (cmu:ChannelMessageUpload)-[:HAS_ROOM_FILE]->(rf) ` +
+                `DETACH DELETE rf, cmu`,
+                { uuid }
+            );
 
-            await ChannelMessage.findOne({ uuid: channelMessage.uuid }).updateOne({ channel_message_upload: null });
-            await ChannelMessageUpload.deleteOne({ uuid: channelMessageUpload.uuid });
-        }
-        else if (existing.room_file_type.name === 'ChannelWebhookAvatar') {
-            await ChannelWebhook.findOne({ room_file: existing._id }).updateOne({ room_file: null });
-        }
-        else if (existing.room_file_type.name === 'ChannelAvatar') {
-            await Channel.findOne({ room_file: existing._id }).updateOne({ room_file: null });
-        }
-        else if (existing.room_file_type.name === 'RoomAvatar') {
-            await RoomAvatar.findOne({ room_file: existing._id }).updateOne({ room_file: null });
-        }
-       
-        await RoomFile.deleteOne({ uuid });
-
-        /**
-         * Delete the file from storage as well
-         */
-        const key = storage.parseKey(existing.src);
-        storage.deleteFile(key);
+            const key = storage.parseKey(src);
+            await storage.deleteFile(key);
+        });
     }
 
     async isOwner(options = { uuid: null, user: null }) {
+        if (!options) throw new ControllerError(500, 'isOwner: No options provided');
+        if (!options.uuid) throw new ControllerError(400, 'isOwner: No uuid provided');
+        if (!options.user) throw new ControllerError(500, 'isOwner: No user provided');
+        if (!options.user.sub) throw new ControllerError(500, 'isOwner: No user.sub provided');
+
         const { uuid, user } = options;
         const { sub: user_uuid } = user;
 
-        if (!uuid) throw new ControllerError(400, 'isOwner: No uuid provided');
-        if (!user_uuid) throw new ControllerError(500, 'isOwner: No user provided');
+        const channelMessageUpload = await neodeInstance.cypher(
+            `MATCH (cmu:ChannelMessageUpload)-[:HAS_ROOM_FILE]->(rf:RoomFile { uuid: $uuid }) ` +
+            `OPTIONAL MATCH (cm:ChannelMessage)-[:HAS_CHANNEL_MESSAGE_UPLOAD]->(cmu) ` +
+            `OPTIONAL MATCH (u:User)-[:HAS_CHANNEL_MESSAGE]->(cm) ` +
+            `RETURN cmu, cm, u`, { uuid }
+        );
 
-        // Find the channel message upload related to the room file with the given uuid
-        const channelMessageUpload = await ChannelMessageUpload.findOne({ 'room_file.uuid': uuid }).populate('channel_message');
-        if (!channelMessageUpload) throw new ControllerError(404, 'isOwner: Channel message upload not found');
+        if (!channelMessageUpload.records.length) throw new ControllerError(404, 'isOwner: Channel message upload not found');
+        if (!channelMessageUpload.records[0].get('u')) throw new ControllerError(404, 'isOwner: Channel message not found');
 
-        // Find the channel message related to the channel message upload and populate the user field
-        const channelMessage = await ChannelMessage.findOne({ uuid: channelMessageUpload.channel_message.uuid }).populate('user');
-        if (!channelMessage) throw new ControllerError(404, 'isOwner: Channel message not found');
-
-        return channelMessage.user.uuid === user_uuid;
+        return channelMessageUpload.records[0].get('u').properties.uuid === user_uuid;
     }
 };
 

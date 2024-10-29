@@ -7,8 +7,6 @@ import neo4j from 'neo4j-driver';
 
 const storage = new StorageService('channel_avatar');
 
-console.error('TODO: implement destroy method in channel_service.js');
-
 class Service {
 
     async findOne(options = { uuid: null, user: null }) {
@@ -219,55 +217,33 @@ class Service {
             throw new ControllerError(403, 'User is not an admin of the room');
         }
 
-        
+        const channelInstance = await neodeInstance.model('Channel').find(uuid);
+        if (!channelInstance) throw new ControllerError(404, 'Channel not found');
 
-        const channel = await Channel.findOne({ uuid })
-            .populate('room_file')
-            .populate('room');
-        if (!channel) {
-            throw new ControllerError(404, 'Channel not found');
-        }
+        const roomFile = await channelInstance.get('room_file')?.endNode()?.properties();
+        const src = roomFile?.src;
 
-        if (channel.room_file) {
-            await storage.deleteFile(storage.parseKey(channel.room_file.src));
-            await RoomFile.deleteOne({ uuid: channel.room_file.uuid });
-        }
+        const session = neodeInstance.session();
+        session.writeTransaction(async (transaction) => {
+            await transaction.run(
+                `MATCH (c:Channel { uuid: $uuid }) ` +
+                `OPTIONAL MATCH (cw:ChannelWebhook)-[:HAS_CHANNEL]->(c) ` +
+                `OPTIONAL MATCH (cwm:ChannelWebhookMessage)-[:HAS_CHANNEL_WEBHOOK]->(cw) ` +
+                `OPTIONAL MATCH (c)-[:HAS_CHANNEL_FILE]->(rf:RoomFile) ` +
+                `OPTIONAL MATCH (c)-[:HAS_CHANNEL_MESSAGE]->(cm:ChannelMessage) ` +
+                `OPTIONAL MATCH (cm)-[:HAS_CHANNEL_MESSAGE_UPLOAD]->(cmu:ChannelMessageUpload)-[:HAS_ROOM_FILE]->(cmurf:RoomFile) ` +
+                `OPTIONAL MATCH (cw)-[:HAS_ROOM_FILE]->(cwrf:RoomFile) ` +
+                `DETACH DELETE c, rf, cm, cmu, cw, cwm, cwrf, cmurf`,
+                { uuid }
+            );
 
-        const channelWebhooks = await ChannelWebhook.find({ channel: channel._id }).populate('room_file');
-        const channelWebhookRoomFileIds = channelWebhooks.filter((channelWebhook) => channelWebhook.room_file).map((channelWebhook) => channelWebhook.room_file._id);
-        if (channelWebhookRoomFileIds.length) {
-            await RoomFile.deleteMany({ _id: { $in: channelWebhookRoomFileIds } });
-        }
-        await ChannelWebhookMessage.deleteMany({ channel_webhook: { $in: channelWebhooks.map((channelWebhook) => channelWebhook._id) } });
-        await ChannelWebhook.deleteMany({ channel: channel._id });
-
-        const channelMessages = await ChannelMessage.find({ channel: channel._id })
-            .populate({
-                path: 'channel_message_upload',
-                model: 'ChannelMessageUpload',
-                populate: {
-                    path: 'room_file',
-                    model: 'RoomFile',
-                },
-            });
-
-        const roomFileIds = [];
-        const channelMessageUploadIds = [];
-        channelMessages.forEach((channelMessage) => {
-            if (channelMessage.channel_message_upload) {
-                channelMessageUploadIds.push(channelMessage.channel_message_upload._id);                
-                roomFileIds.push(channelMessage.channel_message_upload.room_file._id);
-
-                storage.deleteFile(storage.parseKey(channelMessage.channel_message_upload.room_file.src));
+            if (src) {
+                const key = storage.parseKey(src);
+                await storage.deleteFile(key);
             }
-        });
-        
-        await ChannelMessage.deleteMany({ channel: channel._id });
-        await ChannelMessageUpload.deleteMany({ _id: { $in: channelMessageUploadIds } });
-        await RoomFile.deleteMany({ _id: { $in: roomFileIds } });
-        await RoomJoinSettings.findOne({ join_channel: channel._id }).updateOne({ join_channel: null });
 
-        await Channel.deleteOne({ uuid });
+            console.warn('TODO: delete all channel messages files and webhook files');
+        });
     }
 }
 

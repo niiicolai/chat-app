@@ -10,7 +10,6 @@ import { broadcastChannel } from '../../../websocket_server.js';
 
 const storage = new StorageService('channel_message_upload');
 
-console.error('TODO: Implement destroy method in channel_message_service.js');
 console.error('TODO: findOne in channel_message_service.js doesn\'t return the upload');
 
 class Service {
@@ -93,25 +92,23 @@ class Service {
         cypher += ` RETURN cm, cmt, u, cmu, rf, cwm, cwm_type, cw, cwrf, cmmut, c`;
 
         const dbResult = await neodeInstance.cypher(cypher, props);
-        const data = dbResult.records.map((record) => {
+        let data = dbResult.records.map((record) => {
             const cm = record.get('cm').properties;
             const rel = [];
             rel.push({ channelMessageType: record.get('cmt').properties });
             rel.push({ channel: record.get('c').properties });
             if (record.get('u')) rel.push({ user: record.get('u').properties });
-            if (record.get('cmu')) {
-                rel.push({ channelMessageUpload: record.get('cmu').properties });
-                rel.push({ roomFile: record.get('rf').properties });
-                rel.push({ channelMessageUploadType: record.get('cmmut').properties });
-            }
-            if (record.get('cwm')) {
-                rel.push({ channelWebhookMessage: record.get('cwm').properties });
-                rel.push({ channelWebhookMessageType: record.get('cwm_type').properties });
-                rel.push({ channelWebhook: record.get('cw').properties });
-                rel.push({ channelWebhookFile: record.get('cwrf').properties });
-            }
+            if (record.get('cmu')) rel.push({ channelMessageUpload: record.get('cmu').properties });
+            if (record.get('rf')) rel.push({ roomFile: record.get('rf').properties });
+            if (record.get('cmmut')) rel.push({ channelMessageUploadType: record.get('cmmut').properties });
+            if (record.get('cwm')) rel.push({ channelWebhookMessage: record.get('cwm').properties });
+            if (record.get('cwm_type')) rel.push({ channelWebhookMessageType: record.get('cwm_type').properties });
+            if (record.get('cw')) rel.push({ channelWebhook: record.get('cw').properties });
+            if (record.get('cwrf')) rel.push({ channelWebhookFile: record.get('cwrf').properties });
             return dto(cm, rel);
         });
+        data = data.filter((v, i, a) => a.findIndex(t => (t.uuid === v.uuid)) === i);
+
         const count = await neodeInstance.cypher(
             `MATCH (cm:ChannelMessage)-[:HAS_CHANNEL]->(:Channel {uuid: $channel_uuid}) ` +
             `RETURN count(cm) as count`,
@@ -254,27 +251,15 @@ class Service {
         const { uuid, user } = options;
         const { sub: user_uuid } = user;
 
-        
+        const channelMessageInstance = await neodeInstance.model('ChannelMessage').find(uuid);
+        if (!channelMessageInstance) throw new ControllerError(404, 'Channel message not found');
 
-        const existing = await ChannelMessage.findOne({ uuid })
-            .populate('channel_message_type')
-            .populate('user')
-            .populate('channel')
-            .populate('channel_webhook_message')
-            .populate({
-                path: 'channel_message_upload',
-                populate: [
-                    { path: 'room_file', model: 'RoomFile' },
-                    { path: 'channel_message_upload_type', model: 'ChannelMessageUploadType' }
-                ]
-            });
-            
-        if (!existing) {
-            throw new ControllerError(404, 'Channel message not found');
-        }
+        const channel = channelMessageInstance.get('channel').endNode().properties();
+        if (!channel) throw new ControllerError(500, 'Channel not found');
 
-        const channel_uuid = existing.channel.uuid;
-        const isOwner = existing.user?.uuid === user_uuid;
+        const channelMessageUser = channelMessageInstance.get('user')?.endNode()?.properties();
+        const isOwner = channelMessageUser?.uuid === user_uuid;
+        const channel_uuid = channel.uuid;
 
         if (!isOwner &&
             !(await RoomPermissionService.isInRoomByChannel({ channel_uuid, user, role_name: 'Moderator' })) &&
@@ -282,20 +267,31 @@ class Service {
             throw new ControllerError(403, 'User is not an owner of the message, or an admin or moderator of the room');
         }
 
-        if (existing.channel_message_upload) {
-            const roomFile = await RoomFile.findOne({ _id: existing.channel_message_upload.room_file });
-            if (roomFile) {
-                await storage.deleteFile(storage.parseKey(roomFile.src));
-                await RoomFile.deleteOne({ _id: roomFile._id });
+        let src = null;
+        const channelMessageUpload = channelMessageInstance.get('channel_message_upload')?.endNode()?.properties();
+        if (channelMessageUpload) {
+            const channelMessageUploadInstance = await neodeInstance.model('ChannelMessageUpload').find(channelMessageUpload.uuid);
+            if (!channelMessageUploadInstance) throw new ControllerError(500, 'Channel message upload not found');
+            const roomFile = channelMessageUploadInstance.get('room_file').endNode().properties();
+            if (!roomFile) throw new ControllerError(500, 'Room file not found');
+            src = roomFile.src;
+        }
+
+        const session = neodeInstance.session();
+        session.writeTransaction(async (transaction) => {
+            await transaction.run(
+                `MATCH (cm:ChannelMessage { uuid: $uuid }) ` +
+                `OPTIONAL MATCH (cm)-[:HAS_CHANNEL_MESSAGE_UPLOAD]->(cmu:ChannelMessageUpload)-[:HAS_ROOM_FILE]->(rf:RoomFile) ` +
+                `OPTIONAL MATCH (cm)-[:HAS_CHANNEL_WEBHOOK_MESSAGE]->(cwm:ChannelWebhookMessage) ` +
+                `DETACH DELETE cm, cmu, rf, cwm`,
+                { uuid }
+            );
+
+            if (src) {
+                const key = storage.parseKey(src);
+                await storage.deleteFile(key);
             }
-            await ChannelMessageUpload.deleteOne({ _id: existing.channel_message_upload._id });
-        }
-
-        if (existing.channel_webhook_message) {
-            await ChannelWebhookMessage.deleteOne({ _id: existing.channel_webhook_message._id });
-        }
-
-        await ChannelMessage.deleteOne({ uuid });
+        });
 
         /**
           * Broadcast the channel message to all users

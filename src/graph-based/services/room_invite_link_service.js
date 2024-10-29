@@ -1,11 +1,10 @@
 import ControllerError from '../../shared/errors/controller_error.js';
 import RoomPermissionService from './room_permission_service.js';
+import ChannelService from './channel_service.js';
 import neodeInstance from '../neode/index.js';
 import dto from '../dto/room_invite_link_dto.js';
 import { v4 as uuidv4 } from 'uuid';
 import neo4j from 'neo4j-driver';
-
-console.error('TODO: Implement join method in room_invite_link_service.js');
 
 class Service {
     async findOne(options = { uuid: null, user: null }) {
@@ -26,7 +25,7 @@ class Service {
             throw new ControllerError(403, 'User is not in the room');
         }
 
-        return dto(linkInstance.properties());
+        return dto(linkInstance.properties(), [{ room: roomInstance }]);
     }
 
     async findAll(options = { room_uuid: null, user: null, page: null, limit: null }) {
@@ -164,83 +163,90 @@ class Service {
     }
 
     async join(options = { uuid: null, user: null }) {
+        if (!options) throw new ControllerError(500, 'No options provided');
+        if (!options.uuid) throw new ControllerError(400, 'No uuid provided');
+        if (!options.user) throw new ControllerError(500, 'No user provided');
+        if (!options.user.sub) throw new ControllerError(500, 'No user.sub provided');
+
         const { uuid, user } = options;
         const { sub: user_uuid } = user;
 
-        if (!uuid) throw new ControllerError(400, 'No uuid provided');
-        if (!user) throw new ControllerError(500, 'No user provided');
+        const linkInstance = await neodeInstance.model('RoomInviteLink').find(uuid);
+        if (!linkInstance) throw new ControllerError(404, 'Room Invite Link not found');
+        const link = linkInstance.properties();
 
-        const existing = await RoomInviteLink.findOne({ uuid })
-            .populate({
-                path: 'room',
-                populate: {
-                    path: 'room_join_settings',
-                    model: 'RoomJoinSettings',
-                    populate: {
-                        path: 'join_channel',
-                        model: 'Channel',
-                    },
-                }
-            });
-        if (!existing) {
-            throw new ControllerError(404, 'Room Invite Link not found');
-        }
+        const room = linkInstance.get('room').endNode().properties();
+        const roomInstance = await neodeInstance.model('Room').find(room.uuid);
 
         if (!(await RoomPermissionService.isVerified({ user }))) {
             throw new ControllerError(403, 'You must verify your email before you can join a room');
         }
 
-        if (existing.expires_at && new Date(existing.expires_at) < new Date()) {
+        if (link.expires_at && new Date(link.expires_at) < new Date()) {
             throw new ControllerError(400, 'Room Invite Link has expired');
         }
 
-        if (await RoomPermissionService.isInRoom({ room_uuid: existing.room.uuid, user, role_name: null })) {
+        if (await RoomPermissionService.isInRoom({ room_uuid: room.uuid, user, role_name: null })) {
             throw new ControllerError(400, 'User is already in room');
         }
 
-        if (await RoomPermissionService.roomUserCountExceedsLimit({ room_uuid: existing.room.uuid, add_count: 1 })) {
+        if (await RoomPermissionService.roomUserCountExceedsLimit({ room_uuid: room.uuid, add_count: 1 })) {
             throw new ControllerError(400, 'Room user count exceeds limit. The room cannot have more users');
         }
 
-        const roomUserRole = await RoomUserRole.findOne({ name: 'Member' });
-        if (!roomUserRole) {
-            throw new ControllerError(500, 'RoomUserRole not found');
-        }
+        const roomUserRole = await neodeInstance.model('RoomUserRole').find('Member');
+        if (!roomUserRole) throw new ControllerError(500, 'RoomUserRole not found');
 
-        const savedUser = await User.findOne({ uuid: user_uuid });
-        if (!savedUser) {
-            throw new ControllerError(404, 'User not found');
-        }
+        const userInstance = await neodeInstance.model('User').find(user_uuid);
+        if (!userInstance) throw new ControllerError(404, 'User not found');
 
-        await new RoomUser({
-            uuid: uuidv4(),
-            room: existing.room._id,
-            user: savedUser._id,
-            room_user_role: roomUserRole._id,
-        }).save();
+        const session = neodeInstance.session();
+        session.writeTransaction(async (transaction) => {
+            await transaction.run(
+                `MATCH (u:User {uuid: $user_uuid})
+                 MATCH (r:Room {uuid: $room_uuid})
+                 MATCH (rur:RoomUserRole {name: 'Member'})
+                 CREATE (ru:RoomUser {uuid: $room_user_uuid})
+                 CREATE (ru)-[:HAS_USER]->(u)
+                 CREATE (ru)-[:HAS_ROOM]->(r)
+                 CREATE (ru)-[:HAS_ROLE]->(rur)
+                `,
+                { user_uuid, room_uuid: room.uuid, room_user_uuid: uuidv4() }
+            );
+        });
+        
+        const roomJoinSettings = roomInstance.get('room_join_settings').endNode().properties();
+        const roomJoinSettingsInstance = await neodeInstance.model('RoomJoinSettings').find(roomJoinSettings.uuid);
 
-        let channelId = existing.room.room_join_settings?.join_channel?._id;
+        let channelId = roomJoinSettingsInstance.get('join_channel')?.endNode()?.properties()?.uuid;
         if (!channelId) {
-            const channels = await Channel.find({ room: existing.room._id });
-            if (channels.length > 0) {
-                channelId = channels[0]._id;
+            const channelResult = await ChannelService.findAll({ room_uuid: room.uuid, user });
+            if (channelResult.data.length > 0) {
+                channelId = channelResult.data[0].uuid;
             }
         }
 
         if (channelId) {
-            // Check if {name} is in the message
-            let body = existing.room.room_join_settings.join_message;
-            if (body.includes('{name}')) {
-                // replace {name} with the user's username
-                body = body.replace('{name}', savedUser.username);
-            }
-            const channelMessageType = await ChannelMessageType.findOne({ name: 'System' });
-            await new ChannelMessage({
-                uuid: uuidv4(),
-                channel: channelId,
-                channel_message_type: channelMessageType._id,
-                body,
-            }).save();
+            const username = userInstance.properties().username;
+            const joinMessage = roomJoinSettings.join_message;
+            const body = joinMessage.includes('{name}') 
+                ? joinMessage.replace('{name}', username) 
+                : joinMessage;
+
+            const session = neodeInstance.session();
+            session.writeTransaction(async (transaction) => {
+                await transaction.run(
+                    `MATCH (u:User {uuid: $user_uuid})
+                     MATCH (c:Channel {uuid: $channel_uuid})
+                     MATCH (cmt:ChannelMessageType {name: 'System'})
+                     CREATE (cm:ChannelMessage {uuid: $channel_message_uuid, body: $body})
+                     CREATE (cm)-[:HAS_CHANNEL_MESSAGE_TYPE]->(cmt)
+                     CREATE (cm)-[:HAS_CHANNEL]->(c)
+                     CREATE (cm)-[:HAS_USER]->(u)
+                    `,
+                    { user_uuid, channel_uuid: channelId, channel_message_uuid: uuidv4(), body }
+                );
+            });
         }
     }
 }
