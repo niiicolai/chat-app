@@ -9,4 +9,6 @@ import './src/relational-based/jobs/file_retention_check.js';
 import './src/relational-based/jobs/message_retention_check.js';
 import './src/relational-based/jobs/mysql_backup.js';
 
+import './src/graph-based/jobs/neo4j_backup.js';
+
 console.log('INFO: Cron background jobs started');
