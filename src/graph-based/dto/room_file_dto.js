@@ -1,27 +1,43 @@
 import userDto from './user_dto.js';
 import channelMessageUploadDto from './channel_message_upload_dto.js';
-import channelMessageDto from './channel_message_dto.js';
+import dateHelper from './_date_helper.js';
 
-export default (entity = {}) => {
+export default (entity = {}, relations=[]) => {
+    const room = relations.find(relation => relation.room)?.room;
+    const roomFileType = relations.find(relation => relation.roomFileType)?.roomFileType;
+    const user = relations.find(relation => relation.user)?.user;
+    const channelMessageUpload = relations.find(relation => relation.channelMessageUpload)?.channelMessageUpload;
+    const channelMessageUploadType = relations.find(relation => relation.channelMessageUploadType)?.channelMessageUploadType;
+    const channelMessage = relations.find(relation => relation.channelMessage)?.channelMessage;
+
     const dto = {
         uuid: entity.uuid,
         src: entity.src,
         size_bytes: entity.size_bytes,
-        size_mb: entity.size_mb,
-        room_file_type_name: entity.room_file_type?.name,
-        room_uuid: entity.room_uuid,
-        created_at: entity.created_at,
-        updated_at: entity.updated_at,
     };
 
-    if (entity.user) res.user = userDto(entity.user);
-    if (entity.channel_message_upload) {
-        entity.channel_message_upload = channelMessageUploadDto(entity.channel_message_upload);
-
-        if (entity.channel_message_upload.channel_message) {
-            entity.channel_message_upload.channel_message = channelMessageDto(entity.channel_message_upload.channel_message);
-        }
+    if (dto.size_bytes) {
+        dto.size_bytes = parseFloat(dto.size_bytes / 1024 / 1024).toFixed(2);
     }
 
-    return dto;
+    if (room) {
+        dto.room_uuid = room.uuid;
+    }
+
+    if (roomFileType) {
+        dto.room_file_type_name = roomFileType.name;
+    }
+
+    if (user) {
+        dto.user = userDto(user);
+    }
+
+    if (channelMessageUpload) {
+        dto.channel_message_upload = channelMessageUploadDto(channelMessageUpload, [ 
+            { channelMessageUploadType },
+            { channelMessage }
+        ]);
+    }
+
+    return dateHelper(entity, dto);
 }

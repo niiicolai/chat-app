@@ -11,8 +11,9 @@ export default {
     room: {
         type: 'relationship',
         target: 'Room',
-        relationship: 'HAS_INVITE_LINK',
-        direction: 'in',
+        relationship: 'HAS_ROOM',
+        direction: 'out',
+        eager: true
     },
     created_at: {
         type: 'datetime',

@@ -31,12 +31,12 @@ export default class RoomSeeder {
             updated_at: new Date()
         });
 
-        await roomAvatar.relateTo(room, 'room');
+        await room.relateTo(roomAvatar, 'room_avatar');
         await roomAvatar.relateTo(roomAvatarFile, 'room_file');
 
         const roomJoinSettings = await neodeInstance.model('RoomJoinSettings').create({
             uuid: data.room.room_join_settings.uuid,
-            join_message: "Welcome to the room!",
+            join_message: "{name} joined the room!",
             created_at: new Date(),
             updated_at: new Date()
         });

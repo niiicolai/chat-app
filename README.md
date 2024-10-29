@@ -57,11 +57,11 @@ After starting the Docker compose, the application will be available at http://1
 |                        | Indexes                             | [x]     |
 |                        | Transactions                        | [x]     |
 |                        | Granular User Permissions           | [x]     |
-|                        | Migration                           | [ ]     |
-|                        | Seeding                             | [ ]     |
+|                        | Migration                           | [x]     |
+|                        | Seeding                             | [x]     |
 |                        | Backup                              | [x]     |
 |                        | MongoDB                             | [x]     |
-|                        | Neo4j                               | [ ]     |
+|                        | Neo4j                               | [x]     |
 | **Docker**             | Dockerfile                          | [x]     |
 |                        | Docker Compose                      | [x]     |
 | **CI/CD**              | GitHub Actions                      | [x]     |
@@ -127,21 +127,28 @@ npm run sequelize:migrate           # Execute migration files to update the data
 npm run sequelize:migrate:undo      # Revert the most recent migration
 npm run sequelize:migrate:undo:all  # Revert all migrations
 npm run sequelize:migrate:generate  # Create a new migration file with a timestamp
-npm run sequelize:seed              # Run seed files to populate the database with initial data
+npm run sequelize:seed              # Run seed files to populate the relational database with initial data
 npm run sequelize:seed:undo         # Revert the most recent seed operation
 npm run sequelize:seed:generate     # Create a new seed file with a timestamp
 ```
 
 ### Mongoose
 ```bash
-npm run mongoose:seed               # Run seed files to populate the database with initial data
+npm run mongoose:seed               # Run seed files to populate the document database with initial data
 npm run mongoose:seed:undo          # Revert all seeded data
 ```
 
-### Setup DBs
+### Neode
+```bash
+npm run neode:seed                  # Run seed files to populate the graph database with initial data
+npm run neode:seed:undo             # Revert all seeded data
+```
+
+### Setup/Override DBs
 ```bash
 npm run db:override                 # Override the existing MySQL using ./MySQL_Script.sql
                                     # & Seed the existing MongoDB.
+                                    # & Seed the existing Neo4j.
 ```
 
 ### API Docs

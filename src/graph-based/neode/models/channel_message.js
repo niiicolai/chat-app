@@ -11,8 +11,9 @@ export default {
     channel: {
         type: 'relationship',
         target: 'Channel',
-        relationship: 'HAS_CHANNEL_MESSAGE',
+        relationship: 'HAS_CHANNEL',
         direction: 'out',
+        eager: true
     },
     channel_message_type: {
         type: 'relationship',
@@ -26,18 +27,21 @@ export default {
         target: 'ChannelMessageUpload',
         relationship: 'HAS_CHANNEL_MESSAGE_UPLOAD',
         direction: 'out',
+        eager: true
     },
     channel_webhook_message: {
         type: 'relationship',
         target: 'ChannelWebhookMessage',
         relationship: 'HAS_CHANNEL_WEBHOOK_MESSAGE',
         direction: 'out',
+        eager: true
     },
     user: {
         type: 'relationship',
         target: 'User',
         relationship: 'HAS_USER',
         direction: 'out',
+        eager: true
     },
     created_at: {
         type: 'datetime',

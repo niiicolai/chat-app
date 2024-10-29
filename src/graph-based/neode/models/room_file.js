@@ -24,6 +24,7 @@ export default {
         target: 'Room',
         relationship: 'HAS_ROOM',
         direction: 'out',
+        eager: true
     },
     room_avatar: {
         type: 'relationship',

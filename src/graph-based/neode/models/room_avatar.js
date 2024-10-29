@@ -8,13 +8,15 @@ export default {
         type: 'relationship',
         target: 'Room',
         relationship: 'HAS_ROOM',
-        direction: 'out',
+        direction: 'in',
+        eager: true
     },
     room_file: {
         type: 'relationship',
         target: 'RoomFile',
         relationship: 'HAS_ROOM_FILE',
         direction: 'out',
+        eager: true
     },
     created_at: {
         type: 'datetime',

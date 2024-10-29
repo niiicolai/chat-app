@@ -58,7 +58,7 @@ export default {
         type: 'relationship',
         target: 'RoomAvatar',
         relationship: 'HAS_ROOM_AVATAR',
-        direction: 'in',
+        direction: 'out',
         eager: true
     },
     room_files: {

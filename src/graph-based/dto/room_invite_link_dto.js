@@ -1,11 +1,10 @@
+import dateHelper from './_date_helper.js';
 
 export default (entity = {}) => {
-    return {
+    return dateHelper(entity, {
         uuid: entity.uuid,
         room_uuid: entity.room_uuid,
-        expires_at: entity.expires_at,
-        never_expires: entity.never_expires,
-        created_at: entity.created_at,
-        updated_at: entity.updated_at,
-    };
+        expires_at: entity.expires_at || null,
+        never_expires: (entity.expires_at === null || entity.expires_at === undefined),
+    });
 }

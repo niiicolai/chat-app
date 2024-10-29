@@ -12,6 +12,8 @@ import { v4 as uuidv4 } from 'uuid';
 const SALT_ROUNDS = 10;
 const uploader = new UserAvatarUploader();
 
+console.error('TODO: implement destroy relations in user_service.js destroy method');
+
 class UserService extends NeodeBaseFindService {
     constructor() {
         super('uuid', 'User', dto);

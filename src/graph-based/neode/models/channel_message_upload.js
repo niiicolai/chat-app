@@ -7,8 +7,9 @@ export default {
     room_file: {
         type: 'relationship',
         target: 'RoomFile',
-        relationship: 'HAS_CHANNEL_MESSAGE_UPLOAD',
+        relationship: 'HAS_ROOM_FILE',
         direction: 'out',
+        eager: true
     },
     channel_message_upload_type: {
         type: 'relationship',
@@ -20,7 +21,7 @@ export default {
     channel_message: {
         type: 'relationship',
         target: 'ChannelMessage',
-        relationship: 'HAS_CHANNEL_MESSAGE_UPLOAD',
+        relationship: 'HAS_CHANNEL_MESSAGE',
         direction: 'in',
     },
     created_at: {

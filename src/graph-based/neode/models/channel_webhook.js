@@ -17,12 +17,14 @@ export default {
         target: 'Channel',
         relationship: 'HAS_CHANNEL',
         direction: 'out',
+        eager: true
     },
     room_file: {
         type: 'relationship',
         target: 'RoomFile',
         relationship: 'HAS_CHANNEL_FILE',
         direction: 'out',
+        eager: true
     },
     created_at: {
         type: 'datetime',

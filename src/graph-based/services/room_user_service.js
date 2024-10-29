@@ -5,6 +5,9 @@ import NeodeBaseFindService from './neode_base_find_service.js';
 import neodeInstance from '../neode/index.js';
 import neo4j from 'neo4j-driver';
 
+console.error('TODO: implement update in room_user_service.js');
+console.error('TODO: implement destroy in room_user_service.js');
+
 class Service extends NeodeBaseFindService {
     constructor() {
         super('uuid', 'RoomUser', dto);

@@ -71,14 +71,17 @@ class RoomPermissionService {
         const roomInstance = channelInstance.get('room').endNode();
         const room_uuid = roomInstance.properties().uuid;
 
-        const roomUserInstance = await neodeInstance.cypher(
-            'MATCH (u:User {uuid: $user_uuid})-[r:IN_ROOM]->(room:Room {uuid: $room_uuid}) RETURN r',
+        const result = await neodeInstance.cypher(
+            'MATCH (ru:RoomUser)-[:HAS_USER]->(u:User {uuid: $user_uuid}) ' +
+            'MATCH (ru)-[:HAS_ROLE]->(rur:RoomUserRole) ' +
+            'MATCH (ru)-[:HAS_ROOM]->(r:Room {uuid: $room_uuid}) ' +
+            'RETURN ru, rur',
             { user_uuid, room_uuid }
         )
-        if (!roomUserInstance) return false;
+        if (result.records.length === 0) return false;
 
-        const roleInstance = await roomUserInstance.get('room_user_role').endNode();
-        const role = roleInstance.properties().name;
+        const roleInstance = result.records[0].get('rur');
+        const role = roleInstance.properties.name;
         if (options.role_name && role !== options.role_name) return false;
 
         return true;
@@ -96,8 +99,15 @@ class RoomPermissionService {
 
         const roomFileSettingsInstance = await roomInstance.get('room_file_settings').endNode();
         const total_files_bytes_allowed = roomFileSettingsInstance.properties().total_files_bytes_allowed;
-  
-        const roomFiles = await roomInstance.relationships('HAS_ROOM_FILE');
+        
+        const result = await neodeInstance.cypher(
+            `MATCH (r:Room {uuid: $room_uuid})-[:HAS_ROOM_FILE]->(rf:RoomFile)
+             RETURN rf`,
+            { room_uuid }
+        );
+        if (!result.records.length) return false;
+
+        const roomFiles = result.records.map(record => record.get('rf'));
         const totalBytes = roomFiles.reduce((acc, file) => acc + file.properties().size, 0);
         const exceeds = totalBytes + bytes > total_files_bytes_allowed;
 
@@ -135,7 +145,13 @@ class RoomPermissionService {
         const roomUserSettingsInstance = await roomInstance.get('room_user_settings').endNode();
         const max_users = roomUserSettingsInstance.properties().max_users;
 
-        const roomUsers = await roomInstance.relationships('HAS_ROOM_USER');
+        const result = await neodeInstance.cypher(
+            `MATCH (r:Room {uuid: $room_uuid})-[:HAS_USER]->(u:User)
+             RETURN u`,
+            { room_uuid }
+        );
+        if (!result.records.length) return false;
+        const roomUsers = result.records.map(record => record.get('u'));
         const exceeds = roomUsers.length + add_count > max_users;
 
         return exceeds;
@@ -154,7 +170,13 @@ class RoomPermissionService {
         const roomChannelSettingsInstance = await roomInstance.get('room_channel_settings').endNode();
         const max_channels = roomChannelSettingsInstance.properties().max_channels;
 
-        const roomChannels = await roomInstance.relationships('HAS_CHANNEL');
+        const result = await neodeInstance.cypher(
+            `MATCH (r:Room {uuid: $room_uuid})-[:HAS_CHANNEL]->(c:Channel)
+             RETURN c`,
+            { room_uuid }
+        );
+        if (!result.records.length) return false;
+        const roomChannels = result.records.map(record => record.get('c'));
         const exceeds = roomChannels.length + add_count > max_channels;
 
         return exceeds;
