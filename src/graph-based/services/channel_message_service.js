@@ -3,7 +3,7 @@ import StorageService from '../../shared/services/storage_service.js';
 import RoomPermissionService from './room_permission_service.js';
 import dto from '../dto/channel_message_dto.js';
 import neodeInstance from '../neode/index.js';
-import neo4j from 'neo4j-driver';
+import NeodeBaseFindService from './neode_base_find_service.js';
 import { v4 as uuidv4 } from 'uuid';
 import { getUploadType } from '../../shared/utils/file_utils.js';
 import { broadcastChannel } from '../../../websocket_server.js';
@@ -12,7 +12,11 @@ const storage = new StorageService('channel_message_upload');
 
 console.error('TODO: findOne in channel_message_service.js doesn\'t return the upload');
 
-class Service {
+class Service extends NeodeBaseFindService {
+
+    constructor() {
+        super('uuid', 'ChannelMessage', dto);
+    }
 
     async findOne(options = { uuid: null, user: null }) {
         if (!options) throw new ControllerError(400, 'No options provided');
@@ -52,79 +56,37 @@ class Service {
         if (!options.user) throw new ControllerError(500, 'No user provided');
         if (!options.user.sub) throw new ControllerError(500, 'No user.sub provided');
 
-        const { channel_uuid, user } = options;
-        let { page, limit } = options;
+        const { channel_uuid, user, page, limit } = options;
 
         if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid, user, role_name: null }))) {
             throw new ControllerError(403, 'User is not in the room');
         }
 
-        if (page && isNaN(page)) throw new ControllerError(400, 'page must be a number');
-        if (page && page < 1) throw new ControllerError(400, 'page must be greater than 0');
-        if (limit && limit < 1) throw new ControllerError(400, 'limit must be greater than 0');
-        if (limit && isNaN(limit)) throw new ControllerError(400, 'limit must be a number');
-        if (page && !limit) throw new ControllerError(400, 'page requires limit');
-        if (page) page = parseInt(page);
-        if (limit) limit = parseInt(limit);
-
-        const props = { channel_uuid };
-        let cypher = 
-            `MATCH (cm:ChannelMessage)-[:HAS_CHANNEL]->(c:Channel {uuid: $channel_uuid}) ` +
-            `MATCH (cm)-[:HAS_CHANNEL_MESSAGE_TYPE]->(cmt:ChannelMessageType) ` +
-            `OPTIONAL MATCH (cm)-[:HAS_USER]->(u:User) ` +
-            `OPTIONAL MATCH (cm)-[:HAS_CHANNEL_MESSAGE_UPLOAD]->(cmu:ChannelMessageUpload)-[:HAS_ROOM_FILE]->(rf:RoomFile) ` +
-            `OPTIONAL MATCH (cmu)-[:HAS_CHANNEL_MESSAGE_UPLOAD_TYPE]->(cmmut:ChannelMessageUploadType) ` +
-            `OPTIONAL MATCH (cm)-[:HAS_CHANNEL_WEBHOOK_MESSAGE]->(cwm:ChannelWebhookMessage)-[:HAS_CHANNEL_WEBHOOK_MESSAGE_TYPE]->(cwm_type:ChannelWebhookMessageType) ` +
-            `OPTIONAL MATCH (cwm)-[:HAS_CHANNEL_WEBHOOK]->(cw:ChannelWebhook)-[:HAS_CHANNEL_FILE]->(cwrf:RoomFile) ` +
-            `ORDER BY cm.created_at DESC `;
-
-        if (page && limit) {
-            cypher += ' SKIP $skip LIMIT $limit';
-            props.skip = neo4j.int((page - 1) * limit);
-            props.limit = neo4j.int(limit);
-        }
-
-        if (!page && limit) {
-            cypher += ' LIMIT $limit';
-            props.limit = neo4j.int(limit);
-        }
-
-        cypher += ` RETURN cm, cmt, u, cmu, rf, cwm, cwm_type, cw, cwrf, cmmut, c`;
-
-        const dbResult = await neodeInstance.cypher(cypher, props);
-        let data = dbResult.records.map((record) => {
-            const cm = record.get('cm').properties;
-            const rel = [];
-            rel.push({ channelMessageType: record.get('cmt').properties });
-            rel.push({ channel: record.get('c').properties });
-            if (record.get('u')) rel.push({ user: record.get('u').properties });
-            if (record.get('cmu')) rel.push({ channelMessageUpload: record.get('cmu').properties });
-            if (record.get('rf')) rel.push({ roomFile: record.get('rf').properties });
-            if (record.get('cmmut')) rel.push({ channelMessageUploadType: record.get('cmmut').properties });
-            if (record.get('cwm')) rel.push({ channelWebhookMessage: record.get('cwm').properties });
-            if (record.get('cwm_type')) rel.push({ channelWebhookMessageType: record.get('cwm_type').properties });
-            if (record.get('cw')) rel.push({ channelWebhook: record.get('cw').properties });
-            if (record.get('cwrf')) rel.push({ channelWebhookFile: record.get('cwrf').properties });
-            return dto(cm, rel);
-        });
-        data = data.filter((v, i, a) => a.findIndex(t => (t.uuid === v.uuid)) === i);
-
-        const count = await neodeInstance.cypher(
-            `MATCH (cm:ChannelMessage)-[:HAS_CHANNEL]->(:Channel {uuid: $channel_uuid}) ` +
-            `RETURN count(cm) as count`,
-            { channel_uuid }
-        );
-        const total = count.records[0].get('count').low;
-        const result = { data, total };
-
-        if (page && limit) {
-            result.page = page;
-            result.pages = Math.ceil(total / limit);
-        }
-
-        if (limit) result.limit = limit;
-
-        return result;
+        return super.findAll({ page, limit, override: {
+            match: [
+                'MATCH (cm:ChannelMessage)-[:HAS_CHANNEL]->(c:Channel {uuid: $channel_uuid})',
+                'MATCH (cm)-[:HAS_CHANNEL_MESSAGE_TYPE]->(cmt:ChannelMessageType)',
+                'OPTIONAL MATCH (cm)-[:HAS_USER]->(u:User)',
+                'OPTIONAL MATCH (cm)-[:HAS_CHANNEL_MESSAGE_UPLOAD]->(cmu:ChannelMessageUpload)-[:HAS_ROOM_FILE]->(rf:RoomFile)',
+                'OPTIONAL MATCH (cmu)-[:HAS_CHANNEL_MESSAGE_UPLOAD_TYPE]->(cmmut:ChannelMessageUploadType)',
+                'OPTIONAL MATCH (cm)-[:HAS_CHANNEL_WEBHOOK_MESSAGE]->(cwm:ChannelWebhookMessage)-[:HAS_CHANNEL_WEBHOOK_MESSAGE_TYPE]->(cwm_type:ChannelWebhookMessageType)',
+                'OPTIONAL MATCH (cwm)-[:HAS_CHANNEL_WEBHOOK]->(cw:ChannelWebhook)-[:HAS_CHANNEL_FILE]->(cwrf:RoomFile)',
+            ],
+            return: ['cm', 'cmt', 'u', 'cmu', 'rf', 'cwm', 'cwm_type', 'cw', 'cwrf', 'cmmut', 'c'],
+            map: { model: 'cm', relationships: [
+                { alias: 'cmt', to: 'channelMessageType' },
+                { alias: 'c', to: 'channel' },
+                { alias: 'u', to: 'user' },
+                { alias: 'cmu', to: 'channelMessageUpload' },
+                { alias: 'rf', to: 'roomFile' },
+                { alias: 'cmmut', to: 'channelMessageUploadType' },
+                { alias: 'cwm', to: 'channelWebhookMessage' },
+                { alias: 'cwm_type', to: 'channelWebhookMessageType' },
+                { alias: 'cw', to: 'channelWebhook' },
+                { alias: 'cwrf', to: 'channelWebhookFile' },
+            ]},
+            params: { channel_uuid }
+        }}); 
     }
 
     async create(options = { body: null, file: null, user: null }) {

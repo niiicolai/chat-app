@@ -2,12 +2,16 @@ import ControllerError from '../../shared/errors/controller_error.js';
 import StorageService from '../../shared/services/storage_service.js';
 import RoomPermissionService from './room_permission_service.js';
 import neodeInstance from '../neode/index.js';
+import NeodeBaseFindService from './neode_base_find_service.js';
 import dto from '../dto/channel_dto.js';
-import neo4j from 'neo4j-driver';
 
 const storage = new StorageService('channel_avatar');
 
-class Service {
+class Service extends NeodeBaseFindService {
+
+    constructor() {
+        super('uuid', 'Channel', dto);
+    }
 
     async findOne(options = { uuid: null, user: null }) {
         if (!options) throw new ControllerError(500, 'No options provided');
@@ -36,65 +40,26 @@ class Service {
         if (!options.user) throw new ControllerError(500, 'No user provided');
         if (!options.user.sub) throw new ControllerError(500, 'No user.sub provided');
 
-        const { room_uuid, user } = options;
-        let { page, limit } = options;
+        const { room_uuid, user, page, limit } = options;
 
         if (!(await RoomPermissionService.isInRoom({ room_uuid, user, role_name: null }))) {
             throw new ControllerError(403, 'User is not in the room');
         }
 
-        if (page && isNaN(page)) throw new ControllerError(400, 'page must be a number');
-        if (page && page < 1) throw new ControllerError(400, 'page must be greater than 0');
-        if (limit && limit < 1) throw new ControllerError(400, 'limit must be greater than 0');
-        if (limit && isNaN(limit)) throw new ControllerError(400, 'limit must be a number');
-        if (page && !limit) throw new ControllerError(400, 'page requires limit');
-        if (page) page = parseInt(page);
-        if (limit) limit = parseInt(limit);
-
-        const props = { room_uuid };
-        let cypher = 
-            `MATCH (c:Channel)-[:HAS_ROOM]->(r:Room {uuid: $room_uuid})
-             MATCH (c)-[:HAS_CHANNEL_TYPE]->(ct:ChannelType)
-             OPTIONAL MATCH (c)-[:HAS_CHANNEL_FILE]->(rf:RoomFile)
-             ORDER BY c.created_at DESC`
-
-        if (page && limit) {
-            cypher += ' SKIP $skip LIMIT $limit';
-            props.skip = neo4j.int((page - 1) * limit);
-            props.limit = neo4j.int(limit);
-        }
-
-        if (!page && limit) {
-            cypher += ' LIMIT $limit';
-            props.limit = neo4j.int(limit);
-        }
-
-        cypher += ` RETURN c, r, ct, rf`;
-
-        const dbResult = await neodeInstance.cypher(cypher, props);
-        const data = dbResult.records.map((record) => {
-            const channel = record.get('c').properties;
-            return dto(channel, [
-                { channelType: record.get('ct').properties },
-                { room: record.get('r').properties },
-                { roomFile: record.get('rf') ? record.get('rf').properties : null },
-            ]);
-        });
-        const count = await neodeInstance.cypher(
-            `MATCH (c:Channel)-[:HAS_ROOM]->(r:Room {uuid: $room_uuid}) RETURN count(c)`,
-            { room_uuid }
-        );
-        const total = count.records[0].get('count(c)').toNumber();
-        const result = { data, total };
-
-        if (page && limit) {
-            result.page = page;
-            result.pages = Math.ceil(total / limit);
-        }
-
-        if (limit) result.limit = limit;
-
-        return result;
+        return super.findAll({ page, limit, override: {
+            match: [
+                'MATCH (c:Channel)-[:HAS_ROOM]->(r:Room {uuid: $room_uuid})',
+                'MATCH (c)-[:HAS_CHANNEL_TYPE]->(ct:ChannelType)',
+                'OPTIONAL MATCH (c)-[:HAS_CHANNEL_FILE]->(rf:RoomFile)',
+            ],
+            return: ['c', 'r', 'ct', 'rf'],
+            map: { model: 'c', relationships: [
+                { alias: 'r', to: 'room' },
+                { alias: 'ct', to: 'channelType' },
+                { alias: 'rf', to: 'roomFile' },
+            ]},
+            params: { room_uuid }
+        }}); 
     }
 
     async create(options = { body: null, file: null, user: null }) {

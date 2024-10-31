@@ -73,68 +73,26 @@ class Service extends NeodeBaseFindService {
         if (!options.room_uuid) throw new ControllerError(400, 'No room_uuid provided');
         if (!options.user) throw new ControllerError(500, 'No user provided');
 
-        const { room_uuid, user } = options;
-        let { page, limit } = options;
-
-        if (page && isNaN(page)) throw new ControllerError(400, 'page must be a number');
-        if (page && page < 1) throw new ControllerError(400, 'page must be greater than 0');
-        if (limit && limit < 1) throw new ControllerError(400, 'limit must be greater than 0');
-        if (limit && isNaN(limit)) throw new ControllerError(400, 'limit must be a number');
-        if (page && !limit) throw new ControllerError(400, 'page requires limit');
-        if (page) page = parseInt(page);
-        if (limit) limit = parseInt(limit);
+        const { room_uuid, user, page, limit } = options;
 
         if (!(await RoomPermissionService.isInRoom({ room_uuid, user, role_name: null }))) {
             throw new ControllerError(403, 'User is not in the room');
         }
 
-        let cypher =
-            `MATCH (ru:RoomUser)-[:HAS_USER]->(u:User)
-             MATCH (ru)-[:HAS_ROLE]->(rur:RoomUserRole)
-             MATCH (ru)-[:HAS_ROOM]->(r:Room {uuid: $room_uuid})`;
-
-        const params = { room_uuid };
-
-        if (limit) {
-            cypher += ' LIMIT $limit';
-            params.limit = neo4j.int(limit);
-        }
-
-        if (page && limit) {
-            const offset = ((page - 1) * limit);
-            cypher += ' SKIP $offset';
-            params.offset = neo4j.int(offset);
-        }
-
-        cypher += ' RETURN ru, rur, u';
-
-        const dbResult = await neodeInstance.cypher(cypher, params);
-        const data = dbResult.records.map((record) => {
-            const roomUser = record.get('ru').properties;
-            const role = record.get('rur').properties;
-            const user = record.get('u').properties;
-
-            return this.dto(roomUser, [
-                { room: { uuid: room_uuid } },
-                { user },
-                { room_user_role: role },
-            ]);
-        });
-        const count = await neodeInstance.cypher(
-            `MATCH (ru:RoomUser)-[:HAS_ROOM]->(r:Room {uuid: $room_uuid}) RETURN count(ru)`,
-            { room_uuid }
-        );
-        const total = count.records[0]?.get('count(ru)').low || 0;
-        const result = { data, total };
-
-        if (page) {
-            result.pages = Math.ceil(total / limit);
-            result.page = page;
-        }
-
-        if (limit) result.limit = limit;
-
-        return result;
+        return super.findAll({ page, limit, override: {
+            match: [
+                'MATCH (ru:RoomUser)-[:HAS_USER]->(u:User)',
+                'MATCH (ru)-[:HAS_ROLE]->(rur:RoomUserRole)',
+                'MATCH (ru)-[:HAS_ROOM]->(r:Room {uuid: $room_uuid})'
+            ],
+            return: ['ru', 'rur', 'u', 'r'],
+            map: { model: 'ru', relationships: [
+                { alias: 'r', to: 'room' },
+                { alias: 'u', to: 'user' },
+                { alias: 'rur', to: 'room_user_role' }
+            ]},
+            params: { room_uuid }
+        }}); 
     }
 
     async update(options = { uuid: null, body: null, user: null }) {

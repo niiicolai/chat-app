@@ -78,90 +78,37 @@ class Service extends NeodeBaseFindService {
     async findAll(options = { user: null, page: null, limit: null }) {
         if (!options) throw new ControllerError(500, 'No options provided');
         if (!options.user) throw new ControllerError(500, 'No options.user provided');
+        if (!options.user.sub) throw new ControllerError(500, 'No options.user.sub provided');
 
-        let { user, page, limit } = options;
+        const { user, page, limit } = options;
 
-        if (page && isNaN(page)) throw new ControllerError(400, 'page must be a number');
-        if (page && page < 1) throw new ControllerError(400, 'page must be greater than 0');
-        if (limit && limit < 1) throw new ControllerError(400, 'limit must be greater than 0');
-        if (limit && isNaN(limit)) throw new ControllerError(400, 'limit must be a number');
-        if (page && !limit) throw new ControllerError(400, 'page requires limit');
-        if (page) page = parseInt(page);
-        if (limit) limit = parseInt(limit);
-
-        const userInstance = await neodeInstance.model('User').find(user.sub);
-        if (!userInstance) throw new ControllerError(404, 'User not found');
-
-        let cypher = `
-            MATCH (ru:RoomUser)-[:HAS_USER]->(u:User {uuid: $user_uuid})
-            MATCH (ru)-[:HAS_ROOM]->(r:Room)
-            MATCH (r)-[:HAS_CATEGORY]->(rc:RoomCategory)
-            MATCH (r)-[:HAS_FILE_SETTINGS]->(rfs:RoomFileSettings)
-            MATCH (r)-[:HAS_USER_SETTINGS]->(rus:RoomUserSettings)
-            MATCH (r)-[:HAS_CHANNEL_SETTINGS]->(rcs:RoomChannelSettings)
-            MATCH (r)-[:HAS_RULES_SETTINGS]->(rrs:RoomRulesSettings)
-            MATCH (r)-[:HAS_JOIN_SETTINGS]->(rjs:RoomJoinSettings)
-            OPTIONAL MATCH (ra:RoomAvatar)-[:HAS_ROOM]->(r)
-            OPTIONAL MATCH (ra)-[:HAS_ROOM_FILE]->(raf:RoomFile)
-        `;
-
-        const params = { user_uuid: user.sub };
-
-        if (limit) {
-            cypher += ' LIMIT $limit';
-            params.limit = neo4j.int(limit);
-        }
-
-        if (page && limit) {
-            const offset = ((page - 1) * limit);
-            cypher += ' SKIP $offset';
-            params.offset = neo4j.int(offset);
-        }
-
-        cypher += `
-            ORDER BY r.created_at DESC
-            return u, ru, r, rc, rfs, rus, rcs, rrs, rjs, ra, raf
-        `;
-        
-        const dbResult = await neodeInstance.cypher(cypher, params);
-        const data = dbResult.records.map((m) => {
-            const room = m.get('r').properties;
-            const rel = [
-                { roomCategory: m.get('rc').properties },
-                { roomUser: m.get('ru').properties },
-                { roomFileSettings: m.get('rfs').properties },
-                { roomUserSettings: m.get('rus').properties },
-                { roomChannelSettings: m.get('rcs').properties },
-                { roomRulesSettings: m.get('rrs').properties },
-                { roomJoinSettings: m.get('rjs').properties },
-            ];
-
-            if (m.get('ra')) {
-                rel.push({ roomAvatar: m.get('ra').properties });
-                if (m.get('raf')) {
-                    rel.push({ roomFile: m.get('raf').properties });
-                }
-            }
-
-            return dto(room, rel);
-        });
-        const total = await neodeInstance.cypher(
-            'MATCH (ru:RoomUser)-[:HAS_USER]->(u:User {uuid: $user_uuid}) MATCH (ru)-[:HAS_ROOM]->(r:Room) RETURN count(r) as total',
-            { user_uuid: user.sub }
-        );
-
-        const result = { data, total: total.records[0].get('total').low };
-
-        if (page && limit) {
-            result.pages = Math.ceil(result.total / limit);
-            result.page = page;
-        }
-
-        if (limit) {
-            result.limit = limit;
-        }
-
-        return result;
+        return super.findAll({ page, limit, override: {
+            match: [
+                'MATCH (ru:RoomUser)-[:HAS_USER]->(u:User {uuid: $user_uuid})',
+                'MATCH (ru)-[:HAS_ROOM]->(r:Room)',
+                'MATCH (r)-[:HAS_CATEGORY]->(rc:RoomCategory)',
+                'MATCH (r)-[:HAS_FILE_SETTINGS]->(rfs:RoomFileSettings)',
+                'MATCH (r)-[:HAS_USER_SETTINGS]->(rus:RoomUserSettings)',
+                'MATCH (r)-[:HAS_CHANNEL_SETTINGS]->(rcs:RoomChannelSettings)',
+                'MATCH (r)-[:HAS_RULES_SETTINGS]->(rrs:RoomRulesSettings)',
+                'MATCH (r)-[:HAS_JOIN_SETTINGS]->(rjs:RoomJoinSettings)',
+                'OPTIONAL MATCH (ra:RoomAvatar)-[:HAS_ROOM]->(r)',
+                'OPTIONAL MATCH (ra)-[:HAS_ROOM_FILE]->(raf:RoomFile)'
+            ],
+            return: ['r', 'ru', 'rc', 'rfs', 'rus', 'rcs', 'rrs', 'rjs', 'ra', 'raf'],
+            map: { model: 'r', relationships: [
+                { alias: 'ru', to: 'roomUser' },
+                { alias: 'rc', to: 'roomCategory' },
+                { alias: 'rfs', to: 'roomFileSettings' },
+                { alias: 'rus', to: 'roomUserSettings' },
+                { alias: 'rcs', to: 'roomChannelSettings' },
+                { alias: 'rrs', to: 'roomRulesSettings' },
+                { alias: 'rjs', to: 'roomJoinSettings' },
+                { alias: 'ra', to: 'roomAvatar' },
+                { alias: 'raf', to: 'roomFile' }
+            ]},
+            params: { user_uuid: user.sub }
+        }}); 
     }
 
     async create(options = { body: null, file: null, user: null }) {

@@ -2,12 +2,16 @@ import ControllerError from '../../shared/errors/controller_error.js';
 import StorageService from '../../shared/services/storage_service.js';
 import RoomPermissionService from './room_permission_service.js';
 import neodeInstance from '../neode/index.js';
+import NeodeBaseFindService from './neode_base_find_service.js';
 import dto from '../dto/room_file_dto.js';
-import neo4j from 'neo4j-driver';
 
 const storage = new StorageService('room_file');
 
-class Service {
+class Service extends NeodeBaseFindService {
+
+    constructor() {
+        super('uuid', 'RoomFile', dto);
+    }
 
     async findOne(options = { uuid: null, user: null }) {
         if (!options) throw new ControllerError(500, 'No options provided');
@@ -39,71 +43,32 @@ class Service {
         if (!options.user) throw new ControllerError(500, 'No user provided');
         if (!options.user.sub) throw new ControllerError(500, 'No user.sub provided');
 
-        const { room_uuid, user } = options;
-        let { page, limit } = options;
+        const { room_uuid, user, page, limit } = options;
 
         if (!(await RoomPermissionService.isInRoom({ room_uuid, user, role_name: null }))) {
             throw new ControllerError(403, 'User is not in the room');
         }
 
-        if (page && isNaN(page)) throw new ControllerError(400, 'page must be a number');
-        if (page && page < 1) throw new ControllerError(400, 'page must be greater than 0');
-        if (limit && limit < 1) throw new ControllerError(400, 'limit must be greater than 0');
-        if (limit && isNaN(limit)) throw new ControllerError(400, 'limit must be a number');
-        if (page && !limit) throw new ControllerError(400, 'page requires limit');
-        if (page) page = parseInt(page);
-        if (limit) limit = parseInt(limit);
-
-        const props = { room_uuid };
-        let cypher = 
-            `MATCH (rf:RoomFile)-[:HAS_ROOM]->(r:Room { uuid: $room_uuid }) ` +
-            `MATCH (rf)-[:HAS_ROOM_FILE_TYPE]->(ct:RoomFileType) ` +
-            `OPTIONAL MATCH (cmu:ChannelMessageUpload)-[:HAS_ROOM_FILE]->(rf) ` +
-            `OPTIONAL MATCH (cmu)-[:HAS_CHANNEL_MESSAGE_UPLOAD_TYPE]->(cmt) ` +
-            `OPTIONAL MATCH (cm:ChannelMessage)-[:HAS_CHANNEL_MESSAGE_UPLOAD]->(cmu) ` +
-            `OPTIONAL MATCH (u:User)-[:HAS_CHANNEL_MESSAGE]->(cm) ` +
-            `ORDER BY rf.created_at DESC`
-
-        if (page && limit) {
-            cypher += ' SKIP $skip LIMIT $limit';
-            props.skip = neo4j.int((page - 1) * limit);
-            props.limit = neo4j.int(limit);
-        }
-
-        if (!page && limit) {
-            cypher += ' LIMIT $limit';
-            props.limit = neo4j.int(limit);
-        }
-
-        cypher += ` RETURN rf, r, ct, cmu, cmt, cm, u`;
-
-        const dbResult = await neodeInstance.cypher(cypher, props);
-        const data = dbResult.records.map(record => {
-            const rf = record.get('rf').properties;
-            const rel = [];
-            if (record.get('r')) rel.push({ room: record.get('r').properties });
-            if (record.get('ct')) rel.push({ roomFileType: record.get('ct').properties });
-            if (record.get('u')) rel.push({ user: record.get('u').properties });
-            if (record.get('cmu')) rel.push({ channelMessageUpload: record.get('cmu').properties });
-            if (record.get('cmt')) rel.push({ channelMessageUploadType: record.get('cmt').properties });
-            if (record.get('cm')) rel.push({ channelMessage: record.get('cm').properties });
-            return dto(rf, rel);
-        });
-        const count = await neodeInstance.cypher(
-            `MATCH (rf:RoomFile)-[:HAS_ROOM]->(r:Room { uuid: $room_uuid }) ` +
-            `RETURN COUNT(rf) AS count`, { room_uuid }
-        );
-        const total = count.records[0].get('count').low;
-        const result = { data, total };
-
-        if (page && limit) {
-            result.page = page;
-            result.pages = Math.ceil(total / limit);
-        }
-
-        if (limit) result.limit = limit;
-
-        return result;
+        return super.findAll({ page, limit, override: {
+            match: [
+                'MATCH (rf:RoomFile)-[:HAS_ROOM]->(r:Room { uuid: $room_uuid })',
+                'MATCH (rf)-[:HAS_ROOM_FILE_TYPE]->(ct:RoomFileType)',
+                'OPTIONAL MATCH (cmu:ChannelMessageUpload)-[:HAS_ROOM_FILE]->(rf)',
+                'OPTIONAL MATCH (cmu)-[:HAS_CHANNEL_MESSAGE_UPLOAD_TYPE]->(cmt)',
+                'OPTIONAL MATCH (cm:ChannelMessage)-[:HAS_CHANNEL_MESSAGE_UPLOAD]->(cmu)',
+                'OPTIONAL MATCH (u:User)-[:HAS_CHANNEL_MESSAGE]->(cm)',
+            ],
+            return: ['rf', 'r', 'ct', 'cmu', 'cmt', 'cm', 'u'],
+            map: { model: 'rf', relationships: [
+                { alias: 'r', to: 'room' },
+                { alias: 'ct', to: 'roomFileType' },
+                { alias: 'u', to: 'user' },
+                { alias: 'cmu', to: 'channelMessageUpload' },
+                { alias: 'cmt', to: 'channelMessageUploadType' },
+                { alias: 'cm', to: 'channelMessage' }
+            ]},
+            params: { room_uuid }
+        }}); 
     }
 
     async destroy(options = { uuid: null, user: null }) {

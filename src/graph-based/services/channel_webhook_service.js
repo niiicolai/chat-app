@@ -3,13 +3,17 @@ import StorageService from '../../shared/services/storage_service.js';
 import RoomPermissionService from './room_permission_service.js';
 import dto from '../dto/channel_webhook_dto.js';
 import neodeInstance from '../neode/index.js';
-import neo4j from 'neo4j-driver';
+import NeodeBaseFindService from './neode_base_find_service.js';
 import { broadcastChannel } from '../../../websocket_server.js';
 import { v4 as uuidv4 } from 'uuid';
 
 const storage = new StorageService('channel_avatar');
 
-class Service {
+class Service extends NeodeBaseFindService {
+
+    constructor() {
+        super('uuid', 'ChannelWebhook', dto);
+    }
 
     async findOne(options = { uuid: null, user: null }) {
         if (!options) throw new ControllerError(500, 'No options provided');
@@ -42,68 +46,27 @@ class Service {
         if (!options.user) throw new ControllerError(500, 'No user provided');
         if (!options.user.sub) throw new ControllerError(500, 'No user.sub provided');
 
-        const { room_uuid, user } = options;
-        let { page, limit } = options;
+        const { room_uuid, user, page, limit } = options;
 
         if (!(await RoomPermissionService.isInRoom({ room_uuid, user, role_name: null }))) {
             throw new ControllerError(403, 'User is not in the room');
         }
 
-        if (page && isNaN(page)) throw new ControllerError(400, 'page must be a number');
-        if (page && page < 1) throw new ControllerError(400, 'page must be greater than 0');
-        if (limit && limit < 1) throw new ControllerError(400, 'limit must be greater than 0');
-        if (limit && isNaN(limit)) throw new ControllerError(400, 'limit must be a number');
-        if (page && !limit) throw new ControllerError(400, 'page requires limit');
-        if (page) page = parseInt(page);
-        if (limit) limit = parseInt(limit);
-
-        const props = { room_uuid };
-        let cypher = 
-            `MATCH (c:Channel)-[:HAS_ROOM]->(r:Room { uuid: $room_uuid }) ` +
-            `MATCH (cw:ChannelWebhook)-[:HAS_CHANNEL]->(c) ` +
-            `OPTIONAL MATCH (cw)-[:HAS_ROOM_FILE]->(rf:RoomFile) ` +
-            `OPTIONAL MATCH (rf)-[:HAS_ROOM_FILE_TYPE]->(ct:RoomFileType) ` +
-            `ORDER BY cw.created_at DESC`;
-
-        if (page && limit) {
-            cypher += ' SKIP $skip LIMIT $limit';
-            props.skip = neo4j.int((page - 1) * limit);
-            props.limit = neo4j.int(limit);
-        }
-
-        if (!page && limit) {
-            cypher += ' LIMIT $limit';
-            props.limit = neo4j.int(limit);
-        }
-
-        cypher += ` RETURN cw, c, rf, ct`;
-
-        const dbResult = await neodeInstance.cypher(cypher, props);
-        const data = dbResult.records.map((record) => {
-            const cw = record.get('cw').properties;
-            const rel = [];
-            if (record.get('c')) rel.push({ channel: record.get('c').properties });
-            if (record.get('rf')) rel.push({ roomFile: record.get('rf').properties });
-            if (record.get('ct')) rel.push({ roomFileType: record.get('ct').properties });
-            return dto(cw, rel);
-        });
-        const count = await neodeInstance.cypher(
-            `MATCH (r:Room { uuid: $room_uuid })-[:HAS_CHANNEL]->(c:Channel) ` +
-            `MATCH (cw:ChannelWebhook)-[:HAS_CHANNEL]->(c) ` +
-            `RETURN COUNT(cw) AS count`,
-            { room_uuid }
-        );
-        const total = count.records[0].get('count').toNumber();
-        const result = { data, total };
-
-        if (page && limit) {
-            result.page = page;
-            result.pages = Math.ceil(total / limit);
-        }
-
-        if (limit) result.limit = limit;
-
-        return result;
+        return super.findAll({ page, limit, override: {
+            match: [
+                'MATCH (c:Channel)-[:HAS_ROOM]->(r:Room { uuid: $room_uuid })',
+                'MATCH (cw:ChannelWebhook)-[:HAS_CHANNEL]->(c)',
+                'OPTIONAL MATCH (cw)-[:HAS_ROOM_FILE]->(rf:RoomFile)',
+                'OPTIONAL MATCH (rf)-[:HAS_ROOM_FILE_TYPE]->(ct:RoomFileType)',
+            ],
+            return: ['cw', 'c', 'rf', 'ct'],
+            map: { model: 'cw', relationships: [
+                { alias: 'c', to: 'channel' },
+                { alias: 'rf', to: 'roomFile' },
+                { alias: 'ct', to: 'roomFileType' },
+            ]},
+            params: { room_uuid }
+        }}); 
     }
 
     async create(options = { body: null, file: null, user: null }) {
