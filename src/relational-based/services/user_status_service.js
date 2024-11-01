@@ -26,7 +26,7 @@ class Service {
         const { body, user_uuid } = options;
         let { message, user_status_state } = body;
 
-        if (!user) {
+        if (!user_uuid) {
             throw new ControllerError(500, 'No user provided');
         }
 
@@ -43,13 +43,13 @@ class Service {
             user_status_state = existing.user_status_state;
         }
 
-        await db.sequelize.query('CALL update_user_status_proc(:user_uuid, :user_status_state, :message, :last_seen_at, :total_online_time, @result)', {
+        await db.sequelize.query('CALL update_user_status_proc(:user_uuid, :user_status_state, :message, :last_seen_at, :user_status_total_online_hours, @result)', {
             replacements: {
                 user_uuid,
                 user_status_state,
                 message,
-                last_seen_at: existing.last_seen_at,
-                total_online_time: existing.total_online_time,
+                last_seen_at: existing.user_status_last_seen_at,
+                user_status_total_online_hours: existing.user_status_total_online_hours,
             },
         });
 

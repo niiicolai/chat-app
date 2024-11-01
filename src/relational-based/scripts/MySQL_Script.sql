@@ -1548,11 +1548,11 @@ CREATE PROCEDURE update_user_status_proc(
     IN status_state_name_input VARCHAR(255),
     IN status_message_input TEXT,
     IN status_last_seen_at DATETIME,
-    IN status_total_online_time BIGINT, 
+    IN status_total_online_hours_input BIGINT, 
     OUT result BOOLEAN
 )
 BEGIN
-    UPDATE UserStatus SET user_status_state_name = status_state_name_input, message = status_message_input, last_seen_at = status_last_seen_at, total_online_time = status_total_online_time WHERE user_uuid = user_uuid_input;
+    UPDATE UserStatus SET user_status_state_name = status_state_name_input, message = status_message_input, last_seen_at = status_last_seen_at, total_online_hours = status_total_online_hours_input WHERE user_uuid = user_uuid_input;
     SET result = TRUE;
 END //
 DELIMITER ;

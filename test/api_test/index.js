@@ -27,7 +27,7 @@ if (!command) {
     process.exit(1);
 }
 
-if ([ "mysql", "mongodb", "neo4j" ].indexOf(command) === -1) {
+if ([ "all", "mysql", "mongodb", "neo4j" ].indexOf(command) === -1) {
     console.log("Invalid command. Please use 'all' or 'mysql' or 'mongodb' or 'neo4j'");
     process.exit(1);
 }
