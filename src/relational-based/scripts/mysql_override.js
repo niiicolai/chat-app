@@ -1,4 +1,5 @@
 import 'dotenv/config'
+import path from 'path';
 import { exec } from 'child_process';
 
 export async function overrideMySQL() {
@@ -15,7 +16,9 @@ export async function overrideMySQL() {
     if (!dbConfig.host) console.error('ROOT_MYSQL_HOST is not set in .env');
     if (!dbConfig.database) console.error('ROOT_MYSQL_DATABASE is not set in .env');
 
-    const mysqlScript = './MySQL_Script.sql';
+    const dir = path.resolve('src', 'relational-based', 'scripts');
+    const mysqlScript = path.join(dir, 'MySQL_Script.sql');
+    
     const mysqlCommand = `mysql --user=${dbConfig.username} --password=${dbConfig.password} --host=${dbConfig.host} --port=${dbConfig.port} ${dbConfig.database} < ${mysqlScript}`;
     exec(mysqlCommand, (error, stdout, stderr) => {
         if (error) {

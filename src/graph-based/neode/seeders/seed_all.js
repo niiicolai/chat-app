@@ -45,5 +45,4 @@ export const execute = async (command) => {
 
     console.log(`${now} - Finished ${command} on all seeders`);
     console.log(`Total time: ${new Date() - now}ms`);
-    process.exit(0);
 }

@@ -178,11 +178,13 @@ class Service extends MysqlBaseFindService {
             throw new ControllerError(500, 'No user provided');
         }
 
+        await service.findOne({ uuid, user });
+
         if (!(await RoomPermissionService.isInRoom({ room_uuid: uuid, user, role_name: 'Admin' }))) {
             throw new ControllerError(403, 'User is not an admin of the room');
         }
 
-        await service.findOne({ uuid, user });
+        
         await db.sequelize.query('CALL delete_room_proc(:uuid, @result)', {
             replacements: { uuid }
         });
@@ -207,7 +209,7 @@ class Service extends MysqlBaseFindService {
         const existing = await service.findOne({ uuid, user });
 
         if (!join_message) {
-            body.join_message = existing.join_message;
+            body.join_message = existing.joinSettings.join_message;
         } else {
             // Check if the message includes {name}
             if (join_message.includes('{name}')) {
@@ -218,7 +220,7 @@ class Service extends MysqlBaseFindService {
         }
 
         if (!rules_text) {
-            body.rules_text = existing.rules_text;
+            body.rules_text = existing.rulesSettings.rules_text;
         }
 
         if (!join_channel_uuid) {
