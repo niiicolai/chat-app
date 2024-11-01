@@ -1085,14 +1085,6 @@
 			]
 		},
 		{
-			"name": "User Email Verification",
-			"item": []
-		},
-		{
-			"name": "User Password Reset",
-			"item": []
-		},
-		{
 			"name": "Room",
 			"item": [
 				{
@@ -2605,11 +2597,1186 @@
 		},
 		{
 			"name": "Room Invite Link",
-			"item": []
+			"item": [
+				{
+					"name": "Create 400",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 400\", function() {\r",
+									"    pm.response.to.have.status(400);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/room_invite_link",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_invite_link"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create 401",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 401\", function() {\r",
+									"    pm.response.to.have.status(401);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/room_invite_link",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_invite_link"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"const { v4: uuidV4 } = require('uuid');\r",
+									"const room_uuid = pm.environment.get('RoomUuid');\r",
+									"\r",
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									"\r",
+									"pm.environment.set('RoomInviteLinkCreateBody', JSON.stringify({\r",
+									"    uuid: uuidV4(),\r",
+									"    expires_at: null,\r",
+									"    room_uuid\r",
+									"}))\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const responseJSON = pm.response.json();\r",
+									"const roomInviteLinkCreateBody = JSON.parse(\r",
+									"    pm.environment.get('RoomInviteLinkCreateBody'));\r",
+									"\r",
+									"// Set room invite link uuid for later use\r",
+									"pm.environment.set(\"RoomInviteLinkUuid\", responseJSON.uuid);\r",
+									"\r",
+									"pm.test(\"The returned room invite link should match the parameters in the body\", function() {\r",
+									"    pm.expect(responseJSON.uuid).to.equal(roomInviteLinkCreateBody.uuid);\r",
+									"    pm.expect(responseJSON.expires_at).to.equal(roomInviteLinkCreateBody.expires_at);\r",
+									"    pm.expect(responseJSON.room_uuid).to.equal(roomInviteLinkCreateBody.room_uuid);\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"uuid\",\r",
+									"    \"expires_at\",\r",
+									"    \"never_expires\",\r",
+									"    \"room_uuid\",\r",
+									"    \"created_at\",\r",
+									"    \"updated_at\",\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"uuid\", type: \"string\" },\r",
+									"    { prop: \"expires_at\", type: \"null\" },\r",
+									"    { prop: \"never_expires\", type: \"boolean\" },\r",
+									"    { prop: \"room_uuid\", type: \"string\" },\r",
+									"    { prop: \"created_at\", type: \"string\" },\r",
+									"    { prop: \"updated_at\", type: \"string\" },\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{{RoomInviteLinkCreateBody}}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/room_invite_link",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_invite_link"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"const { v4: uuidV4 } = require('uuid');\r",
+									"\r",
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									"\r",
+									"const now = new Date();\r",
+									"const y = now.getFullYear();\r",
+									"const m = ((now.getMonth() + 1) % 12);\r",
+									"const d = now.getDay();\r",
+									"const H = now.getHours();\r",
+									"const M = now.getMinutes();\r",
+									"const S = now.getSeconds();\r",
+									"const expires_at = `${y}-${m}-${d}T${H}:${M}:${S}`;\r",
+									"\r",
+									"pm.environment.set('RoomInviteLinkUpdateBody', JSON.stringify({\r",
+									"    expires_at\r",
+									"}))\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const responseJSON = pm.response.json();\r",
+									"const roomInviteLinkUuid = pm.environment.get('RoomInviteLinkUuid');\r",
+									"const roomInviteLinkUpdateBody = JSON.parse(pm.environment.get('RoomInviteLinkUpdateBody'));\r",
+									"\r",
+									"pm.test(\"The returned room invite link should match the parameters in the body\", function() {\r",
+									"    pm.expect(responseJSON.uuid).to.equal(roomInviteLinkUuid);\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"uuid\",\r",
+									"    \"expires_at\",\r",
+									"    \"never_expires\",\r",
+									"    \"room_uuid\",\r",
+									"    \"created_at\",\r",
+									"    \"updated_at\",\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"uuid\", type: \"string\" },\r",
+									"    { prop: \"expires_at\", type: \"string\" },\r",
+									"    { prop: \"never_expires\", type: \"boolean\" },\r",
+									"    { prop: \"room_uuid\", type: \"string\" },\r",
+									"    { prop: \"created_at\", type: \"string\" },\r",
+									"    { prop: \"updated_at\", type: \"string\" },\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{{RoomInviteLinkUpdateBody}}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/room_invite_link/{{RoomInviteLinkUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_invite_link",
+								"{{RoomInviteLinkUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update 401",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 401\", function() {\r",
+									"    pm.response.to.have.status(401);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{{RoomUpdateBody}}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/room_invite_link/{{RoomInviteLinkUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_invite_link",
+								"{{RoomInviteLinkUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find One 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const responseJSON = pm.response.json();\r",
+									"\r",
+									"[\r",
+									"    \"uuid\",\r",
+									"    \"expires_at\",\r",
+									"    \"never_expires\",\r",
+									"    \"room_uuid\",\r",
+									"    \"created_at\",\r",
+									"    \"updated_at\",\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"uuid\", type: \"string\" },\r",
+									"    { prop: \"expires_at\", type: \"string\" },\r",
+									"    { prop: \"never_expires\", type: \"boolean\" },\r",
+									"    { prop: \"room_uuid\", type: \"string\" },\r",
+									"    { prop: \"created_at\", type: \"string\" },\r",
+									"    { prop: \"updated_at\", type: \"string\" },\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_invite_link/{{RoomInviteLinkUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_invite_link",
+								"{{RoomInviteLinkUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find One 401",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 401\", function() {\r",
+									"    pm.response.to.have.status(401);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_invite_link/{{RoomInviteLinkUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_invite_link",
+								"{{RoomInviteLinkUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find One 404",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 404\", function() {\r",
+									"    pm.response.to.have.status(404);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_invite_link/no_uuid",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_invite_link",
+								"no_uuid"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find All 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const isRoomInviteLinkValid = (roomInviteLink) => {\r",
+									"    [\r",
+									"        \"uuid\",\r",
+									"        \"expires_at\",\r",
+									"        \"never_expires\",\r",
+									"        \"room_uuid\",\r",
+									"        \"created_at\",\r",
+									"        \"updated_at\",\r",
+									"    ].forEach(expected => {\r",
+									"        pm.test(`response must include ${expected} property`, function () {\r",
+									"            pm.expect(roomInviteLink).to.have.property(expected);\r",
+									"        });\r",
+									"    });\r",
+									"\r",
+									"    [\r",
+									"        { prop: \"uuid\", types: [\"string\"] },\r",
+									"        { prop: \"expires_at\", types: [\"object\", \"string\"] },\r",
+									"        { prop: \"never_expires\", types: [\"boolean\"] },\r",
+									"        { prop: \"room_uuid\", types: [\"string\"] },\r",
+									"        { prop: \"created_at\", types: [\"string\"] },\r",
+									"        { prop: \"updated_at\", types: [\"string\"] },\r",
+									"    ].forEach(expected => {\r",
+									"        pm.test(`response property ${expected.prop} must be of type ${expected.types}`, function () {\r",
+									"            pm.expect(expected.types.includes(typeof roomInviteLink[expected.prop]))\r",
+									"                .to.equal(true);\r",
+									"        });\r",
+									"    });\r",
+									"};\r",
+									"\r",
+									"const responseJSON = pm.response.json();\r",
+									"\r",
+									"pm.test(\"reponse must be an object\", function () {\r",
+									"    pm.expect(responseJSON).to.be.an('object');\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"total\",\r",
+									"    \"pages\",\r",
+									"    \"page\",\r",
+									"    \"limit\",\r",
+									"    \"data\"\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"total\", type: \"number\" },\r",
+									"    { prop: \"pages\", type: \"number\" },\r",
+									"    { prop: \"page\", type: \"number\" },\r",
+									"    { prop: \"limit\", type: \"number\" },\r",
+									"    { prop: \"data\", type: \"array\" }\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"pm.test(\"response data items must be valid room invite links\", function () {\r",
+									"    responseJSON.data.forEach(roomInviteLink => isRoomInviteLinkValid(roomInviteLink));\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_invite_links?limit=2&page=1&room_uuid={{RoomUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_invite_links"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "2"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "room_uuid",
+									"value": "{{RoomUuid}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find All 401",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 401\", function() {\r",
+									"    pm.response.to.have.status(401);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_invite_links?limit=2&page=1&room_uuid={{RoomUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_invite_links"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "2"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "room_uuid",
+									"value": "{{RoomUuid}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete 204",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 204\", function() {\r",
+									"    pm.response.to.have.status(204);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_invite_link/{{RoomInviteLinkUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_invite_link",
+								"{{RoomInviteLinkUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete 404",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 404\", function() {\r",
+									"    pm.response.to.have.status(404);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_invite_link/{{RoomInviteLinkUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_invite_link",
+								"{{RoomInviteLinkUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete 401",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 401\", function() {\r",
+									"    pm.response.to.have.status(401);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_invite_link/{{RoomInviteLinkUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_invite_link",
+								"{{RoomInviteLinkUuid}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
 		},
 		{
 			"name": "Room User",
-			"item": []
+			"item": [
+				{
+					"name": "Find All 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const isRoomUserValid = (roomUser) => {\r",
+									"    [\r",
+									"        \"uuid\",\r",
+									"        \"room_user_role_name\",\r",
+									"        \"user_uuid\",\r",
+									"        \"room_uuid\",\r",
+									"        \"created_at\",\r",
+									"        \"updated_at\",\r",
+									"    ].forEach(expected => {\r",
+									"        pm.test(`response must include ${expected} property`, function () {\r",
+									"            pm.expect(roomUser).to.have.property(expected);\r",
+									"        });\r",
+									"    });\r",
+									"\r",
+									"    [\r",
+									"        { prop: \"uuid\", types: [\"string\"] },\r",
+									"        { prop: \"room_user_role_name\", types: [\"string\"] },\r",
+									"        { prop: \"user_uuid\", types: [\"string\"] },\r",
+									"        { prop: \"room_uuid\", types: [\"string\"] },\r",
+									"        { prop: \"created_at\", types: [\"string\"] },\r",
+									"        { prop: \"updated_at\", types: [\"string\"] },\r",
+									"    ].forEach(expected => {\r",
+									"        pm.test(`response property ${expected.prop} must be of type ${expected.types}`, function () {\r",
+									"            pm.expect(expected.types.includes(typeof roomUser[expected.prop]))\r",
+									"                .to.equal(true);\r",
+									"        });\r",
+									"    });\r",
+									"};\r",
+									"\r",
+									"const responseJSON = pm.response.json();\r",
+									"\r",
+									"pm.test(\"reponse must be an object\", function () {\r",
+									"    pm.expect(responseJSON).to.be.an('object');\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"total\",\r",
+									"    \"pages\",\r",
+									"    \"page\",\r",
+									"    \"limit\",\r",
+									"    \"data\"\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"total\", type: \"number\" },\r",
+									"    { prop: \"pages\", type: \"number\" },\r",
+									"    { prop: \"page\", type: \"number\" },\r",
+									"    { prop: \"limit\", type: \"number\" },\r",
+									"    { prop: \"data\", type: \"array\" }\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"pm.test(\"response data items must be valid room users\", function () {\r",
+									"    responseJSON.data.forEach(roomUser => isRoomUserValid(roomUser));\r",
+									"});\r",
+									"\r",
+									"pm.environment.set('RoomUserUuid', responseJSON.data[0].uuid);\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_users?limit=2&page=1&room_uuid={{RoomUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_users"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "2"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "room_uuid",
+									"value": "{{RoomUuid}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find All 401",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 401\", function() {\r",
+									"    pm.response.to.have.status(401);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_users?limit=2&page=1&room_uuid={{RoomUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_users"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "2"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "room_uuid",
+									"value": "{{RoomUuid}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find One 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const responseJSON = pm.response.json();\r",
+									"\r",
+									"[\r",
+									"    \"uuid\",\r",
+									"    \"expires_at\",\r",
+									"    \"never_expires\",\r",
+									"    \"room_uuid\",\r",
+									"    \"created_at\",\r",
+									"    \"updated_at\",\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"uuid\", type: \"string\" },\r",
+									"    { prop: \"expires_at\", type: \"string\" },\r",
+									"    { prop: \"never_expires\", type: \"boolean\" },\r",
+									"    { prop: \"room_uuid\", type: \"string\" },\r",
+									"    { prop: \"created_at\", type: \"string\" },\r",
+									"    { prop: \"updated_at\", type: \"string\" },\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_user/{{RoomUserUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_user",
+								"{{RoomUserUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find One 401",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 401\", function() {\r",
+									"    pm.response.to.have.status(401);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_user/{{RoomUserUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_user",
+								"{{RoomUserUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find One 404",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 404\", function() {\r",
+									"    pm.response.to.have.status(404);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_user/no_uuid",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_user",
+								"no_uuid"
+							]
+						}
+					},
+					"response": []
+				}
+			]
 		},
 		{
 			"name": "Room User Role",
@@ -2833,7 +4000,347 @@
 		},
 		{
 			"name": "Room Audit",
-			"item": []
+			"item": [
+				{
+					"name": "Find All 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const isRoomAuditValid = (roomAudit) => {\r",
+									"    [\r",
+									"        \"uuid\",\r",
+									"        \"body\",\r",
+									"        \"room_audit_type_name\",\r",
+									"        \"room_uuid\",\r",
+									"        \"created_at\",\r",
+									"        \"updated_at\",\r",
+									"    ].forEach(expected => {\r",
+									"        pm.test(`response must include ${expected} property`, function () {\r",
+									"            pm.expect(roomAudit).to.have.property(expected);\r",
+									"        });\r",
+									"    });\r",
+									"\r",
+									"    [\r",
+									"        { prop: \"uuid\", types: [\"string\"] },\r",
+									"        { prop: \"body\", types: [\"string\"] },\r",
+									"        { prop: \"room_audit_type_name\", types: [\"string\"] },\r",
+									"        { prop: \"room_uuid\", types: [\"string\"] },\r",
+									"        { prop: \"created_at\", types: [\"string\"] },\r",
+									"        { prop: \"updated_at\", types: [\"string\"] },\r",
+									"    ].forEach(expected => {\r",
+									"        pm.test(`response property ${expected.prop} must be of type ${expected.types}`, function () {\r",
+									"            pm.expect(expected.types.includes(typeof roomAudit[expected.prop]))\r",
+									"                .to.equal(true);\r",
+									"        });\r",
+									"    });\r",
+									"};\r",
+									"\r",
+									"const responseJSON = pm.response.json();\r",
+									"\r",
+									"pm.test(\"reponse must be an object\", function () {\r",
+									"    pm.expect(responseJSON).to.be.an('object');\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"total\",\r",
+									"    \"pages\",\r",
+									"    \"page\",\r",
+									"    \"limit\",\r",
+									"    \"data\"\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"total\", type: \"number\" },\r",
+									"    { prop: \"pages\", type: \"number\" },\r",
+									"    { prop: \"page\", type: \"number\" },\r",
+									"    { prop: \"limit\", type: \"number\" },\r",
+									"    { prop: \"data\", type: \"array\" }\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"pm.test(\"response data items must be valid room audits\", function () {\r",
+									"    responseJSON.data.forEach(roomAudit => isRoomAuditValid(roomAudit));\r",
+									"});\r",
+									"\r",
+									"pm.environment.set('RoomAuditUuid', responseJSON.data[0].uuid);\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_audits?limit=2&page=1&room_uuid={{RoomUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_audits"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "2"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "room_uuid",
+									"value": "{{RoomUuid}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find All 401",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 401\", function() {\r",
+									"    pm.response.to.have.status(401);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_audits?limit=2&page=1&room_uuid={{RoomUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_audits"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "2"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "room_uuid",
+									"value": "{{RoomUuid}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find One 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const responseJSON = pm.response.json();\r",
+									"\r",
+									"[\r",
+									"    \"uuid\",\r",
+									"    \"body\",\r",
+									"    \"room_audit_type_name\",\r",
+									"    \"room_uuid\",\r",
+									"    \"created_at\",\r",
+									"    \"updated_at\",\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"uuid\", types: [\"string\"] },\r",
+									"    { prop: \"body\", types: [\"string\"] },\r",
+									"    { prop: \"room_audit_type_name\", types: [\"string\"] },\r",
+									"    { prop: \"room_uuid\", types: [\"string\"] },\r",
+									"    { prop: \"created_at\", types: [\"string\"] },\r",
+									"    { prop: \"updated_at\", types: [\"string\"] },\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.types}`, function () {\r",
+									"        pm.expect(expected.types.includes(typeof responseJSON[expected.prop]))\r",
+									"            .to.equal(true);\r",
+									"    });\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_audit/{{RoomAuditUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_audit",
+								"{{RoomAuditUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find One 401",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 401\", function() {\r",
+									"    pm.response.to.have.status(401);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_audit/{{RoomAuditUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_audit",
+								"{{RoomAuditUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find One 404",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 404\", function() {\r",
+									"    pm.response.to.have.status(404);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_audit/no_uuid",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_audit",
+								"no_uuid"
+							]
+						}
+					},
+					"response": []
+				}
+			]
 		},
 		{
 			"name": "Room Audit Type",
@@ -3949,7 +5456,348 @@
 		},
 		{
 			"name": "Channel Audit",
-			"item": []
+			"item": [
+				{
+					"name": "Find All 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const isRoomAuditValid = (channelAudit) => {\r",
+									"    [\r",
+									"        \"uuid\",\r",
+									"        \"body\",\r",
+									"        \"channel_audit_type_name\",\r",
+									"        \"channel_uuid\",\r",
+									"        \"created_at\",\r",
+									"        \"updated_at\",\r",
+									"    ].forEach(expected => {\r",
+									"        pm.test(`response must include ${expected} property`, function () {\r",
+									"            pm.expect(channelAudit).to.have.property(expected);\r",
+									"        });\r",
+									"    });\r",
+									"\r",
+									"    [\r",
+									"        { prop: \"uuid\", types: [\"string\"] },\r",
+									"        { prop: \"body\", types: [\"string\"] },\r",
+									"        { prop: \"channel_audit_type_name\", types: [\"string\"] },\r",
+									"        { prop: \"channel_uuid\", types: [\"string\"] },\r",
+									"        { prop: \"created_at\", types: [\"string\"] },\r",
+									"        { prop: \"updated_at\", types: [\"string\"] },\r",
+									"    ].forEach(expected => {\r",
+									"        pm.test(`response property ${expected.prop} must be of type ${expected.types}`, function () {\r",
+									"            pm.expect(expected.types.includes(typeof channelAudit[expected.prop]))\r",
+									"                .to.equal(true);\r",
+									"        });\r",
+									"    });\r",
+									"};\r",
+									"\r",
+									"const responseJSON = pm.response.json();\r",
+									"\r",
+									"pm.test(\"reponse must be an object\", function () {\r",
+									"    pm.expect(responseJSON).to.be.an('object');\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"total\",\r",
+									"    \"pages\",\r",
+									"    \"page\",\r",
+									"    \"limit\",\r",
+									"    \"data\"\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"total\", type: \"number\" },\r",
+									"    { prop: \"pages\", type: \"number\" },\r",
+									"    { prop: \"page\", type: \"number\" },\r",
+									"    { prop: \"limit\", type: \"number\" },\r",
+									"    { prop: \"data\", type: \"array\" }\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"pm.test(\"response data items must be valid channel audits\", function () {\r",
+									"    responseJSON.data.forEach(channelAudit => isRoomAuditValid(channelAudit));\r",
+									"});\r",
+									"\r",
+									"pm.environment.set('ChannelAuditUuid', responseJSON.data[0].uuid);\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_audits?limit=2&page=1&room_uuid={{ChannelUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_audits"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "2"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "room_uuid",
+									"value": "{{ChannelUuid}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find All 401",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 401\", function() {\r",
+									"    pm.response.to.have.status(401);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_audits?limit=2&page=1&room_uuid={{ChannelUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_audits"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "2"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "room_uuid",
+									"value": "{{ChannelUuid}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find One 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const responseJSON = pm.response.json();\r",
+									"\r",
+									"[\r",
+									"    \"uuid\",\r",
+									"    \"body\",\r",
+									"    \"channel_audit_type_name\",\r",
+									"    \"channel_uuid\",\r",
+									"    \"created_at\",\r",
+									"    \"updated_at\",\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"uuid\", types: [\"string\"] },\r",
+									"    { prop: \"body\", types: [\"string\"] },\r",
+									"    { prop: \"channel_audit_type_name\", types: [\"string\"] },\r",
+									"    { prop: \"channel_uuid\", types: [\"string\"] },\r",
+									"    { prop: \"created_at\", types: [\"string\"] },\r",
+									"    { prop: \"updated_at\", types: [\"string\"] },\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.types}`, function () {\r",
+									"        pm.expect(expected.types.includes(typeof responseJSON[expected.prop]))\r",
+									"            .to.equal(true);\r",
+									"    });\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_audit/{{ChannelAuditUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_audit",
+								"{{ChannelAuditUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find One 401",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 401\", function() {\r",
+									"    pm.response.to.have.status(401);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_audit/{{ChannelAuditUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_audit",
+								"{{ChannelAuditUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find One 404",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 404\", function() {\r",
+									"    pm.response.to.have.status(404);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_audit/no_uuid",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_audit",
+								"no_uuid"
+							]
+						}
+					},
+					"response": []
+				}
+			]
 		},
 		{
 			"name": "Channel Audit Type",
