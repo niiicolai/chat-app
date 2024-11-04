@@ -37,6 +37,7 @@ After starting the Docker compose, the application will be available at http://1
 |                        | Bcrypt Password Hashing             | [x]     |
 |                        | Reset Password                      | [x]     |
 |                        | Email Verification                  | [x]     |
+|                        | Google Login+Registration           | [x]     |
 |                        | Two Factor Authentication           | [ ]     |
 | **File Storage**       | S3 File Storage                     | [x]     |
 |                        | CDN                                 | [x]     |
@@ -62,6 +63,9 @@ After starting the Docker compose, the application will be available at http://1
 | **MongoDB**            | Schemas                             | [x]     |
 |                        | ODM                                 | [x]     |
 |                        | Seeding                             | [x]     |
+|                        | Constraints                         | [ ]     |
+|                        | Triggers                            | [ ]     |
+|                        | Events                              | [ ]     |
 | **Neo4j**              | Schemas                             | [x]     |
 |                        | OGM                                 | [x]     |
 |                        | Seeding                             | [x]     |
@@ -77,6 +81,7 @@ After starting the Docker compose, the application will be available at http://1
 | **Testing**            | Unit Testing                        | [ ]     |
 |                        | Integration Testing                 | [ ]     |
 |                        | Postman API Testing                 | [x]     |
+|                        | SonarQube                           | [ ]     |
 
 ## Development Environment Setup
 The following are the steps to set up the development environment for the chat application.

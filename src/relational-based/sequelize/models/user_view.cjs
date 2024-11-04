@@ -26,10 +26,6 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.STRING,
             field: 'user_email',
         },
-        user_password: {
-            type: DataTypes.STRING,
-            field: 'user_password',
-        },
         user_avatar_src: {
             type: DataTypes.TEXT,
             field: 'user_avatar_src',

@@ -95,7 +95,12 @@ CREATE TABLE ChannelAuditType (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
-
+DROP TABLE IF EXISTS UserLoginType;
+CREATE TABLE UserLoginType (
+    name VARCHAR(255) PRIMARY KEY,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
 
 -- Users are created when they sign up for the chat application.
 -- Their email and username must be unique.
@@ -109,18 +114,27 @@ CREATE TABLE User (
     uuid VARCHAR(36) PRIMARY KEY,
     username VARCHAR(255) NOT NULL,
     email VARCHAR(255) NOT NULL,
-    password VARCHAR(255) NOT NULL,
     avatar_src TEXT DEFAULT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT user_username_unique UNIQUE (username),
     CONSTRAINT user_email_unique UNIQUE (email),
     CHECK (CHAR_LENGTH(username) >= 3 AND CHAR_LENGTH(username) <= 255),
-    CHECK (CHAR_LENGTH(email) >= 3 AND CHAR_LENGTH(email) <= 255),
-    CHECK (CHAR_LENGTH(password) >= 8 AND CHAR_LENGTH(password) <= 255)
+    CHECK (CHAR_LENGTH(email) >= 3 AND CHAR_LENGTH(email) <= 255)
 );
 
-
+DROP TABLE IF EXISTS UserLogin;
+CREATE TABLE UserLogin (
+    uuid VARCHAR(36) PRIMARY KEY,
+    user_uuid VARCHAR(36) NOT NULL,
+    user_login_type_name VARCHAR(255) NOT NULL,
+    password VARCHAR(255),
+    third_party_id VARCHAR(255),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_uuid) REFERENCES User(uuid),
+    FOREIGN KEY (user_login_type_name) REFERENCES UserLoginType(name)
+);
 
 -- Rooms can have members and channels for communication.
 DROP TABLE IF EXISTS Room;
@@ -642,12 +656,32 @@ CREATE PROCEDURE create_user_proc(
     IN user_email_input VARCHAR(255),
     IN user_password_input VARCHAR(255),
     IN user_avatar_src_input TEXT,
+    IN user_login_type_name_input VARCHAR(255),
+    IN user_login_third_party_id_input VARCHAR(255),
     OUT result BOOLEAN
 )
 BEGIN
-    -- Insert the user
-    INSERT INTO User (uuid, username, email, password, avatar_src) 
-    VALUES (user_uuid_input, user_name_input, user_email_input, user_password_input, user_avatar_src_input);
+    DECLARE exit_code VARCHAR(5);
+    DECLARE exit_message TEXT;
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        GET DIAGNOSTICS CONDITION 1
+            exit_code = RETURNED_SQLSTATE, 
+            exit_message = MESSAGE_TEXT;
+        ROLLBACK;
+        SELECT CONCAT('Error Code: ', exit_code, ' Error Message: ', exit_message) AS error_output;
+        SET result = FALSE;
+    END;
+
+    START TRANSACTION;
+        INSERT INTO User (uuid, username, email, avatar_src) VALUES (user_uuid_input, user_name_input, user_email_input, user_avatar_src_input);
+        if user_login_type_name_input = "Password" then
+            INSERT INTO UserLogin (uuid, user_uuid, user_login_type_name, password) VALUES (UUID(), user_uuid_input, user_login_type_name_input, user_password_input);
+        end if;
+        if user_login_type_name_input = "Google" then
+            INSERT INTO UserLogin (uuid, user_uuid, user_login_type_name, third_party_id) VALUES (UUID(), user_uuid_input, user_login_type_name_input, user_login_third_party_id_input);
+        end if;
+    COMMIT;
     SET result = TRUE;
 END //
 DELIMITER ;
@@ -709,7 +743,6 @@ END //
 DELIMITER ;
 
 
-
 -- Edit a user
 DROP PROCEDURE IF EXISTS edit_user_proc;
 DELIMITER //
@@ -722,13 +755,29 @@ CREATE PROCEDURE edit_user_proc(
     OUT result BOOLEAN
 )
 BEGIN
-    -- Update the user
-    UPDATE User SET username = user_name_input, email = user_email_input, password = user_password_input, avatar_src = user_avatar_src_input
-    WHERE uuid = user_uuid_input;
+DECLARE exit_code VARCHAR(5);
+    DECLARE exit_message TEXT;
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        GET DIAGNOSTICS CONDITION 1
+            exit_code = RETURNED_SQLSTATE, 
+            exit_message = MESSAGE_TEXT;
+        ROLLBACK;
+        SELECT CONCAT('Error Code: ', exit_code, ' Error Message: ', exit_message) AS error_output;
+        SET result = FALSE;
+    END;
+
+    START TRANSACTION;
+        -- Update the user
+        UPDATE User SET username = user_name_input, email = user_email_input, avatar_src = user_avatar_src_input WHERE uuid = user_uuid_input;
+
+        if user_password_input is not null then
+            UPDATE UserLogin SET password = user_password_input WHERE user_uuid = user_uuid_input AND user_login_type_name = "Password";
+        end if;
+    COMMIT;
     SET result = TRUE;
 END //
 DELIMITER ;
-
 
 
 -- Delete a user
@@ -1955,7 +2004,7 @@ FROM UserStatusState uss;
 DROP VIEW IF EXISTS user_view;
 CREATE VIEW user_view AS
 SELECT 
-    u.uuid as user_uuid, u.username as user_username, u.email as user_email, u.password as user_password, u.avatar_src as user_avatar_src, u.created_at as user_created_at, u.updated_at as user_updated_at,
+    u.uuid as user_uuid, u.username as user_username, u.email as user_email, u.avatar_src as user_avatar_src, u.created_at as user_created_at, u.updated_at as user_updated_at,
     -- UserEmailVerification
     uev.is_verified as user_email_verified,
     -- UserStatus
@@ -1963,6 +2012,28 @@ SELECT
 FROM User u
 LEFT JOIN UserEmailVerification uev ON u.uuid = uev.user_uuid
 LEFT JOIN UserStatus us ON u.uuid = us.user_uuid;
+
+-- Get all user logins
+DROP VIEW IF EXISTS user_login_view;
+CREATE VIEW user_login_view AS
+SELECT 
+    ul.uuid as user_login_uuid, ul.created_at as user_login_created_at, ul.updated_at as user_login_updated_at,
+    ul.third_party_id as user_login_third_party_id,
+    ul.password as user_login_password,
+    -- UserLoginType
+    ult.name as user_login_type_name,
+    -- User
+    u.uuid as user_uuid
+FROM UserLogin ul
+JOIN User u ON ul.user_uuid = u.uuid
+JOIN UserLoginType ult ON ul.user_login_type_name = ult.name;
+
+-- Get all user login types
+DROP VIEW IF EXISTS user_login_type_view;
+CREATE VIEW user_login_type_view AS
+SELECT 
+    ult.name as user_login_type_name, ult.created_at as user_login_type_created_at, ult.updated_at as user_login_type_updated_at
+FROM UserLoginType ult;
 
 
 -- Get all UserEmailVerifications
@@ -2344,7 +2415,9 @@ SET @user2_uuid = UUID();
 SET @user3_uuid = UUID();
 SET @wh_uuid = UUID();
 
-
+INSERT INTO UserLoginType (name) VALUES
+('Password'),
+('Google');
 
 INSERT INTO ChannelAuditType (name) VALUES
 ('MESSAGE_CREATED'),
@@ -2445,9 +2518,11 @@ INSERT INTO UserStatusState (name) VALUES
 
 
 -- Create the admin, moderator, and member users
-call create_user_proc(@user_uuid, 'admin', 'admin@example.com', @password, @upload_src2, @result);
-call create_user_proc(@user2_uuid, 'JohnDoe', 'moderator@example.com', @password, @upload_src3, @result);
-call create_user_proc(@user3_uuid, 'JaneDoe', 'member@example.com', @password, @upload_src, @result);
+SET @loginType = 'Password';
+SET @thirdPartyId = NULL;
+call create_user_proc(@user_uuid, 'admin', 'admin@example.com', @password, @upload_src2, @loginType, @thirdPartyId, @result);
+call create_user_proc(@user2_uuid, 'JohnDoe', 'moderator@example.com', @password, @upload_src3, @loginType, @thirdPartyId, @result);
+call create_user_proc(@user3_uuid, 'JaneDoe', 'member@example.com', @password, @upload_src, @loginType, @thirdPartyId, @result);
 
 
 -- Create the room with the first user as the admin
@@ -2564,6 +2639,8 @@ GRANT SELECT ON `chat`.`user_status_state_view` TO 'chat_user'@'%';
 GRANT SELECT ON `chat`.`user_email_verification_view` TO 'chat_user'@'%';
 GRANT SELECT ON `chat`.`user_password_reset_view` TO 'chat_user'@'%';
 GRANT SELECT ON `chat`.`user_status_view` TO 'chat_user'@'%';
+GRANT SELECT ON `chat`.`user_login_view` TO 'chat_user'@'%';
+GRANT SELECT ON `chat`.`user_login_type_view` TO 'chat_user'@'%';
 -- Flush privileges to apply changes
 FLUSH PRIVILEGES;
 
@@ -2606,6 +2683,8 @@ GRANT SELECT ON `chat`.`user_status_state_view` TO 'chat_guest'@'%';
 GRANT SELECT ON `chat`.`user_email_verification_view` TO 'chat_guest'@'%';
 GRANT SELECT ON `chat`.`user_password_reset_view` TO 'chat_guest'@'%';
 GRANT SELECT ON `chat`.`user_status_view` TO 'chat_guest'@'%';
+GRANT SELECT ON `chat`.`user_login_view` TO 'chat_guest'@'%';
+GRANT SELECT ON `chat`.`user_login_type_view` TO 'chat_guest'@'%';
 -- Flush privileges to apply changes
 FLUSH PRIVILEGES;
 
