@@ -18,21 +18,17 @@ export default class MongodbBaseFindService {
     }
 
     async findOne(options = {}, onBeforeFind = (query) => query, where = {}) {
+        if (!options) throw new ControllerError(500, 'No options provided');
+        if (!options[this.pkName]) throw new ControllerError(400, `${this.pkName} is required`);
+        if (typeof options[this.pkName] !== 'string') throw new ControllerError(400, `${this.pkName} must be a string`);
+        if (typeof onBeforeFind !== 'function') throw new ControllerError(500, 'onBeforeFind must be a function');
+        if (typeof where !== 'object') throw new ControllerError(500, 'where must be an object');
+
         const { [this.pkName]: pk } = options;
-
-        if (!pk) {
-            throw new ControllerError(400, `${this.pkName} is required`);
-        }
-
-        if (typeof onBeforeFind !== 'function') {
-            throw new ControllerError(500, 'onBeforeFind must be a function');
-        }
-
         const query = this.model.findOne({ ...where, [this.pkName]: pk });
         const m = await onBeforeFind(query);
-        if (!m) {
-            throw new ControllerError(404, `${this.model.modelName} not found`);
-        }
+        
+        if (!m) throw new ControllerError(404, `${this.model.modelName} not found`);
 
         return this.dto(m);
     }

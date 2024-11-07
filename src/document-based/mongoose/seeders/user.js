@@ -3,6 +3,9 @@ import UserEmailVerification from '../models/user_email_verification.js';
 import UserPasswordReset from '../models/user_password_reset.js';
 import UserStatus from '../models/user_status.js';
 import UserStatusState from '../models/user_status_state.js';
+import UserLogin from '../models/user_login.js';
+import UserLoginType from '../models/user_login_type.js';
+import { v4 as uuidv4 } from 'uuid';
 
 import data from './data.js';
 
@@ -18,6 +21,8 @@ const passwordResetUuid = "24abdccf-3acc-4559-89d4-c85118a4345f";
 
 export default class UserSeeder {
     async up() {
+        const userLoginType = await UserLoginType.findOne({ name: "Password" });
+
         const userEmailVerification1 = await new UserEmailVerification({ uuid: userEmailVerificationUuid1, is_verified: true }).save();
         const userEmailVerification2 = await new UserEmailVerification({ uuid: userEmailVerificationUuid2, is_verified: true }).save();
         const userEmailVerification3 = await new UserEmailVerification({ uuid: userEmailVerificationUuid3, is_verified: true }).save();
@@ -33,22 +38,29 @@ export default class UserSeeder {
             user_status: userStatus1._id
         }).save();
 
-        await new User({
+        const user2 = await new User({
             ...data.users[1],
             user_email_verification: userEmailVerification2._id,
             user_status: userStatus2._id
         }).save();
 
-        await new User({
+        const user3 = await new User({
             ...data.users[2],
             user_email_verification: userEmailVerification3._id,
             user_status: userStatus3._id
         }).save();
 
+        await new UserLogin({ uuid: uuidv4(), user: user1._id, user_login_type: userLoginType._id, password: data.user_login.password }).save();
+        await new UserLogin({ uuid: uuidv4(), user: user2._id, user_login_type: userLoginType._id, password: data.user_login.password }).save();
+        await new UserLogin({ uuid: uuidv4(), user: user3._id, user_login_type: userLoginType._id, password: data.user_login.password }).save();
+
         await new UserPasswordReset({ uuid: passwordResetUuid, user: user1._id, expires_at: new Date() }).save();
+        await new UserPasswordReset({ uuid: passwordResetUuid, user: user2._id, expires_at: new Date() }).save();
+        await new UserPasswordReset({ uuid: passwordResetUuid, user: user3._id, expires_at: new Date() }).save();
     }
 
     async down() {
+        await UserLogin.deleteMany({ password: data.user_login.password });
         await UserPasswordReset.deleteMany({ uuid: passwordResetUuid });
         await User.deleteMany({ uuid: { $in: data.users.map((d) => d.uuid) } });
         await UserStatus.deleteMany({ uuid: { $in: [userStatus1Uuid, userStatus2Uuid, userStatus3Uuid] } });

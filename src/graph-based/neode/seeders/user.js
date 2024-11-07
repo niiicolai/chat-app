@@ -1,10 +1,17 @@
 import data from "./data.js";
+import { v4 as uuidv4 } from 'uuid';
 
 export default class UserSeeder {
     async up(neodeInstance) {
         const userStatusState = await neodeInstance.model('UserStatusState').find('Offline');
+        const userLoginType = await neodeInstance.model('UserLoginType').find('Password');
         
         for (let state of data.users) {
+            const userLogin = await neodeInstance.model('UserLogin').create({
+                uuid: uuidv4(),
+                password: data.user_login.password
+            });
+
             const userState = await neodeInstance.model('UserStatus').create({
                 last_seen_at: new Date(),
                 message: "Hello, I'm new here!",
@@ -12,8 +19,6 @@ export default class UserSeeder {
                 created_at: new Date(),
                 updated_at: new Date()
             });
-
-            await userState.relateTo(userStatusState, 'user_status_state');
             
             const userEmailVerification = await neodeInstance.model('UserEmailVerification').create({
                 uuid: state.uuid,
@@ -33,11 +38,14 @@ export default class UserSeeder {
                 uuid: state.uuid,
                 username: state.username,
                 email: state.email,
-                password: state.password,
                 avatar_src: state.avatar_src,
                 created_at: new Date(),
                 updated_at: new Date()
             });
+
+            await userLogin.relateTo(userLoginType, 'user_login_type');
+            await userLogin.relateTo(user, 'user');
+            await userState.relateTo(userStatusState, 'user_status_state');
 
             await userPasswordReset.relateTo(user, 'user');
             await user.relateTo(userState, 'user_status');

@@ -31,6 +31,8 @@ import ChannelMessage from './models/channel_message.js';
 import ChannelMessageUpload from './models/channel_message_upload.js';
 import ChannelWebhookMessage from './models/channel_webhook_message.js';
 import ChannelWebhook from './models/channel_webhook.js';
+import UserLogin from './models/user_login.js';
+import UserLoginType from './models/user_login_type.js';
 
 const instance = Neode.fromEnv();
 
@@ -48,6 +50,8 @@ instance.with({
     UserStatus,
     UserEmailVerification,
     UserPasswordReset,
+    UserLogin,
+    UserLoginType,
     User,
     Room,
     RoomAvatar,

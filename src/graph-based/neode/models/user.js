@@ -12,10 +12,6 @@ export default {
         type: 'string',
         required: true
     },
-    password: {
-        type: 'string',
-        required: true
-    },
     avatar_src: {
         type: 'string',
         required: false
@@ -40,6 +36,14 @@ export default {
         type: 'relationship',
         target: 'UserPasswordReset',
         relationship: 'HAS_PASSWORD_RESET',
+        direction: 'in',
+        required: false,
+        eager: true
+    },
+    user_logins: {
+        type: 'relationship',
+        target: 'UserLogin',
+        relationship: 'HAS_USER',
         direction: 'in',
         required: false,
         eager: true

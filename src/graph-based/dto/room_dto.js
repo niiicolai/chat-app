@@ -15,7 +15,7 @@ export default (entity = {}, eagerRelationships = []) => {
     const roomUserSettings = eagerRelationships.find((rel) => rel.roomUserSettings)?.roomUserSettings || null;
     const roomChannelSettings = eagerRelationships.find((rel) => rel.roomChannelSettings)?.roomChannelSettings || null;
     const roomFileSettings = eagerRelationships.find((rel) => rel.roomFileSettings)?.roomFileSettings || null;
-    
+
     const dto = {
         uuid: entity.uuid,
         name: entity.name,
@@ -25,19 +25,15 @@ export default (entity = {}, eagerRelationships = []) => {
     };
 
     if (roomCategory) dto.room_category_name = roomCategory.name;
-    if (roomAvatar) {
-        dto.avatar = roomAvatarDto(roomAvatar);
-        
-        if (roomAvatar.room_file) {
-            dto.avatar.room_file = roomFileDto(roomAvatar.room_file);
-        }
-    }
-
     if (roomJoinSettings) dto.joinSettings = roomJoinSettingsDto(roomJoinSettings);
     if (roomRulesSettings) dto.rulesSettings = roomRulesSettingsDto(roomRulesSettings);
     if (roomUserSettings) dto.userSettings = roomUserSettingsDto(roomUserSettings);
     if (roomChannelSettings) dto.channelSettings = roomChannelSettingsDto(roomChannelSettings);
     if (roomFileSettings) dto.fileSettings = roomFileSettingsDto(roomFileSettings);
+    if (roomAvatar) dto.avatar = roomAvatarDto(roomAvatar, [
+        { roomFile: roomAvatar.room_file }, 
+        { room: { uuid: entity.uuid } }
+    ]);
 
     return dateHelper(entity, dto);
 }

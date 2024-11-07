@@ -14,8 +14,10 @@ import UserStatusStateSeeder from './user_status_state.js';
 import UserSeeder from './user.js';
 import RoomSeeder from './room.js';
 import ChannelSeeder from './channel.js';
+import UserLoginTypeSeeder from './user_login_type.js';
 
 const seeders = [
+    new UserLoginTypeSeeder(),
     new ChannelAuditTypeSeeder(),
     new ChannelMessageTypeSeeder(),
     new ChannelMessageUploadTypeSeeder(),

@@ -45,16 +45,22 @@ class Service extends NeodeBaseFindService {
              MATCH (r)-[:HAS_CHANNEL_SETTINGS]->(rcs:RoomChannelSettings)
              MATCH (r)-[:HAS_RULES_SETTINGS]->(rrs:RoomRulesSettings)
              MATCH (r)-[:HAS_JOIN_SETTINGS]->(rjs:RoomJoinSettings)
-             OPTIONAL MATCH (ra:RoomAvatar)-[:HAS_ROOM]->(r)
-             OPTIONAL MATCH (ra)-[:HAS_ROOM_FILE]->(raf:RoomFile)
-             RETURN u, ru, r, rc, rfs, rus, rcs, rrs, rjs, ra, raf`,
+             MATCH (r)-[:HAS_ROOM_AVATAR]->(ra:RoomAvatar)
+             OPTIONAL MATCH (raf:RoomFile)-[:HAS_ROOM]->(r)
+             OPTIONAL MATCH (ra)-[:HAS_ROOM_FILE]->(araf:RoomFile)
+             RETURN u, ru, r, rc, rfs, rus, rcs, rrs, rjs, ra, araf, raf, sum(raf.size) as bytes_used, sum(raf.size) / 1048576 as mb_used`,
             { user_uuid: user.sub, uuid }
         );
 
         if (!room.records.length) return null;
 
         const m = room.records[0];
-        const roomInstance = m.get('r').properties;
+        const roomInstance = { 
+            ...m.get('r').properties,
+            bytes_used: m.get('bytes_used').low,
+            mb_used: m.get('mb_used').low
+        };
+        
         const rel = [
             { roomCategory: m.get('rc').properties },
             { roomUser: m.get('ru').properties },
@@ -65,12 +71,8 @@ class Service extends NeodeBaseFindService {
             { roomJoinSettings: m.get('rjs').properties },
         ];
 
-        if (m.get('ra')) {
-            rel.push({ roomAvatar: m.get('ra').properties });
-            if (m.get('raf')) {
-                rel.push({ roomFile: m.get('raf').properties });
-            }
-        }
+        if (m.get('ra')) rel.push({ roomAvatar: m.get('ra').properties });
+        if (m.get('araf')) rel.push({ roomFile: m.get('araf').properties });
 
         return dto(roomInstance, rel);
     }
@@ -202,7 +204,15 @@ class Service extends NeodeBaseFindService {
             await roomAvatar.relateTo(roomFile, 'room_file');
         }
 
-        return this.findOne({ uuid: body.uuid, user });
+        return this.dto({ ...room.properties(), bytes_used: 0, mb_used: 0 }, [
+            { roomCategory: roomCategory.properties() },
+            { roomJoinSettings: roomJoinSettings.properties() },
+            { roomFileSettings: roomFileSettings.properties() },
+            { roomUserSettings: roomUserSettings.properties() },
+            { roomChannelSettings: roomChannelSettings.properties() },
+            { roomRulesSettings: roomRulesSettings.properties() },
+            { roomAvatar: roomAvatar.properties() }
+        ]);
     }
 
     async update(options = { uuid: null, body: null, file: null, user: null }) {
@@ -221,22 +231,25 @@ class Service extends NeodeBaseFindService {
         const roomInstance = await neodeInstance.model('Room').find(uuid);
         if (!roomInstance) throw new ControllerError(404, 'Room not found');
 
+        if (name && name !== roomInstance.get('name') &&
+            await neodeInstance.model('Room').first('name', name)) {
+            throw new ControllerError(400, 'Room with this name already exists');
+        }
+
         const params = {};
         if (name) params.name = name;
         if (description) params.description = description;
-        
-        if (Object.keys(params).length > 0) {
-            await roomInstance.update(params);
-        }
+        if (Object.keys(params).length > 0) await roomInstance.update(params);
 
         if (room_category_name) {
-            const oldRoomCategory = roomInstance.get('room_category').endNode().properties();
-            const oldRoomCategoryInstance = await neodeInstance.model('RoomCategory').find(oldRoomCategory.name);
-            if (!oldRoomCategoryInstance) throw new ControllerError(404, 'RoomCategory not found');
+            const oldRoomCategoryInstance = await neodeInstance.model('RoomCategory').find(
+                roomInstance.get('room_category').endNode().properties().name
+            );
+            if (!oldRoomCategoryInstance) throw new ControllerError(404, 'Old RoomCategory not found');
             await roomInstance.detachFrom(oldRoomCategoryInstance);
 
             const roomCategory = await neodeInstance.model('RoomCategory').first('name', room_category_name);
-            if (!roomCategory) throw new ControllerError(404, 'Room category not found');
+            if (!roomCategory) throw new ControllerError(404, 'New Room category not found');
 
             await roomInstance.relateTo(roomCategory, 'room_category');
         }
@@ -247,7 +260,7 @@ class Service extends NeodeBaseFindService {
             if (!roomAvatarInstance) throw new ControllerError(404, 'RoomAvatar not found');
 
             const oldRoomFile = roomAvatarInstance.get('room_file')?.endNode()?.properties();
-            console.log('oldRoomFile', oldRoomFile);
+            
             if (oldRoomFile) {
                 const oldRoomFileInstance = await neodeInstance.model('RoomFile').find(oldRoomFile.uuid);
                 if (!oldRoomFileInstance) throw new ControllerError(404, 'RoomFile not found');

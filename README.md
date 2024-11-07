@@ -153,6 +153,12 @@ npm run neode:seed:undo             # Revert all seeded data
 npm test
 ```
 
+### SonarQube
+Ensure that SonarQube is running before executing the following command.
+```bash
+npm run test:sonarqube              # Run SonarQube analysis
+```
+
 ### Postman API Test
 ```bash
 npm run test:api                    # Run all Postman API tests
