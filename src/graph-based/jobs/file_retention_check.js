@@ -1,7 +1,8 @@
 import { CronJob } from 'cron';
-import StorageService from "../services/storage_service.js";
-import db from "../../sequelize/models/index.cjs";
-import rollbar from '../../rollbar.js';
+import neodeInstance from '../neode/index.js';
+import StorageService from "../../shared/services/storage_service.js";
+import rollbar from '../../../rollbar.js';
+import neo4j from 'neo4j-driver';
 
 const roomBatch = 10;
 const fileBatch = 10;
@@ -14,17 +15,24 @@ const timeZone = 'Europe/Copenhagen';
 
 // Load a batch of files older than file_days_to_live
 const loadRoomFileBatch = async (room_uuid, file_days_to_live, offset) => {
-    return await db.RoomFileView.findAll({
-        where: {
+    const timestampCutoff = Date.now() - file_days_to_live * 24 * 60 * 60 * 1000;
+    const datetimeCutoff = new Date(timestampCutoff).toISOString();
+
+    return await neodeInstance.cypher(
+        'MATCH (raf:RoomFile)-[:HAS_ROOM]->(r:Room {uuid: $room_uuid}) ' +
+        'MATCH (raf)-[:HAS_ROOM_FILE_TYPE]->(raft:RoomFileType {name: "ChannelMessageUpload"}) ' +
+        'WHERE raf.created_at < datetime($datetimeCutoff) ' +
+        'RETURN raf, r, raft ' +
+        'ORDER BY raf.created_at ASC ' +
+        'SKIP $offset ' +
+        'LIMIT $fileBatch',
+        {
             room_uuid,
-            room_file_type_name: 'ChannelMessageUpload',
-            room_file_created_at: {
-                [db.Sequelize.Op.lt]: db.Sequelize.literal(`NOW() - INTERVAL ${file_days_to_live} DAY`)
-            }
-        },
-        offset,
-        limit: fileBatch
-    });
+            datetimeCutoff,
+            offset: neo4j.int(offset),
+            fileBatch: neo4j.int(fileBatch)
+        }
+    );
 };
 
 // Job
@@ -34,35 +42,37 @@ const onTick = async () => {
     try {
         const storage = new StorageService('channel_message_upload');
         const recursiveRoomCheck = async (offset) => {
-            const rooms = await db.RoomView.findAll({
-                offset,
-                limit: roomBatch
-            });
+            const result = await neodeInstance.cypher(
+                'MATCH (r:Room) ' +
+                'MATCH (r)-[:HAS_FILE_SETTINGS]->(fs:RoomFileSettings) ' +
+                'RETURN r.uuid AS room_uuid, fs.file_days_to_live AS file_days_to_live ' +
+                'ORDER BY r.created_at ASC ' +
+                'SKIP $offset ' +
+                'LIMIT $roomBatch',
+                { offset: neo4j.int(offset), roomBatch: neo4j.int(roomBatch) }
+            );
 
-            if (rooms.length === 0) {
-                return;
-            }
+            if (result.records.length === 0) return;
 
+            const rooms = result.records.map((record) => record.toObject());
             for (const room of rooms) {
-                const { room_uuid, file_days_to_live } = room;
 
+                const { room_uuid, file_days_to_live } = room;
                 let files = await loadRoomFileBatch(room_uuid, file_days_to_live, 0);
-                while (files.length > 0) {
-                    for (const file of files) {
-                        const key = storage.parseKey(file.room_file_src);
+                
+                while (files.records.length > 0) {
+                    for (const fileInstance of files.records) {
+                        const file = fileInstance.get('raf').properties;
+                        const key = storage.parseKey(file.src);
                         await storage.deleteFile(key);
-                        await db.sequelize.query('CALL delete_room_file_proc(:room_file_uuid, @result)', {
-                            replacements: {
-                                room_file_uuid: file.room_file_uuid,
-                            },
-                        });
-                        console.log(`${Date.now()}: Deleted file ${file.room_file_uuid} because it exceeded the retention period of ${file_days_to_live} days`);
+                        await neodeInstance.model('RoomFile').find(file.uuid).delete();
+                        console.log(`${Date.now()}: Deleted file ${file.uuid} because it exceeded the retention period of ${file_days_to_live} days`);
                     }
-                    files = await loadRoomFileBatch(room_uuid, file_days_to_live, files.length);
+                    files = await loadRoomFileBatch(room_uuid, file_days_to_live, files.records.length);
                 }
             }
 
-            await recursiveRoomCheck(offset + roomBatch);
+            await recursiveRoomCheck((offset + roomBatch));
         };
 
         await recursiveRoomCheck(0);
