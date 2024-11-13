@@ -39,6 +39,12 @@ until curl -s http://$NEO4J_HOST:$NEO4J_PORT/ | grep -q "neo4j"; do
 done
 
 echo "Neo4j is ready!"
+
+if [ "$1" = "--db-overwrite" ]; then
+    echo "Dropping and recreating the database"
+    npm run db:override
+fi
+
 echo "Starting the application"
 
 npm start
