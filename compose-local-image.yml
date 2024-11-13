@@ -59,7 +59,7 @@ services:
       - mysql
       - mongodb
       - neo4j
-    command: ["./wait_for_start.sh"]
+    command: ["sh", "./wait_for_start.sh"]
 
 networks:
   chat-network:
