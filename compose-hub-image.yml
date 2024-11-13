@@ -31,7 +31,7 @@ services:
       - "7475:7474"
       - "7688:7687"
     environment:
-      - NEO4J_AUTH=neo4j/neo4j
+      - NEO4J_AUTH=neo4j/password
     volumes:
       - neo4j-volume:/data
     networks:
@@ -44,7 +44,7 @@ services:
       - NODE_ENV=production
       - MYSQL_ROOT_PASSWORD=password
       - MYSQL_USER=root
-      - NEO4J_PASSWORD=neo4j
+      - NEO4J_PASSWORD=password
     ports:
       - "3000:3000"
       - "3001:3001"
@@ -54,7 +54,7 @@ services:
       - neo4j-dumps:/var/backups/neo4j
     networks:
       - chat-network
-    command: ["sh", "./wait_for_start.sh --db-overwrite"]
+    command: ["sh", "./wait_for_start.sh", "--db-overwrite"]
     depends_on:
       - mysql
       - mongodb
