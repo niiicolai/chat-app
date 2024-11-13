@@ -20,7 +20,7 @@ RUN apt-get update && apt-get install -y \
 # Install MongoDB Database Tools
 RUN wget -qO - https://www.mongodb.org/static/pgp/server-6.0.asc | apt-key add -
 RUN echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/6.0 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-6.0.list
-RUN apt-get update && apt-get install -y mongodb-database-tools
+RUN apt-get update && apt-get install -y mongodb-database-tools mongodb-mongosh
 
 # Install Neo4j Admin CLI
 RUN wget -O - https://debian.neo4j.com/neotechnology.gpg.key | apt-key add -
