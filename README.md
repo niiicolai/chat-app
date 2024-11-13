@@ -12,7 +12,7 @@ Quickly try the application by running the following commands:
 git clone https://github.com/niiicolai/chat-app.git
 
 # Start the Docker compose
-docker-compose -f compose-hub-image.yml up -d
+docker-compose -f compose-hub-image.yml up
 ```
 
 ## Deployment Status
