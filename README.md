@@ -2,9 +2,18 @@
 A Node.js chat backend application.
 
 # Quickest Way to Try the Application
-The project includes a Compose file named `compose-hub-image.yml`, which is designed to run the entire application in a local environment, including databases, the backend, and the frontend. For more details, refer to [#run-docker-hub-image-in-detached-mode](https://github.com/niiicolai/chat-app?tab=readme-ov-file#run-docker-hub-image-in-detached-mode)
+The project includes a Compose file named `compose-hub-image.yml`, which is designed to run the entire application in a local environment, including databases, the backend, and the frontend. For more details, refer to [#run-docker-hub-image-in-detached-mode](https://github.com/niiicolai/chat-app?tab=readme-ov-file#run-docker-hub-image-in-detached-mode).
 
 After starting the Docker compose, the application will be available at http://127.0.0.1:5174 with complete test data.
+
+Quickly try the application by running the following commands:
+```bash
+# Clone the repository
+git clone https://github.com/niiicolai/chat-app.git
+
+# Start the Docker compose
+docker-compose -f compose-hub-image.yml up -d
+```
 
 ## Deployment Status
 [![VM Publish Production and Docker Hub ](https://github.com/niiicolai/chat-app/actions/workflows/deploy_vm.yml/badge.svg)](https://github.com/niiicolai/chat-app/actions/workflows/deploy_vm.yml)
