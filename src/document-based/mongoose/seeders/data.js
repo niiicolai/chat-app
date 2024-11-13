@@ -3,25 +3,25 @@ export default {
         {
             uuid: "d5a0831c-88e5-4713-ae0c-c4e86c2f4209",
             username: "admin",
-            password: "$2b$10$sB6/ocJJK9HodVv7qEozKO826Ik5gmZH/1GU/xReM1ijIjlA7hvTa",
             email: "admin@example.com",
             avatar_src: "https://ghostchat.fra1.cdn.digitaloceanspaces.com/static/c7QiLXb.png",
         },
         {
             uuid: "cdcf569f-57de-4cb3-98d6-36c7cd7141d6",
             username: "moderator",
-            password: "$2b$10$sB6/ocJJK9HodVv7qEozKO826Ik5gmZH/1GU/xReM1ijIjlA7hvTa",
             email: "moderator@example.com",
             avatar_src: "https://ghostchat.fra1.cdn.digitaloceanspaces.com/static/LemonadeGuyCardboardAndPencilWithShadow-8cdc3130cc5498718fce7ee9d1ff5d92ddcc2ed81c689a1bf275bd14189a607c-512.jpg",
         },
         {
             uuid: "dd1db381-0b0a-4b2c-b0e1-0b5d569e6f9b",
             username: "member",
-            password: "$2b$10$sB6/ocJJK9HodVv7qEozKO826Ik5gmZH/1GU/xReM1ijIjlA7hvTa",
             email: "member@example.com",
             avatar_src: "https://ghostchat.fra1.cdn.digitaloceanspaces.com/static/mobile-park-character-animating.png",
         }
     ],
+    user_login: {
+        password: '$2b$10$sB6/ocJJK9HodVv7qEozKO826Ik5gmZH/1GU/xReM1ijIjlA7hvTa'
+    },
     user_status_states: [
         { name: 'Online' },
         { name: 'Away' },
@@ -105,5 +105,9 @@ export default {
         { name: 'WEBHOOK_CREATED' },
         { name: 'WEBHOOK_EDITED' },
         { name: 'WEBHOOK_DELETED' },
+    ],
+    user_login_types: [
+        { name: 'Password' },
+        { name: 'Google' },
     ],
 };

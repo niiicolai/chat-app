@@ -1,9 +1,18 @@
+import dateHelper from './_date_helper.js';
 
-export default (entity = {}) => {
-    return {
-        uuid: entity.uuid,
-        channel_message_upload_type_name: entity.channel_message_upload_type_name,
-        created_at: entity.created_at,
-        updated_at: entity.updated_at,
-    };
+export default (entity = {}, relations=[]) => {
+    const channelMessageUploadType = relations.find((rel) => rel.channelMessageUploadType)?.channelMessageUploadType || null;
+    const channelMessage = relations.find((rel) => rel.channelMessage)?.channelMessage || null;
+
+    const dto = { uuid: entity.uuid };
+
+    if (channelMessageUploadType) {
+        dto.channel_message_upload_type_name = channelMessageUploadType.name;
+    }
+
+    if (channelMessage) {
+        dto.channel_message = channelMessage;
+    }
+
+    return dateHelper(entity, dto);
 }

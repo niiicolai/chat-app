@@ -37,6 +37,7 @@ After starting the Docker compose, the application will be available at http://1
 |                        | Bcrypt Password Hashing             | [x]     |
 |                        | Reset Password                      | [x]     |
 |                        | Email Verification                  | [x]     |
+|                        | Google Login+Registration           | [x]     |
 |                        | Two Factor Authentication           | [ ]     |
 | **File Storage**       | S3 File Storage                     | [x]     |
 |                        | CDN                                 | [x]     |
@@ -47,8 +48,8 @@ After starting the Docker compose, the application will be available at http://1
 |                        | MySQL Backup                        | [x]     |
 |                        | MongoDB Backup                      | [x]     |
 |                        | Neo4j Backup                        | [ ]     |
-| **Database**           | MySQL                               | [x]     |
-|                        | Tables                              | [x]     |
+| **MySQL**              | Tables                              | [x]     |
+|                        | ORM                                 | [x]     |
 |                        | Views                               | [x]     |
 |                        | Stored Procedures                   | [x]     |
 |                        | Stored Functions                    | [x]     |
@@ -57,11 +58,20 @@ After starting the Docker compose, the application will be available at http://1
 |                        | Indexes                             | [x]     |
 |                        | Transactions                        | [x]     |
 |                        | Granular User Permissions           | [x]     |
-|                        | Migration                           | [ ]     |
-|                        | Seeding                             | [ ]     |
-|                        | Backup                              | [x]     |
-|                        | MongoDB                             | [x]     |
-|                        | Neo4j                               | [ ]     |
+|                        | Migration                           | [x]     |
+|                        | Seeding                             | [x]     |
+| **MongoDB**            | Schemas                             | [x]     |
+|                        | ODM                                 | [x]     |
+|                        | Seeding                             | [x]     |
+|                        | Constraints                         | [ ]     |
+|                        | Triggers                            | [ ]     |
+|                        | Events                              | [ ]     |
+| **Neo4j**              | Schemas                             | [x]     |
+|                        | OGM                                 | [x]     |
+|                        | Seeding                             | [x]     |
+|                        | Constraints                         | [ ]     |
+|                        | Triggers                            | [ ]     |
+|                        | Events                              | [ ]     |
 | **Docker**             | Dockerfile                          | [x]     |
 |                        | Docker Compose                      | [x]     |
 | **CI/CD**              | GitHub Actions                      | [x]     |
@@ -70,6 +80,8 @@ After starting the Docker compose, the application will be available at http://1
 |                        | Docker Hub                          | [x]     |
 | **Testing**            | Unit Testing                        | [ ]     |
 |                        | Integration Testing                 | [ ]     |
+|                        | Postman API Testing                 | [x]     |
+|                        | SonarQube                           | [ ]     |
 
 ## Development Environment Setup
 The following are the steps to set up the development environment for the chat application.
@@ -98,7 +110,7 @@ gitignore file.*
 
 NOTE: *Emails are only send in production. However, if you need information in a email in dev. 
 you can find it printed to the server log.*
-```
+```bash
 touch gmail_credentials.json        # Create Credentials for a Google Cloud Project and insert. 
 touch gmail_token.json              # Automatically filled out when executing the next step.
 
@@ -106,19 +118,11 @@ npm run configure:gmail             # Opens Google Authentication in the browser
                                     # will be used for sending emails.
 ```
 
-### Run
+### Setup/Override DBs
 ```bash
-npm start
-```
-
-### Test
-```bash
-npm test
-```
-
-### Generate JS Docs
-```bash
-npm run jsdoc
+npm run db:override                 # Override the existing MySQL using ./MySQL_Script.sql
+                                    # & Seed the existing MongoDB.
+                                    # & Seed the existing Neo4j.
 ```
 
 ### Sequelize
@@ -127,21 +131,51 @@ npm run sequelize:migrate           # Execute migration files to update the data
 npm run sequelize:migrate:undo      # Revert the most recent migration
 npm run sequelize:migrate:undo:all  # Revert all migrations
 npm run sequelize:migrate:generate  # Create a new migration file with a timestamp
-npm run sequelize:seed              # Run seed files to populate the database with initial data
+npm run sequelize:seed              # Run seed files to populate the relational database with initial data
 npm run sequelize:seed:undo         # Revert the most recent seed operation
 npm run sequelize:seed:generate     # Create a new seed file with a timestamp
 ```
 
 ### Mongoose
 ```bash
-npm run mongoose:seed               # Run seed files to populate the database with initial data
+npm run mongoose:seed               # Run seed files to populate the document database with initial data
 npm run mongoose:seed:undo          # Revert all seeded data
 ```
 
-### Setup DBs
+### Neode
 ```bash
-npm run db:override                 # Override the existing MySQL using ./MySQL_Script.sql
-                                    # & Seed the existing MongoDB.
+npm run neode:seed                  # Run seed files to populate the graph database with initial data
+npm run neode:seed:undo             # Revert all seeded data
+```
+
+### Unit & Integration Test
+```bash
+npm test
+```
+
+### SonarQube
+Ensure that SonarQube is running before executing the following command.
+```bash
+npm run test:sonarqube              # Run SonarQube analysis
+```
+
+### Postman API Test
+```bash
+npm run test:api                    # Run all Postman API tests
+npm run test:api:mysql              # Run only MySQL Postman API tests
+npm run test:api:mongodb            # Run only MongoDB Postman API tests
+npm run test:api:neo4j              # Run only Neo4j Postman API tests
+``` 
+
+### Start Server
+```bash
+npm start
+```
+
+### Generate JS Docs
+The application uses JSDoc for generating documentation for the codebase. The following command can be used to generate the documentation:
+```bash
+npm run jsdoc
 ```
 
 ### API Docs

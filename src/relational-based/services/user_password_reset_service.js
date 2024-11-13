@@ -12,34 +12,6 @@ const saltRounds = 10;
 const WEBSITE_HOST = process.env.WEBSITE_HOST;
 if (!WEBSITE_HOST) console.error('WEBSITE_HOST is not defined in the .env file.\n  - Email verification is currently not configured correct.\n  - Add WEBSITE_HOST=http://localhost:3000 to the .env file.');
 
-
-const getSubjectCreate = () => 'Demo Chat App: Password Reset';
-const getContentCreate = (reset_uuid, username) => `
-Hi ${username},
-
-You have requested to reset your password. Please click the link below to reset your password:
-${WEBSITE_HOST}/api/v1/mysql/user_password_reset/${reset_uuid}/reset_password
-
-This link will expire in 1 hour.
-
-If you did not request to reset your password, please ignore this email.
-
-Thanks,
-The Team
-`;
-
-const getSubjectReset = () => 'Demo Chat App: Password Reset Successful';
-const getContentReset = (username) => `
-Hi ${username},
-
-Your password has been successfully reset.
-
-If you did not request to reset your password, please contact us immediately.
-
-Thanks,
-The Team
-`;
-
 class UserEmailVerificationService extends MysqlBaseFindService {
     constructor() {
         super(db.UserPasswordResetView, dto);

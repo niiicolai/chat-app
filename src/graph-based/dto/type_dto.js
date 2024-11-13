@@ -1,8 +1,5 @@
+import dateHelper from './_date_helper.js';
 
 export default (entity = {}) => {
-    return {
-        name: entity.name,
-        created_at: entity.created_at,
-        updated_at: entity.updated_at,
-    };
+    return dateHelper(entity, { name: entity.name });
 }

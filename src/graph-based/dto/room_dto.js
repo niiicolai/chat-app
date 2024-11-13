@@ -5,32 +5,35 @@ import roomUserSettingsDto from './room_user_settings_dto.js';
 import roomChannelSettingsDto from './room_channel_settings_dto.js';
 import roomFileSettingsDto from './room_file_settings_dto.js';
 import roomFileDto from './room_file_dto.js';
+import dateHelper from './_date_helper.js';
 
-export default (entity = {}) => {
+export default (entity = {}, eagerRelationships = []) => {
+    const roomCategory = eagerRelationships.find((rel) => rel.roomCategory)?.roomCategory || null;
+    const roomAvatar = eagerRelationships.find((rel) => rel.roomAvatar)?.roomAvatar || null;
+    const roomJoinSettings = eagerRelationships.find((rel) => rel.roomJoinSettings)?.roomJoinSettings || null;
+    const roomRulesSettings = eagerRelationships.find((rel) => rel.roomRulesSettings)?.roomRulesSettings || null;
+    const roomUserSettings = eagerRelationships.find((rel) => rel.roomUserSettings)?.roomUserSettings || null;
+    const roomChannelSettings = eagerRelationships.find((rel) => rel.roomChannelSettings)?.roomChannelSettings || null;
+    const roomFileSettings = eagerRelationships.find((rel) => rel.roomFileSettings)?.roomFileSettings || null;
+
     const dto = {
         uuid: entity.uuid,
         name: entity.name,
         description: entity.description,
-        room_category_name: entity.room_category?.name,
         bytes_used: entity.bytes_used,
         mb_used: entity.mb_used,
-        created_at: entity.created_at,
-        updated_at: entity.updated_at,
     };
 
-    if (entity.room_avatar) {
-        dto.avatar = roomAvatarDto(entity.room_avatar);
-        
-        if (entity.room_avatar.room_file) {
-            dto.avatar.room_file = roomFileDto(entity.room_avatar.room_file);
-        }
-    }
+    if (roomCategory) dto.room_category_name = roomCategory.name;
+    if (roomJoinSettings) dto.joinSettings = roomJoinSettingsDto(roomJoinSettings);
+    if (roomRulesSettings) dto.rulesSettings = roomRulesSettingsDto(roomRulesSettings);
+    if (roomUserSettings) dto.userSettings = roomUserSettingsDto(roomUserSettings);
+    if (roomChannelSettings) dto.channelSettings = roomChannelSettingsDto(roomChannelSettings);
+    if (roomFileSettings) dto.fileSettings = roomFileSettingsDto(roomFileSettings);
+    if (roomAvatar) dto.avatar = roomAvatarDto(roomAvatar, [
+        { roomFile: roomAvatar.room_file }, 
+        { room: { uuid: entity.uuid } }
+    ]);
 
-    if (entity.room_join_settings) dto.joinSettings = roomJoinSettingsDto(entity.room_join_settings);
-    if (entity.room_rules_settings) dto.rulesSettings = roomRulesSettingsDto(entity.room_rules_settings);
-    if (entity.room_user_settings) dto.userSettings = roomUserSettingsDto(entity.room_user_settings);
-    if (entity.room_channel_settings) dto.channelSettings = roomChannelSettingsDto(entity.room_channel_settings);
-    if (entity.room_file_settings) dto.fileSettings = roomFileSettingsDto(entity.room_file_settings);
-
-    return dto;
+    return dateHelper(entity, dto);
 }

@@ -40,6 +40,6 @@ ctrl.create();
  *      description: Internal Server Error
  */
 ctrl.resetPassword();
-ctrl.resetPasswordEdit();
+ctrl.resetPasswordEdit('mysql');
 
 export default ctrl.router;

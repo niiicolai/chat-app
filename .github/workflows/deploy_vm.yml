@@ -41,6 +41,21 @@ jobs:
       - name: Run tests
         run: npm test
 
+      #- name: Start server
+      #  run: npm start
+
+      #- name: Run API tests
+      #  run: npm run test:api
+
+      #- name: Clone frontend repository
+      #  run: git clone
+
+      #- name: Start frontend server
+      #  run: npm run dev
+
+      #- name: Run E2E tests
+      #  run: npm run test:e2e
+
       - name: Remove .env file
         run: rm .env
         

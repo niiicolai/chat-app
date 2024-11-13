@@ -1,20 +1,24 @@
 import roomFileDto from './room_file_dto.js';
+import dateHelper from './_date_helper.js';
 
-export default (entity = {}) => {
+export default (entity = {}, relations=[]) => {
+    const channel = relations.find(relation => relation.channel)?.channel;
+    const roomFile = relations.find(relation => relation.roomFile)?.roomFile;
+    const roomFileType = relations.find(relation => relation.roomFileType)?.roomFileType;
+
     const dto = {
         uuid: entity.uuid,
         name: entity.name,
         description: entity.description,
-        channel_webhook_type_name: entity.channel_webhook_type_name,
-        room_uuid: entity.room_uuid,
-        channel_uuid: entity.channel_uuid,
-        created_at: entity.created_at,
-        updated_at: entity.updated_at,
     };
 
-    if (entity.room_file) {
-        dto.room_file = roomFileDto(entity.room_file);
+    if (channel) {
+        dto.channel_uuid = channel.uuid;
     }
 
-    return dto;
+    if (roomFile) {
+        dto.room_file = roomFileDto(roomFile, [{ roomFileType }]);
+    }
+
+    return dateHelper(entity, dto);
 }

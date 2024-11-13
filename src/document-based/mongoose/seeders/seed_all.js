@@ -14,8 +14,10 @@ import UserStatusStateSeeder from './user_status_state.js';
 import ChannelSeeder from './channel.js';
 import RoomSeeder from './room.js';
 import UserSeeder from './user.js';
+import UserLoginTypeSeeder from './user_login_type.js';
 
 const seeders = [
+    new UserLoginTypeSeeder(),
     new ChannelAuditTypeSeeder(),
     new ChannelMessageTypeSeeder(),
     new ChannelMessageUploadTypeSeeder(),
@@ -45,5 +47,4 @@ export const execute = async (command) => {
 
     console.log(`${now} - Finished ${command} on all seeders`);
     console.log(`Total time: ${new Date() - now}ms`);
-    process.exit(0);
 }

@@ -40,6 +40,6 @@ ctrl.create();
  *      description: Internal Server Error
  */
 ctrl.resetPassword();
-ctrl.resetPasswordEdit();
+ctrl.resetPasswordEdit('neo4j');
 
 export default ctrl.router;

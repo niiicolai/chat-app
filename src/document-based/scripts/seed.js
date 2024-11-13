@@ -1,4 +1,4 @@
-import { execute } from "./seed_all.js";
+import { execute } from "../mongoose/seeders/seed_all.js";
 
 const args = process.argv.slice(2);
 const command = args[0];

@@ -25,7 +25,7 @@ class Service extends MysqlBaseFindService {
     }
 
     async findAll(options = { room_uuid: null, user: null }) {
-        const { room_uuid } = options;
+        const { room_uuid, user } = options;
 
         if (!user) {
             throw new ControllerError(500, 'No user provided');

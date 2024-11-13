@@ -4,7 +4,7 @@ import dto from '../dto/type_dto.js';
 
 const service = new MysqlBaseFindService(
     db.RoomAuditTypeView,
-    (m) => dto(m, 'room_audit_type_type_')
+    (m) => dto(m, 'room_audit_type_')
 );
 
 export default service;

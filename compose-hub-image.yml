@@ -24,6 +24,17 @@ services:
     networks:
       - chat-network
 
+  neo4j:
+    container_name: neo4j
+    image: neo4j
+    ports:
+      - "7475:7474"
+      - "7688:7687"
+    volumes:
+      - neo4j-volume:/data
+    networks:
+      - chat-network
+
   chat_app_backend:
     container_name: chat_app_backend
     image: niiicolaidk/chat-app-backend:latest
@@ -42,6 +53,7 @@ services:
     depends_on:
       - mysql
       - mongodb
+      - neo4j
 
   chat_client_react:
     container_name: chat_client_react

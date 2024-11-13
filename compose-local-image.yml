@@ -25,6 +25,17 @@ services:
       - chat-network
     command: ["mongod", "--bind_ip_all"]
 
+  neo4j:
+    container_name: neo4j
+    image: neo4j
+    ports:
+      - "127.0.0.1:7474:7474"
+      - "127.0.0.1:7687:7687"
+    volumes:
+      - neo4j-volume:/data
+    networks:
+      - chat-network
+
   chat_app:
     container_name: chat_app
     image: chat_app:v1.0
@@ -42,6 +53,7 @@ services:
     depends_on:
       - mysql
       - mongodb
+      - neo4j
 
 networks:
   chat-network:

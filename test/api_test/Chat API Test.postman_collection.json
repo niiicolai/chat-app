@@ -1,0 +1,6293 @@
+{
+	"info": {
+		"_postman_id": "4637b1a1-3470-431d-b305-1fe15d5c7cd3",
+		"name": "Chat API Test",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "18056195"
+	},
+	"item": [
+		{
+			"name": "User",
+			"item": [
+				{
+					"name": "Authorized 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const responseJSON = pm.response.json();\r",
+									"\r",
+									"[\r",
+									"    \"uuid\",\r",
+									"    \"username\",\r",
+									"    \"email\",\r",
+									"    \"email_verified\",\r",
+									"    \"avatar_src\",\r",
+									"    \"created_at\",\r",
+									"    \"updated_at\",\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"uuid\", type: \"string\" },\r",
+									"    { prop: \"username\", type: \"string\" },\r",
+									"    { prop: \"email\", type: \"string\" },\r",
+									"    { prop: \"email_verified\", type: \"boolean\" },\r",
+									"    { prop: \"avatar_src\", type: \"string\" },\r",
+									"    { prop: \"created_at\", type: \"string\" },\r",
+									"    { prop: \"updated_at\", type: \"string\" },\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/user/me",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"user",
+								"me"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Authorized 401",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 401\", function() {\r",
+									"    pm.response.to.have.status(401);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/user/me",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"user",
+								"me"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create 400",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 400\", function() {\r",
+									"    pm.response.to.have.status(400);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/user",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"user"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"const { v4: uuidV4 } = require('uuid');\r",
+									"\r",
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									"\r",
+									"pm.environment.set('UserCreateBody', JSON.stringify({\r",
+									"    uuid: uuidV4(),\r",
+									"    email: `test-${uuidV4()}@example.com`,\r",
+									"    username: `test-${uuidV4()}`,\r",
+									"    password: `test-${uuidV4()}`\r",
+									"}))\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const responseJSON = pm.response.json();\r",
+									"\r",
+									"pm.test(\"response should return token\", function () {\r",
+									"    pm.response.to.have.jsonBody(\"token\");\r",
+									"});\r",
+									"\r",
+									"pm.test(\"token should be a string\", function () {\r",
+									"    pm.expect(pm.response.json().token).to.be.a('string');\r",
+									"});\r",
+									"\r",
+									"pm.test(\"token should be a base64 string\", function () {\r",
+									"    pm.expect(pm.response.json().token).to.match(/^[a-zA-Z0-9-_]+\\.[a-zA-Z0-9-_]+\\.[a-zA-Z0-9-_]+$/);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"reponse must be an object\", function () {\r",
+									"    pm.expect(responseJSON).to.be.an('object');\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"user\",\r",
+									"    \"token\",\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"user\", type: \"object\" },\r",
+									"    { prop: \"token\", type: \"string\" },\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"uuid\",\r",
+									"    \"username\",\r",
+									"    \"email\",\r",
+									"    \"created_at\",\r",
+									"    \"updated_at\",\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response.user must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON.user).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"uuid\", type: \"string\" },\r",
+									"    { prop: \"email\", type: \"string\" },\r",
+									"    { prop: \"username\", type: \"string\" },\r",
+									"    { prop: \"created_at\", type: \"string\" },\r",
+									"    { prop: \"updated_at\", type: \"string\" },\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response.user's property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON.user[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"pm.test(\"response should NOT return user password\", function () {\r",
+									"    pm.response.to.not.have.jsonBody(\"user.password\");\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{{UserCreateBody}}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/user",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"user"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Login 200",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const responseJSON = pm.response.json();\r",
+									"\r",
+									"pm.test(\"response should return token\", function () {\r",
+									"    pm.response.to.have.jsonBody(\"token\");\r",
+									"});\r",
+									"\r",
+									"pm.test(\"token should be a string\", function () {\r",
+									"    pm.expect(pm.response.json().token).to.be.a('string');\r",
+									"});\r",
+									"\r",
+									"pm.test(\"token should be a base64 string\", function () {\r",
+									"    pm.expect(pm.response.json().token).to.match(/^[a-zA-Z0-9-_]+\\.[a-zA-Z0-9-_]+\\.[a-zA-Z0-9-_]+$/);\r",
+									"});\r",
+									"\r",
+									"pm.test(\"reponse must be an object\", function () {\r",
+									"    pm.expect(responseJSON).to.be.an('object');\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"user\",\r",
+									"    \"token\",\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"user\", type: \"object\" },\r",
+									"    { prop: \"token\", type: \"string\" },\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"uuid\",\r",
+									"    \"username\",\r",
+									"    \"email\",\r",
+									"    \"email_verified\",\r",
+									"    \"created_at\",\r",
+									"    \"updated_at\",\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response.user must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON.user).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"uuid\", type: \"string\" },\r",
+									"    { prop: \"email\", type: \"string\" },\r",
+									"    { prop: \"username\", type: \"string\" },\r",
+									"    { prop: \"email_verified\", type: \"boolean\" },\r",
+									"    { prop: \"created_at\", type: \"string\" },\r",
+									"    { prop: \"updated_at\", type: \"string\" },\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response.user's property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON.user[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"pm.test(\"response should NOT return user password\", function () {\r",
+									"    pm.response.to.not.have.jsonBody(\"user.password\");\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"email\": \"{{TestUserEmail}}\",\r\n    \"password\": \"{{TestUserPassword}}\"\r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/user/login",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"user",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Login 400",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 400\", function() {\r",
+									"    pm.response.to.have.status(400);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/user/login",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"user",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"const { v4: uuidV4 } = require('uuid');\r",
+									"\r",
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									"\r",
+									"pm.environment.set('UserUpdateBody', JSON.stringify({\r",
+									"    username: `updated-${uuidV4()}`,\r",
+									"    // Avoid updating the email and password\r",
+									"    // to keep things simple.\r",
+									"}))\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const responseJSON = pm.response.json();\r",
+									"const userUpdateBody = JSON.parse(pm.environment.get('UserUpdateBody'));\r",
+									"\r",
+									"pm.test(\"The returned user should match the parameters in the body\", function() {\r",
+									"    pm.expect(responseJSON.username).to.equal(userUpdateBody.username);\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"uuid\",\r",
+									"    \"username\",\r",
+									"    \"email\",\r",
+									"    \"email_verified\",\r",
+									"    \"avatar_src\",\r",
+									"    \"created_at\",\r",
+									"    \"updated_at\",\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"uuid\", type: \"string\" },\r",
+									"    { prop: \"username\", type: \"string\" },\r",
+									"    { prop: \"email\", type: \"string\" },\r",
+									"    { prop: \"email_verified\", type: \"boolean\" },\r",
+									"    { prop: \"avatar_src\", type: \"string\" },\r",
+									"    { prop: \"created_at\", type: \"string\" },\r",
+									"    { prop: \"updated_at\", type: \"string\" },\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{{UserUpdateBody}}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/user/me",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"user",
+								"me"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update 401",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 401\", function() {\r",
+									"    pm.response.to.have.status(401);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{{UserUpdateBody}}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/user/me",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"user",
+								"me"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "User Status",
+			"item": [
+				{
+					"name": "Authorized 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const responseJSON = pm.response.json();\r",
+									"\r",
+									"[\r",
+									"    \"uuid\",\r",
+									"    \"last_seen_at\",\r",
+									"    \"message\",\r",
+									"    \"total_online_hours\",\r",
+									"    \"user_status_state_name\",\r",
+									"    \"user_uuid\",\r",
+									"    \"created_at\",\r",
+									"    \"updated_at\",\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"uuid\", type: \"string\" },\r",
+									"    { prop: \"last_seen_at\", type: \"string\" },\r",
+									"    { prop: \"message\", type: \"string\" },\r",
+									"    { prop: \"total_online_hours\", type: \"number\" },\r",
+									"    { prop: \"user_status_state_name\", type: \"string\" },\r",
+									"    { prop: \"user_uuid\", type: \"string\" },\r",
+									"    { prop: \"created_at\", type: \"string\" },\r",
+									"    { prop: \"updated_at\", type: \"string\" },\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/user_status/me",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"user_status",
+								"me"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Authorized 401",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 401\", function() {\r",
+									"    pm.response.to.have.status(401);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/user_status/me",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"user_status",
+								"me"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"const { v4: uuidV4 } = require('uuid');\r",
+									"\r",
+									"const types = ['Online', 'Away', 'Offline'];\r",
+									"const randomType = types[Math.floor(Math.random() * types.length)];\r",
+									"\r",
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									"\r",
+									"pm.environment.set('UserStatusUpdateBody', JSON.stringify({\r",
+									"    message: `updated-${uuidV4()}`,\r",
+									"    user_status_state: randomType,\r",
+									"}))\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const responseJSON = pm.response.json();\r",
+									"const userStatusUpdateBody = JSON.parse(pm.environment.get('UserStatusUpdateBody'));\r",
+									"\r",
+									"pm.test(\"The returned user status should match the parameters in the body\", function() {\r",
+									"    pm.expect(responseJSON.message).to.equal(userStatusUpdateBody.message);\r",
+									"    pm.expect(responseJSON.user_status_state_name).to.equal(userStatusUpdateBody.user_status_state);\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"uuid\",\r",
+									"    \"last_seen_at\",\r",
+									"    \"message\",\r",
+									"    \"total_online_hours\",\r",
+									"    \"user_status_state_name\",\r",
+									"    \"user_uuid\",\r",
+									"    \"created_at\",\r",
+									"    \"updated_at\",\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"uuid\", type: \"string\" },\r",
+									"    { prop: \"last_seen_at\", type: \"string\" },\r",
+									"    { prop: \"message\", type: \"string\" },\r",
+									"    { prop: \"total_online_hours\", type: \"number\" },\r",
+									"    { prop: \"user_status_state_name\", type: \"string\" },\r",
+									"    { prop: \"user_uuid\", type: \"string\" },\r",
+									"    { prop: \"created_at\", type: \"string\" },\r",
+									"    { prop: \"updated_at\", type: \"string\" },\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{{UserStatusUpdateBody}}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/user_status/me",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"user_status",
+								"me"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update 401",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 401\", function() {\r",
+									"    pm.response.to.have.status(401);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{{UserUpdateBody}}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/user_status/me",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"user_status",
+								"me"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "User Status State",
+			"item": [
+				{
+					"name": "Find One 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const responseJSON = pm.response.json();\r",
+									"\r",
+									"[\r",
+									"    \"name\",\r",
+									"    \"created_at\",\r",
+									"    \"updated_at\"\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"name\", type: \"string\" },\r",
+									"    { prop: \"created_at\", type: \"string\" },\r",
+									"    { prop: \"updated_at\", type: \"string\" },\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/user_status_state/Offline",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"user_status_state",
+								"Offline"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find One 404",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 404\", function() {\r",
+									"    pm.response.to.have.status(404);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/user_status_state/no_state",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"user_status_state",
+								"no_state"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find All 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const isTypeValid = (room) => {\r",
+									"    [\r",
+									"        \"name\",\r",
+									"        \"created_at\",\r",
+									"        \"updated_at\"\r",
+									"    ].forEach(expected => {\r",
+									"        pm.test(`response must include ${expected} property`, function () {\r",
+									"            pm.expect(room).to.have.property(expected);\r",
+									"        });\r",
+									"    });\r",
+									"\r",
+									"    [\r",
+									"        { prop: \"name\", type: \"string\" },\r",
+									"        { prop: \"created_at\", type: \"string\" },\r",
+									"        { prop: \"updated_at\", type: \"string\" },\r",
+									"    ].forEach(expected => {\r",
+									"        pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"            pm.expect(room[expected.prop])\r",
+									"                .to.be.a(expected.type);\r",
+									"        });\r",
+									"    });\r",
+									"};\r",
+									"\r",
+									"const responseJSON = pm.response.json();\r",
+									"\r",
+									"pm.test(\"reponse must be an object\", function () {\r",
+									"    pm.expect(responseJSON).to.be.an('object');\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"total\",\r",
+									"    \"pages\",\r",
+									"    \"page\",\r",
+									"    \"limit\",\r",
+									"    \"data\"\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"total\", type: \"number\" },\r",
+									"    { prop: \"pages\", type: \"number\" },\r",
+									"    { prop: \"page\", type: \"number\" },\r",
+									"    { prop: \"limit\", type: \"number\" },\r",
+									"    { prop: \"data\", type: \"array\" }\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"pm.test(\"response data items must be valid type\", function () {\r",
+									"    responseJSON.data.forEach(room => isTypeValid(room));\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/user_status_states?limit=2&page=1",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"user_status_states"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "2"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Room",
+			"item": [
+				{
+					"name": "Create 400",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 400\", function() {\r",
+									"    pm.response.to.have.status(400);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/room",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create 401",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 401\", function() {\r",
+									"    pm.response.to.have.status(401);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/room",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"const { v4: uuidV4 } = require('uuid');\r",
+									"\r",
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									"\r",
+									"pm.environment.set('RoomCreateBody', JSON.stringify({\r",
+									"    uuid: uuidV4(),\r",
+									"    name: `test-${uuidV4()}`,\r",
+									"    description: `test-${uuidV4()}`,\r",
+									"    room_category_name: `General`\r",
+									"}))\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const responseJSON = pm.response.json();\r",
+									"const roomCreateBody = JSON.parse(\r",
+									"    pm.environment.get('RoomCreateBody'));\r",
+									"\r",
+									"// Set room uuid for later use\r",
+									"pm.environment.set(\"RoomUuid\", responseJSON.uuid);\r",
+									"\r",
+									"pm.test(\"The returned room should match the parameters in the body\", function() {\r",
+									"    pm.expect(responseJSON.uuid).to.equal(roomCreateBody.uuid);\r",
+									"    pm.expect(responseJSON.name).to.equal(roomCreateBody.name);\r",
+									"    pm.expect(responseJSON.description).to.equal(roomCreateBody.description);\r",
+									"    pm.expect(responseJSON.room_category_name).to.equal(roomCreateBody.room_category_name);\r",
+									"});\r",
+									"\r",
+									"\r",
+									"[\r",
+									"    \"uuid\",\r",
+									"    \"name\",\r",
+									"    \"description\",\r",
+									"    \"room_category_name\",\r",
+									"    \"bytes_used\",\r",
+									"    \"mb_used\",\r",
+									"    \"created_at\",\r",
+									"    \"updated_at\",\r",
+									"    \"joinSettings\",\r",
+									"    \"rulesSettings\",\r",
+									"    \"userSettings\",\r",
+									"    \"channelSettings\",\r",
+									"    \"fileSettings\",\r",
+									"    \"avatar\"\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"uuid\", type: \"string\" },\r",
+									"    { prop: \"name\", type: \"string\" },\r",
+									"    { prop: \"description\", type: \"string\" },\r",
+									"    { prop: \"room_category_name\", type: \"string\" },\r",
+									"    { prop: \"bytes_used\", type: \"number\" },\r",
+									"    { prop: \"mb_used\", type: \"number\" },\r",
+									"    { prop: \"created_at\", type: \"string\" },\r",
+									"    { prop: \"updated_at\", type: \"string\" },\r",
+									"    { prop: \"joinSettings\", type: \"object\" },\r",
+									"    { prop: \"rulesSettings\", type: \"object\" },\r",
+									"    { prop: \"userSettings\", type: \"object\" },\r",
+									"    { prop: \"channelSettings\", type: \"object\" },\r",
+									"    { prop: \"fileSettings\", type: \"object\" },\r",
+									"    { prop: \"avatar\", type: \"object\" },\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"join_channel_uuid\",\r",
+									"    \"join_message\",\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response joinSettings property must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON.joinSettings).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"rules_text\",\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response rulesSettings property must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON.rulesSettings).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"max_users\",\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response userSettings property must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON.userSettings).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"max_channels\",\r",
+									"    \"message_days_to_live\",\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response channelSettings property must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON.channelSettings).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"total_files_bytes_allowed\",\r",
+									"    \"single_file_bytes_allowed\",\r",
+									"    \"file_days_to_live\",\r",
+									"    \"total_files_mb\",\r",
+									"    \"single_file_mb\",\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response fileSettings property must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON.fileSettings).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"uuid\",\r",
+									"    \"room_uuid\",\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response avatar property must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON.avatar).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"uuid\",\r",
+									"    \"src\",\r",
+									"    \"size_mb\",\r",
+									"    \"room_file_type_name\",\r",
+									"    \"room_uuid\",\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response avatar property with a room file must contain ${expected} property`, function () {\r",
+									"        if (responseJSON.avatar.room_file) {\r",
+									"            pm.expect(responseJSON.avatar.room_file).to.have.property(expected);\r",
+									"        }\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{{RoomCreateBody}}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/room",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Details 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"const { v4: uuidV4 } = require('uuid');\r",
+									"\r",
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									"\r",
+									"pm.environment.set('RoomUpdateBody', JSON.stringify({\r",
+									"    name: `test-${uuidV4()}`,\r",
+									"    description: `test-${uuidV4()}`,\r",
+									"    room_category_name: `Tech`\r",
+									"}))\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const responseJSON = pm.response.json();\r",
+									"const roomUuid = pm.environment.get('RoomUuid');\r",
+									"const roomUpdateBody = JSON.parse(pm.environment.get('RoomUpdateBody'));\r",
+									"\r",
+									"pm.test(\"The returned room should match the parameters in the body\", function() {\r",
+									"    pm.expect(responseJSON.uuid).to.equal(roomUuid);\r",
+									"    pm.expect(responseJSON.name).to.equal(roomUpdateBody.name);\r",
+									"    pm.expect(responseJSON.description).to.equal(roomUpdateBody.description);\r",
+									"    pm.expect(responseJSON.room_category_name).to.equal(roomUpdateBody.room_category_name);\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"uuid\",\r",
+									"    \"name\",\r",
+									"    \"description\",\r",
+									"    \"room_category_name\",\r",
+									"    \"bytes_used\",\r",
+									"    \"mb_used\",\r",
+									"    \"created_at\",\r",
+									"    \"updated_at\",\r",
+									"    \"joinSettings\",\r",
+									"    \"rulesSettings\",\r",
+									"    \"userSettings\",\r",
+									"    \"channelSettings\",\r",
+									"    \"fileSettings\",\r",
+									"    \"avatar\"\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"uuid\", type: \"string\" },\r",
+									"    { prop: \"name\", type: \"string\" },\r",
+									"    { prop: \"description\", type: \"string\" },\r",
+									"    { prop: \"room_category_name\", type: \"string\" },\r",
+									"    { prop: \"bytes_used\", type: \"number\" },\r",
+									"    { prop: \"mb_used\", type: \"number\" },\r",
+									"    { prop: \"created_at\", type: \"string\" },\r",
+									"    { prop: \"updated_at\", type: \"string\" },\r",
+									"    { prop: \"joinSettings\", type: \"object\" },\r",
+									"    { prop: \"rulesSettings\", type: \"object\" },\r",
+									"    { prop: \"userSettings\", type: \"object\" },\r",
+									"    { prop: \"channelSettings\", type: \"object\" },\r",
+									"    { prop: \"fileSettings\", type: \"object\" },\r",
+									"    { prop: \"avatar\", type: \"object\" },\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"join_channel_uuid\",\r",
+									"    \"join_message\",\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response joinSettings property must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON.joinSettings).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"rules_text\",\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response rulesSettings property must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON.rulesSettings).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"max_users\",\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response userSettings property must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON.userSettings).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"max_channels\",\r",
+									"    \"message_days_to_live\",\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response channelSettings property must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON.channelSettings).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"total_files_bytes_allowed\",\r",
+									"    \"single_file_bytes_allowed\",\r",
+									"    \"file_days_to_live\",\r",
+									"    \"total_files_mb\",\r",
+									"    \"single_file_mb\",\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response fileSettings property must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON.fileSettings).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"uuid\",\r",
+									"    \"room_uuid\",\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response avatar property must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON.avatar).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"uuid\",\r",
+									"    \"src\",\r",
+									"    \"size_mb\",\r",
+									"    \"room_file_type_name\",\r",
+									"    \"room_uuid\",\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response avatar property with a room file must contain ${expected} property`, function () {\r",
+									"        if (responseJSON.avatar.room_file) {\r",
+									"            pm.expect(responseJSON.avatar.room_file).to.have.property(expected);\r",
+									"        }\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{{RoomUpdateBody}}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/room/{{RoomUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room",
+								"{{RoomUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Details 401",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 401\", function() {\r",
+									"    pm.response.to.have.status(401);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{{RoomUpdateBody}}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/room/{{RoomUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room",
+								"{{RoomUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Settings 204",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"const { v4: uuidV4 } = require('uuid');\r",
+									"\r",
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									"\r",
+									"pm.environment.set('RoomSettingsBody', JSON.stringify({\r",
+									"    join_message: `{name} test-${uuidV4()}`,\r",
+									"    rules_text: \"Rules\"\r",
+									"}))\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 204\", function() {\r",
+									"    pm.response.to.have.status(204);\r",
+									"});\r",
+									"\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{{RoomSettingsBody}}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/room/{{RoomUuid}}/settings",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room",
+								"{{RoomUuid}}",
+								"settings"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Settings 401",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 401\", function() {\r",
+									"    pm.response.to.have.status(401);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{{RoomSettingsBody}}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/room/{{RoomUuid}}/settings",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room",
+								"{{RoomUuid}}",
+								"settings"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find One 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const responseJSON = pm.response.json();\r",
+									"\r",
+									"[\r",
+									"    \"uuid\",\r",
+									"    \"name\",\r",
+									"    \"description\",\r",
+									"    \"room_category_name\",\r",
+									"    \"bytes_used\",\r",
+									"    \"mb_used\",\r",
+									"    \"created_at\",\r",
+									"    \"updated_at\",\r",
+									"    \"joinSettings\",\r",
+									"    \"rulesSettings\",\r",
+									"    \"userSettings\",\r",
+									"    \"channelSettings\",\r",
+									"    \"fileSettings\",\r",
+									"    \"avatar\"\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"uuid\", type: \"string\" },\r",
+									"    { prop: \"name\", type: \"string\" },\r",
+									"    { prop: \"description\", type: \"string\" },\r",
+									"    { prop: \"room_category_name\", type: \"string\" },\r",
+									"    { prop: \"bytes_used\", type: \"number\" },\r",
+									"    { prop: \"mb_used\", type: \"number\" },\r",
+									"    { prop: \"created_at\", type: \"string\" },\r",
+									"    { prop: \"updated_at\", type: \"string\" },\r",
+									"    { prop: \"joinSettings\", type: \"object\" },\r",
+									"    { prop: \"rulesSettings\", type: \"object\" },\r",
+									"    { prop: \"userSettings\", type: \"object\" },\r",
+									"    { prop: \"channelSettings\", type: \"object\" },\r",
+									"    { prop: \"fileSettings\", type: \"object\" },\r",
+									"    { prop: \"avatar\", type: \"object\" },\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"join_channel_uuid\",\r",
+									"    \"join_message\",\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response joinSettings property must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON.joinSettings).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"rules_text\",\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response rulesSettings property must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON.rulesSettings).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"max_users\",\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response userSettings property must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON.userSettings).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"max_channels\",\r",
+									"    \"message_days_to_live\",\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response channelSettings property must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON.channelSettings).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"total_files_bytes_allowed\",\r",
+									"    \"single_file_bytes_allowed\",\r",
+									"    \"file_days_to_live\",\r",
+									"    \"total_files_mb\",\r",
+									"    \"single_file_mb\",\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response fileSettings property must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON.fileSettings).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"uuid\",\r",
+									"    \"room_uuid\",\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response avatar property must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON.avatar).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"uuid\",\r",
+									"    \"src\",\r",
+									"    \"size_mb\",\r",
+									"    \"room_file_type_name\",\r",
+									"    \"room_uuid\",\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response avatar property with a room file must contain ${expected} property`, function () {\r",
+									"        if (responseJSON.avatar.room_file) {\r",
+									"            pm.expect(responseJSON.avatar.room_file).to.have.property(expected);\r",
+									"        }\r",
+									"    });\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room/{{RoomUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room",
+								"{{RoomUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find One 401",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 401\", function() {\r",
+									"    pm.response.to.have.status(401);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room/{{RoomUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room",
+								"{{RoomUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find One 404",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 404\", function() {\r",
+									"    pm.response.to.have.status(404);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room/no_uuid",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room",
+								"no_uuid"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find All 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const isRoomValid = (room) => {\r",
+									"    [\r",
+									"        \"uuid\",\r",
+									"        \"name\",\r",
+									"        \"description\",\r",
+									"        \"room_category_name\",\r",
+									"        \"bytes_used\",\r",
+									"        \"mb_used\",\r",
+									"        \"created_at\",\r",
+									"        \"updated_at\",\r",
+									"        \"joinSettings\",\r",
+									"        \"rulesSettings\",\r",
+									"        \"userSettings\",\r",
+									"        \"channelSettings\",\r",
+									"        \"fileSettings\",\r",
+									"        \"avatar\"\r",
+									"    ].forEach(expected => {\r",
+									"        pm.test(`response must include ${expected} property`, function () {\r",
+									"            pm.expect(room).to.have.property(expected);\r",
+									"        });\r",
+									"    });\r",
+									"\r",
+									"    [\r",
+									"        { prop: \"uuid\", type: \"string\" },\r",
+									"        { prop: \"name\", type: \"string\" },\r",
+									"        { prop: \"description\", type: \"string\" },\r",
+									"        { prop: \"room_category_name\", type: \"string\" },\r",
+									"        { prop: \"bytes_used\", type: \"number\" },\r",
+									"        { prop: \"mb_used\", type: \"number\" },\r",
+									"        { prop: \"created_at\", type: \"string\" },\r",
+									"        { prop: \"updated_at\", type: \"string\" },\r",
+									"        { prop: \"joinSettings\", type: \"object\" },\r",
+									"        { prop: \"rulesSettings\", type: \"object\" },\r",
+									"        { prop: \"userSettings\", type: \"object\" },\r",
+									"        { prop: \"channelSettings\", type: \"object\" },\r",
+									"        { prop: \"fileSettings\", type: \"object\" },\r",
+									"        { prop: \"avatar\", type: \"object\" },\r",
+									"    ].forEach(expected => {\r",
+									"        pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"            pm.expect(room[expected.prop])\r",
+									"                .to.be.a(expected.type);\r",
+									"        });\r",
+									"    });\r",
+									"\r",
+									"    [\r",
+									"        \"join_channel_uuid\",\r",
+									"        \"join_message\",\r",
+									"    ].forEach(expected => {\r",
+									"        pm.test(`response joinSettings property must include ${expected} property`, function () {\r",
+									"            pm.expect(room.joinSettings).to.have.property(expected);\r",
+									"        });\r",
+									"    });\r",
+									"\r",
+									"    [\r",
+									"        \"rules_text\",\r",
+									"    ].forEach(expected => {\r",
+									"        pm.test(`response rulesSettings property must include ${expected} property`, function () {\r",
+									"            pm.expect(room.rulesSettings).to.have.property(expected);\r",
+									"        });\r",
+									"    });\r",
+									"\r",
+									"    [\r",
+									"        \"max_users\",\r",
+									"    ].forEach(expected => {\r",
+									"        pm.test(`response userSettings property must include ${expected} property`, function () {\r",
+									"            pm.expect(room.userSettings).to.have.property(expected);\r",
+									"        });\r",
+									"    });\r",
+									"\r",
+									"    [\r",
+									"        \"max_channels\",\r",
+									"        \"message_days_to_live\",\r",
+									"    ].forEach(expected => {\r",
+									"        pm.test(`response channelSettings property must include ${expected} property`, function () {\r",
+									"            pm.expect(room.channelSettings).to.have.property(expected);\r",
+									"        });\r",
+									"    });\r",
+									"\r",
+									"    [\r",
+									"        \"total_files_bytes_allowed\",\r",
+									"        \"single_file_bytes_allowed\",\r",
+									"        \"file_days_to_live\",\r",
+									"        \"total_files_mb\",\r",
+									"        \"single_file_mb\",\r",
+									"    ].forEach(expected => {\r",
+									"        pm.test(`response fileSettings property must include ${expected} property`, function () {\r",
+									"            pm.expect(room.fileSettings).to.have.property(expected);\r",
+									"        });\r",
+									"    });\r",
+									"\r",
+									"    [\r",
+									"        \"uuid\",\r",
+									"        \"room_uuid\",\r",
+									"    ].forEach(expected => {\r",
+									"        pm.test(`response avatar property must include ${expected} property`, function () {\r",
+									"            pm.expect(room.avatar).to.have.property(expected);\r",
+									"        });\r",
+									"    });\r",
+									"\r",
+									"    [\r",
+									"        \"uuid\",\r",
+									"        \"src\",\r",
+									"        \"size_mb\",\r",
+									"        \"room_file_type_name\",\r",
+									"        \"room_uuid\",\r",
+									"    ].forEach(expected => {\r",
+									"        pm.test(`response avatar property with a room file must contain ${expected} property`, function () {\r",
+									"            if (room.avatar.room_file) {\r",
+									"                pm.expect(room.avatar.room_file).to.have.property(expected);\r",
+									"            }\r",
+									"        });\r",
+									"    });\r",
+									"};\r",
+									"\r",
+									"const responseJSON = pm.response.json();\r",
+									"\r",
+									"pm.test(\"reponse must be an object\", function () {\r",
+									"    pm.expect(responseJSON).to.be.an('object');\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"total\",\r",
+									"    \"pages\",\r",
+									"    \"page\",\r",
+									"    \"limit\",\r",
+									"    \"data\"\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"total\", type: \"number\" },\r",
+									"    { prop: \"pages\", type: \"number\" },\r",
+									"    { prop: \"page\", type: \"number\" },\r",
+									"    { prop: \"limit\", type: \"number\" },\r",
+									"    { prop: \"data\", type: \"array\" }\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"pm.test(\"response data items must be valid rooms\", function () {\r",
+									"    responseJSON.data.forEach(room => isRoomValid(room));\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/rooms?limit=2&page=1",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"rooms"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "2"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find All 401",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 401\", function() {\r",
+									"    pm.response.to.have.status(401);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/rooms?limit=2&page=1",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"rooms"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "2"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete 204",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 204\", function() {\r",
+									"    pm.response.to.have.status(204);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room/{{RoomUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room",
+								"{{RoomUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete 404",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 404\", function() {\r",
+									"    pm.response.to.have.status(404);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room/{{RoomUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room",
+								"{{RoomUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete 401",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 401\", function() {\r",
+									"    pm.response.to.have.status(401);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room/{{RoomUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room",
+								"{{RoomUuid}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Room Category",
+			"item": [
+				{
+					"name": "Find One 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const responseJSON = pm.response.json();\r",
+									"\r",
+									"[\r",
+									"    \"name\",\r",
+									"    \"created_at\",\r",
+									"    \"updated_at\"\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"name\", type: \"string\" },\r",
+									"    { prop: \"created_at\", type: \"string\" },\r",
+									"    { prop: \"updated_at\", type: \"string\" },\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_category/General",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_category",
+								"General"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find One 404",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 404\", function() {\r",
+									"    pm.response.to.have.status(404);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_category/no_uuid",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_category",
+								"no_uuid"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find All 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const isTypeValid = (room) => {\r",
+									"    [\r",
+									"        \"name\",\r",
+									"        \"created_at\",\r",
+									"        \"updated_at\"\r",
+									"    ].forEach(expected => {\r",
+									"        pm.test(`response must include ${expected} property`, function () {\r",
+									"            pm.expect(room).to.have.property(expected);\r",
+									"        });\r",
+									"    });\r",
+									"\r",
+									"    [\r",
+									"        { prop: \"name\", type: \"string\" },\r",
+									"        { prop: \"created_at\", type: \"string\" },\r",
+									"        { prop: \"updated_at\", type: \"string\" },\r",
+									"    ].forEach(expected => {\r",
+									"        pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"            pm.expect(room[expected.prop])\r",
+									"                .to.be.a(expected.type);\r",
+									"        });\r",
+									"    });\r",
+									"};\r",
+									"\r",
+									"const responseJSON = pm.response.json();\r",
+									"\r",
+									"pm.test(\"reponse must be an object\", function () {\r",
+									"    pm.expect(responseJSON).to.be.an('object');\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"total\",\r",
+									"    \"pages\",\r",
+									"    \"page\",\r",
+									"    \"limit\",\r",
+									"    \"data\"\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"total\", type: \"number\" },\r",
+									"    { prop: \"pages\", type: \"number\" },\r",
+									"    { prop: \"page\", type: \"number\" },\r",
+									"    { prop: \"limit\", type: \"number\" },\r",
+									"    { prop: \"data\", type: \"array\" }\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"pm.test(\"response data items must be valid type\", function () {\r",
+									"    responseJSON.data.forEach(room => isTypeValid(room));\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_categories?limit=2&page=1",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_categories"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "2"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Room Invite Link",
+			"item": [
+				{
+					"name": "Create 400",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 400\", function() {\r",
+									"    pm.response.to.have.status(400);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/room_invite_link",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_invite_link"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create 401",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 401\", function() {\r",
+									"    pm.response.to.have.status(401);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/room_invite_link",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_invite_link"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"const { v4: uuidV4 } = require('uuid');\r",
+									"const room_uuid = pm.environment.get('RoomUuid');\r",
+									"\r",
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									"\r",
+									"pm.environment.set('RoomInviteLinkCreateBody', JSON.stringify({\r",
+									"    uuid: uuidV4(),\r",
+									"    expires_at: null,\r",
+									"    room_uuid\r",
+									"}))\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const responseJSON = pm.response.json();\r",
+									"const roomInviteLinkCreateBody = JSON.parse(\r",
+									"    pm.environment.get('RoomInviteLinkCreateBody'));\r",
+									"\r",
+									"// Set room invite link uuid for later use\r",
+									"pm.environment.set(\"RoomInviteLinkUuid\", responseJSON.uuid);\r",
+									"\r",
+									"pm.test(\"The returned room invite link should match the parameters in the body\", function() {\r",
+									"    pm.expect(responseJSON.uuid).to.equal(roomInviteLinkCreateBody.uuid);\r",
+									"    pm.expect(responseJSON.expires_at).to.equal(roomInviteLinkCreateBody.expires_at);\r",
+									"    pm.expect(responseJSON.room_uuid).to.equal(roomInviteLinkCreateBody.room_uuid);\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"uuid\",\r",
+									"    \"expires_at\",\r",
+									"    \"never_expires\",\r",
+									"    \"room_uuid\",\r",
+									"    \"created_at\",\r",
+									"    \"updated_at\",\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"uuid\", type: \"string\" },\r",
+									"    { prop: \"expires_at\", type: \"null\" },\r",
+									"    { prop: \"never_expires\", type: \"boolean\" },\r",
+									"    { prop: \"room_uuid\", type: \"string\" },\r",
+									"    { prop: \"created_at\", type: \"string\" },\r",
+									"    { prop: \"updated_at\", type: \"string\" },\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{{RoomInviteLinkCreateBody}}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/room_invite_link",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_invite_link"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"const { v4: uuidV4 } = require('uuid');\r",
+									"\r",
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									"\r",
+									"const now = new Date();\r",
+									"const y = now.getFullYear();\r",
+									"const m = ((now.getMonth() + 1) % 12);\r",
+									"const d = now.getDay();\r",
+									"const H = now.getHours();\r",
+									"const M = now.getMinutes();\r",
+									"const S = now.getSeconds();\r",
+									"const expires_at = `${y}-${m}-${d}T${H}:${M}:${S}`;\r",
+									"\r",
+									"pm.environment.set('RoomInviteLinkUpdateBody', JSON.stringify({\r",
+									"    expires_at\r",
+									"}))\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const responseJSON = pm.response.json();\r",
+									"const roomInviteLinkUuid = pm.environment.get('RoomInviteLinkUuid');\r",
+									"const roomInviteLinkUpdateBody = JSON.parse(pm.environment.get('RoomInviteLinkUpdateBody'));\r",
+									"\r",
+									"pm.test(\"The returned room invite link should match the parameters in the body\", function() {\r",
+									"    pm.expect(responseJSON.uuid).to.equal(roomInviteLinkUuid);\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"uuid\",\r",
+									"    \"expires_at\",\r",
+									"    \"never_expires\",\r",
+									"    \"room_uuid\",\r",
+									"    \"created_at\",\r",
+									"    \"updated_at\",\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"uuid\", type: \"string\" },\r",
+									"    { prop: \"expires_at\", type: \"string\" },\r",
+									"    { prop: \"never_expires\", type: \"boolean\" },\r",
+									"    { prop: \"room_uuid\", type: \"string\" },\r",
+									"    { prop: \"created_at\", type: \"string\" },\r",
+									"    { prop: \"updated_at\", type: \"string\" },\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{{RoomInviteLinkUpdateBody}}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/room_invite_link/{{RoomInviteLinkUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_invite_link",
+								"{{RoomInviteLinkUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update 401",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 401\", function() {\r",
+									"    pm.response.to.have.status(401);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{{RoomUpdateBody}}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/room_invite_link/{{RoomInviteLinkUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_invite_link",
+								"{{RoomInviteLinkUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find One 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const responseJSON = pm.response.json();\r",
+									"\r",
+									"[\r",
+									"    \"uuid\",\r",
+									"    \"expires_at\",\r",
+									"    \"never_expires\",\r",
+									"    \"room_uuid\",\r",
+									"    \"created_at\",\r",
+									"    \"updated_at\",\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"uuid\", type: \"string\" },\r",
+									"    { prop: \"expires_at\", type: \"string\" },\r",
+									"    { prop: \"never_expires\", type: \"boolean\" },\r",
+									"    { prop: \"room_uuid\", type: \"string\" },\r",
+									"    { prop: \"created_at\", type: \"string\" },\r",
+									"    { prop: \"updated_at\", type: \"string\" },\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_invite_link/{{RoomInviteLinkUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_invite_link",
+								"{{RoomInviteLinkUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find One 401",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 401\", function() {\r",
+									"    pm.response.to.have.status(401);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_invite_link/{{RoomInviteLinkUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_invite_link",
+								"{{RoomInviteLinkUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find One 404",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 404\", function() {\r",
+									"    pm.response.to.have.status(404);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_invite_link/no_uuid",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_invite_link",
+								"no_uuid"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find All 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const isRoomInviteLinkValid = (roomInviteLink) => {\r",
+									"    [\r",
+									"        \"uuid\",\r",
+									"        \"expires_at\",\r",
+									"        \"never_expires\",\r",
+									"        \"room_uuid\",\r",
+									"        \"created_at\",\r",
+									"        \"updated_at\",\r",
+									"    ].forEach(expected => {\r",
+									"        pm.test(`response must include ${expected} property`, function () {\r",
+									"            pm.expect(roomInviteLink).to.have.property(expected);\r",
+									"        });\r",
+									"    });\r",
+									"\r",
+									"    [\r",
+									"        { prop: \"uuid\", types: [\"string\"] },\r",
+									"        { prop: \"expires_at\", types: [\"object\", \"string\"] },\r",
+									"        { prop: \"never_expires\", types: [\"boolean\"] },\r",
+									"        { prop: \"room_uuid\", types: [\"string\"] },\r",
+									"        { prop: \"created_at\", types: [\"string\"] },\r",
+									"        { prop: \"updated_at\", types: [\"string\"] },\r",
+									"    ].forEach(expected => {\r",
+									"        pm.test(`response property ${expected.prop} must be of type ${expected.types}`, function () {\r",
+									"            pm.expect(expected.types.includes(typeof roomInviteLink[expected.prop]))\r",
+									"                .to.equal(true);\r",
+									"        });\r",
+									"    });\r",
+									"};\r",
+									"\r",
+									"const responseJSON = pm.response.json();\r",
+									"\r",
+									"pm.test(\"reponse must be an object\", function () {\r",
+									"    pm.expect(responseJSON).to.be.an('object');\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"total\",\r",
+									"    \"pages\",\r",
+									"    \"page\",\r",
+									"    \"limit\",\r",
+									"    \"data\"\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"total\", type: \"number\" },\r",
+									"    { prop: \"pages\", type: \"number\" },\r",
+									"    { prop: \"page\", type: \"number\" },\r",
+									"    { prop: \"limit\", type: \"number\" },\r",
+									"    { prop: \"data\", type: \"array\" }\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"pm.test(\"response data items must be valid room invite links\", function () {\r",
+									"    responseJSON.data.forEach(roomInviteLink => isRoomInviteLinkValid(roomInviteLink));\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_invite_links?limit=2&page=1&room_uuid={{RoomUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_invite_links"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "2"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "room_uuid",
+									"value": "{{RoomUuid}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find All 401",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 401\", function() {\r",
+									"    pm.response.to.have.status(401);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_invite_links?limit=2&page=1&room_uuid={{RoomUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_invite_links"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "2"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "room_uuid",
+									"value": "{{RoomUuid}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete 204",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 204\", function() {\r",
+									"    pm.response.to.have.status(204);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_invite_link/{{RoomInviteLinkUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_invite_link",
+								"{{RoomInviteLinkUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete 404",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 404\", function() {\r",
+									"    pm.response.to.have.status(404);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_invite_link/{{RoomInviteLinkUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_invite_link",
+								"{{RoomInviteLinkUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete 401",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 401\", function() {\r",
+									"    pm.response.to.have.status(401);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_invite_link/{{RoomInviteLinkUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_invite_link",
+								"{{RoomInviteLinkUuid}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Room User",
+			"item": [
+				{
+					"name": "Find All 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const isRoomUserValid = (roomUser) => {\r",
+									"    [\r",
+									"        \"uuid\",\r",
+									"        \"room_user_role_name\",\r",
+									"        \"user_uuid\",\r",
+									"        \"room_uuid\",\r",
+									"        \"created_at\",\r",
+									"        \"updated_at\",\r",
+									"    ].forEach(expected => {\r",
+									"        pm.test(`response must include ${expected} property`, function () {\r",
+									"            pm.expect(roomUser).to.have.property(expected);\r",
+									"        });\r",
+									"    });\r",
+									"\r",
+									"    [\r",
+									"        { prop: \"uuid\", types: [\"string\"] },\r",
+									"        { prop: \"room_user_role_name\", types: [\"string\"] },\r",
+									"        { prop: \"user_uuid\", types: [\"string\"] },\r",
+									"        { prop: \"room_uuid\", types: [\"string\"] },\r",
+									"        { prop: \"created_at\", types: [\"string\"] },\r",
+									"        { prop: \"updated_at\", types: [\"string\"] },\r",
+									"    ].forEach(expected => {\r",
+									"        pm.test(`response property ${expected.prop} must be of type ${expected.types}`, function () {\r",
+									"            pm.expect(expected.types.includes(typeof roomUser[expected.prop]))\r",
+									"                .to.equal(true);\r",
+									"        });\r",
+									"    });\r",
+									"};\r",
+									"\r",
+									"const responseJSON = pm.response.json();\r",
+									"\r",
+									"pm.test(\"reponse must be an object\", function () {\r",
+									"    pm.expect(responseJSON).to.be.an('object');\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"total\",\r",
+									"    \"pages\",\r",
+									"    \"page\",\r",
+									"    \"limit\",\r",
+									"    \"data\"\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"total\", type: \"number\" },\r",
+									"    { prop: \"pages\", type: \"number\" },\r",
+									"    { prop: \"page\", type: \"number\" },\r",
+									"    { prop: \"limit\", type: \"number\" },\r",
+									"    { prop: \"data\", type: \"array\" }\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"pm.test(\"response data items must be valid room users\", function () {\r",
+									"    responseJSON.data.forEach(roomUser => isRoomUserValid(roomUser));\r",
+									"});\r",
+									"\r",
+									"pm.environment.set('RoomUserUuid', responseJSON.data[0].uuid);\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_users?limit=2&page=1&room_uuid={{RoomUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_users"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "2"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "room_uuid",
+									"value": "{{RoomUuid}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find All 401",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 401\", function() {\r",
+									"    pm.response.to.have.status(401);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_users?limit=2&page=1&room_uuid={{RoomUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_users"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "2"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "room_uuid",
+									"value": "{{RoomUuid}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find One 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const responseJSON = pm.response.json();\r",
+									"\r",
+									"[\r",
+									"    \"uuid\",\r",
+									"    \"expires_at\",\r",
+									"    \"never_expires\",\r",
+									"    \"room_uuid\",\r",
+									"    \"created_at\",\r",
+									"    \"updated_at\",\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"uuid\", type: \"string\" },\r",
+									"    { prop: \"expires_at\", type: \"string\" },\r",
+									"    { prop: \"never_expires\", type: \"boolean\" },\r",
+									"    { prop: \"room_uuid\", type: \"string\" },\r",
+									"    { prop: \"created_at\", type: \"string\" },\r",
+									"    { prop: \"updated_at\", type: \"string\" },\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_user/{{RoomUserUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_user",
+								"{{RoomUserUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find One 401",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 401\", function() {\r",
+									"    pm.response.to.have.status(401);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_user/{{RoomUserUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_user",
+								"{{RoomUserUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find One 404",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 404\", function() {\r",
+									"    pm.response.to.have.status(404);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_user/no_uuid",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_user",
+								"no_uuid"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Room User Role",
+			"item": [
+				{
+					"name": "Find One 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const responseJSON = pm.response.json();\r",
+									"\r",
+									"[\r",
+									"    \"name\",\r",
+									"    \"created_at\",\r",
+									"    \"updated_at\"\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"name\", type: \"string\" },\r",
+									"    { prop: \"created_at\", type: \"string\" },\r",
+									"    { prop: \"updated_at\", type: \"string\" },\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_user_role/Admin",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_user_role",
+								"Admin"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find One 404",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 404\", function() {\r",
+									"    pm.response.to.have.status(404);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_user_role/no_type",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_user_role",
+								"no_type"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find All 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const isTypeValid = (room) => {\r",
+									"    [\r",
+									"        \"name\",\r",
+									"        \"created_at\",\r",
+									"        \"updated_at\"\r",
+									"    ].forEach(expected => {\r",
+									"        pm.test(`response must include ${expected} property`, function () {\r",
+									"            pm.expect(room).to.have.property(expected);\r",
+									"        });\r",
+									"    });\r",
+									"\r",
+									"    [\r",
+									"        { prop: \"name\", type: \"string\" },\r",
+									"        { prop: \"created_at\", type: \"string\" },\r",
+									"        { prop: \"updated_at\", type: \"string\" },\r",
+									"    ].forEach(expected => {\r",
+									"        pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"            pm.expect(room[expected.prop])\r",
+									"                .to.be.a(expected.type);\r",
+									"        });\r",
+									"    });\r",
+									"};\r",
+									"\r",
+									"const responseJSON = pm.response.json();\r",
+									"\r",
+									"pm.test(\"reponse must be an object\", function () {\r",
+									"    pm.expect(responseJSON).to.be.an('object');\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"total\",\r",
+									"    \"pages\",\r",
+									"    \"page\",\r",
+									"    \"limit\",\r",
+									"    \"data\"\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"total\", type: \"number\" },\r",
+									"    { prop: \"pages\", type: \"number\" },\r",
+									"    { prop: \"page\", type: \"number\" },\r",
+									"    { prop: \"limit\", type: \"number\" },\r",
+									"    { prop: \"data\", type: \"array\" }\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"pm.test(\"response data items must be valid type\", function () {\r",
+									"    responseJSON.data.forEach(room => isTypeValid(room));\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_user_roles?limit=2&page=1",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_user_roles"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "2"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Room Audit",
+			"item": [
+				{
+					"name": "Find All 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const isRoomAuditValid = (roomAudit) => {\r",
+									"    [\r",
+									"        \"uuid\",\r",
+									"        \"body\",\r",
+									"        \"room_audit_type_name\",\r",
+									"        \"room_uuid\",\r",
+									"        \"created_at\",\r",
+									"        \"updated_at\",\r",
+									"    ].forEach(expected => {\r",
+									"        pm.test(`response must include ${expected} property`, function () {\r",
+									"            pm.expect(roomAudit).to.have.property(expected);\r",
+									"        });\r",
+									"    });\r",
+									"\r",
+									"    [\r",
+									"        { prop: \"uuid\", types: [\"string\"] },\r",
+									"        { prop: \"body\", types: [\"string\"] },\r",
+									"        { prop: \"room_audit_type_name\", types: [\"string\"] },\r",
+									"        { prop: \"room_uuid\", types: [\"string\"] },\r",
+									"        { prop: \"created_at\", types: [\"string\"] },\r",
+									"        { prop: \"updated_at\", types: [\"string\"] },\r",
+									"    ].forEach(expected => {\r",
+									"        pm.test(`response property ${expected.prop} must be of type ${expected.types}`, function () {\r",
+									"            pm.expect(expected.types.includes(typeof roomAudit[expected.prop]))\r",
+									"                .to.equal(true);\r",
+									"        });\r",
+									"    });\r",
+									"};\r",
+									"\r",
+									"const responseJSON = pm.response.json();\r",
+									"\r",
+									"pm.test(\"reponse must be an object\", function () {\r",
+									"    pm.expect(responseJSON).to.be.an('object');\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"total\",\r",
+									"    \"pages\",\r",
+									"    \"page\",\r",
+									"    \"limit\",\r",
+									"    \"data\"\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"total\", type: \"number\" },\r",
+									"    { prop: \"pages\", type: \"number\" },\r",
+									"    { prop: \"page\", type: \"number\" },\r",
+									"    { prop: \"limit\", type: \"number\" },\r",
+									"    { prop: \"data\", type: \"array\" }\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"pm.test(\"response data items must be valid room audits\", function () {\r",
+									"    responseJSON.data.forEach(roomAudit => isRoomAuditValid(roomAudit));\r",
+									"});\r",
+									"\r",
+									"pm.environment.set('RoomAuditUuid', responseJSON.data[0].uuid);\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_audits?limit=2&page=1&room_uuid={{RoomUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_audits"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "2"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "room_uuid",
+									"value": "{{RoomUuid}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find All 401",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 401\", function() {\r",
+									"    pm.response.to.have.status(401);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_audits?limit=2&page=1&room_uuid={{RoomUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_audits"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "2"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "room_uuid",
+									"value": "{{RoomUuid}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find One 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const responseJSON = pm.response.json();\r",
+									"\r",
+									"[\r",
+									"    \"uuid\",\r",
+									"    \"body\",\r",
+									"    \"room_audit_type_name\",\r",
+									"    \"room_uuid\",\r",
+									"    \"created_at\",\r",
+									"    \"updated_at\",\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"uuid\", types: [\"string\"] },\r",
+									"    { prop: \"body\", types: [\"string\"] },\r",
+									"    { prop: \"room_audit_type_name\", types: [\"string\"] },\r",
+									"    { prop: \"room_uuid\", types: [\"string\"] },\r",
+									"    { prop: \"created_at\", types: [\"string\"] },\r",
+									"    { prop: \"updated_at\", types: [\"string\"] },\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.types}`, function () {\r",
+									"        pm.expect(expected.types.includes(typeof responseJSON[expected.prop]))\r",
+									"            .to.equal(true);\r",
+									"    });\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_audit/{{RoomAuditUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_audit",
+								"{{RoomAuditUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find One 401",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 401\", function() {\r",
+									"    pm.response.to.have.status(401);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_audit/{{RoomAuditUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_audit",
+								"{{RoomAuditUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find One 404",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 404\", function() {\r",
+									"    pm.response.to.have.status(404);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_audit/no_uuid",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_audit",
+								"no_uuid"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Room Audit Type",
+			"item": [
+				{
+					"name": "Find One 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const responseJSON = pm.response.json();\r",
+									"\r",
+									"[\r",
+									"    \"name\",\r",
+									"    \"created_at\",\r",
+									"    \"updated_at\"\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"name\", type: \"string\" },\r",
+									"    { prop: \"created_at\", type: \"string\" },\r",
+									"    { prop: \"updated_at\", type: \"string\" },\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_audit_type/ROOM_CREATED",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_audit_type",
+								"ROOM_CREATED"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find One 404",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 404\", function() {\r",
+									"    pm.response.to.have.status(404);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_audit_type/no_type",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_audit_type",
+								"no_type"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find All 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const isTypeValid = (room) => {\r",
+									"    [\r",
+									"        \"name\",\r",
+									"        \"created_at\",\r",
+									"        \"updated_at\"\r",
+									"    ].forEach(expected => {\r",
+									"        pm.test(`response must include ${expected} property`, function () {\r",
+									"            pm.expect(room).to.have.property(expected);\r",
+									"        });\r",
+									"    });\r",
+									"\r",
+									"    [\r",
+									"        { prop: \"name\", type: \"string\" },\r",
+									"        { prop: \"created_at\", type: \"string\" },\r",
+									"        { prop: \"updated_at\", type: \"string\" },\r",
+									"    ].forEach(expected => {\r",
+									"        pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"            pm.expect(room[expected.prop])\r",
+									"                .to.be.a(expected.type);\r",
+									"        });\r",
+									"    });\r",
+									"};\r",
+									"\r",
+									"const responseJSON = pm.response.json();\r",
+									"\r",
+									"pm.test(\"reponse must be an object\", function () {\r",
+									"    pm.expect(responseJSON).to.be.an('object');\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"total\",\r",
+									"    \"pages\",\r",
+									"    \"page\",\r",
+									"    \"limit\",\r",
+									"    \"data\"\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"total\", type: \"number\" },\r",
+									"    { prop: \"pages\", type: \"number\" },\r",
+									"    { prop: \"page\", type: \"number\" },\r",
+									"    { prop: \"limit\", type: \"number\" },\r",
+									"    { prop: \"data\", type: \"array\" }\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"pm.test(\"response data items must be valid type\", function () {\r",
+									"    responseJSON.data.forEach(room => isTypeValid(room));\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_audit_types?limit=2&page=1",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_audit_types"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "2"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Room File",
+			"item": []
+		},
+		{
+			"name": "Room File Type",
+			"item": [
+				{
+					"name": "Find One 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const responseJSON = pm.response.json();\r",
+									"\r",
+									"[\r",
+									"    \"name\",\r",
+									"    \"created_at\",\r",
+									"    \"updated_at\"\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"name\", type: \"string\" },\r",
+									"    { prop: \"created_at\", type: \"string\" },\r",
+									"    { prop: \"updated_at\", type: \"string\" },\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_file_type/RoomAvatar",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_file_type",
+								"RoomAvatar"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find One 404",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 404\", function() {\r",
+									"    pm.response.to.have.status(404);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_file_type/no_type",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_file_type",
+								"no_type"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find All 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const isTypeValid = (room) => {\r",
+									"    [\r",
+									"        \"name\",\r",
+									"        \"created_at\",\r",
+									"        \"updated_at\"\r",
+									"    ].forEach(expected => {\r",
+									"        pm.test(`response must include ${expected} property`, function () {\r",
+									"            pm.expect(room).to.have.property(expected);\r",
+									"        });\r",
+									"    });\r",
+									"\r",
+									"    [\r",
+									"        { prop: \"name\", type: \"string\" },\r",
+									"        { prop: \"created_at\", type: \"string\" },\r",
+									"        { prop: \"updated_at\", type: \"string\" },\r",
+									"    ].forEach(expected => {\r",
+									"        pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"            pm.expect(room[expected.prop])\r",
+									"                .to.be.a(expected.type);\r",
+									"        });\r",
+									"    });\r",
+									"};\r",
+									"\r",
+									"const responseJSON = pm.response.json();\r",
+									"\r",
+									"pm.test(\"reponse must be an object\", function () {\r",
+									"    pm.expect(responseJSON).to.be.an('object');\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"total\",\r",
+									"    \"pages\",\r",
+									"    \"page\",\r",
+									"    \"limit\",\r",
+									"    \"data\"\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"total\", type: \"number\" },\r",
+									"    { prop: \"pages\", type: \"number\" },\r",
+									"    { prop: \"page\", type: \"number\" },\r",
+									"    { prop: \"limit\", type: \"number\" },\r",
+									"    { prop: \"data\", type: \"array\" }\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"pm.test(\"response data items must be valid type\", function () {\r",
+									"    responseJSON.data.forEach(room => isTypeValid(room));\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_file_types?limit=2&page=1",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_file_types"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "2"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Channel",
+			"item": []
+		},
+		{
+			"name": "Channel Type",
+			"item": [
+				{
+					"name": "Find One 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const responseJSON = pm.response.json();\r",
+									"\r",
+									"[\r",
+									"    \"name\",\r",
+									"    \"created_at\",\r",
+									"    \"updated_at\"\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"name\", type: \"string\" },\r",
+									"    { prop: \"created_at\", type: \"string\" },\r",
+									"    { prop: \"updated_at\", type: \"string\" },\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_type/Text",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_type",
+								"Text"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find One 404",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 404\", function() {\r",
+									"    pm.response.to.have.status(404);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_type/no_type",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_type",
+								"no_type"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find All 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const isTypeValid = (room) => {\r",
+									"    [\r",
+									"        \"name\",\r",
+									"        \"created_at\",\r",
+									"        \"updated_at\"\r",
+									"    ].forEach(expected => {\r",
+									"        pm.test(`response must include ${expected} property`, function () {\r",
+									"            pm.expect(room).to.have.property(expected);\r",
+									"        });\r",
+									"    });\r",
+									"\r",
+									"    [\r",
+									"        { prop: \"name\", type: \"string\" },\r",
+									"        { prop: \"created_at\", type: \"string\" },\r",
+									"        { prop: \"updated_at\", type: \"string\" },\r",
+									"    ].forEach(expected => {\r",
+									"        pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"            pm.expect(room[expected.prop])\r",
+									"                .to.be.a(expected.type);\r",
+									"        });\r",
+									"    });\r",
+									"};\r",
+									"\r",
+									"const responseJSON = pm.response.json();\r",
+									"\r",
+									"pm.test(\"reponse must be an object\", function () {\r",
+									"    pm.expect(responseJSON).to.be.an('object');\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"total\",\r",
+									"    \"pages\",\r",
+									"    \"page\",\r",
+									"    \"limit\",\r",
+									"    \"data\"\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"total\", type: \"number\" },\r",
+									"    { prop: \"pages\", type: \"number\" },\r",
+									"    { prop: \"page\", type: \"number\" },\r",
+									"    { prop: \"limit\", type: \"number\" },\r",
+									"    { prop: \"data\", type: \"array\" }\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"pm.test(\"response data items must be valid type\", function () {\r",
+									"    responseJSON.data.forEach(room => isTypeValid(room));\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_types?limit=2&page=1",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_types"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "2"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Channel Message",
+			"item": []
+		},
+		{
+			"name": "Channel Message Type",
+			"item": [
+				{
+					"name": "Find One 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const responseJSON = pm.response.json();\r",
+									"\r",
+									"[\r",
+									"    \"name\",\r",
+									"    \"created_at\",\r",
+									"    \"updated_at\"\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"name\", type: \"string\" },\r",
+									"    { prop: \"created_at\", type: \"string\" },\r",
+									"    { prop: \"updated_at\", type: \"string\" },\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_message_type/System",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_message_type",
+								"System"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find One 404",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 404\", function() {\r",
+									"    pm.response.to.have.status(404);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_message_types/no_type",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_message_types",
+								"no_type"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find All 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const isTypeValid = (room) => {\r",
+									"    [\r",
+									"        \"name\",\r",
+									"        \"created_at\",\r",
+									"        \"updated_at\"\r",
+									"    ].forEach(expected => {\r",
+									"        pm.test(`response must include ${expected} property`, function () {\r",
+									"            pm.expect(room).to.have.property(expected);\r",
+									"        });\r",
+									"    });\r",
+									"\r",
+									"    [\r",
+									"        { prop: \"name\", type: \"string\" },\r",
+									"        { prop: \"created_at\", type: \"string\" },\r",
+									"        { prop: \"updated_at\", type: \"string\" },\r",
+									"    ].forEach(expected => {\r",
+									"        pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"            pm.expect(room[expected.prop])\r",
+									"                .to.be.a(expected.type);\r",
+									"        });\r",
+									"    });\r",
+									"};\r",
+									"\r",
+									"const responseJSON = pm.response.json();\r",
+									"\r",
+									"pm.test(\"reponse must be an object\", function () {\r",
+									"    pm.expect(responseJSON).to.be.an('object');\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"total\",\r",
+									"    \"pages\",\r",
+									"    \"page\",\r",
+									"    \"limit\",\r",
+									"    \"data\"\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"total\", type: \"number\" },\r",
+									"    { prop: \"pages\", type: \"number\" },\r",
+									"    { prop: \"page\", type: \"number\" },\r",
+									"    { prop: \"limit\", type: \"number\" },\r",
+									"    { prop: \"data\", type: \"array\" }\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"pm.test(\"response data items must be valid type\", function () {\r",
+									"    responseJSON.data.forEach(room => isTypeValid(room));\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_message_types?limit=2&page=1",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_message_types"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "2"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Channel Message Upload Type",
+			"item": [
+				{
+					"name": "Find One 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const responseJSON = pm.response.json();\r",
+									"\r",
+									"[\r",
+									"    \"name\",\r",
+									"    \"created_at\",\r",
+									"    \"updated_at\"\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"name\", type: \"string\" },\r",
+									"    { prop: \"created_at\", type: \"string\" },\r",
+									"    { prop: \"updated_at\", type: \"string\" },\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_message_upload_type/Image",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_message_upload_type",
+								"Image"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find One 404",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 404\", function() {\r",
+									"    pm.response.to.have.status(404);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_message_upload_type/no_type",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_message_upload_type",
+								"no_type"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find All 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const isTypeValid = (room) => {\r",
+									"    [\r",
+									"        \"name\",\r",
+									"        \"created_at\",\r",
+									"        \"updated_at\"\r",
+									"    ].forEach(expected => {\r",
+									"        pm.test(`response must include ${expected} property`, function () {\r",
+									"            pm.expect(room).to.have.property(expected);\r",
+									"        });\r",
+									"    });\r",
+									"\r",
+									"    [\r",
+									"        { prop: \"name\", type: \"string\" },\r",
+									"        { prop: \"created_at\", type: \"string\" },\r",
+									"        { prop: \"updated_at\", type: \"string\" },\r",
+									"    ].forEach(expected => {\r",
+									"        pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"            pm.expect(room[expected.prop])\r",
+									"                .to.be.a(expected.type);\r",
+									"        });\r",
+									"    });\r",
+									"};\r",
+									"\r",
+									"const responseJSON = pm.response.json();\r",
+									"\r",
+									"pm.test(\"reponse must be an object\", function () {\r",
+									"    pm.expect(responseJSON).to.be.an('object');\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"total\",\r",
+									"    \"pages\",\r",
+									"    \"page\",\r",
+									"    \"limit\",\r",
+									"    \"data\"\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"total\", type: \"number\" },\r",
+									"    { prop: \"pages\", type: \"number\" },\r",
+									"    { prop: \"page\", type: \"number\" },\r",
+									"    { prop: \"limit\", type: \"number\" },\r",
+									"    { prop: \"data\", type: \"array\" }\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"pm.test(\"response data items must be valid type\", function () {\r",
+									"    responseJSON.data.forEach(room => isTypeValid(room));\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_message_upload_types?limit=2&page=1",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_message_upload_types"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "2"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Channel Audit",
+			"item": [
+				{
+					"name": "Find All 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const isRoomAuditValid = (channelAudit) => {\r",
+									"    [\r",
+									"        \"uuid\",\r",
+									"        \"body\",\r",
+									"        \"channel_audit_type_name\",\r",
+									"        \"channel_uuid\",\r",
+									"        \"created_at\",\r",
+									"        \"updated_at\",\r",
+									"    ].forEach(expected => {\r",
+									"        pm.test(`response must include ${expected} property`, function () {\r",
+									"            pm.expect(channelAudit).to.have.property(expected);\r",
+									"        });\r",
+									"    });\r",
+									"\r",
+									"    [\r",
+									"        { prop: \"uuid\", types: [\"string\"] },\r",
+									"        { prop: \"body\", types: [\"string\"] },\r",
+									"        { prop: \"channel_audit_type_name\", types: [\"string\"] },\r",
+									"        { prop: \"channel_uuid\", types: [\"string\"] },\r",
+									"        { prop: \"created_at\", types: [\"string\"] },\r",
+									"        { prop: \"updated_at\", types: [\"string\"] },\r",
+									"    ].forEach(expected => {\r",
+									"        pm.test(`response property ${expected.prop} must be of type ${expected.types}`, function () {\r",
+									"            pm.expect(expected.types.includes(typeof channelAudit[expected.prop]))\r",
+									"                .to.equal(true);\r",
+									"        });\r",
+									"    });\r",
+									"};\r",
+									"\r",
+									"const responseJSON = pm.response.json();\r",
+									"\r",
+									"pm.test(\"reponse must be an object\", function () {\r",
+									"    pm.expect(responseJSON).to.be.an('object');\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"total\",\r",
+									"    \"pages\",\r",
+									"    \"page\",\r",
+									"    \"limit\",\r",
+									"    \"data\"\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"total\", type: \"number\" },\r",
+									"    { prop: \"pages\", type: \"number\" },\r",
+									"    { prop: \"page\", type: \"number\" },\r",
+									"    { prop: \"limit\", type: \"number\" },\r",
+									"    { prop: \"data\", type: \"array\" }\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"pm.test(\"response data items must be valid channel audits\", function () {\r",
+									"    responseJSON.data.forEach(channelAudit => isRoomAuditValid(channelAudit));\r",
+									"});\r",
+									"\r",
+									"pm.environment.set('ChannelAuditUuid', responseJSON.data[0].uuid);\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_audits?limit=2&page=1&room_uuid={{ChannelUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_audits"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "2"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "room_uuid",
+									"value": "{{ChannelUuid}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find All 401",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 401\", function() {\r",
+									"    pm.response.to.have.status(401);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_audits?limit=2&page=1&room_uuid={{ChannelUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_audits"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "2"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "room_uuid",
+									"value": "{{ChannelUuid}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find One 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const responseJSON = pm.response.json();\r",
+									"\r",
+									"[\r",
+									"    \"uuid\",\r",
+									"    \"body\",\r",
+									"    \"channel_audit_type_name\",\r",
+									"    \"channel_uuid\",\r",
+									"    \"created_at\",\r",
+									"    \"updated_at\",\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"uuid\", types: [\"string\"] },\r",
+									"    { prop: \"body\", types: [\"string\"] },\r",
+									"    { prop: \"channel_audit_type_name\", types: [\"string\"] },\r",
+									"    { prop: \"channel_uuid\", types: [\"string\"] },\r",
+									"    { prop: \"created_at\", types: [\"string\"] },\r",
+									"    { prop: \"updated_at\", types: [\"string\"] },\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.types}`, function () {\r",
+									"        pm.expect(expected.types.includes(typeof responseJSON[expected.prop]))\r",
+									"            .to.equal(true);\r",
+									"    });\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_audit/{{ChannelAuditUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_audit",
+								"{{ChannelAuditUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find One 401",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 401\", function() {\r",
+									"    pm.response.to.have.status(401);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_audit/{{ChannelAuditUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_audit",
+								"{{ChannelAuditUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find One 404",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 404\", function() {\r",
+									"    pm.response.to.have.status(404);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_audit/no_uuid",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_audit",
+								"no_uuid"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Channel Audit Type",
+			"item": [
+				{
+					"name": "Find One 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const responseJSON = pm.response.json();\r",
+									"\r",
+									"[\r",
+									"    \"name\",\r",
+									"    \"created_at\",\r",
+									"    \"updated_at\"\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"name\", type: \"string\" },\r",
+									"    { prop: \"created_at\", type: \"string\" },\r",
+									"    { prop: \"updated_at\", type: \"string\" },\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_audit_type/WEBHOOK_CREATED",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_audit_type",
+								"WEBHOOK_CREATED"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find One 404",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 404\", function() {\r",
+									"    pm.response.to.have.status(404);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_audit_type/no_type",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_audit_type",
+								"no_type"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find All 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const isTypeValid = (room) => {\r",
+									"    [\r",
+									"        \"name\",\r",
+									"        \"created_at\",\r",
+									"        \"updated_at\"\r",
+									"    ].forEach(expected => {\r",
+									"        pm.test(`response must include ${expected} property`, function () {\r",
+									"            pm.expect(room).to.have.property(expected);\r",
+									"        });\r",
+									"    });\r",
+									"\r",
+									"    [\r",
+									"        { prop: \"name\", type: \"string\" },\r",
+									"        { prop: \"created_at\", type: \"string\" },\r",
+									"        { prop: \"updated_at\", type: \"string\" },\r",
+									"    ].forEach(expected => {\r",
+									"        pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"            pm.expect(room[expected.prop])\r",
+									"                .to.be.a(expected.type);\r",
+									"        });\r",
+									"    });\r",
+									"};\r",
+									"\r",
+									"const responseJSON = pm.response.json();\r",
+									"\r",
+									"pm.test(\"reponse must be an object\", function () {\r",
+									"    pm.expect(responseJSON).to.be.an('object');\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"total\",\r",
+									"    \"pages\",\r",
+									"    \"page\",\r",
+									"    \"limit\",\r",
+									"    \"data\"\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"total\", type: \"number\" },\r",
+									"    { prop: \"pages\", type: \"number\" },\r",
+									"    { prop: \"page\", type: \"number\" },\r",
+									"    { prop: \"limit\", type: \"number\" },\r",
+									"    { prop: \"data\", type: \"array\" }\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"pm.test(\"response data items must be valid type\", function () {\r",
+									"    responseJSON.data.forEach(room => isTypeValid(room));\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_audit_types?limit=2&page=1",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_audit_types"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "2"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Channel Webhook",
+			"item": []
+		},
+		{
+			"name": "Channel Webhook Message Type",
+			"item": [
+				{
+					"name": "Find One 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const responseJSON = pm.response.json();\r",
+									"\r",
+									"[\r",
+									"    \"name\",\r",
+									"    \"created_at\",\r",
+									"    \"updated_at\"\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"name\", type: \"string\" },\r",
+									"    { prop: \"created_at\", type: \"string\" },\r",
+									"    { prop: \"updated_at\", type: \"string\" },\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_webhook_message_type/Custom",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_webhook_message_type",
+								"Custom"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find One 404",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 404\", function() {\r",
+									"    pm.response.to.have.status(404);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_webhook_message_type/no_type",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_webhook_message_type",
+								"no_type"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find All 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const isTypeValid = (room) => {\r",
+									"    [\r",
+									"        \"name\",\r",
+									"        \"created_at\",\r",
+									"        \"updated_at\"\r",
+									"    ].forEach(expected => {\r",
+									"        pm.test(`response must include ${expected} property`, function () {\r",
+									"            pm.expect(room).to.have.property(expected);\r",
+									"        });\r",
+									"    });\r",
+									"\r",
+									"    [\r",
+									"        { prop: \"name\", type: \"string\" },\r",
+									"        { prop: \"created_at\", type: \"string\" },\r",
+									"        { prop: \"updated_at\", type: \"string\" },\r",
+									"    ].forEach(expected => {\r",
+									"        pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"            pm.expect(room[expected.prop])\r",
+									"                .to.be.a(expected.type);\r",
+									"        });\r",
+									"    });\r",
+									"};\r",
+									"\r",
+									"const responseJSON = pm.response.json();\r",
+									"\r",
+									"pm.test(\"reponse must be an object\", function () {\r",
+									"    pm.expect(responseJSON).to.be.an('object');\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"total\",\r",
+									"    \"pages\",\r",
+									"    \"page\",\r",
+									"    \"limit\",\r",
+									"    \"data\"\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"total\", type: \"number\" },\r",
+									"    { prop: \"pages\", type: \"number\" },\r",
+									"    { prop: \"page\", type: \"number\" },\r",
+									"    { prop: \"limit\", type: \"number\" },\r",
+									"    { prop: \"data\", type: \"array\" }\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"pm.test(\"response data items must be valid type\", function () {\r",
+									"    responseJSON.data.forEach(room => isTypeValid(room));\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_webhook_message_types?limit=2&page=1",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_webhook_message_types"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "2"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"const email = pm.environment.get(\"TestUserEmail\");\r",
+					"const password = pm.environment.get(\"TestUserPassword\");\r",
+					"\r",
+					"pm.sendRequest({\r",
+					"    url: pm.environment.get(\"BaseUrl\") + \"/user/login\",\r",
+					"    method: 'POST',\r",
+					"    header: {\r",
+					"        'Content-Type': 'application/json'\r",
+					"    },\r",
+					"    body: {\r",
+					"        mode: 'raw',\r",
+					"        raw: JSON.stringify({ \r",
+					"            email, \r",
+					"            password\r",
+					"        })\r",
+					"    }\r",
+					"}, function (err, res) {\r",
+					"    if (err) {\r",
+					"        console.error(err);\r",
+					"    } else {\r",
+					"        const jsonData = res.json();\r",
+					"        console.log(jsonData)\r",
+					"        const token = jsonData.token;\r",
+					"        pm.environment.set(\"Authorization\", \"Bearer \" + token);\r",
+					"    }\r",
+					"});\r",
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	]
+}

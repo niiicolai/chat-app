@@ -10,6 +10,11 @@ import bcrypt from 'bcrypt';
 const SALT_ROUNDS = 10;
 const uploader = new UserAvatarUploader();
 
+console.warn('MySQL TODO (user_service.js): ')
+console.warn('Users signed in with Google can not set a password');
+console.warn('Users cannot revoke their Google sign in');
+console.warn('Users with passwords can not sign in with Google');
+
 class UserService extends MysqlBaseFindService {
     constructor() {
         super(db.UserView, dto);
@@ -40,11 +45,23 @@ class UserService extends MysqlBaseFindService {
         
         const avatar = (file && file.size > 0) ? await uploader.create(file, uuid) : null;
 
-        await db.sequelize.query('CALL create_user_proc(:uuid, :username, :email, :password, :avatar, @result)', {
-            replacements: { uuid, username, email, password, avatar },
+        await db.sequelize.query('CALL create_user_proc(:uuid, :username, :email, :password, :avatar, :login_type, :third_party_id, @result)', {
+            replacements: { uuid, username, email, password, avatar, login_type: 'Password', third_party_id: null }
         });
 
-        await UserEmailVerificationService.resend({ user_uuid: uuid });
+        /**
+         * Set the email as verified if the environment is test,
+         * to avoid having to confirm the email verification
+         * when running end-to-end tests.
+         */
+        const env = process.env.NODE_ENV || 'development';
+        if (env === 'test') {
+            await db.sequelize.query('CALL set_user_email_verification_proc(:user_uuid, :user_is_verified, @result)', {
+                replacements: { user_uuid: uuid, user_is_verified: true }
+            });
+        } else {
+            await UserEmailVerificationService.resend({ user_uuid: uuid });
+        }
 
         const user = await this.findOne({ uuid });
         const token = JwtService.sign(uuid);
@@ -77,7 +94,7 @@ class UserService extends MysqlBaseFindService {
         if (!body.username) body.username = existing.user_username;
         if (!body.email) body.email = existing.user_email;
 
-        if (!body.password) body.password = existing.user_password;
+        if (!body.password) body.password = existing.user_password || null;
         else body.password = bcrypt.hashSync(body.password, SALT_ROUNDS);
 
         const { username, email, password } = body;
@@ -100,7 +117,15 @@ class UserService extends MysqlBaseFindService {
 
         const { email: user_email, password } = options.body;
         const savedUser = await db.UserView.findOne({ where: { user_email }});
-        if (!savedUser || !await bcrypt.compare(password, savedUser.dataValues.user_password)) {
+        if (!savedUser) throw new ControllerError(404, 'Invalid email or password');
+
+        const userLogin = await db.UserLoginView.findOne({ where: { 
+            user_uuid: savedUser.user_uuid,
+            user_login_type_name: 'Password'
+        }});
+        if (!userLogin) throw new ControllerError(404, 'Invalid email or password');
+
+        if (!await bcrypt.compare(password, userLogin.dataValues.user_login_password)) {
             throw new ControllerError(400, 'Invalid email or password');
         }
 
