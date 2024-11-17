@@ -1,4 +1,4 @@
-import MongodbBaseFindService from './_mongodb_base_find_service.js';
+import ChannelMessageServiceValidator from '../../shared/validators/channel_message_service_validator.js';
 import ControllerError from '../../shared/errors/controller_error.js';
 import StorageService from '../../shared/services/storage_service.js';
 import RoomPermissionService from './room_permission_service.js';
@@ -19,116 +19,131 @@ import { broadcastChannel } from '../../../websocket_server.js';
 
 const storage = new StorageService('channel_message_upload');
 
-class Service extends MongodbBaseFindService {
-    constructor() {
-        super(ChannelMessage, dto, 'uuid');
-    }
+class Service {
 
+    /**
+     * @function findOne
+     * @description Find a channel message by uuid
+     * @param {Object} options
+     * @param {String} options.uuid
+     * @param {Object} options.user
+     * @param {String} options.user.sub
+     * @returns {Object}
+     */
     async findOne(options = { uuid: null, user: null }) {
+        ChannelMessageServiceValidator.findOne(options);
+
         const { user, uuid } = options;
-        const msg = await super.findOne({ uuid }, (query) => query
-            .populate('channel_message_type')
-            .populate('user')
-            .populate('channel')
-            .populate({
-                path: 'channel_message_upload',
-                populate: [
-                    { path: 'room_file', model: 'RoomFile' },
-                    { path: 'channel_message_upload_type', model: 'ChannelMessageUploadType' }
-                ]
-            })
-        );
+        const channelMessage = await ChannelMessage.findOne({ uuid })
+            .populate('channel user')
+            .populate('channel_message_upload.room_file')
+            .populate('channel.channel_webhook')
+            .populate('channel.channel_webhook.room_file')
 
-        if (!user) {
-            throw new ControllerError(500, 'No user provided');
-        }
-
-        if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid: msg.channel_uuid, user, role_name: null }))) {
+        if (!channelMessage) throw new ControllerError(404, 'Channel message not found');
+        if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid: channelMessage.channel.uuid, user, role_name: null }))) {
             throw new ControllerError(403, 'User is not in the room');
         }
 
-        return msg;
+        return channelMessage;
     }
 
+    /**
+     * @function findAll
+     * @description Find all channel messages by channel_uuid
+     * @param {Object} options
+     * @param {String} options.channel_uuid
+     * @param {Object} options.user
+     * @param {String} options.user.sub
+     * @param {Number} options.page
+     * @param {Number} options.limit
+     * @returns {Object}
+     */
     async findAll(options = { channel_uuid: null, user: null, page: null, limit: null }) {
-        const { channel_uuid, user, page, limit } = options;
-
-        if (!user) {
-            throw new ControllerError(500, 'No user provided');
-        }
-
-        if (!channel_uuid) {
-            throw new ControllerError(400, 'No channel_uuid provided');
-        }
-
-        const channel = await Channel.findOne({ uuid: channel_uuid });
-        if (!channel) {
-            throw new ControllerError(404, 'Channel not found');
-        }
+        options = ChannelMessageServiceValidator.findAll(options);
+        const { channel_uuid, user, page, limit, offset } = options;
 
         if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid, user, role_name: null }))) {
             throw new ControllerError(403, 'User is not in the room');
         }
 
-        return await super.findAll(
-            { page, limit, where: { channel: channel._id } },
-            (query) => query
-                .populate('channel_message_type')
-                .populate('user')
-                .populate('channel')
-                .populate({
-                    path: 'channel_message_upload',
-                    populate: [
-                        { path: 'room_file', model: 'RoomFile' },
-                        { path: 'channel_message_upload_type', model: 'ChannelMessageUploadType' }
-                    ]
-                })
-                .populate({
-                    path: 'channel_webhook_message',
-                    populate: [
-                        { path: 'channel_webhook_message_type', model: 'ChannelWebhookMessageType' },
-                        { path: 'channel_webhook', model: 'ChannelWebhook', populate: [
-                            { path: 'room_file', model: 'RoomFile' }
-                        ]},
-                    ]
-                })
-        );
+        const channel = await Channel.findOne({ uuid: channel_uuid })
+            .populate('room')
+            .populate('channel_webhook')
+            .populate('channel_webhook.room_file');
+        if (!channel) throw new ControllerError(404, 'Channel not found');
+
+        const params = { channel: channel._id };
+        const total = await Channel.find(params).countDocuments();
+        const channelMessages = await ChannelMessage.find(params)
+            .populate('channel user')
+            .populate('channel_message_upload.room_file')
+            .sort({ created_at: -1 })
+            .limit(limit || 0)
+            .skip((page && limit) ? offset : 0);
+
+        return {
+            total,
+            data: await Promise.all(channelMessages.map(async (channelMessage) => {
+                return dto({
+                    ...channelMessage._doc,
+                    room: { uuid: channel.room.uuid },
+                    channel: { uuid: channel.uuid },
+                    ...(channel?.channel_webhook && {
+                        channel_webhook: {
+                            ...channel.channel_webhook._doc,
+                            ...(channel.channel_webhook.room_file && { room_file: channel.channel_webhook.room_file })
+                        }
+                    }),
+                });
+            })),
+            ...(limit && { limit }),
+            ...(page && limit && { page, pages: Math.ceil(total / limit) }),
+        };
     }
 
     async create(options = { body: null, file: null, user: null }) {
+        ChannelMessageServiceValidator.create(options);
+
         const { body, file, user } = options;
         const { uuid, body: msg, channel_uuid } = body;
         const { sub: user_uuid } = user;
 
-        if (!body) throw new ControllerError(400, 'No body provided');
-        if (!uuid) throw new ControllerError(400, 'No UUID provided');
-        if (!msg) throw new ControllerError(400, 'No body.body provided');
-        if (!channel_uuid) throw new ControllerError(400, 'No channel_uuid provided');
-        if (!user) throw new ControllerError(500, 'No user provided');
-
-        const channel = await Channel.findOne({ uuid: channel_uuid }).populate('room');
-        if (!channel) {
-            throw new ControllerError(404, 'Channel not found');
-        }
-
         if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid, user, role_name: null }))) {
             throw new ControllerError(403, 'User is not in the room');
         }
 
-        const savedUser = await User.findOne({ uuid: user_uuid });
-        const channelMessageType = await ChannelMessageType.findOne({ name: 'User' });
+        const [channel, savedUser, channel_message_type] = await Promise.all([
+            Channel.findOne({ uuid: channel_uuid }).populate('room'),
+            User.findOne({ uuid: user_uuid }),
+            ChannelMessageType.findOne({ name: 'User' }),
+        ]);
+
+        if (!channel) throw new ControllerError(404, 'Channel not found');
+        if (!savedUser) throw new ControllerError(404, 'User not found');
+        if (!channel_message_type) throw new ControllerError(500, 'Channel message type not found');
+        
         const channelMessage = new ChannelMessage({
             uuid,
             body: msg,
+            channel_message_type,
             channel: channel._id,
-            channel_message_type: channelMessageType._id,
             user: savedUser._id,
             channel_message_upload: null,
         });
 
-
+        let room_file = null;
         if (file && file.size > 0) {
             const size = file.size;
+
+            const chUploadTypeName = getUploadType(file);
+            const [room_file_type, channel_message_upload_type] = await Promise.all([
+                RoomFileType.findOne({ name: 'ChannelMessageUpload' }),
+                ChannelMessageUploadType.findOne({ name: chUploadTypeName }),
+            ]);
+
+            if (!room_file_type) throw new ControllerError(500, 'Room file type not found');
+            if (!channel_message_upload_type) throw new ControllerError(500, 'Channel message upload type not found');
 
             if ((await RoomPermissionService.fileExceedsTotalFilesLimit({ room_uuid: channel.room.uuid, bytes: size }))) {
                 throw new ControllerError(400, 'The room does not have enough space for this file');
@@ -137,30 +152,36 @@ class Service extends MongodbBaseFindService {
                 throw new ControllerError(400, 'File exceeds single file size limit');
             }
 
-            const roomFileType = await RoomFileType.findOne({ name: 'ChannelMessageUpload' });
             const src = await storage.uploadFile(file, uuid);
-            const roomFile = await new RoomFile({
+            room_file = await new RoomFile({
                 uuid: uuidv4(),
-                room_file_type: roomFileType._id,
+                room_file_type,
                 src,
                 size: size,
                 room: channel.room._id,
             }).save();
 
-            const chUploadTypeName = getUploadType(file);
-            const chUploadType = await ChannelMessageUploadType.findOne({ name: chUploadTypeName });
-            const chUpload = await new ChannelMessageUpload({
+            channelMessage.channel_message_upload = {
                 uuid: uuidv4(),
-                channel_message_upload_type: chUploadType._id,
-                room_file: roomFile._id,
-            }).save();
-
-            channelMessage.channel_message_upload = chUpload._id;
+                channel_message_upload_type,
+                room_file: room_file._id,
+            };
         }
 
         await channelMessage.save();
 
-        const result = this.findOne({ uuid, user });
+        const result = dto({
+            ...channelMessage._doc,
+            room: { uuid: channel.room.uuid },
+            channel: { uuid: channel.uuid },
+            user: savedUser._doc,
+            ...(channelMessage.channel_message_upload && {
+                channel_message_upload: {
+                    ...channelMessage.channel_message_upload._doc,
+                    ...(room_file && { room_file }),
+                }
+            }),
+        });
 
         /**
           * Broadcast the channel message to all users
@@ -172,21 +193,22 @@ class Service extends MongodbBaseFindService {
     }
 
     async update(options = { uuid: null, body: null, user: null }) {
+        ChannelMessageServiceValidator.update(options);
+
         const { uuid, body, user } = options;
         const { body: msg } = body;
         const { sub: user_uuid } = user;
 
-        if (!body) throw new ControllerError(400, 'No body provided');
-        if (!uuid) throw new ControllerError(400, 'No uuid provided');
-        if (!user) throw new ControllerError(500, 'No user provided');
+        const channelMessage = await ChannelMessage.findOne({ uuid })
+            .populate('channel user')
+            .populate('channel_message_upload.room_file')
+            .populate('channel.channel_webhook')
+            .populate('channel.channel_webhook.room_file')
+            .populate('channel.room');
+        if (!channelMessage) throw new ControllerError(404, 'Channel message not found');
 
-        const existing = await ChannelMessage.findOne({ uuid }).populate('channel');
-        if (!existing) {
-            throw new ControllerError(404, 'Channel message not found');
-        }
-
-        const channel_uuid = existing.channel.uuid;
-        const isOwner = existing.user?.uuid === user_uuid;
+        const channel_uuid = channelMessage.channel.uuid;
+        const isOwner = channelMessage.user?.uuid === user_uuid;
 
         if (!isOwner &&
             !(await RoomPermissionService.isInRoomByChannel({ channel_uuid, user, role_name: 'Moderator' })) &&
@@ -194,11 +216,24 @@ class Service extends MongodbBaseFindService {
             throw new ControllerError(403, 'User is not an owner of the message, or an admin or moderator of the room');
         }
 
-        if (msg) existing.body = msg;
+        if (msg) channelMessage.body = msg;
 
-        await existing.save();
+        await channelMessage.save();
 
-        const result = this.findOne({ uuid, user });
+        const result = dto({
+            ...channelMessage._doc,
+            room: { uuid: channelMessage.channel.room.uuid },
+            channel: { uuid: channelMessage.channel.uuid },
+            ...(channelMessage.user && { user: channelMessage.user._doc }),
+            ...(channelMessage.channel_message_upload && {
+                channel_message_upload: {
+                    ...channelMessage.channel_message_upload._doc,
+                    ...(channelMessage.channel_message_upload.room_file && {
+                        room_file: channelMessage.channel_message_upload.room_file
+                    }),
+                }
+            }),
+        });
 
         /**
           * Broadcast the channel message to all users
@@ -210,35 +245,19 @@ class Service extends MongodbBaseFindService {
     }
 
     async destroy(options = { uuid: null, user: null }) {
+        ChannelMessageServiceValidator.destroy(options);
+
         const { uuid, user } = options;
         const { sub: user_uuid } = user;
 
-        if (!uuid) {
-            throw new ControllerError(400, 'No uuid provided');
-        }
-        if (!user) {
-            throw new ControllerError(500, 'No user provided');
-        }
-
-        const existing = await ChannelMessage.findOne({ uuid })
-            .populate('channel_message_type')
-            .populate('user')
+        const channelMessage = await ChannelMessage.findOne({ uuid })
             .populate('channel')
-            .populate('channel_webhook_message')
-            .populate({
-                path: 'channel_message_upload',
-                populate: [
-                    { path: 'room_file', model: 'RoomFile' },
-                    { path: 'channel_message_upload_type', model: 'ChannelMessageUploadType' }
-                ]
-            });
-            
-        if (!existing) {
-            throw new ControllerError(404, 'Channel message not found');
-        }
+            .populate('channel.room')
+            .populate('channel_message_upload.room_file');
+        if (!channelMessage) throw new ControllerError(404, 'Channel message not found');
 
-        const channel_uuid = existing.channel.uuid;
-        const isOwner = existing.user?.uuid === user_uuid;
+        const channel_uuid = channelMessage.channel.uuid;
+        const isOwner = channelMessage.user?.uuid === user_uuid;
 
         if (!isOwner &&
             !(await RoomPermissionService.isInRoomByChannel({ channel_uuid, user, role_name: 'Moderator' })) &&
@@ -246,17 +265,12 @@ class Service extends MongodbBaseFindService {
             throw new ControllerError(403, 'User is not an owner of the message, or an admin or moderator of the room');
         }
 
-        if (existing.channel_message_upload) {
-            const roomFile = await RoomFile.findOne({ _id: existing.channel_message_upload.room_file });
+        if (channelMessage.channel_message_upload) {
+            const roomFile = channelMessage.channel_message_upload.room_file;
             if (roomFile) {
                 await storage.deleteFile(storage.parseKey(roomFile.src));
                 await RoomFile.deleteOne({ _id: roomFile._id });
             }
-            await ChannelMessageUpload.deleteOne({ _id: existing.channel_message_upload._id });
-        }
-
-        if (existing.channel_webhook_message) {
-            await ChannelWebhookMessage.deleteOne({ _id: existing.channel_webhook_message._id });
         }
 
         await ChannelMessage.deleteOne({ uuid });

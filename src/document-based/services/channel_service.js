@@ -67,7 +67,7 @@ class Service {
         const params = { room: room._id };
         const total = await Channel.find(params).countDocuments();
         const channels = await Channel.find(params)
-            .populate('room_file')
+            .populate('room room_file')
             .sort({ created_at: -1 })
             .limit(limit || 0)
             .skip((page && limit) ? offset : 0);
@@ -82,6 +82,21 @@ class Service {
         };
     }
 
+    /**
+     * @function create
+     * @description Create a channel
+     * @param {Object} options
+     * @param {Object} options.body
+     * @param {String} options.body.uuid
+     * @param {String} options.body.name
+     * @param {String} options.body.description
+     * @param {String} options.body.channel_type_name
+     * @param {String} options.body.room_uuid
+     * @param {Object} options.file
+     * @param {Object} options.user
+     * @param {String} options.user.sub
+     * @returns {Object}
+     */
     async create(options = { body: null, file: null, user: null }) {
         ChannelServiceValidator.create(options);
 
@@ -140,33 +155,48 @@ class Service {
 
         await channel.save()
         
-        return dto({ ...channel._doc, room: { uuid: room_uuid }, room_file });
+        return dto({ 
+            ...channel._doc,
+            ...(room_file && { room_file }),
+            room: { uuid: channel.room.uuid },
+        });
     }
 
+    /**
+     * @function update
+     * @description Update a channel by uuid
+     * @param {Object} options
+     * @param {String} options.uuid
+     * @param {Object} options.body
+     * @param {Object} options.body.name
+     * @param {Object} options.body.description
+     * @param {Object} options.file
+     * @param {Object} options.user
+     * @param {String} options.user.sub
+     * @returns {Object}
+     */
     async update(options = { uuid: null, body: null, file: null, user: null }) {
         ChannelServiceValidator.update(options);
 
         const { uuid, body, file, user } = options;
         const { name, description } = body;
 
-        if (!uuid) throw new ControllerError(400, 'No uuid provided');
-        if (!user) throw new ControllerError(500, 'No user provided');
-
         if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid: uuid, user, role_name: 'Admin' }))) {
             throw new ControllerError(403, 'User is not an admin of the room');
         }
 
-        const existing = await Channel.findOne({ uuid }).populate('room');
-        if (!existing) {
-            throw new ControllerError(404, 'Channel not found');
-        }
+        const channel = await Channel.findOne({ uuid }).populate('room');
+        if (!channel) throw new ControllerError(404, 'Channel not found');
 
-        if (name) existing.name = name;
-        if (description) existing.description = description;
+        if (name) channel.name = name;
+        if (description) channel.description = description;
 
+        let room_file = null;
         if (file && file.size > 0) {
-            const { uuid: room_uuid } = existing.room;
+            const { uuid: room_uuid } = channel.room;
             const { size } = file;
+            const room_file_type = await RoomFileType.findOne({ name: 'ChannelAvatar' });
+            if (!room_file_type) throw new ControllerError(500, 'Room file type not found');
 
             if ((await RoomPermissionService.fileExceedsTotalFilesLimit({ room_uuid, bytes: size }))) {
                 throw new ControllerError(400, 'The room does not have enough space for this file');
@@ -175,59 +205,61 @@ class Service {
                 throw new ControllerError(400, 'File exceeds single file size limit');
             }
 
-            const roomFileType = await RoomFileType.findOne({ name: 'ChannelAvatar' });
             const src = await storage.uploadFile(file, uuid);
-            const roomFile = await new RoomFile({
+            room_file = await new RoomFile({
                 uuid,
-                room_file_type: roomFileType._id,
+                room_file_type,
                 src: src,
                 size: size,
-                room: existing.room._id,
+                room: channel.room._id,
             }).save();
 
-            existing.room_file = roomFile._id;
+            channel.room_file = room_file._id;
         }
 
-        await existing.save();
+        await channel.save();
 
-        return this.findOne({ uuid, user });
+        return dto({ 
+            ...channel._doc,
+            ...(room_file && { room_file }),
+            room: { uuid: channel.room.uuid },
+        });
     }
 
+    /**
+     * @function destroy
+     * @description Destroy a channel by uuid
+     * @param {Object} options
+     * @param {String} options.uuid
+     * @param {Object} options.user
+     * @param {String} options.user.sub
+     * @returns {void}
+     */
     async destroy(options = { uuid: null, user: null }) {
         ChannelServiceValidator.destroy(options);
 
         const { uuid, user } = options;
 
-        if (!uuid) {
-            throw new ControllerError(400, 'No uuid provided');
-        }
-        if (!user) {
-            throw new ControllerError(500, 'No user provided');
-        }
-
         if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid: uuid, user, role_name: 'Admin' }))) {
             throw new ControllerError(403, 'User is not an admin of the room');
         }
 
-        const channel = await Channel.findOne({ uuid })
-            .populate('room_file')
-            .populate('room');
-        if (!channel) {
-            throw new ControllerError(404, 'Channel not found');
-        }
+        const channel = await Channel.findOne({ uuid }).populate('room room_file channel_webhook.room_file');
+        if (!channel) throw new ControllerError(404, 'Channel not found');
 
         if (channel.room_file) {
-            await storage.deleteFile(storage.parseKey(channel.room_file.src));
-            await RoomFile.deleteOne({ uuid: channel.room_file.uuid });
+            await Promise.all([
+                storage.deleteFile(storage.parseKey(channel.room_file.src)),
+                RoomFile.deleteOne({ uuid: channel.room_file.uuid })
+            ]);
         }
 
-        const channelWebhooks = await ChannelWebhook.find({ channel: channel._id }).populate('room_file');
-        const channelWebhookRoomFileIds = channelWebhooks.filter((channelWebhook) => channelWebhook.room_file).map((channelWebhook) => channelWebhook.room_file._id);
-        if (channelWebhookRoomFileIds.length) {
-            await RoomFile.deleteMany({ _id: { $in: channelWebhookRoomFileIds } });
+        if (channel?.channel_webhook?.room_file) {
+            await Promise.all([
+                storage.deleteFile(storage.parseKey(channel.channel_webhook.room_file.src)),
+                RoomFile.deleteOne({ uuid: channel.channel_webhook.room_file.uuid })
+            ]);
         }
-        await ChannelWebhookMessage.deleteMany({ channel_webhook: { $in: channelWebhooks.map((channelWebhook) => channelWebhook._id) } });
-        await ChannelWebhook.deleteMany({ channel: channel._id });
 
         const channelMessages = await ChannelMessage.find({ channel: channel._id })
             .populate({
@@ -245,16 +277,13 @@ class Service {
             if (channelMessage.channel_message_upload) {
                 channelMessageUploadIds.push(channelMessage.channel_message_upload._id);                
                 roomFileIds.push(channelMessage.channel_message_upload.room_file._id);
-
                 storage.deleteFile(storage.parseKey(channelMessage.channel_message_upload.room_file.src));
             }
         });
         
         await ChannelMessage.deleteMany({ channel: channel._id });
-        await ChannelMessageUpload.deleteMany({ _id: { $in: channelMessageUploadIds } });
         await RoomFile.deleteMany({ _id: { $in: roomFileIds } });
-        await RoomJoinSettings.findOne({ join_channel: channel._id }).updateOne({ join_channel: null });
-
+        await Room.findOne({ 'room_join_settings.join_channel': channel._id })?.updateOne({ 'room_join_settings.join_channel': null });
         await Channel.deleteOne({ uuid });
     }
 }

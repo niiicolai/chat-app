@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-export default new mongoose.Schema({
+export const channelWebhookSchema = new mongoose.Schema({
     uuid: { 
         type: String, 
         required: true 
@@ -24,3 +24,7 @@ export default new mongoose.Schema({
         updatedAt: 'updated_at'
     }
 });
+
+const ChannelWebhook = mongoose.model("ChannelWebhook", channelWebhookSchema);
+
+export default ChannelWebhook;

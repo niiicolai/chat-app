@@ -213,7 +213,7 @@ class Service {
             await new ChannelMessage({
                 uuid: uuidv4(),
                 channel: channelId,
-                channel_message_type: channel_message_type._id,
+                channel_message_type,
                 body,
             }).save();
         }

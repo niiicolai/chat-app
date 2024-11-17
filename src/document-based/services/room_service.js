@@ -8,6 +8,7 @@ import RoomCategory from '../mongoose/models/room_category.js';
 import RoomFile from '../mongoose/models/room_file.js';
 import RoomFileType from '../mongoose/models/room_file_type.js';
 import RoomUserRole from '../mongoose/models/room_user_role.js';
+import ChannelMessage from '../mongoose/models/channel_message.js';
 import Channel from '../mongoose/models/channel.js';
 import User from '../mongoose/models/user.js';
 import { v4 as uuidv4 } from 'uuid';
@@ -174,7 +175,8 @@ class Service {
         await Promise.all([
             RoomFile.deleteMany({ room: room._id }),
             Channel.deleteMany({ room: room._id }),
-            Room.deleteOne({ uuid }),
+            ChannelMessage.deleteMany({ 'channel.room': room._id }),
+            Room.deleteOne({ uuid: options.uuid }),
         ]);
     }
 

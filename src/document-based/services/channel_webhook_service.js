@@ -319,13 +319,15 @@ class Service {
           * Broadcast the channel message to all users
           * in the room where the channel message was deleted.
           */
-        broadcastChannel(`channel-${channel.uuid}`, 'chat_message_created', { 
-            ...chatMessageDto(chatMessage._doc),
+        broadcastChannel(`channel-${channel.uuid}`, 'chat_message_created', chatMessageDto({ 
+            ...chatMessage._doc,
             channel: { uuid: channel.uuid },
-            channel_webhook_message: {
-                channel_webhook: { uuid: channelWebhook.uuid },
-            }
-        });
+            channel_webhook_message: chatMessage.channel_webhook_message?._doc,
+            channel_webhook: {
+                ...channelWebhook._doc,
+                ...(channelWebhook.room_file && { room_file: channelWebhook.room_file._doc })
+            },
+        }));
     }
 }
 

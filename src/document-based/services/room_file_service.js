@@ -103,22 +103,24 @@ class Service {
         }
 
         if (isMessageUpload) {
-            const channelMessageUpload = await ChannelMessageUpload.findOne({ room_file: roomFile._id });
-            if (!channelMessageUpload) throw new ControllerError(404, 'Channel message upload not found');
-            const channelMessage = await ChannelMessage.findOne({ channel_message_upload: channelMessageUpload._id });
-            if (!channelMessage) throw new ControllerError(404, 'Channel message not found');
-
-            await ChannelMessage.findOne({ uuid: channelMessage.uuid }).updateOne({ channel_message_upload: null });
-            await ChannelMessageUpload.deleteOne({ uuid: channelMessageUpload.uuid });
+            await ChannelMessage
+                .findOne({ 'channel_message_upload.room_file': roomFile._id })
+                .updateOne({ 'channel_message_upload': null });
         }
         else if (roomFile.room_file_type.name === 'ChannelWebhookAvatar') {
-            await ChannelWebhook.findOne({ room_file: roomFile._id }).updateOne({ room_file: null });
+            await Channel
+                .findOne({ 'channel_webhook.room_file': roomFile._id })
+                .updateOne({ 'channel_webhook.room_file': null });
         }
         else if (roomFile.room_file_type.name === 'ChannelAvatar') {
-            await Channel.findOne({ room_file: roomFile._id }).updateOne({ room_file: null });
+            await Channel
+                .findOne({ room_file: roomFile._id })
+                .updateOne({ room_file: null });
         }
         else if (roomFile.room_file_type.name === 'RoomAvatar') {
-            await Room.findOne({ uuid: roomFile.room.uuid }).updateOne({ 'room_avatar.room_file': null });
+            await Room
+                .findOne({ uuid: roomFile.room.uuid })
+                .updateOne({ 'room_avatar.room_file': null });
         }
        
         await RoomFile.deleteOne({ uuid });
