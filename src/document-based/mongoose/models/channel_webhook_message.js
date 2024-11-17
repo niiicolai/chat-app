@@ -1,10 +1,25 @@
 import mongoose from "mongoose";
 
-export default mongoose.model("ChannelWebhookMessage", new mongoose.Schema({
-    uuid: { type: String, required: true },
-    body: { type: String, required: true },
-    channel_webhook_message_type: { type: mongoose.Schema.Types.ObjectId, ref: 'ChannelWebhookMessageType', required: true },
-    channel_webhook: { type: mongoose.Schema.Types.ObjectId, ref: 'ChannelWebhook', required: true },
-    created_at: { type: Date, default: Date.now },
-    updated_at: { type: Date, default: Date.now },
-}));
+import { channelWebhookMessageTypeSchema as channel_webhook_message_type } from "./channel_webhook_message_type.js";
+
+export default new mongoose.Schema({
+    uuid: { 
+        type: String, 
+        required: true 
+    },
+    body: { 
+        type: String, 
+        required: true 
+    },
+    channel_webhook: { 
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: 'ChannelWebhook', 
+        required: true 
+    },
+    channel_webhook_message_type,
+}, {
+    timestamps: {
+        createdAt: 'created_at',
+        updatedAt: 'updated_at'
+    }
+});

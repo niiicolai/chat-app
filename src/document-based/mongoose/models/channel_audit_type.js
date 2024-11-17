@@ -1,7 +1,14 @@
 import mongoose from "mongoose";
 
-export default mongoose.model("ChannelAuditType", new mongoose.Schema({
+export const channelAuditTypeSchema = new mongoose.Schema({
     name: { type: String, required: true },
-    created_at: { type: Date, default: Date.now },
-    updated_at: { type: Date, default: Date.now },
-}));
+}, {
+    timestamps: {
+        createdAt: 'created_at',
+        updatedAt: 'updated_at'
+    }
+});
+
+const ChannelAuditType = mongoose.model("ChannelAuditType", channelAuditTypeSchema);
+
+export default ChannelAuditType;

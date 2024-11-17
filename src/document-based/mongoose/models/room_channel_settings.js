@@ -1,9 +1,21 @@
 import mongoose from "mongoose";
 
-export default mongoose.model("RoomChannelSettings", new mongoose.Schema({
-    uuid: { type: String, required: true },
-    max_channels: { type: Number, required: true },
-    message_days_to_live: { type: Number, required: true },
-    created_at: { type: Date, default: Date.now },
-    updated_at: { type: Date, default: Date.now },
-}));
+export default new mongoose.Schema({
+    uuid: { 
+        type: String, 
+        required: true 
+    },
+    max_channels: { 
+        type: Number, 
+        required: true 
+    },
+    message_days_to_live: { 
+        type: Number, 
+        required: true 
+    },
+}, {
+    timestamps: {
+        createdAt: 'created_at',
+        updatedAt: 'updated_at'
+    }
+});

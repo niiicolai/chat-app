@@ -1,7 +1,17 @@
 import mongoose from "mongoose";
 
-export default mongoose.model("RoomUserRole", new mongoose.Schema({
-    name: { type: String, required: true },
-    created_at: { type: Date, default: Date.now },
-    updated_at: { type: Date, default: Date.now },
-}));
+export const roomUserRoleSchema = new mongoose.Schema({
+    name: { 
+        type: String, 
+        required: true 
+    },
+}, {
+    timestamps: {
+        createdAt: 'created_at',
+        updatedAt: 'updated_at'
+    }
+});
+
+const roomUserRoleModel = mongoose.model("RoomUserRole", roomUserRoleSchema);
+
+export default roomUserRoleModel;

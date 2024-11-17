@@ -1,7 +1,17 @@
 import mongoose from "mongoose";
 
-export default mongoose.model("UserLoginType", new mongoose.Schema({
-    name: { type: String, required: true },
-    created_at: { type: Date, default: Date.now },
-    updated_at: { type: Date, default: Date.now },
-}));
+export const userLoginTypeSchema = new mongoose.Schema({
+    name: {
+        type: String,
+        required: true
+    }
+}, {
+    timestamps: {
+        createdAt: 'created_at',
+        updatedAt: 'updated_at'
+    }
+});
+
+const userLoginTypeModel = mongoose.model("UserLoginType", userLoginTypeSchema);
+
+export default userLoginTypeModel;

@@ -1,7 +1,14 @@
 import mongoose from "mongoose";
 
-export default mongoose.model("ChannelMessageType", new mongoose.Schema({
+export const channelMessageTypeSchema = new mongoose.Schema({
     name: { type: String, required: true },
-    created_at: { type: Date, default: Date.now },
-    updated_at: { type: Date, default: Date.now },
-}));
+}, {
+    timestamps: {
+        createdAt: 'created_at',
+        updatedAt: 'updated_at'
+    }
+});
+
+const ChannelMessageType = mongoose.model("ChannelMessageType", channelMessageTypeSchema);
+
+export default ChannelMessageType;

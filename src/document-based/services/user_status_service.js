@@ -2,44 +2,61 @@ import ControllerError from '../../shared/errors/controller_error.js';
 import dto from '../dto/user_status_dto.js';
 import User from '../mongoose/models/user.js';
 import UserStatusState from '../mongoose/models/user_status_state.js';
+import UserStatusServiceValidator from '../../shared/validators/user_status_service_validator.js';
 
 class Service {
 
+    /**
+     * @function findOne
+     * @description Find a user status by user_uuid
+     * @param {Object} options
+     * @param {String} options.user_uuid
+     * @returns {Object}
+     */
     async findOne(options = { user_uuid: null }) {
-        if (!options) throw new ControllerError(500, 'No options provided');
-        if (!options.user_uuid) throw new ControllerError(400, 'No user_uuid provided');
+        UserStatusServiceValidator.findOne(options);
 
-        const { user_uuid } = options;
-        const user = await User.findOne({ uuid: user_uuid })
-            .populate('user_status')
-            .populate({ path: 'user_status', populate: { path: 'user_status_state' } });
+        const user = await User.findOne({ uuid: options.user_uuid });
+        const userStatus = user?.user_status;
 
         if (!user) throw new ControllerError(404, 'User not found');
+        if (!userStatus) throw new ControllerError(404, 'User status not found');
 
-        return dto({ ...user.user_status._doc, user });
+        return dto({ ...userStatus._doc, user });
     }
 
+    /**
+     * @function update
+     * @description Update a user status by user_uuid
+     * @param {Object} options
+     * @param {Object} options.body
+     * @param {String} options.body.message
+     * @param {String} options.body.user_status_state
+     * @param {String} options.user_uuid
+     * @returns {Object}
+     */
     async update(options={ body: null, user_uuid: null }) {
-        const { body, user_uuid } = options;
-        const { message, user_status_state } = body;
+        UserStatusServiceValidator.update(options);
 
-        if (!user_uuid) throw new ControllerError(500, 'No user_uuid provided');
-
-        const user = await User.findOne({ uuid: user_uuid })
-            .populate('user_status')
-            .populate({ path: 'user_status', populate: { path: 'user_status_state' } });
+        const user = await User.findOne({ uuid: options.user_uuid });
+        const userStatus = user?.user_status;
 
         if (!user) throw new ControllerError(404, 'User not found');
+        if (!userStatus) throw new ControllerError(404, 'User status not found');
 
-        if (message) user.user_status.message = message;
+        const { message, user_status_state } = options.body;
+
+        if (message) userStatus.message = message;
         if (user_status_state) {
             const state = await UserStatusState.findOne({ name: user_status_state });
             if (!state) throw new ControllerError(404, 'User status state not found');
 
-            user.user_status.user_status_state = state;
+            userStatus.user_status_state = state;
         }
 
-        return dto({...(await user.user_status.save())._doc, user });
+        await user.save();
+
+        return dto({ ...userStatus._doc, user });
     }
 }
 

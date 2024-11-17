@@ -1,146 +1,155 @@
-import MongodbBaseFindService from './_mongodb_base_find_service.js';
+import RoomUserServiceValidator from '../../shared/validators/room_user_service_validator.js';
 import ControllerError from '../../shared/errors/controller_error.js';
 import RoomPermissionService from './room_permission_service.js';
-import dto from '../dto/room_user_dto.js';
-import RoomUser from '../mongoose/models/room_user.js';
 import RoomUserRole from '../mongoose/models/room_user_role.js';
 import Room from '../mongoose/models/room.js';
-import User from '../mongoose/models/user.js';
+import dto from '../dto/room_user_dto.js';
 
+class Service {
 
-class Service extends MongodbBaseFindService {
-    constructor() {
-        super(RoomUser, dto, 'uuid');
-    }
+    /**
+     * @function findOne
+     * @description Find a room user by uuid
+     * @param {Object} options
+     * @param {String} options.uuid
+     * @param {Object} options.user
+     * @param {String} options.user.sub
+     * @returns {Object}
+     */
+    async findOne(options = { uuid: null, user: null }) {
+        RoomUserServiceValidator.findOne(options);
 
-    async findOne(options = { user: null }) {
-        const { user } = options;
-        const r = await super.findOne({ uuid: options.uuid }, (query) => query
-            .populate('room')
-            .populate('room_user_role')
-            .populate('user'));
+        const room = await Room.where({ room_users: { $elemMatch: { uuid: options.uuid } } }).findOne();
+        const roomUser = room?.room_users?.find(u => u.uuid === options.uuid);
 
-        if (!user) {
-            throw new ControllerError(500, 'No user provided');
-        }
-
-        if (!(await RoomPermissionService.isInRoom({ room_uuid: r.room.uuid, user, role_name: null }))) {
+        if (!room) throw new ControllerError(404, 'Room user not found');
+        if (!roomUser) throw new ControllerError(404, 'Room user not found');
+        if (!(await RoomPermissionService.isInRoom({ room_uuid: room.uuid, user: options.user, role_name: null }))) {
             throw new ControllerError(403, 'User is not in the room');
         }
 
-        return r;
+        return dto({ ...roomUser, room });
     }
 
+    /**
+     * @function findAuthenticatedUser
+     * @description Find the authenticated user in a room by room_uuid
+     * @param {Object} options
+     * @param {String} options.room_uuid
+     * @param {Object} options.user
+     * @param {String} options.user.sub
+     * @returns {Object}
+     */
     async findAuthenticatedUser(options = { room_uuid: null, user: null }) {
-        const { room_uuid, user } = options;
-        const { sub: user_uuid } = user;
+        RoomUserServiceValidator.findAuthenticatedUser(options);
 
-        if (!user) {
-            throw new ControllerError(500, 'No user provided');
-        }
+        const room = await Room.findOne({ uuid: options.room_uuid }).populate('room_users.user room_users.room_user_role');
+        const roomUser = room?.room_users?.find(u => u.user.uuid === options.user.sub);
 
-        if (!room_uuid) {
-            throw new ControllerError(400, 'No room_uuid provided');
-        }
-
-        if (!(await RoomPermissionService.isInRoom({ room_uuid, user, role_name: null }))) {
+        if (!room) throw new ControllerError(404, 'Room not found');
+        if (!roomUser) throw new ControllerError(404, 'Room user not found');
+        if (!(await RoomPermissionService.isInRoom({ room_uuid: room.uuid, user: options.user, role_name: null }))) {
             throw new ControllerError(403, 'User is not in the room');
         }
 
-        const savedRoom = await Room.findOne({ uuid: room_uuid });
-        const savedUser = await User.findOne({ uuid: user_uuid });
-
-        const m = await RoomUser.findOne({ room: savedRoom._id, user: savedUser._id }).populate('room_user_role');
-
-        if (!m) {
-            throw new ControllerError(404, 'Room user not found');
-        }
-
-        m.room = savedRoom;
-        m.user = savedUser;
-
-        return this.dto(m);
+        return dto({
+            room: room,
+            user: options.user,
+            room_user_role: roomUser.room_user_role
+        });
     }
 
+    /**
+     * @function findAll
+     * @description Find all room users by room_uuid
+     * @param {Object} options
+     * @param {String} options.room_uuid
+     * @param {Object} options.user
+     * @param {String} options.user.sub
+     * @param {Number} options.page
+     * @param {Number} options.limit
+     * @returns {Object}
+     */
     async findAll(options = { room_uuid: null, user: null, page: null, limit: null }) {
-        const { room_uuid, user, page, limit } = options;
+        options = RoomUserServiceValidator.findAll(options);
+        const { room_uuid, page, limit, offset } = options;
 
-        if (!room_uuid) {
-            throw new ControllerError(400, 'No room_uuid provided');
-        }
-
-        if (!user) {
-            throw new ControllerError(500, 'No user provided');
-        }
-
-        const room = await Room.findOne({ uuid: room_uuid });
-        if (!room) {
-            throw new ControllerError(404, 'Room not found');
-        }
-
-        if (!(await RoomPermissionService.isInRoom({ room_uuid, user, role_name: null }))) {
+        if (!(await RoomPermissionService.isInRoom({ room_uuid: options.room_uuid, user: options.user, role_name: null }))) {
             throw new ControllerError(403, 'User is not in the room');
         }
 
-        return await super.findAll(
-            { page, limit, where: { room: room._id } },
-            ( query ) => query
-                .populate('room_user_role')
-                .populate('room')
-                .populate('user')
-        );
+        const params = { uuid: room_uuid };
+        const room = await Room.findOne(params)
+            .populate('room_users.user room_users.room_user_role')
+            .sort({ created_at: -1 })
+            .limit(limit || 0)
+            .skip((page && limit) ? offset : 0);
+        
+        return {
+            total: room.room_users.length,
+            data: await Promise.all(room.room_users.map(async (room_user) => {
+                return dto({ ...room_user._doc, room: { uuid: room_uuid } });
+            })),
+            ...(limit && { limit }),
+            ...(page && limit && { page, pages: Math.ceil(room.room_users.length / limit) }),
+        };
     }
 
+    /**
+     * @function update
+     * @description Update a room user by uuid
+     * @param {Object} options
+     * @param {String} options.uuid
+     * @param {Object} options.body
+     * @param {Object} options.user
+     * @param {String} options.user.sub
+     * @returns {Object}
+     */
     async update(options = { uuid: null, body: null, user: null }) {
-        const { uuid, body, user } = options;
-        const { room_user_role_name } = body;
+        RoomUserServiceValidator.update(options);
 
-        if (!uuid) {
-            throw new ControllerError(400, 'No uuid provided');
-        }
-        if (!room_user_role_name) {
-            throw new ControllerError(400, 'No room_user_role_name provided');
-        }
-        if (!user) {
-            throw new ControllerError(500, 'No user provided');
-        }
+        const room = await Room.findOne({ 'room_users.uuid': options.uuid }).populate('room_users.user room_users.room_user_role');
+        const roomUser = room?.room_users?.find(u => u.uuid === options.uuid);
 
-        const existingRole = await RoomUserRole.findOne({ name: room_user_role_name });
-        if (!existingRole) {
-            throw new ControllerError(404, 'Room user role not found');
-        }
-
-        const existing = await RoomUser.findOne({ uuid }).populate('room')
-        if (!existing) {
-            throw new ControllerError(404, 'Room user not found');
-        }
-
-        if (!(await RoomPermissionService.isInRoom({ room_uuid: existing.room.uuid, user, role_name: 'Admin' }))) {
+        if (!room) throw new ControllerError(404, 'Room not found');
+        if (!roomUser) throw new ControllerError(404, 'Room user not found');
+        if (!(await RoomPermissionService.isInRoom({ room_uuid: room.uuid, user: options.user, role_name: 'Admin' }))) {
             throw new ControllerError(403, 'User is not an admin of the room');
         }
 
-        await RoomUser.findOneAndUpdate({ uuid }, { room_user_role: existingRole._id });
+        if (options.body.room_user_role_name) {
+            const roomUserRole = await RoomUserRole.findOne({ name: options.body.room_user_role_name });
+            if (!roomUserRole) throw new ControllerError(404, 'Room user role not found');
+            roomUser.room_user_role = roomUserRole;
+        }
+
+        await room.save();
+
+        return dto({ ...roomUser, room });
     }
 
+    /**
+     * @function destroy
+     * @description Destroy a room user by uuid
+     * @param {Object} options
+     * @param {String} options.uuid
+     * @param {Object} options.user
+     * @param {String} options.user.sub
+     * @returns {void}
+     */
     async destroy(options = { uuid: null, user: null }) {
-        const { uuid, user } = options;
-        if (!uuid) {
-            throw new ControllerError(400, 'No uuid provided');
-        }
-        if (!user) {
-            throw new ControllerError(500, 'No user provided');
-        }
+        RoomUserServiceValidator.destroy(options);
 
-        const existing = await RoomUser.findOne({ uuid }).populate('room').populate('user');
-        if (!existing) {
-            throw new ControllerError(404, 'Room user not found');
-        }
+        const room = await Room.findOne({ 'room_users.uuid': options.uuid }).populate('room_users.user room_users.room_user_role');
+        const roomUser = room?.room_users?.find(u => u.uuid === options.uuid);
 
-        if (!(await RoomPermissionService.isInRoom({ room_uuid: existing.room.uuid, user, role_name: 'Admin' }))) {
+        if (!room) throw new ControllerError(404, 'Room not found');
+        if (!roomUser) throw new ControllerError(404, 'Room user not found');
+        if (!(await RoomPermissionService.isInRoom({ room_uuid: room.uuid, user: options.user, role_name: 'Admin' }))) {
             throw new ControllerError(403, 'User is not an admin of the room');
         }
 
-        await RoomUser.findOneAndDelete({ uuid });
+        await Room.findOneAndUpdate({ uuid: room.uuid }, { $pull: { room_users: { uuid: options.uuid } } });
     }
 }
 
