@@ -105,17 +105,20 @@ jobs:
       - name: Clone frontend repository
         run: git clone https://github.com/niiicolai/chat-app-react.git
 
-      - name: Cd into frontend repository
-        run: cd chat-app-react
-
       - name: Install frontend dependencies
-        run: npm ci
+        run: |
+          cd chat-app-react
+          npm ci
 
       - name: Add .env file to frontend
-        run: echo "${{ secrets.TEST_FRONTEND_ENV_FILE }}" > .env
+        run: |
+          cd chat-app-react
+          echo "${{ secrets.TEST_FRONTEND_ENV_FILE }}" > .env
 
       - name: Start frontend server in the background
-        run: npm run dev
+        run: |
+          cd chat-app-react
+          npm run dev &
 
       - name: Wait for frontend server to be ready
         run: |
