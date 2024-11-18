@@ -71,8 +71,24 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y mongodb-mongosh
 
-      - name: Run wait_for_start.sh in background
-        run: sh ./wait_for_start.sh --db-overwrite &
+      - name: Start the server in the background
+        run: |
+          sh ./wait_for_start.sh --db-overwrite & # Start the server in background
+          SERVER_PID=$! # Capture the server's PID
+
+      - name: Wait for the server to be ready
+        run: |
+          for i in {1..30}; do
+            if curl -s http://localhost:3000 > /dev/null; then
+              echo "Server is ready!"
+              exit 0
+            fi
+            echo "Waiting for server to be ready..."
+            sleep 2
+          done
+          echo "Server did not become ready in time!"
+          kill $SERVER_PID # If server is still not ready, kill it
+          exit 1
         
       - name: Run tests
         run: npm test
