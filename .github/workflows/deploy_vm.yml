@@ -99,14 +99,42 @@ jobs:
       - name: Run MongoDB API tests
         run: npm run test:api:mongodb
 
-      #- name: Clone frontend repository
-      #  run: git clone
+      #- name: Run Neo4j API tests
+      #  run: npm run test:api:neo4j
 
-      #- name: Start frontend server
-      #  run: npm run dev
+      - name: Clone frontend repository
+        run: git clone https://github.com/niiicolai/chat-app-react.git
 
-      #- name: Run E2E tests
-      #  run: npm run test:e2e
+      - name: Cd into frontend repository
+        run: cd chat-app-react
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Add .env file to frontend
+        run: echo "${{ secrets.TEST_FRONTEND_ENV_FILE }}" > .env
+
+      - name: Start frontend server in the background
+        run: npm run dev
+
+      - name: Wait for frontend server to be ready
+        run: |
+          for i in {1..30}; do
+            if curl -s http://localhost:5173 > /dev/null; then
+              echo "Frontend server is ready!"
+              exit 0
+            fi
+            echo "Waiting for frontend server to be ready..."
+            sleep 2
+          done
+          echo "Frontend server did not become ready in time!"
+          exit 1
+
+      - name: Run E2E tests
+        run: npm run test:e2e
+
+      - name: Remove frontend repository
+        run: rm -rf chat-app-react
 
       - name: Remove .env file
         run: rm .env
