@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 
 import { channelTypeSchema as channel_type } from "./channel_type.js";
-import { channelWebhookSchema as channel_webhook } from "./channel_webhook.js";
+import channel_webhook from "./channel_webhook.js";
 
 export default mongoose.model("Channel", new mongoose.Schema({
     uuid: { 

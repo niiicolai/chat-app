@@ -19,7 +19,9 @@ class Service {
     async findOne(options = { uuid: null, user: null }) {
         RoomUserServiceValidator.findOne(options);
 
-        const room = await Room.where({ room_users: { $elemMatch: { uuid: options.uuid } } }).findOne();
+        const room = await Room.where({ room_users: { $elemMatch: { uuid: options.uuid } } })
+            .findOne()
+            .populate('room_users.user');
         const roomUser = room?.room_users?.find(u => u.uuid === options.uuid);
 
         if (!room) throw new ControllerError(404, 'Room user not found');
@@ -28,7 +30,7 @@ class Service {
             throw new ControllerError(403, 'User is not in the room');
         }
 
-        return dto({ ...roomUser, room });
+        return dto({ ...roomUser._doc, room });
     }
 
     /**

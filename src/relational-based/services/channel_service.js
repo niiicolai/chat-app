@@ -179,12 +179,13 @@ class Service extends MysqlBaseFindService {
             throw new ControllerError(500, 'No user provided');
         }
 
+        // Ensure the channel exists
+        await service.findOne({ uuid, user });
+
         if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid: uuid, user, role_name: 'Admin' }))) {
             throw new ControllerError(403, 'User is not an admin of the room');
         }
-
-        // Ensure the channel exists
-        await service.findOne({ uuid, user });
+        
         await db.sequelize.query('CALL delete_channel_proc(:uuid, @result)', {
             replacements: {
                 uuid,

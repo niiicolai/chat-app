@@ -8,11 +8,11 @@ import ChannelType from '../mongoose/models/channel_type.js';
 import Room from '../mongoose/models/room.js';
 import RoomFileType from '../mongoose/models/room_file_type.js';
 import RoomFile from '../mongoose/models/room_file.js';
-import ChannelWebhook from '../mongoose/models/channel_webhook.js';
-import ChannelWebhookMessage from '../mongoose/models/channel_webhook_message.js';
 import ChannelMessage from '../mongoose/models/channel_message.js';
-import ChannelMessageUpload from '../mongoose/models/channel_message_upload.js';
-import RoomJoinSettings from '../mongoose/models/room_join_settings.js';
+import ChannelAudit from '../mongoose/models/channel_audit.js';
+import ChannelAuditType from '../mongoose/models/channel_audit_type.js';
+import User from '../mongoose/models/user.js';
+import { v4 as uuidv4 } from 'uuid';
 
 const storage = new StorageService('channel_avatar');
 
@@ -153,12 +153,29 @@ class Service {
             channel.room_file = room_file._id;
         }
 
-        await channel.save()
+        const [channel_audit_type, savedUser] = await Promise.all([
+            ChannelAuditType.findOne({ name: 'CHANNEL_CREATED' }),
+            User.findOne({ uuid: user.sub }),
+        ]);
+
+        if (!channel_audit_type) throw new ControllerError(500, 'Channel audit type not found');
+        if (!savedUser) throw new ControllerError(404, 'User not found');
+
+        await Promise.all([
+            channel.save(),
+            new ChannelAudit({
+                uuid: uuidv4(),
+                body: JSON.stringify(body),
+                channel_audit_type,
+                channel: channel._id,
+                user: savedUser._id,
+            }).save(),
+        ]);
         
         return dto({ 
             ...channel._doc,
             ...(room_file && { room_file }),
-            room: { uuid: channel.room.uuid },
+            room: { uuid: room.uuid },
         });
     }
 

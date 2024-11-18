@@ -2,10 +2,9 @@ import ControllerError from "../errors/controller_error.js";
 import paginationValidator from './pagination_validator.js';
 
 export default class RoomUserServiceValidator {
-    static findOne(options = { uuid: null, room_uuid: null, user: null }) {
+    static findOne(options = { uuid: null, user: null }) {
         if (!options) throw new ControllerError(500, 'No options provided');
         if (!options.uuid) throw new ControllerError(400, 'No uuid provided');
-        if (!options.room_uuid) throw new ControllerError(400, 'No uuid provided');
         if (!options.user) throw new ControllerError(500, 'No user provided');
         if (!options.user.sub) throw new ControllerError(500, 'No user.sub provided');       
     }

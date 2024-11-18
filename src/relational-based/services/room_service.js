@@ -23,6 +23,9 @@ class Service extends MysqlBaseFindService {
         }];
     }
 
+    
+    
+
     async findOne(options = { uuid: null, user: null }) {
         const { user, uuid } = options;
         const { sub: user_uuid } = user;
@@ -31,7 +34,13 @@ class Service extends MysqlBaseFindService {
             throw new ControllerError(500, 'No user provided');
         }
 
-        return await super.findOne({ uuid, include: this.includeUser(user_uuid) });
+        const room =  await super.findOne({ uuid, include: this.includeUser(user_uuid) });
+
+        if (!(await RoomPermissionService.isInRoom({ room_uuid: uuid, user, role_name: null }))) {
+            throw new ControllerError(403, 'User is not in the room');
+        }
+
+        return room;
     }
 
     async findAll(options = { user: null, page: null, limit: null }) {

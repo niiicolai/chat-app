@@ -8,6 +8,8 @@ import RoomCategory from '../mongoose/models/room_category.js';
 import RoomFile from '../mongoose/models/room_file.js';
 import RoomFileType from '../mongoose/models/room_file_type.js';
 import RoomUserRole from '../mongoose/models/room_user_role.js';
+import RoomAudit from '../mongoose/models/room_audit.js';
+import RoomAuditType from '../mongoose/models/room_audit_type.js';
 import ChannelMessage from '../mongoose/models/channel_message.js';
 import Channel from '../mongoose/models/channel.js';
 import User from '../mongoose/models/user.js';
@@ -124,7 +126,14 @@ class Service {
             room.room_avatar.room_file = roomFile._id;
         }
 
-        await room.save();
+        const room_audit_type = await RoomAuditType.findOne({ name: 'ROOM_CREATED' });
+        if (!room_audit_type) throw new ControllerError(500, 'Room audit type not found');
+
+        await Promise.all([
+            new RoomAudit({ uuid: uuidv4(), room: room._id, body: JSON.stringify(body), room_audit_type, user: savedUser._id }).save(),
+            room.save()
+        ]);
+
         return dto(room);
     }
 

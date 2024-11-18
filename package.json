@@ -13,6 +13,7 @@
     "test:api:neo4j": "node ./test/api_test/index.js neo4j",
     "test:sonarqube": "node ./sonarqube.js",
     "db:override": "node db_override.js",
+    "sequelize:override": "node ./src/relational-based/scripts/mysql_override.js --run",
     "sequelize:migrate": "sequelize-cli db:migrate",
     "sequelize:migrate:undo": "sequelize-cli db:migrate:undo",
     "sequelize:migrate:undo:all": "sequelize-cli db:migrate:undo:all",

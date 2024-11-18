@@ -39,13 +39,26 @@ class Service {
             .populate('channel_message_upload.room_file')
             .populate('channel.channel_webhook')
             .populate('channel.channel_webhook.room_file')
-
+        
         if (!channelMessage) throw new ControllerError(404, 'Channel message not found');
         if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid: channelMessage.channel.uuid, user, role_name: null }))) {
             throw new ControllerError(403, 'User is not in the room');
         }
 
-        return channelMessage;
+        return dto({
+            ...channelMessage._doc,
+            room: { uuid: channelMessage.channel.room.uuid },
+            channel: { uuid: channelMessage.channel.uuid },
+            ...(channelMessage.user && { user: channelMessage.user._doc }),
+            ...(channelMessage.channel_message_upload && {
+                channel_message_upload: {
+                    ...channelMessage.channel_message_upload._doc,
+                    ...(channelMessage.channel_message_upload.room_file && {
+                        room_file: channelMessage.channel_message_upload.room_file
+                    }),
+                }
+            }),
+        });
     }
 
     /**

@@ -34,7 +34,7 @@ class Service {
             throw new ControllerError(403, 'User is not in the room');
         }
         
-        return dto({...room_invite_link, room});
+        return dto({ ...room_invite_link._doc, room });
     }
 
     /**
@@ -98,7 +98,7 @@ class Service {
         room.room_invite_links.push(body);
         await room.save();
 
-        return dto({ ...body, room });
+        return dto({ ...room.room_invite_links[room.room_invite_links.length - 1]._doc, room });
     }
 
     /**

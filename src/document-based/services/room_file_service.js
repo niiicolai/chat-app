@@ -95,10 +95,13 @@ class Service {
         const room_uuid = roomFile.room.uuid;
         const isMessageUpload = roomFile.room_file_type.name === 'ChannelMessageUpload';
 
-        if (isMessageUpload &&
-            !this.isOwner({ uuid, user }) &&
-            !(await RoomPermissionService.isInRoom({ room_uuid, user, role_name: 'Moderator' })) &&
-            !(await RoomPermissionService.isInRoom({ room_uuid, user, role_name: 'Admin' }))) {
+        const [isOwner, isAdmin, isModerator] = await Promise.all([
+            this.isOwner({ uuid, user }),
+            RoomPermissionService.isInRoom({ room_uuid, user, role_name: 'Admin' }),
+            RoomPermissionService.isInRoom({ room_uuid, user, role_name: 'Moderator' })
+        ]);
+
+        if (!isOwner && !isAdmin && !isModerator) {
             throw new ControllerError(403, 'User is not an owner of the file, or an admin or moderator of the room');
         }
 
@@ -146,13 +149,9 @@ class Service {
 
         const { uuid, user } = options;
         const { sub: user_uuid } = user;
-
-        const channelMessageUpload = await ChannelMessageUpload.findOne({ 'room_file.uuid': uuid }).populate('channel_message');
-        if (!channelMessageUpload) throw new ControllerError(404, 'isOwner: Channel message upload not found');
-
-        const channelMessage = await ChannelMessage.findOne({ uuid: channelMessageUpload.channel_message.uuid }).populate('user');
-        if (!channelMessage) throw new ControllerError(404, 'isOwner: Channel message not found');
-
+        const channelMessage = await ChannelMessage.findOne({ 'channel_message_upload.room_file.uuid': uuid })
+            .populate('user');
+        if (!channelMessage) return false;
         return channelMessage.user.uuid === user_uuid;
     }
 };

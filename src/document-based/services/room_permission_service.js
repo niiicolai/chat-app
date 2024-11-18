@@ -50,7 +50,7 @@ class RoomPermissionService {
 
         const { channel_uuid, user } = options;
         const { sub: user_uuid } = user;
-
+        
         const ch = await Channel.findOne({ uuid: channel_uuid }).populate('room');
         if (!ch) throw new ControllerError(404, 'Channel not found');
 

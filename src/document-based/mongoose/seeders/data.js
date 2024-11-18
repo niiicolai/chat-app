@@ -99,6 +99,9 @@ export default {
         { name: 'Webhook' },
     ],
     channel_audit_types: [
+        { name: 'CHANNEL_CREATED' },
+        { name: 'CHANNEL_EDITED' },
+        { name: 'CHANNEL_DELETED' },
         { name: 'MESSAGE_CREATED' },
         { name: 'MESSAGE_EDITED' },
         { name: 'MESSAGE_DELETED' },

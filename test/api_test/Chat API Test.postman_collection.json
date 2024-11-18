@@ -197,6 +197,8 @@
 								"exec": [
 									"const responseJSON = pm.response.json();\r",
 									"\r",
+									"pm.environment.set(\"SecondaryUserToken\", `Bearer ${responseJSON.token}`);\r",
+									"\r",
 									"pm.test(\"response should return token\", function () {\r",
 									"    pm.response.to.have.jsonBody(\"token\");\r",
 									"});\r",
@@ -1619,6 +1621,174 @@
 					"response": []
 				},
 				{
+					"name": "Update Details 403 (No room user)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"SecondaryUserToken\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{{RoomUpdateBody}}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/room/{{PersistentRoomUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room",
+								"{{PersistentRoomUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Details 403 (Moderator)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"AuthorizationMod\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{{RoomUpdateBody}}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/room/{{PersistentRoomUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room",
+								"{{PersistentRoomUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Details 403 (Member)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"AuthorizationMember\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{{RoomUpdateBody}}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/room/{{PersistentRoomUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room",
+								"{{PersistentRoomUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
 					"name": "Update Settings 204",
 					"event": [
 						{
@@ -1730,6 +1900,177 @@
 							"path": [
 								"room",
 								"{{RoomUuid}}",
+								"settings"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Settings 403 (No room user)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"SecondaryUserToken\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{{RoomSettingsBody}}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/room/{{PersistentRoomUuid}}/settings",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room",
+								"{{PersistentRoomUuid}}",
+								"settings"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Settings 403 (Moderator)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"AuthorizationMod\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{{RoomSettingsBody}}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/room/{{PersistentRoomUuid}}/settings",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room",
+								"{{PersistentRoomUuid}}",
+								"settings"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Settings 403 (Member)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"AuthorizationMember\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{{RoomSettingsBody}}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/room/{{PersistentRoomUuid}}/settings",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room",
+								"{{PersistentRoomUuid}}",
 								"settings"
 							]
 						}
@@ -1937,6 +2278,52 @@
 					"response": []
 				},
 				{
+					"name": "Find One 403 (No room user)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"SecondaryUserToken\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403 or 404\", function () {\r",
+									"    pm.expect(pm.response.code).to.be.oneOf([403, 404]);\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room/{{RoomUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room",
+								"{{RoomUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
 					"name": "Find One 404",
 					"event": [
 						{
@@ -2096,24 +2483,9 @@
 									"\r",
 									"    [\r",
 									"        \"uuid\",\r",
-									"        \"room_uuid\",\r",
 									"    ].forEach(expected => {\r",
 									"        pm.test(`response avatar property must include ${expected} property`, function () {\r",
 									"            pm.expect(room.avatar).to.have.property(expected);\r",
-									"        });\r",
-									"    });\r",
-									"\r",
-									"    [\r",
-									"        \"uuid\",\r",
-									"        \"src\",\r",
-									"        \"size_mb\",\r",
-									"        \"room_file_type_name\",\r",
-									"        \"room_uuid\",\r",
-									"    ].forEach(expected => {\r",
-									"        pm.test(`response avatar property with a room file must contain ${expected} property`, function () {\r",
-									"            if (room.avatar.room_file) {\r",
-									"                pm.expect(room.avatar.room_file).to.have.property(expected);\r",
-									"            }\r",
 									"        });\r",
 									"    });\r",
 									"};\r",
@@ -2235,9 +2607,14 @@
 						}
 					},
 					"response": []
-				},
+				}
+			]
+		},
+		{
+			"name": "Channel",
+			"item": [
 				{
-					"name": "Delete 204",
+					"name": "Create 400",
 					"event": [
 						{
 							"listen": "prerequest",
@@ -2257,8 +2634,8 @@
 							"listen": "test",
 							"script": {
 								"exec": [
-									"pm.test(\"Response must return 204\", function() {\r",
-									"    pm.response.to.have.status(204);\r",
+									"pm.test(\"Response must return 400\", function() {\r",
+									"    pm.response.to.have.status(400);\r",
 									"});\r",
 									""
 								],
@@ -2268,23 +2645,1058 @@
 						}
 					],
 					"request": {
-						"method": "DELETE",
+						"method": "POST",
 						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
 						"url": {
-							"raw": "{{BaseUrl}}/room/{{RoomUuid}}",
+							"raw": "{{BaseUrl}}/channel",
 							"host": [
 								"{{BaseUrl}}"
 							],
 							"path": [
-								"room",
-								"{{RoomUuid}}"
+								"channel"
 							]
 						}
 					},
 					"response": []
 				},
 				{
-					"name": "Delete 404",
+					"name": "Create 401",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 401\", function() {\r",
+									"    pm.response.to.have.status(401);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/channel",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"const { v4: uuidV4 } = require('uuid');\r",
+									"const room_uuid = pm.environment.get('PersistentRoomUuid')\r",
+									"\r",
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									"\r",
+									"pm.environment.set('ChannelCreateBody', JSON.stringify({\r",
+									"    uuid: uuidV4(),\r",
+									"    name: `test-${uuidV4()}`,\r",
+									"    description: `test-${uuidV4()}`,\r",
+									"    channel_type_name: `Text`,\r",
+									"    room_uuid \r",
+									"}))\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const responseJSON = pm.response.json();\r",
+									"const room_uuid = pm.environment.get('PersistentRoomUuid')\r",
+									"const channelCreateBody = JSON.parse(\r",
+									"    pm.environment.get('ChannelCreateBody'));\r",
+									"\r",
+									"// Set room uuid for later use\r",
+									"pm.environment.set(\"ChannelUuid\", responseJSON.uuid);\r",
+									"\r",
+									"pm.test(\"The returned channel should match the parameters in the body\", function() {\r",
+									"    pm.expect(responseJSON.uuid).to.equal(channelCreateBody.uuid);\r",
+									"    pm.expect(responseJSON.name).to.equal(channelCreateBody.name);\r",
+									"    pm.expect(responseJSON.description).to.equal(channelCreateBody.description);\r",
+									"    pm.expect(responseJSON.channel_type_name).to.equal(channelCreateBody.channel_type_name);\r",
+									"    pm.expect(responseJSON.room_uuid).to.equal(room_uuid);\r",
+									"});\r",
+									"\r",
+									"\r",
+									"[\r",
+									"    \"uuid\",\r",
+									"    \"name\",\r",
+									"    \"description\",\r",
+									"    \"channel_type_name\",\r",
+									"    \"room_uuid\",\r",
+									"    \"created_at\",\r",
+									"    \"updated_at\"\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"uuid\", type: \"string\" },\r",
+									"    { prop: \"name\", type: \"string\" },\r",
+									"    { prop: \"description\", type: \"string\" },\r",
+									"    { prop: \"channel_type_name\", type: \"string\" },\r",
+									"    { prop: \"room_uuid\", type: \"string\" },\r",
+									"    { prop: \"created_at\", type: \"string\" },\r",
+									"    { prop: \"updated_at\", type: \"string\" },\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{{ChannelCreateBody}}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/channel",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create 403 (No room user)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"const { v4: uuidV4 } = require('uuid');\r",
+									"const room_uuid = pm.environment.get('PersistentRoomUuid')\r",
+									"\r",
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"SecondaryUserToken\") \r",
+									"});\r",
+									"\r",
+									"pm.environment.set('ChannelCreateBodyForbidden', JSON.stringify({\r",
+									"    uuid: uuidV4(),\r",
+									"    name: `test-${uuidV4()}`,\r",
+									"    description: `test-${uuidV4()}`,\r",
+									"    channel_type_name: `Text`,\r",
+									"    room_uuid \r",
+									"}))\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{{ChannelCreateBodyForbidden}}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/channel",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create 403 (Moderator)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"const { v4: uuidV4 } = require('uuid');\r",
+									"const room_uuid = pm.environment.get('PersistentRoomUuid')\r",
+									"\r",
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"AuthorizationMod\") \r",
+									"});\r",
+									"\r",
+									"pm.environment.set('ChannelCreateBodyForbidden', JSON.stringify({\r",
+									"    uuid: uuidV4(),\r",
+									"    name: `test-${uuidV4()}`,\r",
+									"    description: `test-${uuidV4()}`,\r",
+									"    channel_type_name: `Text`,\r",
+									"    room_uuid \r",
+									"}))\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{{ChannelCreateBodyForbidden}}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/channel",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create 403 (Member)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"const { v4: uuidV4 } = require('uuid');\r",
+									"const room_uuid = pm.environment.get('PersistentRoomUuid')\r",
+									"\r",
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"AuthorizationMember\") \r",
+									"});\r",
+									"\r",
+									"pm.environment.set('ChannelCreateBodyForbidden', JSON.stringify({\r",
+									"    uuid: uuidV4(),\r",
+									"    name: `test-${uuidV4()}`,\r",
+									"    description: `test-${uuidV4()}`,\r",
+									"    channel_type_name: `Text`,\r",
+									"    room_uuid \r",
+									"}))\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{{ChannelCreateBodyForbidden}}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/channel",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update 200",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const responseJSON = pm.response.json();\r",
+									"const channelUpdateBody = JSON.parse(pm.environment.get('ChannelUpdateBody'));\r",
+									"\r",
+									"pm.test(\"The returned channel should match the parameters in the body\", function() {\r",
+									"    pm.expect(responseJSON.name).to.equal(channelUpdateBody.name);\r",
+									"    pm.expect(responseJSON.description).to.equal(channelUpdateBody.description);\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"uuid\",\r",
+									"    \"name\",\r",
+									"    \"description\",\r",
+									"    \"channel_type_name\",\r",
+									"    \"room_uuid\",\r",
+									"    \"created_at\",\r",
+									"    \"updated_at\"\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"uuid\", type: \"string\" },\r",
+									"    { prop: \"name\", type: \"string\" },\r",
+									"    { prop: \"description\", type: \"string\" },\r",
+									"    { prop: \"channel_type_name\", type: \"string\" },\r",
+									"    { prop: \"room_uuid\", type: \"string\" },\r",
+									"    { prop: \"created_at\", type: \"string\" },\r",
+									"    { prop: \"updated_at\", type: \"string\" },\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"const { v4: uuidV4 } = require('uuid');\r",
+									"const room_uuid = pm.environment.get('RoomUuid')\r",
+									"\r",
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									"\r",
+									"pm.environment.set('ChannelUpdateBody', JSON.stringify({\r",
+									"    name: `test-${uuidV4()}`,\r",
+									"    description: `test-${uuidV4()}`,\r",
+									"    room_uuid \r",
+									"}))"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{{ChannelUpdateBody}}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/channel/{{ChannelUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel",
+								"{{ChannelUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update 401",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 401\", function() {\r",
+									"    pm.response.to.have.status(401);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel/{{ChannelUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel",
+								"{{ChannelUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update 403 (No room user)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"SecondaryUserToken\") \r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel/{{ChannelUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel",
+								"{{ChannelUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update 403 (Moderator)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"AuthorizationMod\") \r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel/{{ChannelUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel",
+								"{{ChannelUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update 403 (Member)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"AuthorizationMember\") \r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel/{{ChannelUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel",
+								"{{ChannelUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find All 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const isChannelValid = (channel) => {\r",
+									"    [\r",
+									"        \"uuid\",\r",
+									"        \"name\",\r",
+									"        \"description\",\r",
+									"        \"channel_type_name\",\r",
+									"        \"room_uuid\",\r",
+									"        \"created_at\",\r",
+									"        \"updated_at\",\r",
+									"    ].forEach(expected => {\r",
+									"        pm.test(`response must include ${expected} property`, function () {\r",
+									"            pm.expect(channel).to.have.property(expected);\r",
+									"        });\r",
+									"    });\r",
+									"\r",
+									"    [\r",
+									"        { prop: \"uuid\", types: [\"string\"] },\r",
+									"        { prop: \"name\", types: [\"string\"] },\r",
+									"        { prop: \"description\", types: [\"string\"] },\r",
+									"        { prop: \"channel_type_name\", types: [\"string\"] },\r",
+									"        { prop: \"room_uuid\", types: [\"string\"] },\r",
+									"        { prop: \"created_at\", types: [\"string\"] },\r",
+									"        { prop: \"updated_at\", types: [\"string\"] },\r",
+									"    ].forEach(expected => {\r",
+									"        pm.test(`response property ${expected.prop} must be of type ${expected.types}`, function () {\r",
+									"            pm.expect(expected.types.includes(typeof channel[expected.prop]))\r",
+									"                .to.equal(true);\r",
+									"        });\r",
+									"    });\r",
+									"};\r",
+									"\r",
+									"const responseJSON = pm.response.json();\r",
+									"\r",
+									"pm.test(\"reponse must be an object\", function () {\r",
+									"    pm.expect(responseJSON).to.be.an('object');\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"total\",\r",
+									"    \"pages\",\r",
+									"    \"page\",\r",
+									"    \"limit\",\r",
+									"    \"data\"\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"total\", type: \"number\" },\r",
+									"    { prop: \"pages\", type: \"number\" },\r",
+									"    { prop: \"page\", type: \"number\" },\r",
+									"    { prop: \"limit\", type: \"number\" },\r",
+									"    { prop: \"data\", type: \"array\" }\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"pm.test(\"response data items must be valid channels\", function () {\r",
+									"    responseJSON.data.forEach(channel => isChannelValid(channel));\r",
+									"});\r",
+									"\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channels?limit=2&page=1&room_uuid={{PersistentRoomUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channels"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "2"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "room_uuid",
+									"value": "{{PersistentRoomUuid}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find All 401",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 401\", function() {\r",
+									"    pm.response.to.have.status(401);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channels?limit=2&page=1&room_uuid={{PersistentRoomUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channels"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "2"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "room_uuid",
+									"value": "{{PersistentRoomUuid}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find All 403 (No room user)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"SecondaryUserToken\") \r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channels?limit=2&page=1&room_uuid={{PersistentRoomUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channels"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "2"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "room_uuid",
+									"value": "{{PersistentRoomUuid}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find One 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const responseJSON = pm.response.json();\r",
+									"[\r",
+									"    \"uuid\",\r",
+									"    \"name\",\r",
+									"    \"description\",\r",
+									"    \"channel_type_name\",\r",
+									"    \"room_uuid\",\r",
+									"    \"created_at\",\r",
+									"    \"updated_at\"\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"uuid\", type: \"string\" },\r",
+									"    { prop: \"name\", type: \"string\" },\r",
+									"    { prop: \"description\", type: \"string\" },\r",
+									"    { prop: \"channel_type_name\", type: \"string\" },\r",
+									"    { prop: \"room_uuid\", type: \"string\" },\r",
+									"    { prop: \"created_at\", type: \"string\" },\r",
+									"    { prop: \"updated_at\", type: \"string\" },\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel/{{ChannelUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel",
+								"{{ChannelUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find One 401",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 401\", function() {\r",
+									"    pm.response.to.have.status(401);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel/{{ChannelUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel",
+								"{{ChannelUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find One 403 (No room user)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"SecondaryUserToken\") \r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel/{{ChannelUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel",
+								"{{ChannelUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find One 404",
 					"event": [
 						{
 							"listen": "prerequest",
@@ -2315,59 +3727,16 @@
 						}
 					],
 					"request": {
-						"method": "DELETE",
+						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{BaseUrl}}/room/{{RoomUuid}}",
+							"raw": "{{BaseUrl}}/channel/no_uuid",
 							"host": [
 								"{{BaseUrl}}"
 							],
 							"path": [
-								"room",
-								"{{RoomUuid}}"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Delete 401",
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"exec": [
-									""
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Response must return 401\", function() {\r",
-									"    pm.response.to.have.status(401);\r",
-									"});\r",
-									""
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						}
-					],
-					"request": {
-						"method": "DELETE",
-						"header": [],
-						"url": {
-							"raw": "{{BaseUrl}}/room/{{RoomUuid}}",
-							"host": [
-								"{{BaseUrl}}"
-							],
-							"path": [
-								"room",
-								"{{RoomUuid}}"
+								"channel",
+								"no_uuid"
 							]
 						}
 					},
@@ -2712,7 +4081,7 @@
 							"script": {
 								"exec": [
 									"const { v4: uuidV4 } = require('uuid');\r",
-									"const room_uuid = pm.environment.get('RoomUuid');\r",
+									"const room_uuid = pm.environment.get('PersistentRoomUuid');\r",
 									"\r",
 									"pm.request.headers.add({\r",
 									"    key: \"Authorization\", \r",
@@ -2805,27 +4174,211 @@
 					"response": []
 				},
 				{
-					"name": "Update 200",
+					"name": "Create 403 (No room user)",
 					"event": [
 						{
 							"listen": "prerequest",
 							"script": {
 								"exec": [
 									"const { v4: uuidV4 } = require('uuid');\r",
+									"const room_uuid = pm.environment.get('PersistentRoomUuid');\r",
 									"\r",
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"SecondaryUserToken\") \r",
+									"});\r",
+									"\r",
+									"pm.environment.set('RoomInviteLinkCreateBodyForbidden', JSON.stringify({\r",
+									"    uuid: uuidV4(),\r",
+									"    expires_at: null,\r",
+									"    room_uuid\r",
+									"}))\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{{RoomInviteLinkCreateBody}}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/room_invite_link",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_invite_link"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create 403 (Moderator)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"const { v4: uuidV4 } = require('uuid');\r",
+									"const room_uuid = pm.environment.get('PersistentRoomUuid');\r",
+									"\r",
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"AuthorizationMod\") \r",
+									"});\r",
+									"\r",
+									"pm.environment.set('RoomInviteLinkCreateBodyForbidden', JSON.stringify({\r",
+									"    uuid: uuidV4(),\r",
+									"    expires_at: null,\r",
+									"    room_uuid\r",
+									"}))\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{{RoomInviteLinkCreateBody}}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/room_invite_link",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_invite_link"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create 403 (Member)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"const { v4: uuidV4 } = require('uuid');\r",
+									"const room_uuid = pm.environment.get('PersistentRoomUuid');\r",
+									"\r",
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"AuthorizationMember\") \r",
+									"});\r",
+									"\r",
+									"pm.environment.set('RoomInviteLinkCreateBodyForbidden', JSON.stringify({\r",
+									"    uuid: uuidV4(),\r",
+									"    expires_at: null,\r",
+									"    room_uuid\r",
+									"}))\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{{RoomInviteLinkCreateBody}}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/room_invite_link",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_invite_link"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
 									"pm.request.headers.add({\r",
 									"    key: \"Authorization\", \r",
 									"    value: pm.environment.get(\"Authorization\") \r",
 									"});\r",
 									"\r",
-									"const now = new Date();\r",
-									"const y = now.getFullYear();\r",
-									"const m = ((now.getMonth() + 1) % 12);\r",
-									"const d = now.getDay();\r",
-									"const H = now.getHours();\r",
-									"const M = now.getMinutes();\r",
-									"const S = now.getSeconds();\r",
-									"const expires_at = `${y}-${m}-${d}T${H}:${M}:${S}`;\r",
+									"const expires_at = new Date();\r",
+									"expires_at.setHours(expires_at.getHours() + 1);\r",
 									"\r",
 									"pm.environment.set('RoomInviteLinkUpdateBody', JSON.stringify({\r",
 									"    expires_at\r",
@@ -2959,6 +4512,171 @@
 					"response": []
 				},
 				{
+					"name": "Update 403 (No room user)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"SecondaryUserToken\") \r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{{RoomUpdateBody}}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/room_invite_link/{{RoomInviteLinkUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_invite_link",
+								"{{RoomInviteLinkUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update 403 (Moderator)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"AuthorizationMod\") \r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{{RoomUpdateBody}}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/room_invite_link/{{RoomInviteLinkUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_invite_link",
+								"{{RoomInviteLinkUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update 403 (Member)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"AuthorizationMember\") \r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{{RoomUpdateBody}}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/room_invite_link/{{RoomInviteLinkUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_invite_link",
+								"{{RoomInviteLinkUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
 					"name": "Find One 200",
 					"event": [
 						{
@@ -3048,6 +4766,52 @@
 								"exec": [
 									"pm.test(\"Response must return 401\", function() {\r",
 									"    pm.response.to.have.status(401);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_invite_link/{{RoomInviteLinkUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_invite_link",
+								"{{RoomInviteLinkUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find One 403 (No room user)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"SecondaryUserToken\") \r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
 									"});\r",
 									""
 								],
@@ -3296,6 +5060,203 @@
 					"response": []
 				},
 				{
+					"name": "Find All 403 (No room user)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"SecondaryUserToken\") \r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_invite_links?limit=2&page=1&room_uuid={{RoomUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_invite_links"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "2"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "room_uuid",
+									"value": "{{RoomUuid}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete 403 (No room user)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"SecondaryUserToken\") \r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_invite_link/{{RoomInviteLinkUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_invite_link",
+								"{{RoomInviteLinkUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete 403 (Moderator)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"AuthorizationMod\") \r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_invite_link/{{RoomInviteLinkUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_invite_link",
+								"{{RoomInviteLinkUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete 403 (Member)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"AuthorizationMember\") \r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_invite_link/{{RoomInviteLinkUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_invite_link",
+								"{{RoomInviteLinkUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
 					"name": "Delete 204",
 					"event": [
 						{
@@ -3534,7 +5495,7 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{BaseUrl}}/room_users?limit=2&page=1&room_uuid={{RoomUuid}}",
+							"raw": "{{BaseUrl}}/room_users?limit=2&page=1&room_uuid={{PersistentRoomUuid}}",
 							"host": [
 								"{{BaseUrl}}"
 							],
@@ -3552,7 +5513,7 @@
 								},
 								{
 									"key": "room_uuid",
-									"value": "{{RoomUuid}}"
+									"value": "{{PersistentRoomUuid}}"
 								}
 							]
 						}
@@ -3616,6 +5577,65 @@
 					"response": []
 				},
 				{
+					"name": "Find All 403 (No room user)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"SecondaryUserToken\") \r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_users?limit=2&page=1&room_uuid={{RoomUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_users"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "2"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "room_uuid",
+									"value": "{{RoomUuid}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
 					"name": "Find One 200",
 					"event": [
 						{
@@ -3640,8 +5660,8 @@
 									"\r",
 									"[\r",
 									"    \"uuid\",\r",
-									"    \"expires_at\",\r",
-									"    \"never_expires\",\r",
+									"    \"room_user_role_name\",\r",
+									"    \"user_uuid\",\r",
 									"    \"room_uuid\",\r",
 									"    \"created_at\",\r",
 									"    \"updated_at\",\r",
@@ -3652,16 +5672,16 @@
 									"});\r",
 									"\r",
 									"[\r",
-									"    { prop: \"uuid\", type: \"string\" },\r",
-									"    { prop: \"expires_at\", type: \"string\" },\r",
-									"    { prop: \"never_expires\", type: \"boolean\" },\r",
-									"    { prop: \"room_uuid\", type: \"string\" },\r",
-									"    { prop: \"created_at\", type: \"string\" },\r",
-									"    { prop: \"updated_at\", type: \"string\" },\r",
+									"    { prop: \"uuid\", types: [\"string\"] },\r",
+									"    { prop: \"room_user_role_name\", types: [\"string\"] },\r",
+									"    { prop: \"user_uuid\", types: [\"string\"] },\r",
+									"    { prop: \"room_uuid\", types: [\"string\"] },\r",
+									"    { prop: \"created_at\", types: [\"string\"] },\r",
+									"    { prop: \"updated_at\", types: [\"string\"] },\r",
 									"].forEach(expected => {\r",
-									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
-									"        pm.expect(responseJSON[expected.prop])\r",
-									"            .to.be.a(expected.type);\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.types}`, function () {\r",
+									"        pm.expect(expected.types.includes(typeof responseJSON[expected.prop]))\r",
+									"            .to.equal(true);\r",
 									"    });\r",
 									"});"
 								],
@@ -3730,6 +5750,52 @@
 					"response": []
 				},
 				{
+					"name": "Find One 403 (No room user)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"SecondaryUserToken\") \r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_user/{{RoomUserUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_user",
+								"{{RoomUserUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
 					"name": "Find One 404",
 					"event": [
 						{
@@ -3771,6 +5837,525 @@
 							"path": [
 								"room_user",
 								"no_uuid"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"\r",
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									"\r",
+									"pm.environment.set('RoomUserUpdateBody', JSON.stringify({\r",
+									"    room_user_role_name: \"Admin\"\r",
+									"}))\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 204\", function() {\r",
+									"    pm.response.to.have.status(204);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{{RoomUserUpdateBody}}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/room_user/{{RoomUserUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_user",
+								"{{RoomUserUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update 401",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 401\", function() {\r",
+									"    pm.response.to.have.status(401);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{{RoomUpdateBody}}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/room_user/{{RoomUserUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_user",
+								"{{RoomUserUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update 403 (No room user)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"SecondaryUserToken\") \r",
+									"});\r",
+									"\r",
+									"pm.environment.set('RoomUserUpdateBodyForbidden', JSON.stringify({\r",
+									"    room_user_role_name: \"Admin\"\r",
+									"}))\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{{RoomUserUpdateBodyForbidden}}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/room_user/{{RoomUserUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_user",
+								"{{RoomUserUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update 403 (Moderator)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"AuthorizationMod\") \r",
+									"});\r",
+									"\r",
+									"pm.environment.set('RoomUserUpdateBodyForbidden', JSON.stringify({\r",
+									"    room_user_role_name: \"Admin\"\r",
+									"}))"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{{RoomUserUpdateBodyForbidden}}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/room_user/{{RoomUserUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_user",
+								"{{RoomUserUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update 403 (Member)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"AuthorizationMember\") \r",
+									"});\r",
+									"\r",
+									"pm.environment.set('RoomUserUpdateBodyForbidden', JSON.stringify({\r",
+									"    room_user_role_name: \"Admin\"\r",
+									"}))"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{{RoomUserUpdateBodyForbidden}}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/room_user/{{RoomUserUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_user",
+								"{{RoomUserUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete 403 (No room user)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"SecondaryUserToken\") \r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_user/{{RoomUserUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_user",
+								"{{RoomUserUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete 403 (Moderator)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"AuthorizationMod\") \r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_user/{{RoomUserUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_user",
+								"{{RoomUserUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete 403 (Member)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"AuthorizationMember\") \r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_user/{{RoomUserUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_user",
+								"{{RoomUserUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete 404",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 404\", function() {\r",
+									"    pm.response.to.have.status(404);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_user/no_uuid",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_user",
+								"no_uuid"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete 401",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 401\", function() {\r",
+									"    pm.response.to.have.status(401);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_user/{{RoomUserUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_user",
+								"{{RoomUserUuid}}"
 							]
 						}
 					},
@@ -4098,6 +6683,62 @@
 						"method": "GET",
 						"header": [],
 						"url": {
+							"raw": "{{BaseUrl}}/room_audits?limit=2&page=1&room_uuid={{PersistentRoomUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_audits"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "2"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "room_uuid",
+									"value": "{{PersistentRoomUuid}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find All 401",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 401\", function() {\r",
+									"    pm.response.to.have.status(401);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
 							"raw": "{{BaseUrl}}/room_audits?limit=2&page=1&room_uuid={{RoomUuid}}",
 							"host": [
 								"{{BaseUrl}}"
@@ -4124,13 +6765,16 @@
 					"response": []
 				},
 				{
-					"name": "Find All 401",
+					"name": "Find All 403 (No room user)",
 					"event": [
 						{
 							"listen": "prerequest",
 							"script": {
 								"exec": [
-									""
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"SecondaryUserToken\") \r",
+									"});"
 								],
 								"type": "text/javascript",
 								"packages": {}
@@ -4140,8 +6784,8 @@
 							"listen": "test",
 							"script": {
 								"exec": [
-									"pm.test(\"Response must return 401\", function() {\r",
-									"    pm.response.to.have.status(401);\r",
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
 									"});\r",
 									""
 								],
@@ -4269,6 +6913,52 @@
 								"exec": [
 									"pm.test(\"Response must return 401\", function() {\r",
 									"    pm.response.to.have.status(401);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_audit/{{RoomAuditUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_audit",
+								"{{RoomAuditUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find One 403 (No room user)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"SecondaryUserToken\") \r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
 									"});\r",
 									""
 								],
@@ -4564,7 +7254,588 @@
 		},
 		{
 			"name": "Room File",
-			"item": []
+			"item": [
+				{
+					"name": "Find All 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const isRoomFileValid = (roomFile) => {\r",
+									"    [\r",
+									"        \"uuid\",\r",
+									"        \"src\",\r",
+									"        \"room_file_type_name\",\r",
+									"        \"room_uuid\",\r",
+									"        \"created_at\",\r",
+									"        \"updated_at\",\r",
+									"    ].forEach(expected => {\r",
+									"        pm.test(`response must include ${expected} property`, function () {\r",
+									"            pm.expect(roomFile).to.have.property(expected);\r",
+									"        });\r",
+									"    });\r",
+									"\r",
+									"    [\r",
+									"        { prop: \"uuid\", types: [\"string\"] },\r",
+									"        { prop: \"src\", types: [\"string\"] },\r",
+									"        { prop: \"room_file_type_name\", types: [\"string\"] },\r",
+									"        { prop: \"room_uuid\", types: [\"string\"] },\r",
+									"        { prop: \"created_at\", types: [\"string\"] },\r",
+									"        { prop: \"updated_at\", types: [\"string\"] },\r",
+									"    ].forEach(expected => {\r",
+									"        pm.test(`response property ${expected.prop} must be of type ${expected.types}`, function () {\r",
+									"            pm.expect(expected.types.includes(typeof roomFile[expected.prop]))\r",
+									"                .to.equal(true);\r",
+									"        });\r",
+									"    });\r",
+									"};\r",
+									"\r",
+									"const responseJSON = pm.response.json();\r",
+									"\r",
+									"pm.test(\"reponse must be an object\", function () {\r",
+									"    pm.expect(responseJSON).to.be.an('object');\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"total\",\r",
+									"    \"pages\",\r",
+									"    \"page\",\r",
+									"    \"limit\",\r",
+									"    \"data\"\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"total\", type: \"number\" },\r",
+									"    { prop: \"pages\", type: \"number\" },\r",
+									"    { prop: \"page\", type: \"number\" },\r",
+									"    { prop: \"limit\", type: \"number\" },\r",
+									"    { prop: \"data\", type: \"array\" }\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"pm.test(\"response data items must be valid room users\", function () {\r",
+									"    responseJSON.data.forEach(roomFile => isRoomFileValid(roomFile));\r",
+									"});\r",
+									"\r",
+									"pm.environment.set('RoomFileUuid', responseJSON.data[0].uuid);\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_files?limit=2&page=1&room_uuid={{PersistentRoomUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_files"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "2"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "room_uuid",
+									"value": "{{PersistentRoomUuid}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find All 401",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 401\", function() {\r",
+									"    pm.response.to.have.status(401);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_files?limit=2&page=1&room_uuid={{PersistentRoomUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_files"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "2"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "room_uuid",
+									"value": "{{PersistentRoomUuid}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find All 403 (No room user)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"SecondaryUserToken\") \r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_files?limit=2&page=1&room_uuid={{PersistentRoomUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_files"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "2"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "room_uuid",
+									"value": "{{PersistentRoomUuid}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find One 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const responseJSON = pm.response.json();\r",
+									"\r",
+									"[\r",
+									"    \"uuid\",\r",
+									"    \"src\",\r",
+									"    \"room_file_type_name\",\r",
+									"    \"room_uuid\",\r",
+									"    \"created_at\",\r",
+									"    \"updated_at\",\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"uuid\", types: [\"string\"] },\r",
+									"    { prop: \"src\", types: [\"string\"] },\r",
+									"    { prop: \"room_file_type_name\", types: [\"string\"] },\r",
+									"    { prop: \"room_uuid\", types: [\"string\"] },\r",
+									"    { prop: \"created_at\", types: [\"string\"] },\r",
+									"    { prop: \"updated_at\", types: [\"string\"] },\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.types}`, function () {\r",
+									"        pm.expect(expected.types.includes(typeof responseJSON[expected.prop]))\r",
+									"            .to.equal(true);\r",
+									"    });\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_file/{{RoomFileUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_file",
+								"{{RoomFileUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find One 401",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 401\", function() {\r",
+									"    pm.response.to.have.status(401);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_file/{{RoomFileUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_file",
+								"{{RoomFileUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find One 403 (No room user)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"SecondaryUserToken\") \r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_file/{{RoomFileUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_file",
+								"{{RoomFileUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find One 404",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 404\", function() {\r",
+									"    pm.response.to.have.status(404);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_file/no_uuid",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_file",
+								"no_uuid"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete 401",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 401\", function() {\r",
+									"    pm.response.to.have.status(401);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_file/{{RoomFileUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_file",
+								"{{RoomFileUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete 403 (No room user)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"SecondaryUserToken\") \r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_file/{{RoomFileUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_file",
+								"{{RoomFileUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete 403 (Member)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"SecondaryUserToken\") \r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room_file/{{RoomFileUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room_file",
+								"{{RoomFileUuid}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
 		},
 		{
 			"name": "Room File Type",
@@ -4785,10 +8056,6 @@
 					"response": []
 				}
 			]
-		},
-		{
-			"name": "Channel",
-			"item": []
 		},
 		{
 			"name": "Channel Type",
@@ -5012,7 +8279,1548 @@
 		},
 		{
 			"name": "Channel Message",
-			"item": []
+			"item": [
+				{
+					"name": "Create 400",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 400\", function() {\r",
+									"    pm.response.to.have.status(400);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/channel_message",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_message"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create 401",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 401\", function() {\r",
+									"    pm.response.to.have.status(401);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/channel_message",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_message"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"const { v4: uuidV4 } = require('uuid');\r",
+									"const channel_uuid = pm.environment.get('ChannelUuid');\r",
+									"\r",
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									"\r",
+									"pm.environment.set('ChannelMessageBody', JSON.stringify({\r",
+									"    uuid: uuidV4(),\r",
+									"    body: `test-${uuidV4()}`,\r",
+									"    channel_uuid \r",
+									"}))\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const responseJSON = pm.response.json();\r",
+									"const channel_uuid = pm.environment.get('ChannelUuid')\r",
+									"const channelMessageBody = JSON.parse(\r",
+									"    pm.environment.get('ChannelMessageBody'));\r",
+									"\r",
+									"// Set channel message uuid for later use\r",
+									"pm.environment.set(\"ChannelMessageUuid\", responseJSON.uuid);\r",
+									"\r",
+									"pm.test(\"The returned channel should match the parameters in the body\", function() {\r",
+									"    pm.expect(responseJSON.uuid).to.equal(channelMessageBody.uuid);\r",
+									"    pm.expect(responseJSON.body).to.equal(channelMessageBody.body);\r",
+									"    pm.expect(responseJSON.channel_uuid).to.equal(channel_uuid);\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"uuid\",\r",
+									"    \"body\",\r",
+									"    \"channel_message_type_name\",\r",
+									"    \"channel_uuid\",\r",
+									"    \"user_uuid\",\r",
+									"    \"user\",\r",
+									"    \"created_at\",\r",
+									"    \"updated_at\"\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"uuid\", type: \"string\" },\r",
+									"    { prop: \"body\", type: \"string\" },\r",
+									"    { prop: \"channel_message_type_name\", type: \"string\" },\r",
+									"    { prop: \"channel_uuid\", type: \"string\" },\r",
+									"    { prop: \"user_uuid\", type: \"string\" },\r",
+									"    { prop: \"user\", type: \"object\" },\r",
+									"    { prop: \"created_at\", type: \"string\" },\r",
+									"    { prop: \"updated_at\", type: \"string\" },\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"uuid\",\r",
+									"    \"username\",\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON.user).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"uuid\", type: \"string\" },\r",
+									"    { prop: \"username\", type: \"string\" },\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON.user[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{{ChannelMessageBody}}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/channel_message",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_message"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create 403 (No room user)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"const { v4: uuidV4 } = require('uuid');\r",
+									"const channel_uuid = pm.environment.get('ChannelUuid');\r",
+									"\r",
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"SecondaryUserToken\") \r",
+									"});\r",
+									"\r",
+									"pm.environment.set('ChannelMessageBodyForbidden', JSON.stringify({\r",
+									"    uuid: uuidV4(),\r",
+									"    body: `test-${uuidV4()}`,\r",
+									"    channel_uuid \r",
+									"}))\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{{ChannelMessageBodyForbidden}}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/channel_message",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_message"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update 200 (Admin)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const responseJSON = pm.response.json();\r",
+									"const channelMessageUpdateBody = JSON.parse(\r",
+									"    pm.environment.get('ChannelMessageUpdateBody'));\r",
+									"\r",
+									"pm.test(\"The returned channel should match the parameters in the body\", function() {\r",
+									"    pm.expect(responseJSON.body).to.equal(channelMessageUpdateBody.body);\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"uuid\",\r",
+									"    \"body\",\r",
+									"    \"channel_message_type_name\",\r",
+									"    \"channel_uuid\",\r",
+									"    \"user_uuid\",\r",
+									"    \"user\",\r",
+									"    \"created_at\",\r",
+									"    \"updated_at\"\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"uuid\", type: \"string\" },\r",
+									"    { prop: \"body\", type: \"string\" },\r",
+									"    { prop: \"channel_message_type_name\", type: \"string\" },\r",
+									"    { prop: \"channel_uuid\", type: \"string\" },\r",
+									"    { prop: \"user_uuid\", type: \"string\" },\r",
+									"    { prop: \"user\", type: \"object\" },\r",
+									"    { prop: \"created_at\", type: \"string\" },\r",
+									"    { prop: \"updated_at\", type: \"string\" },\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"uuid\",\r",
+									"    \"username\",\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON.user).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"uuid\", type: \"string\" },\r",
+									"    { prop: \"username\", type: \"string\" },\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON.user[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"const { v4: uuidV4 } = require('uuid');\r",
+									"const uuid = pm.environment.get('ChannelMessageUuid')\r",
+									"\r",
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									"\r",
+									"pm.environment.set('ChannelMessageUpdateBody', JSON.stringify({\r",
+									"    body: `test-${uuidV4()}`,\r",
+									"    uuid \r",
+									"}))\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{{ChannelMessageUpdateBody}}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/channel_message/{{ChannelMessageUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_message",
+								"{{ChannelMessageUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update 200 (Moderator)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const responseJSON = pm.response.json();\r",
+									"const channelMessageUpdateBody = JSON.parse(\r",
+									"    pm.environment.get('ChannelMessageUpdateBody'));\r",
+									"\r",
+									"pm.test(\"The returned channel should match the parameters in the body\", function() {\r",
+									"    pm.expect(responseJSON.body).to.equal(channelMessageUpdateBody.body);\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"uuid\",\r",
+									"    \"body\",\r",
+									"    \"channel_message_type_name\",\r",
+									"    \"channel_uuid\",\r",
+									"    \"user_uuid\",\r",
+									"    \"user\",\r",
+									"    \"created_at\",\r",
+									"    \"updated_at\"\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"uuid\", type: \"string\" },\r",
+									"    { prop: \"body\", type: \"string\" },\r",
+									"    { prop: \"channel_message_type_name\", type: \"string\" },\r",
+									"    { prop: \"channel_uuid\", type: \"string\" },\r",
+									"    { prop: \"user_uuid\", type: \"string\" },\r",
+									"    { prop: \"user\", type: \"object\" },\r",
+									"    { prop: \"created_at\", type: \"string\" },\r",
+									"    { prop: \"updated_at\", type: \"string\" },\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"uuid\",\r",
+									"    \"username\",\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON.user).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"uuid\", type: \"string\" },\r",
+									"    { prop: \"username\", type: \"string\" },\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON.user[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"const { v4: uuidV4 } = require('uuid');\r",
+									"const uuid = pm.environment.get('ChannelMessageUuid')\r",
+									"\r",
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"AuthorizationMod\") \r",
+									"});\r",
+									"\r",
+									"pm.environment.set('ChannelMessageUpdateBody', JSON.stringify({\r",
+									"    body: `test-${uuidV4()}`,\r",
+									"    uuid \r",
+									"}))\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{{ChannelMessageUpdateBody}}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/channel_message/{{ChannelMessageUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_message",
+								"{{ChannelMessageUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update 401",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 401\", function() {\r",
+									"    pm.response.to.have.status(401);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_message/{{ChannelMessageUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_message",
+								"{{ChannelMessageUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update 403 (No room user)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"SecondaryUserToken\") \r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_message/{{ChannelMessageUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_message",
+								"{{ChannelMessageUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update 403 (Member)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"AuthorizationMember\") \r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_message/{{ChannelMessageUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_message",
+								"{{ChannelMessageUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find All 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const isChannelMessageValid = (channelMessage) => {\r",
+									"    \r",
+									"    [\r",
+									"        \"uuid\",\r",
+									"        \"body\",\r",
+									"        \"channel_message_type_name\",\r",
+									"        \"channel_uuid\",\r",
+									"        \"user_uuid\",\r",
+									"        \"user\",\r",
+									"        \"created_at\",\r",
+									"        \"updated_at\"\r",
+									"    ].forEach(expected => {\r",
+									"        pm.test(`response must include ${expected} property`, function () {\r",
+									"            pm.expect(channelMessage).to.have.property(expected);\r",
+									"        });\r",
+									"    });\r",
+									"\r",
+									"    [\r",
+									"        { prop: \"uuid\", type: \"string\" },\r",
+									"        { prop: \"body\", type: \"string\" },\r",
+									"        { prop: \"channel_message_type_name\", type: \"string\" },\r",
+									"        { prop: \"channel_uuid\", type: \"string\" },\r",
+									"        { prop: \"user_uuid\", type: \"string\" },\r",
+									"        { prop: \"user\", type: \"object\" },\r",
+									"        { prop: \"created_at\", type: \"string\" },\r",
+									"        { prop: \"updated_at\", type: \"string\" },\r",
+									"    ].forEach(expected => {\r",
+									"        pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"            pm.expect(channelMessage[expected.prop])\r",
+									"                .to.be.a(expected.type);\r",
+									"        });\r",
+									"    });\r",
+									"\r",
+									"    [\r",
+									"        \"uuid\",\r",
+									"        \"username\",\r",
+									"    ].forEach(expected => {\r",
+									"        pm.test(`response must include ${expected} property`, function () {\r",
+									"            pm.expect(channelMessage.user).to.have.property(expected);\r",
+									"        });\r",
+									"    });\r",
+									"\r",
+									"    [\r",
+									"        { prop: \"uuid\", type: \"string\" },\r",
+									"        { prop: \"username\", type: \"string\" },\r",
+									"    ].forEach(expected => {\r",
+									"        pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"            pm.expect(channelMessage.user[expected.prop])\r",
+									"                .to.be.a(expected.type);\r",
+									"        });\r",
+									"    });\r",
+									"};\r",
+									"\r",
+									"const responseJSON = pm.response.json();\r",
+									"\r",
+									"pm.test(\"reponse must be an object\", function () {\r",
+									"    pm.expect(responseJSON).to.be.an('object');\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"total\",\r",
+									"    \"pages\",\r",
+									"    \"page\",\r",
+									"    \"limit\",\r",
+									"    \"data\"\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"total\", type: \"number\" },\r",
+									"    { prop: \"pages\", type: \"number\" },\r",
+									"    { prop: \"page\", type: \"number\" },\r",
+									"    { prop: \"limit\", type: \"number\" },\r",
+									"    { prop: \"data\", type: \"array\" }\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"pm.test(\"response data items must be valid channel messages\", function () {\r",
+									"    responseJSON.data.forEach(channelMessage => isChannelMessageValid(channelMessage));\r",
+									"});\r",
+									"\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_messages?limit=2&page=1&channel_uuid={{ChannelUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_messages"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "2"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "channel_uuid",
+									"value": "{{ChannelUuid}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find All 401",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 401\", function() {\r",
+									"    pm.response.to.have.status(401);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_messages?limit=2&page=1&channel_uuid={{ChannelUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_messages"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "2"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "channel_uuid",
+									"value": "{{ChannelUuid}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find All 403 (No room user)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"SecondaryUserToken\") \r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_messages?limit=2&page=1&channel_uuid={{ChannelUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_messages"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "2"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "channel_uuid",
+									"value": "{{ChannelUuid}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find One 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const responseJSON = pm.response.json();\r",
+									"\r",
+									"[\r",
+									"    \"uuid\",\r",
+									"    \"body\",\r",
+									"    \"channel_message_type_name\",\r",
+									"    \"channel_uuid\",\r",
+									"    \"user_uuid\",\r",
+									"    \"user\",\r",
+									"    \"created_at\",\r",
+									"    \"updated_at\"\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"uuid\", type: \"string\" },\r",
+									"    { prop: \"body\", type: \"string\" },\r",
+									"    { prop: \"channel_message_type_name\", type: \"string\" },\r",
+									"    { prop: \"channel_uuid\", type: \"string\" },\r",
+									"    { prop: \"user_uuid\", type: \"string\" },\r",
+									"    { prop: \"user\", type: \"object\" },\r",
+									"    { prop: \"created_at\", type: \"string\" },\r",
+									"    { prop: \"updated_at\", type: \"string\" },\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"uuid\",\r",
+									"    \"username\",\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON.user).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"uuid\", type: \"string\" },\r",
+									"    { prop: \"username\", type: \"string\" },\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON.user[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_message/{{ChannelMessageUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_message",
+								"{{ChannelMessageUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find One 401",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 401\", function() {\r",
+									"    pm.response.to.have.status(401);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_message/{{ChannelMessageUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_message",
+								"{{ChannelMessageUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find One 404",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 404\", function() {\r",
+									"    pm.response.to.have.status(404);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_message/no_uuid",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_message",
+								"no_uuid"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find One 403 (No room user)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"SecondaryUserToken\") \r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_message/{{ChannelMessageUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_message",
+								"{{ChannelMessageUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete 403 (No room user)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"SecondaryUserToken\") \r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_message/{{ChannelMessageUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_message",
+								"{{ChannelMessageUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete 403 (Member)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"AuthorizationMember\") \r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_message/{{ChannelMessageUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_message",
+								"{{ChannelMessageUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete 204 (Admin)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 204\", function() {\r",
+									"    pm.response.to.have.status(204);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_message/{{ChannelMessageUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_message",
+								"{{ChannelMessageUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create 200 Second",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"const { v4: uuidV4 } = require('uuid');\r",
+									"const channel_uuid = pm.environment.get('ChannelUuid');\r",
+									"\r",
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									"\r",
+									"pm.environment.set('ChannelMessageBody', JSON.stringify({\r",
+									"    uuid: uuidV4(),\r",
+									"    body: `test-${uuidV4()}`,\r",
+									"    channel_uuid \r",
+									"}))\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const responseJSON = pm.response.json();\r",
+									"const channel_uuid = pm.environment.get('ChannelUuid')\r",
+									"const channelMessageBody = JSON.parse(\r",
+									"    pm.environment.get('ChannelMessageBody'));\r",
+									"\r",
+									"// Set channel message uuid for later use\r",
+									"pm.environment.set(\"ChannelMessageUuid\", responseJSON.uuid);\r",
+									"\r",
+									"pm.test(\"The returned channel should match the parameters in the body\", function() {\r",
+									"    pm.expect(responseJSON.uuid).to.equal(channelMessageBody.uuid);\r",
+									"    pm.expect(responseJSON.body).to.equal(channelMessageBody.body);\r",
+									"    pm.expect(responseJSON.channel_uuid).to.equal(channel_uuid);\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"uuid\",\r",
+									"    \"body\",\r",
+									"    \"channel_message_type_name\",\r",
+									"    \"channel_uuid\",\r",
+									"    \"user_uuid\",\r",
+									"    \"user\",\r",
+									"    \"created_at\",\r",
+									"    \"updated_at\"\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"uuid\", type: \"string\" },\r",
+									"    { prop: \"body\", type: \"string\" },\r",
+									"    { prop: \"channel_message_type_name\", type: \"string\" },\r",
+									"    { prop: \"channel_uuid\", type: \"string\" },\r",
+									"    { prop: \"user_uuid\", type: \"string\" },\r",
+									"    { prop: \"user\", type: \"object\" },\r",
+									"    { prop: \"created_at\", type: \"string\" },\r",
+									"    { prop: \"updated_at\", type: \"string\" },\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"uuid\",\r",
+									"    \"username\",\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON.user).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"uuid\", type: \"string\" },\r",
+									"    { prop: \"username\", type: \"string\" },\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON.user[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{{ChannelMessageBody}}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/channel_message",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_message"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete 204 (Moderator)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"AuthorizationMod\") \r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 204\", function() {\r",
+									"    pm.response.to.have.status(204);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_message/{{ChannelMessageUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_message",
+								"{{ChannelMessageUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete 404",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 404\", function() {\r",
+									"    pm.response.to.have.status(404);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_message/{{ChannelMessageUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_message",
+								"{{ChannelMessageUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete 401",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 401\", function() {\r",
+									"    pm.response.to.have.status(401);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_message/{{ChannelMessageUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_message",
+								"{{ChannelMessageUuid}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
 		},
 		{
 			"name": "Channel Message Type",
@@ -5458,128 +10266,6 @@
 			"name": "Channel Audit",
 			"item": [
 				{
-					"name": "Find All 200",
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"exec": [
-									"pm.request.headers.add({\r",
-									"    key: \"Authorization\", \r",
-									"    value: pm.environment.get(\"Authorization\") \r",
-									"});\r",
-									""
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"const isRoomAuditValid = (channelAudit) => {\r",
-									"    [\r",
-									"        \"uuid\",\r",
-									"        \"body\",\r",
-									"        \"channel_audit_type_name\",\r",
-									"        \"channel_uuid\",\r",
-									"        \"created_at\",\r",
-									"        \"updated_at\",\r",
-									"    ].forEach(expected => {\r",
-									"        pm.test(`response must include ${expected} property`, function () {\r",
-									"            pm.expect(channelAudit).to.have.property(expected);\r",
-									"        });\r",
-									"    });\r",
-									"\r",
-									"    [\r",
-									"        { prop: \"uuid\", types: [\"string\"] },\r",
-									"        { prop: \"body\", types: [\"string\"] },\r",
-									"        { prop: \"channel_audit_type_name\", types: [\"string\"] },\r",
-									"        { prop: \"channel_uuid\", types: [\"string\"] },\r",
-									"        { prop: \"created_at\", types: [\"string\"] },\r",
-									"        { prop: \"updated_at\", types: [\"string\"] },\r",
-									"    ].forEach(expected => {\r",
-									"        pm.test(`response property ${expected.prop} must be of type ${expected.types}`, function () {\r",
-									"            pm.expect(expected.types.includes(typeof channelAudit[expected.prop]))\r",
-									"                .to.equal(true);\r",
-									"        });\r",
-									"    });\r",
-									"};\r",
-									"\r",
-									"const responseJSON = pm.response.json();\r",
-									"\r",
-									"pm.test(\"reponse must be an object\", function () {\r",
-									"    pm.expect(responseJSON).to.be.an('object');\r",
-									"});\r",
-									"\r",
-									"[\r",
-									"    \"total\",\r",
-									"    \"pages\",\r",
-									"    \"page\",\r",
-									"    \"limit\",\r",
-									"    \"data\"\r",
-									"].forEach(expected => {\r",
-									"    pm.test(`response must include ${expected} property`, function () {\r",
-									"        pm.expect(responseJSON).to.have.property(expected);\r",
-									"    });\r",
-									"});\r",
-									"\r",
-									"[\r",
-									"    { prop: \"total\", type: \"number\" },\r",
-									"    { prop: \"pages\", type: \"number\" },\r",
-									"    { prop: \"page\", type: \"number\" },\r",
-									"    { prop: \"limit\", type: \"number\" },\r",
-									"    { prop: \"data\", type: \"array\" }\r",
-									"].forEach(expected => {\r",
-									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
-									"        pm.expect(responseJSON[expected.prop])\r",
-									"            .to.be.a(expected.type);\r",
-									"    });\r",
-									"});\r",
-									"\r",
-									"pm.test(\"response data items must be valid channel audits\", function () {\r",
-									"    responseJSON.data.forEach(channelAudit => isRoomAuditValid(channelAudit));\r",
-									"});\r",
-									"\r",
-									"pm.environment.set('ChannelAuditUuid', responseJSON.data[0].uuid);\r",
-									""
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						}
-					],
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{BaseUrl}}/channel_audits?limit=2&page=1&room_uuid={{ChannelUuid}}",
-							"host": [
-								"{{BaseUrl}}"
-							],
-							"path": [
-								"channel_audits"
-							],
-							"query": [
-								{
-									"key": "limit",
-									"value": "2"
-								},
-								{
-									"key": "page",
-									"value": "1"
-								},
-								{
-									"key": "room_uuid",
-									"value": "{{ChannelUuid}}"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
 					"name": "Find All 401",
 					"event": [
 						{
@@ -5610,7 +10296,7 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{BaseUrl}}/channel_audits?limit=2&page=1&room_uuid={{ChannelUuid}}",
+							"raw": "{{BaseUrl}}/channel_audits?limit=2&page=1&channel_uuid={{ChannelUuid}}",
 							"host": [
 								"{{BaseUrl}}"
 							],
@@ -5627,7 +10313,7 @@
 									"value": "1"
 								},
 								{
-									"key": "room_uuid",
+									"key": "channel_uuid",
 									"value": "{{ChannelUuid}}"
 								}
 							]
@@ -5636,7 +10322,7 @@
 					"response": []
 				},
 				{
-					"name": "Find One 200",
+					"name": "Find All 403 (No room user)",
 					"event": [
 						{
 							"listen": "prerequest",
@@ -5644,8 +10330,63 @@
 								"exec": [
 									"pm.request.headers.add({\r",
 									"    key: \"Authorization\", \r",
-									"    value: pm.environment.get(\"Authorization\") \r",
+									"    value: pm.environment.get(\"SecondaryUserToken\") \r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
 									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_audits?limit=2&page=1&channel_uuid={{ChannelUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_audits"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "2"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "channel_uuid",
+									"value": "{{ChannelUuid}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find One 401",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
 									""
 								],
 								"type": "text/javascript",
@@ -5656,35 +10397,9 @@
 							"listen": "test",
 							"script": {
 								"exec": [
-									"const responseJSON = pm.response.json();\r",
-									"\r",
-									"[\r",
-									"    \"uuid\",\r",
-									"    \"body\",\r",
-									"    \"channel_audit_type_name\",\r",
-									"    \"channel_uuid\",\r",
-									"    \"created_at\",\r",
-									"    \"updated_at\",\r",
-									"].forEach(expected => {\r",
-									"    pm.test(`response must include ${expected} property`, function () {\r",
-									"        pm.expect(responseJSON).to.have.property(expected);\r",
-									"    });\r",
-									"});\r",
-									"\r",
-									"[\r",
-									"    { prop: \"uuid\", types: [\"string\"] },\r",
-									"    { prop: \"body\", types: [\"string\"] },\r",
-									"    { prop: \"channel_audit_type_name\", types: [\"string\"] },\r",
-									"    { prop: \"channel_uuid\", types: [\"string\"] },\r",
-									"    { prop: \"created_at\", types: [\"string\"] },\r",
-									"    { prop: \"updated_at\", types: [\"string\"] },\r",
-									"].forEach(expected => {\r",
-									"    pm.test(`response property ${expected.prop} must be of type ${expected.types}`, function () {\r",
-									"        pm.expect(expected.types.includes(typeof responseJSON[expected.prop]))\r",
-									"            .to.equal(true);\r",
-									"    });\r",
-									"});\r",
-									""
+									"pm.test(\"Response must return 401 or 404\", function () {\r",
+									"    pm.expect(pm.response.code).to.be.oneOf([401, 404]);\r",
+									"});"
 								],
 								"type": "text/javascript",
 								"packages": {}
@@ -5708,13 +10423,16 @@
 					"response": []
 				},
 				{
-					"name": "Find One 401",
+					"name": "Find One 403 (No room user)",
 					"event": [
 						{
 							"listen": "prerequest",
 							"script": {
 								"exec": [
-									""
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"SecondaryUserToken\") \r",
+									"});"
 								],
 								"type": "text/javascript",
 								"packages": {}
@@ -5724,10 +10442,9 @@
 							"listen": "test",
 							"script": {
 								"exec": [
-									"pm.test(\"Response must return 401\", function() {\r",
-									"    pm.response.to.have.status(401);\r",
-									"});\r",
-									""
+									"pm.test(\"Response must return 403 or 404\", function () {\r",
+									"    pm.expect(pm.response.code).to.be.oneOf([403, 404]);\r",
+									"});"
 								],
 								"type": "text/javascript",
 								"packages": {}
@@ -6021,7 +10738,1409 @@
 		},
 		{
 			"name": "Channel Webhook",
-			"item": []
+			"item": [
+				{
+					"name": "Create 400",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 400\", function() {\r",
+									"    pm.response.to.have.status(400);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/channel_webhook",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_webhook"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create 401",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 401\", function() {\r",
+									"    pm.response.to.have.status(401);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/channel_webhook",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_webhook"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create 403 (No room user)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"const { v4: uuidV4 } = require('uuid');\r",
+									"const channel_uuid = pm.environment.get('ChannelUuid')\r",
+									"\r",
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"SecondaryUserToken\") \r",
+									"});\r",
+									"\r",
+									"pm.environment.set('ChannelWebhookCreateBodyForbidden', JSON.stringify({\r",
+									"    uuid: uuidV4(),\r",
+									"    name: `test-${uuidV4()}`,\r",
+									"    description: `test-${uuidV4()}`,\r",
+									"    channel_uuid \r",
+									"}))\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{{ChannelWebhookCreateBodyForbidden}}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/channel_webhook",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_webhook"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create 403 (Moderator)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"const { v4: uuidV4 } = require('uuid');\r",
+									"const channel_uuid = pm.environment.get('ChannelUuid')\r",
+									"\r",
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"AuthorizationMod\") \r",
+									"});\r",
+									"\r",
+									"pm.environment.set('ChannelWebhookCreateBodyForbidden', JSON.stringify({\r",
+									"    uuid: uuidV4(),\r",
+									"    name: `test-${uuidV4()}`,\r",
+									"    description: `test-${uuidV4()}`,\r",
+									"    channel_uuid \r",
+									"}))\r",
+									"\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{{ChannelWebhookCreateBodyForbidden}}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/channel_webhook",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_webhook"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create 403 (Member)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"const { v4: uuidV4 } = require('uuid');\r",
+									"const channel_uuid = pm.environment.get('ChannelUuid')\r",
+									"\r",
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"AuthorizationMember\") \r",
+									"});\r",
+									"\r",
+									"pm.environment.set('ChannelWebhookCreateBodyForbidden', JSON.stringify({\r",
+									"    uuid: uuidV4(),\r",
+									"    name: `test-${uuidV4()}`,\r",
+									"    description: `test-${uuidV4()}`,\r",
+									"    channel_uuid \r",
+									"}))\r",
+									"\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{{ChannelWebhookCreateBodyForbidden}}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/channel_webhook",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_webhook"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"const { v4: uuidV4 } = require('uuid');\r",
+									"const channel_uuid = pm.environment.get('ChannelUuid')\r",
+									"\r",
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									"\r",
+									"pm.environment.set('ChannelWebhookCreateBody', JSON.stringify({\r",
+									"    uuid: uuidV4(),\r",
+									"    name: `test-${uuidV4()}`,\r",
+									"    description: `test-${uuidV4()}`,\r",
+									"    channel_uuid \r",
+									"}))\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const responseJSON = pm.response.json();\r",
+									"const channel_uuid = pm.environment.get('ChannelUuid')\r",
+									"const channelWebhookCreateBody = JSON.parse(\r",
+									"    pm.environment.get('ChannelWebhookCreateBody'));\r",
+									"\r",
+									"// Set channel webhook uuid for later use\r",
+									"pm.environment.set(\"ChannelWebhookUuid\", responseJSON.uuid);\r",
+									"\r",
+									"pm.test(\"The returned channel webhook should match the parameters in the body\", function() {\r",
+									"    pm.expect(responseJSON.uuid).to.equal(channelWebhookCreateBody.uuid);\r",
+									"    pm.expect(responseJSON.name).to.equal(channelWebhookCreateBody.name);\r",
+									"    pm.expect(responseJSON.description).to.equal(channelWebhookCreateBody.description);\r",
+									"    pm.expect(responseJSON.channel_uuid).to.equal(channel_uuid);\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"uuid\",\r",
+									"    \"name\",\r",
+									"    \"description\",\r",
+									"    \"room_uuid\",\r",
+									"    \"channel_uuid\",\r",
+									"    \"created_at\",\r",
+									"    \"updated_at\"\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"uuid\", type: \"string\" },\r",
+									"    { prop: \"name\", type: \"string\" },\r",
+									"    { prop: \"description\", type: \"string\" },\r",
+									"    { prop: \"channel_uuid\", type: \"string\" },\r",
+									"    { prop: \"room_uuid\", type: \"string\" },\r",
+									"    { prop: \"created_at\", type: \"string\" },\r",
+									"    { prop: \"updated_at\", type: \"string\" },\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{{ChannelWebhookCreateBody}}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/channel_webhook",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_webhook"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update 200",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const responseJSON = pm.response.json();\r",
+									"const channelUpdateBody = JSON.parse(pm.environment.get('ChannelUpdateBody'));\r",
+									"\r",
+									"pm.test(\"The returned channel should match the parameters in the body\", function() {\r",
+									"    pm.expect(responseJSON.name).to.equal(channelUpdateBody.name);\r",
+									"    pm.expect(responseJSON.description).to.equal(channelUpdateBody.description);\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"uuid\",\r",
+									"    \"name\",\r",
+									"    \"description\",\r",
+									"    \"channel_uuid\",\r",
+									"    \"room_uuid\",\r",
+									"    \"created_at\",\r",
+									"    \"updated_at\"\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"uuid\", type: \"string\" },\r",
+									"    { prop: \"name\", type: \"string\" },\r",
+									"    { prop: \"description\", type: \"string\" },\r",
+									"    { prop: \"channel_uuid\", type: \"string\" },\r",
+									"    { prop: \"room_uuid\", type: \"string\" },\r",
+									"    { prop: \"created_at\", type: \"string\" },\r",
+									"    { prop: \"updated_at\", type: \"string\" },\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"const { v4: uuidV4 } = require('uuid');\r",
+									"\r",
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									"\r",
+									"pm.environment.set('ChannelWebhookUpdateBody', JSON.stringify({\r",
+									"    name: `test-${uuidV4()}`,\r",
+									"    description: `test-${uuidV4()}`,\r",
+									"}))\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{{ChannelUpdateBody}}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BaseUrl}}/channel_webhook/{{ChannelWebhookUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_webhook",
+								"{{ChannelWebhookUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update 401",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 401\", function() {\r",
+									"    pm.response.to.have.status(401);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_webhook/{{ChannelWebhookUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_webhook",
+								"{{ChannelWebhookUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update 403 (No room user)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"SecondaryUserToken\") \r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_webhook/{{ChannelWebhookUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_webhook",
+								"{{ChannelWebhookUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update 403 (Moderator)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"AuthorizationMod\") \r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_webhook/{{ChannelWebhookUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_webhook",
+								"{{ChannelWebhookUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update 403 (Member)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"AuthorizationMember\") \r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_webhook/{{ChannelWebhookUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_webhook",
+								"{{ChannelWebhookUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find All 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const isChannelWebhookValid = (channelWebhook) => {\r",
+									"    [\r",
+									"        \"uuid\",\r",
+									"        \"name\",\r",
+									"        \"description\",\r",
+									"        \"channel_uuid\",\r",
+									"        \"room_uuid\",\r",
+									"        \"created_at\",\r",
+									"        \"updated_at\",\r",
+									"    ].forEach(expected => {\r",
+									"        pm.test(`response must include ${expected} property`, function () {\r",
+									"            pm.expect(channelWebhook).to.have.property(expected);\r",
+									"        });\r",
+									"    });\r",
+									"\r",
+									"    [\r",
+									"        { prop: \"uuid\", types: [\"string\"] },\r",
+									"        { prop: \"name\", types: [\"string\"] },\r",
+									"        { prop: \"description\", types: [\"string\"] },\r",
+									"        { prop: \"channel_uuid\", types: [\"string\"] },\r",
+									"        { prop: \"room_uuid\", types: [\"string\"] },\r",
+									"        { prop: \"created_at\", types: [\"string\"] },\r",
+									"        { prop: \"updated_at\", types: [\"string\"] },\r",
+									"    ].forEach(expected => {\r",
+									"        pm.test(`response property ${expected.prop} must be of type ${expected.types}`, function () {\r",
+									"            pm.expect(expected.types.includes(typeof channelWebhook[expected.prop]))\r",
+									"                .to.equal(true);\r",
+									"        });\r",
+									"    });\r",
+									"};\r",
+									"\r",
+									"const responseJSON = pm.response.json();\r",
+									"\r",
+									"pm.test(\"reponse must be an object\", function () {\r",
+									"    pm.expect(responseJSON).to.be.an('object');\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    \"total\",\r",
+									"    \"pages\",\r",
+									"    \"page\",\r",
+									"    \"limit\",\r",
+									"    \"data\"\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"total\", type: \"number\" },\r",
+									"    { prop: \"pages\", type: \"number\" },\r",
+									"    { prop: \"page\", type: \"number\" },\r",
+									"    { prop: \"limit\", type: \"number\" },\r",
+									"    { prop: \"data\", type: \"array\" }\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"pm.test(\"response data items must be valid channel webhooks\", function () {\r",
+									"    responseJSON.data.forEach(channelWebhook => isChannelWebhookValid(channelWebhook));\r",
+									"});\r",
+									"\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_webhooks?limit=2&page=1&room_uuid={{PersistentRoomUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_webhooks"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "2"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "room_uuid",
+									"value": "{{PersistentRoomUuid}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find All 401",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 401\", function() {\r",
+									"    pm.response.to.have.status(401);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_webhooks?limit=2&page=1&room_uuid={{PersistentRoomUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_webhooks"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "2"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "room_uuid",
+									"value": "{{PersistentRoomUuid}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find All 403 (No room user)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"SecondaryUserToken\") \r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_webhooks?limit=2&page=1&room_uuid={{PersistentRoomUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_webhooks"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "2"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "room_uuid",
+									"value": "{{PersistentRoomUuid}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find One 200",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const responseJSON = pm.response.json();\r",
+									"\r",
+									"[\r",
+									"    \"uuid\",\r",
+									"    \"name\",\r",
+									"    \"description\",\r",
+									"    \"room_uuid\",\r",
+									"    \"channel_uuid\",\r",
+									"    \"created_at\",\r",
+									"    \"updated_at\"\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response must include ${expected} property`, function () {\r",
+									"        pm.expect(responseJSON).to.have.property(expected);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									"[\r",
+									"    { prop: \"uuid\", type: \"string\" },\r",
+									"    { prop: \"name\", type: \"string\" },\r",
+									"    { prop: \"description\", type: \"string\" },\r",
+									"    { prop: \"channel_uuid\", type: \"string\" },\r",
+									"    { prop: \"room_uuid\", type: \"string\" },\r",
+									"    { prop: \"created_at\", type: \"string\" },\r",
+									"    { prop: \"updated_at\", type: \"string\" },\r",
+									"].forEach(expected => {\r",
+									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
+									"        pm.expect(responseJSON[expected.prop])\r",
+									"            .to.be.a(expected.type);\r",
+									"    });\r",
+									"});\r",
+									"\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_webhook/{{ChannelWebhookUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_webhook",
+								"{{ChannelWebhookUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find One 401",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 401\", function() {\r",
+									"    pm.response.to.have.status(401);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_webhook/{{ChannelWebhookUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_webhook",
+								"{{ChannelWebhookUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find One 403 (No room user)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"SecondaryUserToken\") \r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_webhook/{{ChannelWebhookUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_webhook",
+								"{{ChannelWebhookUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Find One 404",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 404\", function() {\r",
+									"    pm.response.to.have.status(404);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_webhook/no_uuid",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_webhook",
+								"no_uuid"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete 403 (No room user)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"SecondaryUserToken\") \r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_webhook/{{ChannelWebhookUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_webhook",
+								"{{ChannelWebhookUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete 403 (Moderator)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"AuthorizationMod\") \r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_webhook/{{ChannelWebhookUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_webhook",
+								"{{ChannelWebhookUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete 403 (Member)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"AuthorizationMember\") \r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_webhook/{{ChannelWebhookUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_webhook",
+								"{{ChannelWebhookUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete 204",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 204\", function() {\r",
+									"    pm.response.to.have.status(204);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_webhook/{{ChannelWebhookUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_webhook",
+								"{{ChannelWebhookUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete 404",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 404\", function() {\r",
+									"    pm.response.to.have.status(404);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_webhook/{{ChannelWebhookUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_webhook",
+								"{{ChannelWebhookUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete 401",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 401\", function() {\r",
+									"    pm.response.to.have.status(401);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel_webhook/{{ChannelWebhookUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel_webhook",
+								"{{ChannelWebhookUuid}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
 		},
 		{
 			"name": "Channel Webhook Message Type",
@@ -6242,6 +12361,563 @@
 					"response": []
 				}
 			]
+		},
+		{
+			"name": "Channel Delete",
+			"item": [
+				{
+					"name": "Delete 403 (No room user)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"SecondaryUserToken\") \r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel/{{ChannelUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel",
+								"{{ChannelUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete 403 (Moderator)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"AuthorizationMod\") \r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel/{{ChannelUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel",
+								"{{ChannelUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete 403 (Member)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"AuthorizationMember\") \r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403\", function() {\r",
+									"    pm.response.to.have.status(403);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel/{{ChannelUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel",
+								"{{ChannelUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete 204",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 204\", function() {\r",
+									"    pm.response.to.have.status(204);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel/{{ChannelUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel",
+								"{{ChannelUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete 404",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 404\", function() {\r",
+									"    pm.response.to.have.status(404);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel/{{ChannelUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel",
+								"{{ChannelUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete 401",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 401\", function() {\r",
+									"    pm.response.to.have.status(401);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/channel/{{ChannelUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"channel",
+								"{{ChannelUuid}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Room Delete",
+			"item": [
+				{
+					"name": "Delete 403 (No room user)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"SecondaryUserToken\") \r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403 or 404\", function () {\r",
+									"    pm.expect(pm.response.code).to.be.oneOf([403, 404]);\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room/{{RoomUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room",
+								"{{RoomUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete 403 (Moderator)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"AuthorizationMod\") \r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403 or 404\", function () {\r",
+									"    pm.expect(pm.response.code).to.be.oneOf([403, 404]);\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room/{{RoomUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room",
+								"{{RoomUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete 403 (Member)",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"AuthorizationMember\") \r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 403 or 404\", function () {\r",
+									"    pm.expect(pm.response.code).to.be.oneOf([403, 404]);\r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room/{{RoomUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room",
+								"{{RoomUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete 204",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 204\", function() {\r",
+									"    pm.response.to.have.status(204);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room/{{RoomUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room",
+								"{{RoomUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete 404",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 404\", function() {\r",
+									"    pm.response.to.have.status(404);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room/{{RoomUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room",
+								"{{RoomUuid}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete 401",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 401\", function() {\r",
+									"    pm.response.to.have.status(401);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/room/{{RoomUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"room",
+								"{{RoomUuid}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
 		}
 	],
 	"event": [
@@ -6274,6 +12950,60 @@
 					"        console.log(jsonData)\r",
 					"        const token = jsonData.token;\r",
 					"        pm.environment.set(\"Authorization\", \"Bearer \" + token);\r",
+					"    }\r",
+					"});\r",
+					"\r",
+					"const modEmail = pm.environment.get(\"ModeratorUserEmail\");\r",
+					"const modPassword = pm.environment.get(\"ModeratorUserPassword\");\r",
+					"\r",
+					"pm.sendRequest({\r",
+					"    url: pm.environment.get(\"BaseUrl\") + \"/user/login\",\r",
+					"    method: 'POST',\r",
+					"    header: {\r",
+					"        'Content-Type': 'application/json'\r",
+					"    },\r",
+					"    body: {\r",
+					"        mode: 'raw',\r",
+					"        raw: JSON.stringify({ \r",
+					"            email: modEmail, \r",
+					"            password: modPassword\r",
+					"        })\r",
+					"    }\r",
+					"}, function (err, res) {\r",
+					"    if (err) {\r",
+					"        console.error(err);\r",
+					"    } else {\r",
+					"        const jsonData = res.json();\r",
+					"        console.log(jsonData)\r",
+					"        const token = jsonData.token;\r",
+					"        pm.environment.set(\"AuthorizationMod\", \"Bearer \" + token);\r",
+					"    }\r",
+					"});\r",
+					"\r",
+					"const memberEmail = pm.environment.get(\"MemberUserEmail\");\r",
+					"const memberPassword = pm.environment.get(\"MemberUserPassword\");\r",
+					"\r",
+					"pm.sendRequest({\r",
+					"    url: pm.environment.get(\"BaseUrl\") + \"/user/login\",\r",
+					"    method: 'POST',\r",
+					"    header: {\r",
+					"        'Content-Type': 'application/json'\r",
+					"    },\r",
+					"    body: {\r",
+					"        mode: 'raw',\r",
+					"        raw: JSON.stringify({ \r",
+					"            email: memberEmail, \r",
+					"            password: memberPassword\r",
+					"        })\r",
+					"    }\r",
+					"}, function (err, res) {\r",
+					"    if (err) {\r",
+					"        console.error(err);\r",
+					"    } else {\r",
+					"        const jsonData = res.json();\r",
+					"        console.log(jsonData)\r",
+					"        const token = jsonData.token;\r",
+					"        pm.environment.set(\"AuthorizationMember\", \"Bearer \" + token);\r",
 					"    }\r",
 					"});\r",
 					""

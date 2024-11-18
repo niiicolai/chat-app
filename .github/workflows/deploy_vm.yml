@@ -26,6 +26,27 @@ jobs:
   test:
     needs: build
     runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0.39
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: chat
+      mongo:
+        image: mongo:4.4.9
+        ports:
+          - 27017:27017
+        options: --health-cmd="mongo" --health-interval=10s --health-timeout=5s --health-retries=3
+      neo4j:
+        image: neo4j:4.3.6
+        ports:
+          - 7687:7687
+        options: --health-cmd="neo4j-admin status" --health-interval=10s --health-timeout=5s --health-retries=3
+        env:
+          NEO4J_AUTH: neo4j/password
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
@@ -38,14 +59,41 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Wait for MySQL to be ready
+        run: |
+          until mysqladmin ping -h"127.0.0.1" --silent; do
+            echo "Waiting for MySQL..."
+            sleep 5
+          done
+
+      - name: Wait for MongoDB to be ready
+        run: |
+          until mongo --eval "db.adminCommand('ping')" --quiet; do
+            echo "Waiting for MongoDB..."
+            sleep 5
+          done
+
+      - name: Wait for Neo4j to be ready
+        run: |
+          until neo4j-admin status | grep "Neo4j is running"; do
+            echo "Waiting for Neo4j..."
+            sleep 5
+          done
+
+      - name: Run DB override
+        run: npm run db:override
+
       - name: Run tests
         run: npm test
 
-      #- name: Start server with node_env=test
-      #  run: npm run start NODE_ENV=test
+      - name: Start server with node_env=test
+        run: npm run start NODE_ENV=test
 
-      #- name: Run API tests
-      #  run: npm run test:api
+      - name: Run MySQL API tests
+        run: npm run test:api:mysql
+
+      - name: Run MongoDB API tests
+        run: npm run test:api:mongodb
 
       #- name: Clone frontend repository
       #  run: git clone

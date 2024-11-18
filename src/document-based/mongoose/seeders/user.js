@@ -21,49 +21,83 @@ const passwordResetUuid = "24abdccf-3acc-4559-89d4-c85118a4345f";
 
 export default class UserSeeder {
     async up() {
-        const userLoginType = await UserLoginType.findOne({ name: "Password" });
+        const user_login_type = await UserLoginType.findOne({ name: "Password" });
+        const user_status_state = await UserStatusState.findOne({ name: "Offline" });
 
-        const userEmailVerification1 = await new UserEmailVerification({ uuid: userEmailVerificationUuid1, is_verified: true }).save();
-        const userEmailVerification2 = await new UserEmailVerification({ uuid: userEmailVerificationUuid2, is_verified: true }).save();
-        const userEmailVerification3 = await new UserEmailVerification({ uuid: userEmailVerificationUuid3, is_verified: true }).save();
-        
-        const userStatusState = await UserStatusState.findOne({ name: "Offline" });
-        const userStatus1 = await new UserStatus({ uuid: userStatus1Uuid, last_seen_at: new Date(), message: "I'm back!", total_online_hours: 0, user_status_state: userStatusState._id }).save();
-        const userStatus2 = await new UserStatus({ uuid: userStatus2Uuid, last_seen_at: new Date(), message: "I'm back!", total_online_hours: 0, user_status_state: userStatusState._id }).save();
-        const userStatus3 = await new UserStatus({ uuid: userStatus3Uuid, last_seen_at: new Date(), message: "I'm back!", total_online_hours: 0, user_status_state: userStatusState._id }).save();
-
-        const user1 = await new User({
-            ...data.users[0],
-            user_email_verification: userEmailVerification1._id,
-            user_status: userStatus1._id
-        }).save();
-
-        const user2 = await new User({
-            ...data.users[1],
-            user_email_verification: userEmailVerification2._id,
-            user_status: userStatus2._id
-        }).save();
-
-        const user3 = await new User({
-            ...data.users[2],
-            user_email_verification: userEmailVerification3._id,
-            user_status: userStatus3._id
-        }).save();
-
-        await new UserLogin({ uuid: uuidv4(), user: user1._id, user_login_type: userLoginType._id, password: data.user_login.password }).save();
-        await new UserLogin({ uuid: uuidv4(), user: user2._id, user_login_type: userLoginType._id, password: data.user_login.password }).save();
-        await new UserLogin({ uuid: uuidv4(), user: user3._id, user_login_type: userLoginType._id, password: data.user_login.password }).save();
-
-        await new UserPasswordReset({ uuid: passwordResetUuid, user: user1._id, expires_at: new Date() }).save();
-        await new UserPasswordReset({ uuid: passwordResetUuid, user: user2._id, expires_at: new Date() }).save();
-        await new UserPasswordReset({ uuid: passwordResetUuid, user: user3._id, expires_at: new Date() }).save();
+        await Promise.all([
+            new User({
+                ...data.users[0],
+                user_email_verification: { 
+                    uuid: userEmailVerificationUuid1, 
+                    is_verified: true 
+                },
+                user_status: { 
+                    uuid: userStatus1Uuid, 
+                    last_seen_at: new Date(), 
+                    message: "I'm back!", 
+                    total_online_hours: 0, 
+                    user_status_state 
+                },
+                user_logins: [{ 
+                    uuid: uuidv4(), 
+                    user_login_type, 
+                    password: data.user_login.password 
+                }],
+                user_password_resets: [{ 
+                    uuid: passwordResetUuid, 
+                    expires_at: new Date() 
+                }]
+            }).save(),
+            new User({
+                ...data.users[1],
+                user_email_verification: { 
+                    uuid: userEmailVerificationUuid2, 
+                    is_verified: true 
+                },
+                user_status: { 
+                    uuid: userStatus2Uuid, 
+                    last_seen_at: new Date(), 
+                    message: "I'm back!", 
+                    total_online_hours: 0, 
+                    user_status_state 
+                },
+                user_logins: [{ 
+                    uuid: uuidv4(), 
+                    user_login_type, 
+                    password: data.user_login.password 
+                }],
+                user_password_resets: [{ 
+                    uuid: passwordResetUuid, 
+                    expires_at: new Date() 
+                }]
+            }).save(),
+            new User({
+                ...data.users[2],
+                user_email_verification: { 
+                    uuid: userEmailVerificationUuid3, 
+                    is_verified: true 
+                },
+                user_status: { 
+                    uuid: userStatus3Uuid, 
+                    last_seen_at: new Date(), 
+                    message: "I'm back!", 
+                    total_online_hours: 0, 
+                    user_status_state 
+                },
+                user_logins: [{ 
+                    uuid: uuidv4(), 
+                    user_login_type, 
+                    password: data.user_login.password 
+                }],
+                user_password_resets: [{ 
+                    uuid: passwordResetUuid, 
+                    expires_at: new Date() 
+                }]
+            }).save()
+        ]);
     }
 
     async down() {
-        await UserLogin.deleteMany({ password: data.user_login.password });
-        await UserPasswordReset.deleteMany({ uuid: passwordResetUuid });
         await User.deleteMany({ uuid: { $in: data.users.map((d) => d.uuid) } });
-        await UserStatus.deleteMany({ uuid: { $in: [userStatus1Uuid, userStatus2Uuid, userStatus3Uuid] } });
-        await UserEmailVerification.deleteMany({ uuid: { $in: [userEmailVerificationUuid1, userEmailVerificationUuid2, userEmailVerificationUuid3] } });
     }
 }

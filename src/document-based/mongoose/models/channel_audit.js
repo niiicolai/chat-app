@@ -16,11 +16,6 @@ export default mongoose.model("ChannelAudit", new mongoose.Schema({
         ref: 'Channel', 
         required: true 
     },
-    room: { 
-        type: mongoose.Schema.Types.ObjectId, 
-        ref: 'Room', 
-        required: true 
-    },
     user: { 
         type: mongoose.Schema.Types.ObjectId, 
         ref: 'User', 

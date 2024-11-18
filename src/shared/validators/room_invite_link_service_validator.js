@@ -18,7 +18,7 @@ export default class RoomInviteLinkServiceValidator {
         return paginationValidator(options);
     }
 
-    static async create(options = { body: null, user: null }) {
+    static create(options = { body: null, user: null }) {
         if (!options) throw new ControllerError(500, 'No options provided');
         if (!options.body) throw new ControllerError(400, 'No body provided');
         if (!options.user) throw new ControllerError(500, 'No user provided');
@@ -30,7 +30,7 @@ export default class RoomInviteLinkServiceValidator {
         }
     }
 
-    static async update(options = { uuid: null, body: null, user: null }) {
+    static update(options = { uuid: null, body: null, user: null }) {
         if (!options) throw new ControllerError(500, 'No options provided');
         if (!options.uuid) throw new ControllerError(400, 'No uuid provided');
         if (!options.user) throw new ControllerError(500, 'No user provided');

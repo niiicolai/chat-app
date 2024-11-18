@@ -31,7 +31,7 @@ class Service {
     async findOne(options = { uuid: null, user: null }) {
         ChannelWebhookServiceValidator.findOne(options);
 
-        const channel = await Channel.findOne({ channel_webhook: { uuid: options.uuid } })
+        const channel = await Channel.findOne({ 'channel_webhook.uuid': options.uuid })
             .populate('room channel_webhook.room_file');
         const channelWebhook = channel?.channel_webhook;
 
@@ -74,11 +74,16 @@ class Service {
 
         const params = { room: room._id, channel_webhook: { $exists: true } };
         const total = await Channel.find(params).countDocuments();
-        const channels = await Channel.find(params)
+        let channels = await Channel.find(params)
             .populate('room channel_webhook.room_file')
             .sort({ created_at: -1 })
             .limit(limit || 0)
             .skip((page && limit) ? offset : 0);
+        if (channels.length > 0) {
+            channels = channels
+                .filter(channel => channel.channel_webhook)
+                .map(channel => channel);
+        }
 
         return {
             total,
@@ -162,7 +167,7 @@ class Service {
         await channel.save();
 
         return dto({ 
-            ...channel_webhook, 
+            ...channel.channel_webhook._doc, 
             room_file: room_file?._doc, 
             channel: { uuid: channel.uuid }, 
             room: { uuid: channel.room.uuid } 
