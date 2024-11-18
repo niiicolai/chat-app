@@ -71,8 +71,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y mongodb-mongosh
 
-      - name: Run wait_for_start.sh
-        run: sh ./wait_for_start.sh --db-overwrite 
+      - name: Run wait_for_start.sh in background
+        run: sh ./wait_for_start.sh --db-overwrite &
+        
+      - name: Curl localhost:3000 until it responds
+        run: |
+          while [[ "$(curl -s -o /dev/null -w ''%{http_code}'' localhost:3000)" != "200" ]]; do sleep 5; done
 
       - name: Run tests
         run: npm test
