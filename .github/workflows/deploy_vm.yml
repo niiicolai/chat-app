@@ -39,17 +39,11 @@ jobs:
         image: mongo:4.4.9
         ports:
           - 27017:27017
-        options: --health-cmd="mongo" --health-interval=10s --health-timeout=5s --health-retries=3
       neo4j:
         image: neo4j:4.3.6
         ports:
           - 7687:7687
           - 7474:7474
-        options: >-
-          --health-cmd="curl -s -o /dev/null -w '%{http_code}' http://localhost:7474/ | grep -q '200'"
-          --health-interval=20s
-          --health-timeout=5s
-          --health-retries=10
         env:
           NEO4J_AUTH: neo4j/password
     steps:
@@ -64,29 +58,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Wait for MySQL to be ready
-        run: |
-          until mysqladmin ping -h"127.0.0.1" --silent; do
-            echo "Waiting for MySQL..."
-            sleep 5
-          done
-
-      - name: Wait for MongoDB to be ready
-        run: |
-          until mongo --eval "db.adminCommand('ping')" --quiet; do
-            echo "Waiting for MongoDB..."
-            sleep 5
-          done
-
-      - name: Wait for Neo4j to be ready
-        run: |
-          until curl -s http://localhost:7474/; do
-            echo "Waiting for Neo4j..."
-            sleep 5
-          done
-
-      - name: Run DB override
-        run: npm run db:override
+      - name: Run wait_for_start.sh
+        run: sh ./wait_for_start.sh --db-overwrite
 
       - name: Run tests
         run: npm test
