@@ -26,6 +26,9 @@ jobs:
   test:
     needs: build
     runs-on: ubuntu-latest
+    env:
+      MYSQL_USER: root
+      MYSQL_ROOT_PASSWORD: password
     services:
       mysql:
         image: mysql:8.0.39
