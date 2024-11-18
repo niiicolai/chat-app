@@ -97,10 +97,10 @@ jobs:
         run: npm install -g newman
 
       - name: Run MySQL API tests using Postman
-        run: newman run ./tests/api_test/Chat\ API\ Test.postman_collection.json --environment ./tests/api_test/Chat\ App\ Dev\ MySQL.postman_environment.json
+        run: newman run ./test/api_test/Chat\ API\ Test.postman_collection.json --environment ./test/api_test/Chat\ App\ Dev\ MySQL.postman_environment.json
 
       - name: Run MongoDB API tests using Postman
-        run: newman run ./tests/api_test/Chat\ API\ Test.postman_collection.json --environment ./tests/api_test/Chat\ App\ Dev\ MongoDB.postman_environment.json
+        run: newman run ./test/api_test/Chat\ API\ Test.postman_collection.json --environment ./test/api_test/Chat\ App\ Dev\ MongoDB.postman_environment.json
 
       - name: Clone frontend repository
         run: git clone https://github.com/niiicolai/chat-app-react.git
