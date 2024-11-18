@@ -134,7 +134,9 @@ jobs:
           exit 1
 
       - name: Run E2E tests
-        run: npm run test:e2e
+        run: |
+          cd chat-app-react
+          npx cypress run
 
       - name: Remove frontend repository
         run: rm -rf chat-app-react
