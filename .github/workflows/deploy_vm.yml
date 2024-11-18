@@ -101,7 +101,7 @@ jobs:
 
       #- name: Run Neo4j API tests
       #  run: npm run test:api:neo4j
-
+      #
       - name: Clone frontend repository
         run: git clone https://github.com/niiicolai/chat-app-react.git
 
