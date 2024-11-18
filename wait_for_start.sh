@@ -1,13 +1,13 @@
 #!/bin/sh
 
-MYSQL_HOST="mysql"
-MYSQL_PORT="3306"
+MYSQL_HOST=${MYSQL_HOST:-"mysql"}
+MYSQL_PORT=${MYSQL_PORT:-"3306"}
 
-MONGO_HOST="mongodb"
-MONGO_PORT="27017"
+MONGO_HOST=${MONGO_HOST:-"mongodb"}
+MONGO_PORT=${MONGO_PORT:-"27017"}
 
-NEO4J_HOST="neo4j"
-NEO4J_PORT="7474"
+NEO4J_HOST=${NEO4J_HOST:-"neo4j"}
+NEO4J_PORT=${NEO4J_PORT:-"7474"}
 
 if [ -z "$MYSQL_USER" ]; then
     echo "MYSQL_USER is not set. Exiting..."
