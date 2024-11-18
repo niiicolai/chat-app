@@ -44,7 +44,7 @@ jobs:
         image: neo4j:4.3.6
         ports:
           - 7687:7687
-        options: --health-cmd="neo4j-admin status" --health-interval=10s --health-timeout=5s --health-retries=3
+        options: --health-cmd="curl -s http://localhost:7474/" --health-interval=10s --health-timeout=5s --health-retries=3
         env:
           NEO4J_AUTH: neo4j/password
     steps:

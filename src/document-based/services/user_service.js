@@ -95,7 +95,9 @@ class UserService {
             user_password_resets: [],
         }).save();
         
-        await UserEmailVerificationService.resend({ user_uuid: uuid });
+        if (process.env.NODE_ENV !== 'test') {
+            await UserEmailVerificationService.resend({ user_uuid: uuid });
+        }
 
         return { user: dto(savedUser), token: JwtService.sign(uuid) };
     }
@@ -155,7 +157,7 @@ class UserService {
         
         const { email, password } = options.body;
         const user = await User.findOne({ email });
-        const userLogin = user.user_logins.find(l => l.user_login_type.name === "Password");
+        const userLogin = user?.user_logins?.find(l => l.user_login_type.name === "Password");
 
         if (!user || !userLogin) throw new ControllerError(400, 'Invalid email or password');
         if (!bcrypt.compareSync(password, userLogin.password)) throw new ControllerError(400, 'Invalid email or password');
