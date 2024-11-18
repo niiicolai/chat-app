@@ -65,10 +65,14 @@ class Service extends MysqlBaseFindService {
         }
 
         let { uuid, room_uuid, expires_at } = body;
-        expires_at = expires_at || null;
+
+        if (expires_at) {
+            // YYYY-MM-DD HH:MM:SS
+            expires_at = new Date(expires_at).toISOString().slice(0, 19).replace('T', ' ');
+        }
         
         await db.sequelize.query('CALL create_room_invite_link_proc(:uuid, :room_uuid, :expires_at, @result)', {
-            replacements: { uuid, room_uuid, expires_at }
+            replacements: { uuid, room_uuid, expires_at: expires_at || null }
         });
 
         return await this.findOne({ uuid: body.uuid, user });
@@ -95,10 +99,14 @@ class Service extends MysqlBaseFindService {
             throw new ControllerError(403, 'User is not an admin of the room');
         }
 
-        expires_at = expires_at || null;
+
+        if (expires_at) {
+            // YYYY-MM-DD HH:MM:SS
+            expires_at = new Date(expires_at).toISOString().slice(0, 19).replace('T', ' ');
+        }
 
         await db.sequelize.query('CALL edit_room_invite_link_proc(:uuid, :expires_at, @result)', {
-            replacements: { uuid, expires_at }
+            replacements: { uuid, expires_at: expires_at || null }
         });
 
         return await this.findOne({ uuid, user });

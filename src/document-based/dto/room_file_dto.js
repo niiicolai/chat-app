@@ -9,7 +9,7 @@ export default (entity = {}) => {
         size_bytes: entity.size_bytes,
         size_mb: entity.size_mb,
         room_file_type_name: entity.room_file_type?.name,
-        room_uuid: entity.room_uuid,
+        room_uuid: entity.room?.uuid,
         created_at: entity.created_at,
         updated_at: entity.updated_at,
     };

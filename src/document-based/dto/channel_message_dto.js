@@ -32,12 +32,12 @@ export default (entity = {}) => {
     if (entity.channel_webhook_message) {
         dto.channel_webhook_message = channelWebhookMessageDto(entity.channel_webhook_message);
         
-        if (entity.channel_webhook_message.channel_webhook) {
-            dto.channel_webhook_message.channel_webhook = channelWebhookDto(entity.channel_webhook_message.channel_webhook);
-            
-            if (entity.channel_webhook_message.channel_webhook.room_file) {
-                dto.channel_webhook_message.channel_webhook.room_file = roomFileDto(entity.channel_webhook_message.channel_webhook.room_file);
-            }
+        if (entity.channel_webhook) {
+            console.log(entity.channel_webhook);
+            dto.channel_webhook_message.channel_webhook = channelWebhookDto({
+                ...entity.channel_webhook,
+                ...(entity.channel_webhook.room_file && { room_file: entity.channel_webhook.room_file })
+            });
         }
     }
 

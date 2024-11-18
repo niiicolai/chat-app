@@ -1,7 +1,17 @@
 import mongoose from "mongoose";
 
-export default mongoose.model("ChannelWebhookMessageType", new mongoose.Schema({
-    name: { type: String, required: true },
-    created_at: { type: Date, default: Date.now },
-    updated_at: { type: Date, default: Date.now },
-}));
+export const channelWebhookMessageTypeSchema = new mongoose.Schema({
+    name: {
+        type: String,
+        required: true
+    }
+}, {
+    timestamps: {
+        createdAt: 'created_at',
+        updatedAt: 'updated_at'
+    }
+});
+
+const ChannelWebhookMessageType = mongoose.model("ChannelWebhookMessageType", channelWebhookMessageTypeSchema);
+
+export default ChannelWebhookMessageType;

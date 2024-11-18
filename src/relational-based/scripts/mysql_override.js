@@ -34,3 +34,7 @@ export async function overrideMySQL() {
         console.log(`Successfully executed SQL script: ${stdout}`);
     });
 }
+
+if (process.argv.includes('--run')) {
+    overrideMySQL();
+}

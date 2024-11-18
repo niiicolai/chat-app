@@ -2406,7 +2406,7 @@ SET @password = '$2b$10$sB6/ocJJK9HodVv7qEozKO826Ik5gmZH/1GU/xReM1ijIjlA7hvTa';
 SET @upload_src = 'https://ghostchat.fra1.cdn.digitaloceanspaces.com/static/c7QiLXb.png';
 SET @upload_src2 = 'https://ghostchat.fra1.cdn.digitaloceanspaces.com/static/LemonadeGuyCardboardAndPencilWithShadow-8cdc3130cc5498718fce7ee9d1ff5d92ddcc2ed81c689a1bf275bd14189a607c-512.jpg'; 
 SET @upload_src3 = 'https://ghostchat.fra1.cdn.digitaloceanspaces.com/static/mobile-park-character-animating.png';
-SET @room_uuid = '4157b6a2-6856-4b54-aaa5-dc4f9a80062f';
+SET @room_uuid = 'a595b5cb-7e47-4ce7-9875-cdf99184a73c';
 SET @ch_uuid = UUID();
 SET @ch_uuid3D = UUID();
 SET @msg_uuid = UUID();
@@ -2569,6 +2569,11 @@ call create_channel_webhook_proc(@wh_uuid, @ch_uuid, 'General Chat Webhook', 'We
 -- Create a webhook message for the webhook
 call create_webhook_message_proc(UUID(), 'This is a webhook message!', @ch_uuid, @wh_uuid, 'Custom', @result);
 
+
+-- Set users as verified
+call set_user_email_verification_proc(@user_uuid, 1, @result);
+call set_user_email_verification_proc(@user2_uuid, 1, @result);
+call set_user_email_verification_proc(@user3_uuid, 1, @result);
 
 
 -- ### USER ###

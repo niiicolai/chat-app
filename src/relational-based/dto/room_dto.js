@@ -12,8 +12,8 @@ export default (entity = {}) => {
         name: entity.room_name,
         description: entity.room_description,
         room_category_name: entity.room_category_name,
-        bytes_used: entity.bytes_used,
-        mb_used: entity.mb_used,
+        bytes_used: entity.bytes_used ? parseFloat(entity.bytes_used) : 0,
+        mb_used: entity.mb_used ? parseFloat(entity.mb_used) : 0,
         created_at: entity.room_created_at,
         updated_at: entity.room_updated_at,
     };
