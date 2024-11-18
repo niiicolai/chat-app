@@ -45,7 +45,11 @@ jobs:
         ports:
           - 7687:7687
           - 7474:7474
-        options: --health-cmd="curl -s http://localhost:7474/" --health-interval=10s --health-timeout=5s --health-retries=3
+        options: >
+          --health-cmd="curl -s -o /dev/null -w '%{http_code}' http://localhost:7474/browser/ | grep -q '200'" 
+          --health-interval=20s 
+          --health-timeout=5s 
+          --health-retries=10
         env:
           NEO4J_AUTH: neo4j/password
     steps:
