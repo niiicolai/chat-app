@@ -5,7 +5,8 @@ import { userLoginTypeSchema as user_login_type } from "./user_login_type.js";
 export default new mongoose.Schema({
     uuid: { 
         type: String, 
-        required: true 
+        required: true,
+        unique: true 
     },
     password: { 
         type: String, 

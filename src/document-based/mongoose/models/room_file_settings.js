@@ -3,7 +3,8 @@ import mongoose from "mongoose";
 export default new mongoose.Schema({
     uuid: { 
         type: String, 
-        required: true 
+        required: true,
+        unique: true 
     },
     file_days_to_live: { 
         type: Number, 

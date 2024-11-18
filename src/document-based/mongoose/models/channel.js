@@ -6,7 +6,8 @@ import channel_webhook from "./channel_webhook.js";
 export default mongoose.model("Channel", new mongoose.Schema({
     uuid: { 
         type: String, 
-        required: true 
+        required: true,
+        unique: true 
     },
     name: { 
         type: String, 

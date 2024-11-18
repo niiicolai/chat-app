@@ -7,7 +7,8 @@ import channel_webhook_message from "./channel_webhook_message.js";
 export default mongoose.model("ChannelMessage", new mongoose.Schema({
     uuid: { 
         type: String, 
-        required: true 
+        required: true,
+        unique: true 
     },
     body: { 
         type: String, 

@@ -5,7 +5,8 @@ import { channelAuditTypeSchema as channel_audit_type } from "./channel_audit_ty
 export default mongoose.model("ChannelAudit", new mongoose.Schema({
     uuid: { 
         type: String, 
-        required: true 
+        required: true,
+        unique: true 
     },
     body: { 
         type: String, 

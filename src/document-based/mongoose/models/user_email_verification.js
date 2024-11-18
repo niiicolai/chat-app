@@ -3,7 +3,8 @@ import mongoose from "mongoose";
 export default new mongoose.Schema({
     uuid: { 
         type: String, 
-        required: true 
+        required: true,
+        unique: true 
     },
     is_verified: { 
         type: Boolean, 

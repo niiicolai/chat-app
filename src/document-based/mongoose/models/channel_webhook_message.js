@@ -5,7 +5,8 @@ import { channelWebhookMessageTypeSchema as channel_webhook_message_type } from 
 export default new mongoose.Schema({
     uuid: { 
         type: String, 
-        required: true 
+        required: true,
+        unique: true 
     },
     body: { 
         type: String, 

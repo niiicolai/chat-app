@@ -8,15 +8,18 @@ import user_status from "./user_status.js";
 export default mongoose.model("User", new mongoose.Schema({
     uuid: { 
         type: String, 
-        required: true 
+        required: true,
+        unique: true 
     },
     username: { 
         type: String, 
-        required: true 
+        required: true,
+        unique: true 
     },
     email: { 
         type: String, 
-        required: true 
+        required: true,
+        unique: true 
     },
     avatar_src: { 
         type: String, 

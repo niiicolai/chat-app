@@ -1,7 +1,11 @@
 import mongoose from "mongoose";
 
 export const channelMessageUploadTypeSchema = new mongoose.Schema({
-    name: { type: String, required: true },
+    name: { 
+        type: String, 
+        required: true,
+        unique: true 
+    },
 }, {
     timestamps: {
         createdAt: 'created_at',

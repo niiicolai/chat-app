@@ -5,7 +5,8 @@ import { roomFileTypeSchema as room_file_type } from "./room_file_type.js";
 export default mongoose.model("RoomFile", new mongoose.Schema({
     uuid: { 
         type: String, 
-        required: true 
+        required: true,
+        unique: true 
     },
     src: { 
         type: String, 

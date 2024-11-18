@@ -5,7 +5,8 @@ import { roomAuditTypeSchema as room_audit_type } from "./room_audit_type.js";
 export default mongoose.model("RoomAudit", new mongoose.Schema({
     uuid: { 
         type: String, 
-        required: true 
+        required: true,
+        unique: true 
     },
     body: { 
         type: String, 

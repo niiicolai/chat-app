@@ -13,11 +13,13 @@ import room_invite_link from "./room_invite_link.js";
 const roomSchema = new mongoose.Schema({
     uuid: { 
         type: String, 
-        required: true 
+        required: true,
+        unique: true 
     },
     name: { 
         type: String, 
-        required: true 
+        required: true,
+        unique: true 
     },
     description: { 
         type: String, 

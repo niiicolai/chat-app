@@ -5,7 +5,8 @@ import { channelMessageUploadTypeSchema as channel_message_upload_type } from ".
 export default new mongoose.Schema({
     uuid: { 
         type: String, 
-        required: true 
+        required: true,
+        unique: true 
     },
     room_file: { 
         type: mongoose.Schema.Types.ObjectId, 

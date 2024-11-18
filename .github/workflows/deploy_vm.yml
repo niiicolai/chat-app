@@ -103,7 +103,7 @@ jobs:
         run: newman run ./test/api_test/Chat\ API\ Test.postman_collection.json --environment ./test/api_test/Chat\ App\ Dev\ MongoDB.postman_environment.json
 
       - name: Run Neo4j API tests using Postman
-        run: newman run ./test/api_test/Chat\ API\ Test.postman_collection.json --environment ./test/api_test/Chat\ App\ Dev\ Neo4j.postman_environment
+        run: newman run ./test/api_test/Chat\ API\ Test.postman_collection.json --environment ./test/api_test/Chat\ App\ Dev\ Neo4j.postman_environment.json
 
       - name: Clone frontend repository
         run: git clone https://github.com/niiicolai/chat-app-react.git
