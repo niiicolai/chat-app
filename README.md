@@ -35,10 +35,6 @@ docker-compose -f compose-hub-image.yml up
 |                        | Neo4j API                           | [x]     |
 | **Websockets**         | Real-time Chat Messaging            | [x]     |
 |                        | Join/Leave Channel                  | [x]     |
-|                        | Real-time typing                    | [ ]     |
-| **WebRTC**             | Video Call                          | [ ]     |
-|                        | Audio Call                          | [ ]     |
-|                        | Screen Sharing                      | [ ]     |
 | **Authentication**     | JWT Token                           | [x]     |
 |                        | User Registration                   | [x]     |
 |                        | User Login                          | [x]     |
@@ -47,7 +43,6 @@ docker-compose -f compose-hub-image.yml up
 |                        | Reset Password                      | [x]     |
 |                        | Email Verification                  | [x]     |
 |                        | Google Login+Registration           | [x]     |
-|                        | Two Factor Authentication           | [ ]     |
 | **File Storage**       | S3 File Storage                     | [x]     |
 |                        | CDN                                 | [x]     |
 | **Environment Var.**   | .env File                           | [x]     |
@@ -73,14 +68,12 @@ docker-compose -f compose-hub-image.yml up
 |                        | ODM                                 | [x]     |
 |                        | Seeding                             | [x]     |
 |                        | Constraints                         | [ ]     |
-|                        | Triggers                            | [ ]     |
-|                        | Events                              | [ ]     |
+|                        | Indexes                             | [x]     |
+|                        | Custom Functions                    | [ ]     |
 | **Neo4j**              | Schemas                             | [x]     |
 |                        | OGM                                 | [x]     |
 |                        | Seeding                             | [x]     |
 |                        | Constraints                         | [ ]     |
-|                        | Triggers                            | [ ]     |
-|                        | Events                              | [ ]     |
 | **Docker**             | Dockerfile                          | [x]     |
 |                        | Docker Compose                      | [x]     |
 | **CI/CD**              | GitHub Actions                      | [x]     |

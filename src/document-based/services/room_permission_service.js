@@ -132,7 +132,6 @@ class RoomPermissionService {
         if (!room) throw new ControllerError(404, 'Room not found');
 
         const roomChannels = await Channel.countDocuments({ room: room._id });
-
         return (roomChannels + add_count) > room.room_channel_settings.max_channels;
     }
 }

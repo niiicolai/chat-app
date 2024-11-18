@@ -4,7 +4,7 @@ export const channelTypeSchema = new mongoose.Schema({
     name: { 
         type: String, 
         required: true,
-        unique: true 
+        index: true
     },
 }, {
     timestamps: {

@@ -17,8 +17,6 @@ const userStatus1Uuid = "3e1b6af2-6a44-455c-9602-77cbc480fa96";
 const userStatus2Uuid = "d52ad730-5eb5-40d7-8fdc-bdf0a639a8f8";
 const userStatus3Uuid = "f561a4c1-f0de-4abe-b109-2c27bdb55add";
 
-const passwordResetUuid = "24abdccf-3acc-4559-89d4-c85118a4345f";
-
 export default class UserSeeder {
     async up() {
         const user_login_type = await UserLoginType.findOne({ name: "Password" });
@@ -44,7 +42,7 @@ export default class UserSeeder {
                     password: data.user_login.password 
                 }],
                 user_password_resets: [{ 
-                    uuid: passwordResetUuid, 
+                    uuid: uuidv4(), 
                     expires_at: new Date() 
                 }]
             }).save(),
@@ -67,7 +65,7 @@ export default class UserSeeder {
                     password: data.user_login.password 
                 }],
                 user_password_resets: [{ 
-                    uuid: passwordResetUuid, 
+                    uuid: uuidv4(), 
                     expires_at: new Date() 
                 }]
             }).save(),
@@ -90,7 +88,7 @@ export default class UserSeeder {
                     password: data.user_login.password 
                 }],
                 user_password_resets: [{ 
-                    uuid: passwordResetUuid, 
+                    uuid: uuidv4(), 
                     expires_at: new Date() 
                 }]
             }).save()

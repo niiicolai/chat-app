@@ -4,7 +4,7 @@ export const roomCategorySchema = new mongoose.Schema({
     name: { 
         type: String, 
         required: true,
-        unique: true 
+        index: true
     },
 }, {
     timestamps: {

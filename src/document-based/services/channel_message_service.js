@@ -142,7 +142,6 @@ class Service {
             channel_message_type,
             channel: channel._id,
             user: savedUser._id,
-            channel_message_upload: null,
         });
 
         let room_file = null;

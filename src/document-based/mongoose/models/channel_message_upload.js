@@ -6,7 +6,7 @@ export default new mongoose.Schema({
     uuid: { 
         type: String, 
         required: true,
-        unique: true 
+        index: true
     },
     room_file: { 
         type: mongoose.Schema.Types.ObjectId, 
