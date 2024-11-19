@@ -120,9 +120,33 @@ class Service {
     async addToExistingUser(options={ third_party_id: null, type: null, user: null }) {
         GoogleAuthServiceValidator.addToExistingUser(options);
 
-        const { third_party_id, type, user } = options;
+        const result = await neodeInstance.cypher(
+            'MATCH (ul:UserLogin { third_party_id: $third_party_id })-[:HAS_LOGIN_TYPE]->(ult:UserLoginType { name: $type }) ' +
+            'MATCH (ul)-[:HAS_USER]->(u:User { uuid: $uuid })' +
+            'RETURN ul',
+            { third_party_id: options.third_party_id, type: options.type, uuid: options.user.sub }
+        );
 
-        throw new Error('Method not implemented');
+        if (result.records.length > 0) {
+            throw new ControllerError(400, 'Account already linked already exists. Please login instead!');
+        }
+
+        if (options.type !== 'Google') {
+            throw new ControllerError(400, 'Only Google are currently supported');
+        }
+
+        const userLoginType = await neodeInstance.model('UserLoginType').find('Google');
+        if (!userLoginType) throw new ControllerError(500, 'User login type not found');
+        const userInstance = await neodeInstance.model('User').find(options.user.sub);
+        if (!userInstance) throw new ControllerError(400, 'User not found');
+
+        const userLogin = await neodeInstance.model('UserLogin').create({
+            uuid: uuidv4(),
+            third_party_id: options.third_party_id
+        });
+
+        await userLogin.relateTo(userInstance, 'user');
+        await userLogin.relateTo(userLoginType, 'user_login_type');
     }
 }
 

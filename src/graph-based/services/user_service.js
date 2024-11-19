@@ -6,15 +6,12 @@ import NeodeBaseFindService from './neode_base_find_service.js';
 import JwtService from '../../shared/services/jwt_service.js';
 import neodeInstance from '../neode/index.js';
 import dto from '../dto/user_dto.js';
+import userLoginDto from '../dto/user_login_dto.js';
 import bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
 
 const SALT_ROUNDS = 10;
 const uploader = new UserAvatarUploader();
-
-console.warn('Neo4j TODO (user_service.js)');
-console.warn('Users cannot revoke their Google sign in');
-console.warn('Users with passwords cannot add Google sign in');
 
 class UserService extends NeodeBaseFindService {
     constructor() {
@@ -111,8 +108,7 @@ class UserService extends NeodeBaseFindService {
     }
 
     async update(options = { body: null, file: null, user: null }) {
-        if (!options) throw new ControllerError(500, 'No options provided');
-        if (!options.body) throw new ControllerError(400, 'No body provided');
+        UserServiceValidator.update(options);
 
         const { body, file, user } = options;
         const { sub: uuid } = user;
@@ -148,10 +144,7 @@ class UserService extends NeodeBaseFindService {
     }
 
     async login(options = { body: null }) {
-        if (!options) throw new ControllerError(500, 'No options provided');
-        if (!options.body) throw new ControllerError(400, 'No body provided');
-        if (!options.body.email) throw new ControllerError(400, 'No email provided');
-        if (!options.body.password) throw new ControllerError(400, 'No password provided');
+        UserServiceValidator.login(options);
 
         const { email, password } = options.body;
         const result = await neodeInstance.cypher(
@@ -185,8 +178,7 @@ class UserService extends NeodeBaseFindService {
     }
 
     async destroy(options = { uuid: null }) {
-        if (!options) throw new ControllerError(500, 'No options provided');
-        if (!options.uuid) throw new ControllerError(400, 'No UUID provided');
+        UserServiceValidator.destroy(options);
 
         const { uuid } = options;
         const existingInstance = await neodeInstance.model('User').find(uuid);
@@ -203,8 +195,7 @@ class UserService extends NeodeBaseFindService {
     }
 
     async destroyAvatar(options = { uuid: null }) {
-        if (!options) throw new ControllerError(500, 'No options provided');
-        if (!options.uuid) throw new ControllerError(400, 'No UUID provided');
+        UserServiceValidator.destroyAvatar(options);
 
         const { uuid } = options;
         const existingInstance = await neodeInstance.model('User').find(uuid);
@@ -218,11 +209,39 @@ class UserService extends NeodeBaseFindService {
     }
 
     async getUserLogins(options = { uuid: null }) {
-        throw new Error('Method not implemented');
+        UserServiceValidator.getUserLogins(options);
+
+        const result = await neodeInstance.cypher(
+            'MATCH (ul:UserLogin)-[:HAS_USER]->(u:User {uuid: $uuid}) ' +
+            'MATCH (ul)-[:HAS_LOGIN_TYPE]->(ult:UserLoginType) ' +
+            'RETURN ul, ult',
+            { uuid: options.uuid }
+        );
+
+        return result.records.map(record => userLoginDto({
+            ...record.get('ul').properties,
+            user_login_type: record.get('ult').properties
+        }));
     }
 
     async destroyUserLogins(options = { uuid: null, login_uuid: null }) {
-        throw new Error('Method not implemented');
+        UserServiceValidator.destroyUserLogins(options);
+
+        const [userLogin, userLogins] = await Promise.all([
+            neodeInstance.model('UserLogin').find(options.login_uuid),
+            neodeInstance.cypher(
+                'MATCH (ul:UserLogin)-[:HAS_USER]->(u:User {uuid: $uuid}) ' +
+                'MATCH (ul)-[:HAS_LOGIN_TYPE]->(ult:UserLoginType) ' +
+                'RETURN ul, ult',
+                { uuid: options.uuid }
+            )
+        ]);
+
+        if (!userLogin) throw new ControllerError(404, 'User login not found');
+        if (userLogin.get('user_login_type').get('name') === 'Password') throw new ControllerError(400, 'Cannot delete password login');
+        if (userLogins.records.length === 1) throw new ControllerError(400, 'You cannot delete your last login');
+
+        await userLogin.delete();
     }
 }
 
