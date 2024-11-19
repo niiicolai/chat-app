@@ -1,3 +1,4 @@
+import UserPasswordResetServiceValidator from '../../shared/validators/user_password_reset_service_validator.js';
 import MysqlBaseFindService from './_mysql_base_find_service.js';
 import db from '../sequelize/models/index.cjs';
 import ControllerError from '../../shared/errors/controller_error.js';
@@ -18,20 +19,11 @@ class UserEmailVerificationService extends MysqlBaseFindService {
     }
 
     async create(options = { body: null }) {
-        const { body } = options;
-        if (!body) {
-            throw new ControllerError(400, 'No body provided');
-        }
-        
-        const { email } = body;
-        if (!email) {
-            throw new ControllerError(400, 'No email provided');
-        }
+        UserPasswordResetServiceValidator.create(options);
 
+        const { email } = options.body;
         const user = await db.UserView.findOne({ where: { user_email: email } });
-        if (!user) {
-            return;
-        }
+        if (!user) return;
 
         const uuid = v4uuid();
         const user_uuid = user.user_uuid;
@@ -54,18 +46,9 @@ class UserEmailVerificationService extends MysqlBaseFindService {
     }
 
     async resetPassword(options = { uuid: null, body: null }) {
+        UserPasswordResetServiceValidator.resetPassword(options);
+        
         const { uuid, body } = options;
-
-        if (!uuid) {
-            throw new ControllerError(400, 'No uuid provided');
-        }
-        if (!body) {
-            throw new ControllerError(400, 'No body provided');
-        }
-        if (!body.password) {
-            throw new ControllerError(400, 'No password provided');
-        }
-
         body.password = bcrypt.hashSync(body.password, saltRounds);
 
         const existing = await db.UserPasswordResetView.findOne({ where: { user_password_reset_uuid: uuid } });

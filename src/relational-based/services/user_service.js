@@ -1,3 +1,4 @@
+import UserServiceValidator from '../../shared/validators/user_service_validator.js';
 import UserEmailVerificationService from './user_email_verification_service.js';
 import UserAvatarUploader from '../../shared/uploaders/user_avatar_uploader.js';
 import ControllerError from '../../shared/errors/controller_error.js';
@@ -5,15 +6,11 @@ import MysqlBaseFindService from './_mysql_base_find_service.js';
 import JwtService from '../../shared/services/jwt_service.js';
 import db from '../sequelize/models/index.cjs';
 import dto from '../dto/user_dto.js';
+import userLoginDto from '../dto/user_login_dto.js';
 import bcrypt from 'bcrypt';
 
 const SALT_ROUNDS = 10;
 const uploader = new UserAvatarUploader();
-
-console.warn('MySQL TODO (user_service.js): ')
-console.warn('Users signed in with Google can not set a password');
-console.warn('Users cannot revoke their Google sign in');
-console.warn('Users with passwords can not sign in with Google');
 
 class UserService extends MysqlBaseFindService {
     constructor() {
@@ -21,14 +18,9 @@ class UserService extends MysqlBaseFindService {
     }
 
     async create(options = { body: null, file: null }) {
-        if (!options) throw new ControllerError(500, 'No options provided');
-        if (!options.body) throw new ControllerError(400, 'No body provided');
-        if (!options.body.uuid) throw new ControllerError(400, 'No UUID provided');
-        if (!options.body.username) throw new ControllerError(400, 'No username provided');
-        if (!options.body.email) throw new ControllerError(400, 'No email provided');
+        UserServiceValidator.create(options);
 
-        if (!options.body.password) throw new ControllerError(400, 'No password provided');
-        else options.body.password = bcrypt.hashSync(options.body.password, SALT_ROUNDS);
+        options.body.password = bcrypt.hashSync(options.body.password, SALT_ROUNDS);
 
         const { file } = options;
         const { uuid, email, username, password } = options.body;
@@ -70,10 +62,7 @@ class UserService extends MysqlBaseFindService {
     }
 
     async update(options = { body: null, file: null, user: null }) {
-        if (!options) throw new ControllerError(500, 'No options provided');
-        if (!options.body) throw new ControllerError(400, 'No body provided');
-        if (!options.user) throw new ControllerError(400, 'No user provided');
-        if (!options.user.sub) throw new ControllerError(400, 'No user UUID provided');
+        UserServiceValidator.update(options);
 
         const { body, file, user } = options;
         const { sub: uuid } = user;
@@ -110,10 +99,7 @@ class UserService extends MysqlBaseFindService {
     }
 
     async login(options = { body: null }) {
-        if (!options) throw new ControllerError(500, 'No options provided');
-        if (!options.body) throw new ControllerError(400, 'No body provided');
-        if (!options.body.email) throw new ControllerError(400, 'No email provided');
-        if (!options.body.password) throw new ControllerError(400, 'No password provided');
+        UserServiceValidator.login(options);
 
         const { email: user_email, password } = options.body;
         const savedUser = await db.UserView.findOne({ where: { user_email }});
@@ -136,8 +122,7 @@ class UserService extends MysqlBaseFindService {
     }
 
     async destroy(options = { uuid: null }) {
-        if (!options) throw new ControllerError(500, 'No options provided');
-        if (!options.uuid) throw new ControllerError(400, 'No UUID provided');
+        UserServiceValidator.destroy(options);
 
         const { uuid: user_uuid } = options;
         const savedUser = await db.UserView.findOne({ where: { user_uuid }});
@@ -153,8 +138,7 @@ class UserService extends MysqlBaseFindService {
     }
 
     async destroyAvatar(options = { uuid: null }) {
-        if (!options) throw new ControllerError(500, 'No options provided');
-        if (!options.uuid) throw new ControllerError(400, 'No UUID provided');
+        UserServiceValidator.destroyAvatar(options);
 
         const { uuid: user_uuid } = options;
         const savedUser = await db.UserView.findOne({ where: { user_uuid }});
@@ -167,6 +151,32 @@ class UserService extends MysqlBaseFindService {
 
             await uploader.destroy(savedUser.user_avatar_src);
         }
+    }
+
+    async getUserLogins(options = { uuid: null }) {
+        UserServiceValidator.getUserLogins(options);
+
+        const userLogins = await db.UserLoginView.findAll({ where: { user_uuid: options.uuid }});
+        return userLogins.map(userLoginDto);
+    }
+
+    async destroyUserLogins(options = { uuid: null, login_uuid: null }) {
+        UserServiceValidator.destroyUserLogins(options);
+
+        const { uuid, login_uuid } = options;
+        const userLogin = await db.UserLoginView.findOne({ where: { user_uuid: uuid, user_login_uuid: login_uuid }});
+        
+        if (!userLogin) 
+            throw new ControllerError(404, 'User login not found');
+        if (userLogin.user_login_type_name === 'Password') 
+            throw new ControllerError(400, 'Cannot delete password login');
+
+        const userLogins = await db.UserLoginView.findAll({ where: { user_uuid: options.uuid }});
+        if (userLogins.length === 1) throw new ControllerError(400, 'You cannot delete your last login');
+
+        await db.sequelize.query('CALL delete_user_login_proc(:login_uuid, @result)', {
+            replacements: { login_uuid }
+        });
     }
 }
 

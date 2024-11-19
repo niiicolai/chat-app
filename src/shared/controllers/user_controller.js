@@ -8,6 +8,15 @@ export default (crudService) => {
     const router = express.Router();
     const ctrl = { router };
 
+    ctrl.getUserLogins = () => {
+        router.get('/user/me/logins', [authMiddleware], async (req, res) => {
+            await errorHandler(res, async () => {
+                const result = await crudService.getUserLogins({ uuid: req.user.sub });
+                res.json(result);
+            });
+        });
+    }
+
     ctrl.findOne = () => {
         router.get('/user/me', [authMiddleware], async (req, res) => {
             await errorHandler(res, async () => {
@@ -57,6 +66,15 @@ export default (crudService) => {
         router.delete('/user/me/avatar', [authMiddleware], async (req, res) => {
             await errorHandler(res, async () => {
                 await crudService.destroyAvatar({ uuid: req.user.sub });
+                res.sendStatus(204);
+            });
+        });
+    }
+
+    ctrl.destroyUserLogins = () => {
+        router.delete('/user/me/login/:uuid', [authMiddleware], async (req, res) => {
+            await errorHandler(res, async () => {
+                await crudService.destroyUserLogins({ uuid: req.user.sub, login_uuid: req.params.uuid });
                 res.sendStatus(204);
             });
         });

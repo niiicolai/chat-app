@@ -1,3 +1,4 @@
+import RoomServiceValidator from '../../shared/validators/room_service_validator.js';
 import MysqlBaseFindService from './_mysql_base_find_service.js';
 import db from '../sequelize/models/index.cjs';
 import ControllerError from '../../shared/errors/controller_error.js';
@@ -23,16 +24,11 @@ class Service extends MysqlBaseFindService {
         }];
     }
 
-    
-    
-
     async findOne(options = { uuid: null, user: null }) {
+        RoomServiceValidator.findOne(options);
+
         const { user, uuid } = options;
         const { sub: user_uuid } = user;
-
-        if (!user) {
-            throw new ControllerError(500, 'No user provided');
-        }
 
         const room =  await super.findOne({ uuid, include: this.includeUser(user_uuid) });
 
@@ -44,37 +40,18 @@ class Service extends MysqlBaseFindService {
     }
 
     async findAll(options = { user: null, page: null, limit: null }) {
+        RoomServiceValidator.findAll(options);
+
         const { user, page, limit } = options;
         const { sub: user_uuid } = options.user;
-
-        if (!user) {
-            throw new ControllerError(500, 'No user provided');
-        }
 
         return await super.findAll({ page, limit, include: this.includeUser(user_uuid) });
     }
 
     async create(options = { body: null, file: null, user: null }) {
-        const { body, file, user } = options;
+        RoomServiceValidator.create(options);
 
-        if (!body) {
-            throw new ControllerError(400, 'No body provided');
-        }
-        if (!body.uuid) {
-            throw new ControllerError(400, 'No UUID provided');
-        }
-        if (!body.name) {
-            throw new ControllerError(400, 'No name provided');
-        }
-        if (!body.description) {
-            throw new ControllerError(400, 'No description provided');
-        }
-        if (!body.room_category_name) {
-            throw new ControllerError(400, 'No room_category_name provided');
-        }
-        if (!user) {
-            throw new ControllerError(500, 'No user provided');
-        }
+        const { body, file, user } = options;
 
         if (!(await RoomPermissionService.isVerified({ user }))) {
             throw new ControllerError(403, 'You must verify your email before you can create a room');
@@ -117,15 +94,10 @@ class Service extends MysqlBaseFindService {
     }
 
     async update(options = { uuid: null, body: null, file: null, user: null }) {
+        RoomServiceValidator.update(options);
+
         const { uuid, body, file, user } = options;
         const { name, description, room_category_name } = body;
-
-        if (!uuid) {
-            throw new ControllerError(400, 'No uuid provided');
-        }
-        if (!user) {
-            throw new ControllerError(500, 'No user provided');
-        }
 
         if (!(await RoomPermissionService.isInRoom({ room_uuid: uuid, user, role_name: 'Admin' }))) {
             throw new ControllerError(403, 'User is not an admin of the room');
@@ -177,15 +149,9 @@ class Service extends MysqlBaseFindService {
     }
 
     async destroy(options = { uuid: null, user: null }) {
+        RoomServiceValidator.destroy(options);
+
         const { uuid, user } = options;
-
-        if (!uuid) {
-            throw new ControllerError(400, 'No uuid provided');
-        }
-
-        if (!user) {
-            throw new ControllerError(500, 'No user provided');
-        }
 
         await service.findOne({ uuid, user });
 
@@ -200,16 +166,10 @@ class Service extends MysqlBaseFindService {
     }
 
     async editSettings(options = { uuid: null, body: null, user: null }) {
+        RoomServiceValidator.editSettings(options);
+
         const { uuid, body, user } = options;
         const { join_message, rules_text, join_channel_uuid } = body;
-
-        if (!uuid) {
-            throw new ControllerError(400, 'No uuid provided');
-        }
-
-        if (!user) {
-            throw new ControllerError(500, 'No user provided');
-        }
 
         if (!(await RoomPermissionService.isInRoom({ room_uuid: uuid, user, role_name: 'Admin' }))) {
             throw new ControllerError(403, 'User is not an admin of the room');
@@ -247,16 +207,10 @@ class Service extends MysqlBaseFindService {
     }
 
     async leave(options = { uuid: null, user: null }) {
+        RoomServiceValidator.leave(options);
+
         const { uuid, user } = options;
         const { sub: user_uuid } = user;
-
-        if (!uuid) {
-            throw new ControllerError(400, 'No uuid provided');
-        }
-
-        if (!user) {
-            throw new ControllerError(500, 'No user provided');
-        }
 
         if (!(await RoomPermissionService.isInRoom({ room_uuid: uuid, user, role_name: null }))) {
             throw new ControllerError(403, 'User is not in the room');

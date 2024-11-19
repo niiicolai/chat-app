@@ -811,6 +811,57 @@ END //
 DELIMITER ;
 
 
+-- Delete a user login
+DROP PROCEDURE IF EXISTS delete_user_login_proc;
+DELIMITER //
+CREATE PROCEDURE delete_user_login_proc(
+    IN user_login_uuid_input VARCHAR(36),
+    OUT result BOOLEAN
+)
+BEGIN
+    -- Delete the user login
+    DELETE FROM UserLogin WHERE uuid = user_login_uuid_input;
+    SET result = TRUE;
+END //
+DELIMITER ;
+
+
+-- Create a user login
+DROP PROCEDURE IF EXISTS create_user_login_proc;
+DELIMITER //
+CREATE PROCEDURE create_user_login_proc(
+    IN user_login_uuid_input VARCHAR(36),
+    IN user_uuid_input VARCHAR(36),
+    IN user_login_type_name_input VARCHAR(255),
+    IN user_login_third_party_id_input VARCHAR(255),
+    IN user_login_password_input VARCHAR(255),
+    OUT result BOOLEAN
+)
+BEGIN
+    DECLARE exit_code VARCHAR(5);
+    DECLARE exit_message TEXT;
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        GET DIAGNOSTICS CONDITION 1
+            exit_code = RETURNED_SQLSTATE, 
+            exit_message = MESSAGE_TEXT;
+        ROLLBACK;
+        SELECT CONCAT('Error Code: ', exit_code, ' Error Message: ', exit_message) AS error_output;
+        SET result = FALSE;
+    END;
+
+    START TRANSACTION;
+        if user_login_type_name_input = "Password" then
+            INSERT INTO UserLogin (uuid, user_uuid, user_login_type_name, password) VALUES (user_login_uuid_input, user_uuid_input, user_login_type_name_input, user_login_password_input);
+        end if;
+        if user_login_type_name_input = "Google" then
+            INSERT INTO UserLogin (uuid, user_uuid, user_login_type_name, third_party_id) VALUES (user_login_uuid_input, user_uuid_input, user_login_type_name_input, user_login_third_party_id_input);
+        end if;
+    COMMIT;
+    SET result = TRUE;
+END //
+DELIMITER ;
+
 
 -- Create a new room with a user
 -- It runs in a transaction to ensure that both inserts are successful
@@ -2618,6 +2669,8 @@ GRANT EXECUTE ON PROCEDURE `chat`.`set_user_email_verification_proc` TO 'chat_us
 GRANT EXECUTE ON PROCEDURE `chat`.`create_user_password_reset_proc` TO 'chat_user'@'%';
 GRANT EXECUTE ON PROCEDURE `chat`.`delete_user_password_reset_proc` TO 'chat_user'@'%';
 GRANT EXECUTE ON PROCEDURE `chat`.`update_user_status_proc` TO 'chat_user'@'%';
+GRANT EXECUTE ON PROCEDURE `chat`.`create_user_login_proc` TO 'chat_user'@'%';
+GRANT EXECUTE ON PROCEDURE `chat`.`delete_user_login_proc` TO 'chat_user'@'%';
 
 -- Grant SELECT privilege on views only
 GRANT SELECT ON `chat`.`user_view` TO 'chat_user'@'%';

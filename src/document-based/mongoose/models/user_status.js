@@ -6,7 +6,7 @@ export default new mongoose.Schema({
     uuid: { 
         type: String, 
         required: true,
-        unique: true 
+        index: true 
     },
     last_seen_at: { 
         type: Date, 

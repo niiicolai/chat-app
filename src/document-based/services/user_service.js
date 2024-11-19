@@ -7,15 +7,12 @@ import UserStatusState from '../mongoose/models/user_status_state.js';
 import UserLoginType from '../mongoose/models/user_login_type.js';
 import User from '../mongoose/models/user.js';
 import dto from '../dto/user_dto.js';
+import userLoginDto from '../dto/user_login_dto.js';
 import bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
 
 const SALT_ROUNDS = 10;
 const uploader = new UserAvatarUploader();
-
-console.warn('MongoDB TODO (user_service.js)');
-console.warn('Users cannot revoke their Google sign in');
-console.warn('Users with passwords cannot add Google sign in');
 
 class UserService {
 
@@ -206,6 +203,47 @@ class UserService {
                 uploader.destroy(savedUser.avatar_src)
             ]);
         }
+    }
+
+    /**
+     * @function getUserLogins
+     * @description Get a user's logins by uuid
+     * @param {Object} options
+     * @param {String} options.uuid
+     * @returns {Array}
+     */
+    async getUserLogins(options = { uuid: null }) {
+        UserServiceValidator.getUserLogins(options);
+        
+        const user = await User.findOne({ uuid: options.uuid });
+        if (!user) throw new ControllerError(404, 'User not found');
+
+        return user.user_logins.map(userLoginDto);
+    }
+
+    /**
+     * @function destroyUserLogins
+     * @description Destroy a user's logins by uuid
+     * @param {Object} options
+     * @param {String} options.uuid
+     * @param {String} options.login_uuid
+     * @returns {void}
+     */
+    async destroyUserLogins(options = { uuid: null, login_uuid: null }) {
+        UserServiceValidator.destroyUserLogins(options);
+
+        const { uuid, login_uuid } = options;
+        const user = await User.findOne({ uuid });
+        const userLogin = user?.user_logins?.find(l => l.uuid === login_uuid);
+
+        if (!user) throw new ControllerError(404, 'User not found');
+        if (user.user_logins.length === 1) throw new ControllerError(400, 'You cannot delete your last login');
+        if (!userLogin) throw new ControllerError(404, 'User login not found');
+        if (userLogin.user_login_type.name === 'Password') throw new ControllerError(400, 'Cannot delete password login');
+
+        user.user_logins = user.user_logins.filter(l => l.uuid !== login_uuid);
+
+        await user.save();
     }
 }
 

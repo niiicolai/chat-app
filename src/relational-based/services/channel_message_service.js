@@ -1,3 +1,4 @@
+import ChannelMessageServiceValidator from '../../shared/validators/channel_message_service_validator.js';
 import MysqlBaseFindService from './_mysql_base_find_service.js';
 import ControllerError from '../../shared/errors/controller_error.js';
 import StorageService from '../../shared/services/storage_service.js';
@@ -15,12 +16,9 @@ class Service extends MysqlBaseFindService {
     }
 
     async findOne(options = { uuid: null, user: null }) {
+        ChannelMessageServiceValidator.findOne(options);
         const { user, uuid } = options;
         const existing = await super.findOne({ uuid });
-
-        if (!user) {
-            throw new ControllerError(500, 'No user provided');
-        }
 
         if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid: existing.channel_uuid, user, role_name: null }))) {
             throw new ControllerError(403, 'User is not in the room');
@@ -30,15 +28,8 @@ class Service extends MysqlBaseFindService {
     }
 
     async findAll(options = { channel_uuid: null, user: null, page: null, limit: null }) {
+        options = ChannelMessageServiceValidator.findAll(options);
         const { channel_uuid, user, page, limit } = options;
-
-        if (!user) {
-            throw new ControllerError(500, 'No user provided');
-        }
-
-        if (!channel_uuid) {
-            throw new ControllerError(400, 'No channel_uuid provided');
-        }
 
         if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid, user, role_name: null }))) {
             throw new ControllerError(403, 'User is not in the room');
@@ -48,25 +39,11 @@ class Service extends MysqlBaseFindService {
     }
 
     async create(options = { body: null, file: null, user: null }) {
+        ChannelMessageServiceValidator.create(options);
+
         const { body, file, user } = options;
         const { uuid, body: msg, channel_uuid } = body;
         const { sub: user_uuid } = user;
-
-        if (!body) {
-            throw new ControllerError(400, 'No body provided');
-        }
-        if (!uuid) {
-            throw new ControllerError(400, 'No UUID provided');
-        }
-        if (!msg) {
-            throw new ControllerError(400, 'No body.body provided');
-        }
-        if (!channel_uuid) {
-            throw new ControllerError(400, 'No channel_uuid provided');
-        }
-        if (!user) {
-            throw new ControllerError(500, 'No user provided');
-        }
 
         const channel = await db.ChannelView.findOne({ where: { channel_uuid } });
         if (!channel) {
@@ -115,19 +92,11 @@ class Service extends MysqlBaseFindService {
     }
 
     async update(options = { uuid: null, body: null, user: null }) {
+        ChannelMessageServiceValidator.update(options);
+
         const { uuid, body, user } = options;
         const { body: msg } = body;
         const { sub: user_uuid } = user;
-
-        if (!body) {
-            throw new ControllerError(400, 'No body provided');
-        }
-        if (!uuid) {
-            throw new ControllerError(400, 'No uuid provided');
-        }
-        if (!user) {
-            throw new ControllerError(500, 'No user provided');
-        }
 
         const existing = await service.findOne({ uuid, user });
 
@@ -161,15 +130,10 @@ class Service extends MysqlBaseFindService {
     }
 
     async destroy(options = { uuid: null, user: null }) {
+        ChannelMessageServiceValidator.destroy(options);
+
         const { uuid, user } = options;
         const { sub: user_uuid } = user;
-
-        if (!uuid) {
-            throw new ControllerError(400, 'No uuid provided');
-        }
-        if (!user) {
-            throw new ControllerError(500, 'No user provided');
-        }
 
         const existing = await service.findOne({ uuid, user });
         const channel_uuid = existing.channel_uuid;

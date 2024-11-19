@@ -1,3 +1,4 @@
+import UserEmailVerificationServiceValidator from '../../shared/validators/user_email_verification_service_validator.js';
 import MysqlBaseFindService from './_mysql_base_find_service.js';
 import db from '../sequelize/models/index.cjs';
 import ControllerError from '../../shared/errors/controller_error.js';
@@ -14,9 +15,7 @@ class UserEmailVerificationService extends MysqlBaseFindService {
     }
 
     async resend(options = { user_uuid: null }) {
-        if (!options.user_uuid) {
-            throw new ControllerError(500, 'No user_uuid provided');
-        }
+        UserEmailVerificationServiceValidator.resend(options);
 
         const user = await db.UserView.findOne({ where: { user_uuid: options.user_uuid } });
         if (!user) {
@@ -41,9 +40,7 @@ class UserEmailVerificationService extends MysqlBaseFindService {
     }
 
     async confirm(options = { uuid: null }) {
-        if (!options.uuid) {
-            throw new ControllerError(400, 'No uuid provided');
-        }
+        UserEmailVerificationServiceValidator.confirm(options);
 
         const existing = await db.UserEmailVerificationView.findOne({ where: { user_email_verification_uuid: options.uuid } });
         if (!existing) {

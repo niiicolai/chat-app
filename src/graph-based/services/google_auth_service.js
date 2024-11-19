@@ -1,3 +1,4 @@
+import GoogleAuthServiceValidator from '../../shared/validators/google_auth_service_validator.js';
 import JwtService from '../../shared/services/jwt_service.js';
 import ControllerError from '../../shared/errors/controller_error.js';
 import neodeInstance from '../neode/index.js';
@@ -5,11 +6,9 @@ import dto from '../dto/user_dto.js';
 import { v4 as uuidv4 } from 'uuid';
 
 class Service {
+
     async create(options = { info: null }) {
-        if (!options.info) throw new ControllerError(500, 'The response from Google is empty');
-        if (!options.info.data) throw new ControllerError(500, 'No data in the response from Google');
-        if (!options.info.data.email) throw new ControllerError(500, 'No email in the response from Google');
-        if (!options.info.data.id) throw new ControllerError(500, 'No id in the response from Google');
+        GoogleAuthServiceValidator.create(options);
 
         const { id: third_party_id, email, picture: avatar_src } = options.info.data;
 
@@ -72,9 +71,7 @@ class Service {
     }
 
     async login(options = { info: null }) {
-        if (!options.info) throw new ControllerError(500, 'The response from Google is empty');
-        if (!options.info.data) throw new ControllerError(500, 'No data in the response from Google');
-        if (!options.info.data.id) throw new ControllerError(500, 'No id in the response from Google');
+        GoogleAuthServiceValidator.login(options);
 
         const { id: third_party_id } = options.info.data;
 
@@ -109,6 +106,23 @@ class Service {
                 { user_status_state: savedUserResult.records[0].get('uss').properties }
             ]),
         };
+    }
+
+    /**
+     * @function addToExistingUser
+     * @description Add a Google account to an existing user
+     * @param {Object} options
+     * @param {String} options.third_party_id
+     * @param {String} options.type
+     * @param {Object} options.user
+     * @returns {void}
+     */
+    async addToExistingUser(options={ third_party_id: null, type: null, user: null }) {
+        GoogleAuthServiceValidator.addToExistingUser(options);
+
+        const { third_party_id, type, user } = options;
+
+        throw new Error('Method not implemented');
     }
 }
 

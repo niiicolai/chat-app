@@ -1,3 +1,4 @@
+import RoomFileServiceValidator from '../../shared/validators/room_file_service_validator.js';
 import MysqlBaseFindService from './_mysql_base_find_service.js';
 import db from '../sequelize/models/index.cjs';
 import ControllerError from '../../shared/errors/controller_error.js';
@@ -13,12 +14,9 @@ class Service extends MysqlBaseFindService {
     }
 
     async findOne(options = { uuid: null, user: null }) {
+        RoomFileServiceValidator.findOne(options);
         const { user, uuid } = options;
         const r = await super.findOne({ uuid });
-
-        if (!user) {
-            throw new ControllerError(500, 'No user provided');
-        }
 
         if (!(await RoomPermissionService.isInRoom({ room_uuid: r.room_uuid, user, role_name: null }))) {
             throw new ControllerError(403, 'User is not in the room');
@@ -28,15 +26,8 @@ class Service extends MysqlBaseFindService {
     }
 
     async findAll(options = { room_uuid: null, user: null, page: null, limit: null }) {
+        options = RoomFileServiceValidator.findAll(options);
         const { room_uuid, user, page, limit } = options;
-
-        if (!user) {
-            throw new ControllerError(500, 'No user provided');
-        }
-
-        if (!room_uuid) {
-            throw new ControllerError(400, 'No room_uuid provided');
-        }
 
         if (!(await RoomPermissionService.isInRoom({ room_uuid, user, role_name: null }))) {
             throw new ControllerError(403, 'User is not in the room');
@@ -46,15 +37,8 @@ class Service extends MysqlBaseFindService {
     }
 
     async destroy(options = { uuid: null, user: null }) {
+        RoomFileServiceValidator.destroy(options);
         const { uuid, user } = options;
-
-        if (!uuid) {
-            throw new ControllerError(400, 'No uuid provided');
-        }
-
-        if (!user) {
-            throw new ControllerError(500, 'No user provided');
-        }
 
         const existing = await service.findOne({ uuid, user });
         const { room_file_type_name } = existing;
@@ -85,15 +69,9 @@ class Service extends MysqlBaseFindService {
     }
 
     async isOwner(options = { uuid: null, isMessageUpload: null, user: null }) {
+        RoomFileServiceValidator.isOwner(options);
         const { uuid, isMessageUpload, user } = options;
         const { sub: user_uuid } = user;
-
-        if (!uuid) {
-            throw new ControllerError(400, 'isOwner: No uuid provided');
-        }
-        if (!user_uuid) {
-            throw new ControllerError(500, 'isOwner: No user provided');
-        }
 
         if (isMessageUpload) {
             const { messageUpload } = await db.ChannelMessage.findOne({ include: [{ model: db.ChannelMessageUpload, where: { uuid } }] });

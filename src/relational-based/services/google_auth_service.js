@@ -1,3 +1,4 @@
+import GoogleAuthServiceValidator from '../../shared/validators/google_auth_service_validator.js';
 import JwtService from '../../shared/services/jwt_service.js';
 import ControllerError from '../../shared/errors/controller_error.js';
 import db from '../sequelize/models/index.cjs';
@@ -5,11 +6,20 @@ import dto from '../dto/user_dto.js';
 import { v4 as uuidv4 } from 'uuid';
 
 class Service {
+
+    /**
+     * @function create
+     * @description Create a user based on their Google account
+     * @param {Object} options
+     * @param {Object} options.info
+     * @param {Object} options.info.data
+     * @param {String} options.info.data.id
+     * @param {String} options.info.data.email
+     * @param {String} options.info.data.picture
+     * @returns {Object}
+     */
     async create(options={ info: null }) {
-        if (!options.info) throw new ControllerError(500, 'The response from Google is empty');
-        if (!options.info.data) throw new ControllerError(500, 'No data in the response from Google');
-        if (!options.info.data.email) throw new ControllerError(500, 'No email in the response from Google');
-        if (!options.info.data.id) throw new ControllerError(500, 'No id in the response from Google');
+        GoogleAuthServiceValidator.create(options);
 
         const { id: third_party_id, email, picture: avatar } = options.info.data;
 
@@ -43,10 +53,17 @@ class Service {
         return result
     }
 
+    /**
+     * @function login
+     * @description Login a user based on their Google account
+     * @param {Object} options
+     * @param {Object} options.info
+     * @param {Object} options.info.data
+     * @param {String} options.info.data.id
+     * @returns {Object}
+     */
     async login(options={ info: null }) {
-        if (!options.info) throw new ControllerError(500, 'The response from Google is empty');
-        if (!options.info.data) throw new ControllerError(500, 'No data in the response from Google');
-        if (!options.info.data.id) throw new ControllerError(500, 'No id in the response from Google');
+        GoogleAuthServiceValidator.login(options);
 
         const { id: third_party_id } = options.info.data;
 
@@ -67,6 +84,33 @@ class Service {
         const token = JwtService.sign(user.uuid);
 
         return { user, token };
+    }
+
+    /**
+     * @function addToExistingUser
+     * @description Add a Google account to an existing user
+     * @param {Object} options
+     * @param {String} options.third_party_id
+     * @param {String} options.type
+     * @param {Object} options.user
+     * @returns {void}
+     */
+    async addToExistingUser(options={ third_party_id: null, type: null, user: null }) {
+        GoogleAuthServiceValidator.addToExistingUser(options);
+
+        const { third_party_id, type, user } = options;
+
+        if (await db.UserLoginView.findOne({ where: { user_login_third_party_id: third_party_id } })) {
+            throw new ControllerError(400, 'Account already linked already exists. Please login instead!');
+        }
+
+        if (type !== 'Google') {
+            throw new ControllerError(400, 'Only Google are currently supported');
+        }
+
+        await db.sequelize.query('CALL create_user_login_proc(:login_uuid, :user_uuid, :login_type, :third_party_id, :password, @result)', {
+            replacements: { login_uuid: uuidv4(), user_uuid: user.sub, login_type: type, third_party_id, password: null } 
+        });
     }
 }
 

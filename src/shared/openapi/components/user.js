@@ -69,5 +69,22 @@ export default {
                 type: 'string'
             }
         }
+    },
+    userLogin: {
+        type: 'object',
+        properties: {
+            uuid: {
+                type: 'string'
+            },
+            user_login_type_name: {
+                type: 'string'
+            },
+            created_at: {
+                type: 'string'
+            },
+            updated_at: {
+                type: 'string'
+            }
+        }
     }
 };

@@ -1,3 +1,4 @@
+import ChannelServiceValidator from '../../shared/validators/channel_service_validator.js';
 import MysqlBaseFindService from './_mysql_base_find_service.js';
 import db from '../sequelize/models/index.cjs';
 import ControllerError from '../../shared/errors/controller_error.js';
@@ -13,12 +14,9 @@ class Service extends MysqlBaseFindService {
     }
 
     async findOne(options = { uuid: null, user: null }) {
+        ChannelServiceValidator.findOne(options);
         const { user, uuid } = options;
         const r = await super.findOne({ uuid });
-
-        if (!user) {
-            throw new ControllerError(500, 'No user provided');
-        }
 
         if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid: r.uuid, user, role_name: null }))) {
             throw new ControllerError(403, 'User is not in the room');
@@ -28,14 +26,9 @@ class Service extends MysqlBaseFindService {
     }
 
     async findAll(options = { room_uuid: null, user: null, page: null, limit: null }) {
+        options = ChannelServiceValidator.findAll(options);
         const { room_uuid, user, page, limit } = options;
 
-        if (!user) {
-            throw new ControllerError(500, 'No user provided');
-        }
-        if (!room_uuid) {
-            throw new ControllerError(400, 'No room_uuid provided');
-        }
         if (!(await RoomPermissionService.isInRoom({ room_uuid, user, role_name: null }))) {
             throw new ControllerError(403, 'User is not in the room');
         }
@@ -44,30 +37,10 @@ class Service extends MysqlBaseFindService {
     }
 
     async create(options={ body: null, file: null, user: null }) {
+        ChannelServiceValidator.create(options);
+
         const { body, file, user } = options;
         const { uuid, name, description, channel_type_name, room_uuid } = body;
-
-        if (!body) {
-            throw new ControllerError(400, 'No body provided');
-        }
-        if (!uuid) {
-            throw new ControllerError(400, 'No UUID provided');
-        }
-        if (!name) {
-            throw new ControllerError(400, 'No name provided');
-        }
-        if (!description) {
-            throw new ControllerError(400, 'No description provided');
-        }
-        if (!channel_type_name) {
-            throw new ControllerError(400, 'No channel_type_name provided');
-        }
-        if (!room_uuid) {
-            throw new ControllerError(400, 'No room_uuid provided');
-        }
-        if (!user) {
-            throw new ControllerError(500, 'No user provided');
-        }
 
         if (!(await RoomPermissionService.isInRoom({ room_uuid, user, role_name: 'Admin' }))) {
             throw new ControllerError(403, 'User is not an admin of the room');
@@ -113,15 +86,10 @@ class Service extends MysqlBaseFindService {
     }
 
     async update(options={ uuid: null, body: null, file: null, user: null }) {
+        ChannelServiceValidator.update(options);
+
         const { uuid, body, file, user } = options;
         const { name, description } = body;
-
-        if (!uuid) {
-            throw new ControllerError(400, 'No uuid provided');
-        }
-        if (!user) {
-            throw new ControllerError(500, 'No user provided');
-        }
 
         if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid: uuid, user, role_name: 'Admin' }))) {
             throw new ControllerError(403, 'User is not an admin of the room');
@@ -170,15 +138,10 @@ class Service extends MysqlBaseFindService {
     }
 
     async destroy(options={ uuid: null, user: null }) {
+        ChannelServiceValidator.destroy(options);
+
         const { uuid, user } = options;
-
-        if (!uuid) {
-            throw new ControllerError(400, 'No uuid provided');
-        }
-        if (!user) {
-            throw new ControllerError(500, 'No user provided');
-        }
-
+        
         // Ensure the channel exists
         await service.findOne({ uuid, user });
 

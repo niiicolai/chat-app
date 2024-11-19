@@ -6,6 +6,35 @@ const ctrl = userController(crudService);
 
 /**
  * @openapi
+ * '/api/v1/mysql/user/me/logins':
+ *  get:
+ *   tags:
+ *    - MySQL User Controller
+ *   summary: Get authorized User's Logins
+ *   security:
+ *    - bearerAuth: []
+ *   responses:
+ *    200:
+ *     description: OK
+ *     content:
+ *      application/json:
+ *       schema:
+ *        type: object
+ *        properties:
+ *         logins:
+ *          type: array
+ *          items:
+ *           $ref: '#/components/schemas/userLogin'
+ *    400:
+ *     description: Bad Request
+ *    500:
+ *     description: Internal Server Error
+ */
+ctrl.getUserLogins();
+
+
+/**
+ * @openapi
  * '/api/v1/mongodb/user/me':
  *  get:
  *    tags:
@@ -163,5 +192,29 @@ ctrl.destroy();
  *      description: Internal Server Error
  */
 ctrl.destroyAvatar();
+
+
+/**
+ * @openapi
+ * '/api/v1/mongodb/user/me/login/{uuid}':
+ *  delete:
+ *   tags:
+ *    - MongoDB User Controller
+ *   summary: Delete authorized User's Login
+ *   security:
+ *    - bearerAuth: []
+ *   parameters:
+ *    - in: path
+ *      name: uuid
+ *      required: true
+ *      schema:
+ *       type: string
+ *   responses:
+ *    204:
+ *     description: No Content
+ *    500:
+ *     description: Internal Server Error
+ */
+ctrl.destroyUserLogins();
 
 export default ctrl.router;

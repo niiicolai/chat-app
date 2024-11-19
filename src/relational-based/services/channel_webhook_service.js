@@ -1,3 +1,4 @@
+import ChannelWebhookServiceValidator from '../../shared/validators/channel_webhook_service_validator.js';
 import MysqlBaseFindService from './_mysql_base_find_service.js';
 import db from '../sequelize/models/index.cjs';
 import ControllerError from '../../shared/errors/controller_error.js';
@@ -15,12 +16,11 @@ class Service extends MysqlBaseFindService {
     }
 
     async findOne(options = { uuid: null, user: null }) {
+        ChannelWebhookServiceValidator.findOne(options);
+
         const { user, uuid } = options;
         const webhook = await super.findOne({ uuid });
 
-        if (!user) {
-            throw new ControllerError(500, 'No user provided');
-        }
         if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid: webhook.channel_uuid, user, role_name: null }))) {
             throw new ControllerError(403, 'User is not in the room');
         }
@@ -29,14 +29,9 @@ class Service extends MysqlBaseFindService {
     }
 
     async findAll(options = { room_uuid: null, user: null, page: null, limit: null }) {
+        options = ChannelWebhookServiceValidator.findAll(options);
         const { room_uuid, user, page, limit } = options;
 
-        if (!user) {
-            throw new ControllerError(500, 'No user provided');
-        }
-        if (!room_uuid) {
-            throw new ControllerError(400, 'No room_uuid provided');
-        }
         if (!(await RoomPermissionService.isInRoom({ room_uuid, user, role_name: null }))) {
             throw new ControllerError(403, 'User is not in the room');
         }
@@ -45,27 +40,10 @@ class Service extends MysqlBaseFindService {
     }
 
     async create(options={ body: null, file: null, user: null }) {
+        ChannelWebhookServiceValidator.create(options);
+
         const { body, file, user } = options;
         const { uuid, name, description, channel_uuid } = body;
-
-        if (!body) {
-            throw new ControllerError(400, 'No body provided');
-        }
-        if (!uuid) {
-            throw new ControllerError(400, 'No UUID provided');
-        }
-        if (!name) {
-            throw new ControllerError(400, 'No name provided');
-        }
-        if (!description) {
-            throw new ControllerError(400, 'No description provided');
-        }
-        if (!channel_uuid) {
-            throw new ControllerError(400, 'No channel_uuid provided');
-        }
-        if (!user) {
-            throw new ControllerError(500, 'No user provided');
-        }
 
         if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid, user, role_name: 'Admin' }))) {
             throw new ControllerError(403, 'User is not an admin in the room');
@@ -112,15 +90,10 @@ class Service extends MysqlBaseFindService {
     }
 
     async update(options={ uuid: null, body: null, file: null, user: null }) {
+        ChannelWebhookServiceValidator.update(options);
+
         const { uuid, body, file, user } = options;
         const { name, description } = body;
-
-        if (!uuid) {
-            throw new ControllerError(400, 'No uuid provided');
-        }
-        if (!user) {
-            throw new ControllerError(500, 'No user provided');
-        }
 
         const existing = await service.findOne({ uuid, user });
 
@@ -165,15 +138,9 @@ class Service extends MysqlBaseFindService {
     }
 
     async destroy(options={ uuid: null, user: null }) {
+        ChannelWebhookServiceValidator.destroy(options);
+
         const { uuid, user } = options;
-
-        if (!uuid) {
-            throw new ControllerError(400, 'No uuid provided');
-        }
-        if (!user) {
-            throw new ControllerError(500, 'No user provided');
-        }
-
         const existing = await service.findOne({ uuid, user });
 
         if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid: existing.channel_uuid, user, role_name: 'Admin' }))) {
@@ -188,15 +155,10 @@ class Service extends MysqlBaseFindService {
     }
 
     async message(options={ uuid: null, body: null }) {
+        ChannelWebhookServiceValidator.message(options);
+
         const { uuid, body } = options;
         const { message } = body;
-
-        if (!uuid) {
-            throw new ControllerError(400, 'No uuid provided');
-        }
-        if (!message) {
-            throw new ControllerError(400, 'No message provided');
-        }
 
         const channelWebhook = await service.model.findOne({ where: { channel_webhook_uuid: uuid } });
         if (!channelWebhook) {

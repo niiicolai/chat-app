@@ -1,4 +1,4 @@
-
+import UserServiceValidator from '../../shared/validators/user_service_validator.js';
 import UserEmailVerificationService from './user_email_verification_service.js';
 import UserAvatarUploader from '../../shared/uploaders/user_avatar_uploader.js';
 import ControllerError from '../../shared/errors/controller_error.js';
@@ -22,15 +22,26 @@ class UserService extends NeodeBaseFindService {
     }
 
     async findOne(options = { uuid: null }) {
-        return super.findOne({ ...options, eager: ['user_status', 'user_email_verification'] });
+        UserServiceValidator.findOne(options);
+
+        const user = await neodeInstance.model("User").find(options.uuid);
+        if (!user) throw new ControllerError(404, 'User not found');
+
+        const user_status = user.get('user_status').endNode();
+        const user_status_state = user_status.get('user_status_state').endNode();
+        const user_email_verification = user.get('user_email_verification').endNode();
+        
+        return dto({
+            ...user.properties(),
+            user_status: user_status.properties(),
+            user_status_state: user_status_state.properties(),
+            user_email_verification: user_email_verification.properties()
+        })
     }
 
     async create(options = { body: null, file: null }) {
-        if (!options) throw new ControllerError(500, 'No options provided');
-        if (!options.body) throw new ControllerError(400, 'No body provided');
-        if (!options.body.uuid) throw new ControllerError(400, 'No UUID provided');
-        if (!options.body.username) throw new ControllerError(400, 'No username provided');
-        if (!options.body.email) throw new ControllerError(400, 'No email provided');
+        UserServiceValidator.create(options);
+
         if ((await neodeInstance.cypher('MATCH (u:User) WHERE u.email = $email RETURN u', { email: options.body.email })).records.length > 0) {
             throw new ControllerError(400, 'Email must be unique');
         }
@@ -40,8 +51,8 @@ class UserService extends NeodeBaseFindService {
         if ((await neodeInstance.cypher('MATCH (u:User) WHERE u.uuid = $uuid RETURN u', { uuid: options.body.uuid })).records.length > 0) {
             throw new ControllerError(400, 'UUID must be unique');
         }
-        if (!options.body.password) throw new ControllerError(400, 'No password provided');
-        else options.body.password = bcrypt.hashSync(options.body.password, SALT_ROUNDS);
+
+        options.body.password = bcrypt.hashSync(options.body.password, SALT_ROUNDS);
 
         const { body, file } = options;
         const { uuid, email, username, password } = body;
@@ -204,6 +215,14 @@ class UserService extends NeodeBaseFindService {
             await existingInstance.update({ avatar_src: null });
             await uploader.destroy(savedUser.avatar_src);
         }
+    }
+
+    async getUserLogins(options = { uuid: null }) {
+        throw new Error('Method not implemented');
+    }
+
+    async destroyUserLogins(options = { uuid: null, login_uuid: null }) {
+        throw new Error('Method not implemented');
     }
 }
 

@@ -1,3 +1,4 @@
+import authMiddleware from '../middlewares/auth_middleware.js';
 import errorHandler from './_error_handler.js';
 import express from 'express';
 import { google } from 'googleapis';
@@ -11,11 +12,12 @@ if (!CLIENT_SECRET) console.error('GOOGLE_CLIENT_SECRET is not set in the .env f
 const CLIENT_REDIRECT = process.env.OAUTH_CLIENT_REDIRECT_URL;
 if (!CLIENT_REDIRECT) console.error('OAUTH_CLIENT_REDIRECT_URL is not set in the .env file');
 
-export default (crudService, signupRedirectPath, loginRedirectPath) => {
+export default (crudService, signupRedirectPath, loginRedirectPath, addExistingUserRedirectPath) => {
     const router = express.Router();
     const ctrl = { router };
     const signupClient = new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, signupRedirectPath);
     const loginClient = new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, loginRedirectPath);
+    const addExistingUserClient = new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, addExistingUserRedirectPath);
 
     ctrl.signup = () => {
         router.get('/user/signup/google', [], async (req, res) => {
@@ -71,6 +73,42 @@ export default (crudService, signupRedirectPath, loginRedirectPath) => {
                 loginClient.revokeToken(tokens.access_token);
 
                 res.redirect(`${CLIENT_REDIRECT}?token=${result.token}`);
+            });
+        });
+    }
+
+    ctrl.addToExistingUser = () => {
+        router.get('/user/add/google', [], async (req, res) => {
+            await errorHandler(res, async () => {
+                
+                const url = addExistingUserClient.generateAuthUrl({
+                    access_type: 'offline',
+                    scope: ['email'],
+                });
+
+                res.redirect(url);
+            });
+        });
+    }
+
+    ctrl.addToExistingUserCallback = () => {
+        router.get('/user/add/google/callback', [], async (req, res) => {
+            await errorHandler(res, async () => {
+                const { code } = req.query;
+                const { tokens } = await addExistingUserClient.getToken(code);
+                addExistingUserClient.setCredentials(tokens);
+                const info = await google.oauth2({ version: 'v2', auth: addExistingUserClient }).userinfo.get();
+                res.redirect(`${CLIENT_REDIRECT}/confirm?third_party_id=${info.data.id}&type=Google`);
+            });
+        });
+    }
+
+    ctrl.addToExistingUserConfirm = () => {
+        router.post('/user/add/google/confirm', [authMiddleware], async (req, res) => {
+            await errorHandler(res, async () => {
+                const { third_party_id, type } = req.body;
+                await crudService.addToExistingUser({ third_party_id, type, user: req.user });
+                res.sendStatus(204);
             });
         });
     }

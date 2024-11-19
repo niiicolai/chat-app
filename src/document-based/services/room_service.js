@@ -37,7 +37,12 @@ const populate = (query) => query.populate({
 class Service {
 
     async findOne(options = { uuid: null, user: null }) {
-        await RoomServiceValidator.findOne(options, RoomPermissionService);
+        RoomServiceValidator.findOne(options);
+
+        if (!(await RoomPermissionService.isInRoom({ room_uuid: options.uuid, user: options.user, role_name: null }))) {
+            throw new ControllerError(403, 'User is not in the room');
+        }
+
         return dto(await populate(Room.findOne({ uuid: options.uuid })));
     }
 
@@ -71,10 +76,14 @@ class Service {
     }
 
     async create(options = { body: null, file: null, user: null }) {
-        const { body, file, user } = options;
-        await RoomServiceValidator.create(options, RoomPermissionService);
+        RoomServiceValidator.create(options);
 
+        const { body, file, user } = options;
         const { uuid, name, description, room_category_name } = body;
+
+        if (!(await RoomPermissionService.isVerified({ user: options.user }))) {
+            throw new ControllerError(403, 'You must verify your email before you can create a room');
+        }
 
         const [existingRoomByUUID, existingRoomByName, roomCategory, savedUser, roomUserRole] = await Promise.all([
             Room.findOne({ uuid }),
@@ -138,10 +147,23 @@ class Service {
     }
 
     async update(options = { uuid: null, body: null, file: null, user: null }) {
-        await RoomServiceValidator.update(options, RoomPermissionService);
+        RoomServiceValidator.update(options);
 
         const { uuid, body, file } = options;
         const { name, description, room_category_name } = body;
+
+        if (!(await RoomPermissionService.isInRoom({ room_uuid: options.uuid, user: options.user, role_name: 'Admin' }))) {
+            throw new ControllerError(403, 'User is not an admin of the room');
+        }
+
+        if (file && file.size > 0) {
+            if ((await RoomPermissionService.fileExceedsTotalFilesLimit({ room_uuid: options.uuid, bytes: file.size }))) {
+                throw new ControllerError(400, 'The room does not have enough space for this file');
+            }
+            if ((await RoomPermissionService.fileExceedsSingleFileSize({ room_uuid: options.uuid, bytes: file.size }))) {
+                throw new ControllerError(400, 'File exceeds single file size limit');
+            }
+        }
 
         const room = await populate(Room.findOne({ uuid }));
         if (!room) throw new ControllerError(404, 'Room not found');
@@ -176,7 +198,11 @@ class Service {
     }
 
     async destroy(options = { uuid: null, user: null }) {
-        await RoomServiceValidator.destroy(options, RoomPermissionService);
+        RoomServiceValidator.destroy(options);
+
+        if (!(await RoomPermissionService.isInRoom({ room_uuid: options.uuid, user: options.user, role_name: 'Admin' }))) {
+            throw new ControllerError(403, 'User is not an admin of the room');
+        }
 
         const room = await Room.findOne({ uuid: options.uuid });
         if (!room) throw new ControllerError(404, 'Room not found');
@@ -190,10 +216,14 @@ class Service {
     }
 
     async editSettings(options = { uuid: null, body: null, user: null }) {
-        await RoomServiceValidator.editSettings(options, RoomPermissionService);
+        RoomServiceValidator.editSettings(options);
 
         const { uuid, body } = options;
         const { join_message, rules_text, join_channel_uuid } = body;
+
+        if (!(await RoomPermissionService.isInRoom({ room_uuid: options.uuid, user: options.user, role_name: 'Admin' }))) {
+            throw new ControllerError(403, 'User is not an admin of the room');
+        }
 
         const room = await Room.findOne({ uuid });
         if (!room) throw new ControllerError(404, 'Room not found');
@@ -217,7 +247,11 @@ class Service {
     }
 
     async leave(options = { uuid: null, user: null }) {
-        await RoomServiceValidator.leave(options, RoomPermissionService);
+        RoomServiceValidator.leave(options);
+
+        if (!(await RoomPermissionService.isInRoom({ room_uuid: options.uuid, user: options.user, role_name: null }))) {
+            throw new ControllerError(403, 'User is not in the room');
+        }
 
         const room = await Room.findOne({ uuid: options.uuid }).populate('room_users.user');
         const savedUser = await User.findOne({ uuid: options.user.sub });

@@ -91,6 +91,38 @@ class Service {
 
         return { token: JwtService.sign(user.uuid), user: dto(user) };
     }
+
+    /**
+     * @function addToExistingUser
+     * @description Add a Google account to an existing user
+     * @param {Object} options
+     * @param {String} options.third_party_id
+     * @param {String} options.type
+     * @param {Object} options.user
+     * @returns {void}
+     */
+    async addToExistingUser(options={ third_party_id: null, type: null, user: null }) {
+        GoogleAuthServiceValidator.addToExistingUser(options);
+
+        const { third_party_id, type, user } = options;
+
+        if (await User.findOne({ user_logins: { $elemMatch: { 
+            'user_login_type.name': type,
+            third_party_id
+        }}})) throw new ControllerError(400, 'Account already linked already exists. Please login instead!');
+
+        if (type !== 'Google') {
+            throw new ControllerError(400, 'Only Google are currently supported');
+        }
+
+        await User.updateOne({ uuid: user.sub }, {
+            $push: { user_logins: { 
+                uuid: uuidv4(),
+                user_login_type: await UserLoginType.findOne({ name: type }),
+                third_party_id
+            }}
+        });
+    }
 }
 
 const service = new Service();

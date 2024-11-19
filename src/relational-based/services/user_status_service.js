@@ -1,5 +1,6 @@
 import db from '../sequelize/models/index.cjs';
 import ControllerError from '../../shared/errors/controller_error.js';
+import UserStatusServiceValidator from '../../shared/validators/user_status_service_validator.js';
 import dto from '../dto/user_status_dto.js';
 
 class Service {
@@ -9,11 +10,9 @@ class Service {
     }
 
     async findOne(options = { user_uuid: null }) {
-        const { user_uuid } = options;
-        if (!user_uuid) {
-            throw new ControllerError(400, 'No user_uuid provided');
-        }
+        UserStatusServiceValidator.findOne(options);
 
+        const { user_uuid } = options;
         const status = await db.UserStatusView.findOne({ where: { user_uuid } });
         if (!status) {
             throw new ControllerError(404, 'User status not found');
@@ -23,12 +22,10 @@ class Service {
     }
 
     async update(options={ body: null, user_uuid: null }) {
+        UserStatusServiceValidator.update(options);
+
         const { body, user_uuid } = options;
         let { message, user_status_state } = body;
-
-        if (!user_uuid) {
-            throw new ControllerError(500, 'No user provided');
-        }
 
         const existing = await db.UserStatusView.findOne({ where: { user_uuid } });
         if (!existing) {
