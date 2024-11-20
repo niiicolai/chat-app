@@ -16,7 +16,7 @@ class RoomPermissionService {
         }
 
         const exists = await User.findOne({ uuid: user_uuid }).populate('user_email_verification');
-
+        
         return exists && exists.user_email_verification.is_verified;
     }
 

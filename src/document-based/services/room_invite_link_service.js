@@ -91,14 +91,17 @@ class Service {
         if (!(await RoomPermissionService.isInRoom({ room_uuid: body.room_uuid, user, role_name: 'Admin' }))) {
             throw new ControllerError(403, 'User is not an admin of the room');
         }
-
+        
         const room = await Room.findOne({ uuid: body.room_uuid });
         if (!room) throw new ControllerError(404, 'Room not found');
 
         room.room_invite_links.push(body);
         await room.save();
 
-        return dto({ ...room.room_invite_links[room.room_invite_links.length - 1]._doc, room });
+        const roomUpdated = await Room.findOne({ uuid: body.room_uuid });
+        const room_invite_link = roomUpdated.room_invite_links[room.room_invite_links.length - 1];
+
+        return dto({ ...room_invite_link._doc, room });
     }
 
     /**

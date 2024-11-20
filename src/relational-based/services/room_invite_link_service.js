@@ -10,7 +10,7 @@ class Service extends MysqlBaseFindService {
         super(db.RoomInviteLinkView, dto);
     }
 
-    async findOne(options = { user: null }) {
+    async findOne(options = { uuid: null, user: null }) {
         RoomInviteLinkServiceValidator.findOne(options);
         const { user } = options;
         const link = await super.findOne({ ...options });
