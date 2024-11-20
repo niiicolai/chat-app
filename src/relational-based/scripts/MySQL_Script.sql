@@ -554,18 +554,29 @@ CREATE PROCEDURE check_upload_exceeds_total_proc(
     OUT result BOOLEAN
 )
 BEGIN
-    DECLARE total_files_bytes_allowed BIGINT;
-    DECLARE total_files_bytes_sum BIGINT;
+    DECLARE total_files_bytes_allowed BIGINT DEFAULT 0;
+    DECLARE total_files_bytes_sum BIGINT DEFAULT 0;
 
     -- Sum all the uploads in the room and get the total size allowed
-    SELECT SUM(size), rs.total_files_bytes_allowed INTO total_files_bytes_sum, total_files_bytes_allowed
-    FROM RoomFileSetting rs LEFT JOIN RoomFile rf ON rs.room_uuid = rf.room_uuid
-    WHERE rs.room_uuid = room_uuid_input
-    GROUP BY rs.total_files_bytes_allowed;
-    
+    SELECT 
+        COALESCE(SUM(rf.size), 0),
+        rs.total_files_bytes_allowed
+    INTO 
+        total_files_bytes_sum,
+        total_files_bytes_allowed
+    FROM 
+        RoomFileSetting rs 
+    LEFT JOIN 
+        RoomFile rf 
+    ON 
+        rs.room_uuid = rf.room_uuid
+    WHERE 
+        rs.room_uuid = room_uuid_input
+	GROUP BY rs.total_files_bytes_allowed;
+
     -- Check if the total size + the new upload size exceeds 
     -- the allowed total size for a room.
-    SET result = ((total_files_bytes_sum + new_file_bytes_input) > total_files_bytes_allowed);
+    SET result = (total_files_bytes_sum + new_file_bytes_input) > total_files_bytes_allowed;
 END //
 DELIMITER ;
 

@@ -1,3 +1,4 @@
+import RoomInviteLinkServiceValidator from '../../shared/validators/room_invite_link_service_validator.js';
 import ControllerError from '../../shared/errors/controller_error.js';
 import RoomPermissionService from './room_permission_service.js';
 import ChannelService from './channel_service.js';
@@ -13,15 +14,12 @@ class Service extends NeodeBaseFindService {
     }
 
     async findOne(options = { uuid: null, user: null }) {
-        if (!options) throw new ControllerError(500, 'findOne: No options provided');
-        if (!options.uuid) throw new ControllerError(400, 'findOne: No options.uuid provided');
-        if (!options.user) throw new ControllerError(500, 'findOne: No options.user provided');
-        if (!options.user.sub) throw new ControllerError(500, 'findOne: No options.user.sub provided');
+        RoomInviteLinkServiceValidator.findOne(options);
 
         const { user, uuid } = options;
 
         const linkInstance = await neodeInstance.model('RoomInviteLink').find(uuid);
-        if (!linkInstance) throw new ControllerError(404, 'Room Invite Link not found');
+        if (!linkInstance) throw new ControllerError(404, 'room_invite_link not found');
 
         const roomInstance = await linkInstance.get('room').endNode().properties();
         if (!roomInstance) throw new ControllerError(404, 'Room not found');
@@ -34,10 +32,7 @@ class Service extends NeodeBaseFindService {
     }
 
     async findAll(options = { room_uuid: null, user: null, page: null, limit: null }) {
-        if (!options) throw new ControllerError(500, 'findAll: No options provided');
-        if (!options.room_uuid) throw new ControllerError(400, 'findAll: No options.room_uuid provided');
-        if (!options.user) throw new ControllerError(500, 'findAll: No options.user provided');
-        if (!options.user.sub) throw new ControllerError(500, 'findAll: No options.user.sub provided');
+        RoomInviteLinkServiceValidator.findAll(options);
 
         const { room_uuid, user, page, limit } = options;
 
@@ -54,12 +49,7 @@ class Service extends NeodeBaseFindService {
     }
 
     async create(options = { body: null, user: null }) {
-        if (!options) throw new ControllerError(500, 'No options provided');
-        if (!options.body) throw new ControllerError(400, 'No body provided');
-        if (!options.user) throw new ControllerError(500, 'No user provided');
-        if (!options.user.sub) throw new ControllerError(500, 'No user.sub provided');
-        if (!options.body.uuid) throw new ControllerError(400, 'No UUID provided');
-        if (!options.body.room_uuid) throw new ControllerError(400, 'No room_uuid provided');
+        RoomInviteLinkServiceValidator.create(options);
 
         const { body, user } = options;
         const { uuid, room_uuid, expires_at } = body;
@@ -84,21 +74,23 @@ class Service extends NeodeBaseFindService {
 
         await linkInstance.relateTo(roomInstance, 'room');
         
-        return dto(linkInstance.properties());
+        return this.findOne({ uuid, user });
     }
 
     async update(options = { uuid: null, body: null, user: null }) {
-        if (!options) throw new ControllerError(500, 'No options provided');
-        if (!options.uuid) throw new ControllerError(400, 'No uuid provided');
-        if (!options.body) throw new ControllerError(400, 'No body provided');
-        if (!options.user) throw new ControllerError(500, 'No user provided');
-        if (!options.user.sub) throw new ControllerError(500, 'No user.sub provided');
+        RoomInviteLinkServiceValidator.update(options);
 
         const { uuid, body, user } = options;
         const { expires_at } = body;
 
         const linkInstance = await neodeInstance.model('RoomInviteLink').find(uuid);
         if (!linkInstance) throw new ControllerError(404, 'Room Invite Link not found');
+
+        const room = await linkInstance.get('room').endNode().properties();
+        const room_uuid = room.uuid;
+        if (!(await RoomPermissionService.isInRoom({ room_uuid, user, role_name: 'Admin' }))) {
+            throw new ControllerError(403, 'User is not an admin of the room');
+        }
 
         linkInstance.update({
             expires_at: expires_at || null,
@@ -109,15 +101,12 @@ class Service extends NeodeBaseFindService {
     }
 
     async destroy(options = { uuid: null, user: null }) {
-        if (!options) throw new ControllerError(500, 'No options provided');
-        if (!options.uuid) throw new ControllerError(400, 'No uuid provided');
-        if (!options.user) throw new ControllerError(500, 'No user provided');
-        if (!options.user.sub) throw new ControllerError(500, 'No user.sub provided');
+        RoomInviteLinkServiceValidator.destroy(options);
 
         const { uuid, user } = options;
 
         const linkInstance = await neodeInstance.model('RoomInviteLink').find(uuid);
-        if (!linkInstance) throw new ControllerError(404, 'Room Invite Link not found');
+        if (!linkInstance) throw new ControllerError(404, 'room_invite_link not found');
 
         const room = await linkInstance.get('room').endNode().properties();
         const room_uuid = room.uuid;
@@ -130,10 +119,7 @@ class Service extends NeodeBaseFindService {
     }
 
     async join(options = { uuid: null, user: null }) {
-        if (!options) throw new ControllerError(500, 'No options provided');
-        if (!options.uuid) throw new ControllerError(400, 'No uuid provided');
-        if (!options.user) throw new ControllerError(500, 'No user provided');
-        if (!options.user.sub) throw new ControllerError(500, 'No user.sub provided');
+        RoomInviteLinkServiceValidator.join(options);
 
         const { uuid, user } = options;
         const { sub: user_uuid } = user;
@@ -167,21 +153,16 @@ class Service extends NeodeBaseFindService {
         const userInstance = await neodeInstance.model('User').find(user_uuid);
         if (!userInstance) throw new ControllerError(404, 'User not found');
 
-        const session = neodeInstance.session();
-        session.writeTransaction(async (transaction) => {
-            await transaction.run(
-                `MATCH (u:User {uuid: $user_uuid})
-                 MATCH (r:Room {uuid: $room_uuid})
-                 MATCH (rur:RoomUserRole {name: 'Member'})
-                 CREATE (ru:RoomUser {uuid: $room_user_uuid})
-                 CREATE (ru)-[:HAS_USER]->(u)
-                 CREATE (ru)-[:HAS_ROOM]->(r)
-                 CREATE (ru)-[:HAS_ROLE]->(rur)
-                `,
-                { user_uuid, room_uuid: room.uuid, room_user_uuid: uuidv4() }
-            );
-        });
-        
+        return neodeInstance.model('RoomUser').create({ uuid: uuidv4() })
+            .then(async (roomUser) => {
+                await Promise.all([
+                    roomUser.relateTo(userInstance, 'user'),
+                    roomUser.relateTo(roomInstance, 'room'),
+                    roomUser.relateTo(roomUserRole, 'room_user_role'),
+                ]);
+            });
+
+        /*
         const roomJoinSettings = roomInstance.get('room_join_settings').endNode().properties();
         const roomJoinSettingsInstance = await neodeInstance.model('RoomJoinSettings').find(roomJoinSettings.uuid);
 
@@ -214,7 +195,7 @@ class Service extends NeodeBaseFindService {
                     { user_uuid, channel_uuid: channelId, channel_message_uuid: uuidv4(), body }
                 );
             });
-        }
+        }*/
     }
 }
 

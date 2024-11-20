@@ -48,11 +48,11 @@ class UserService {
         UserServiceValidator.create(options);
         
         if (await User.findOne({ email: options.body.email })) 
-            throw new ControllerError(400, 'Email must be unique');
+            throw new ControllerError(400, 'Email already exists');
         if (await User.findOne({ username: options.body.username })) 
-            throw new ControllerError(400, 'Username must be unique');
+            throw new ControllerError(400, 'Username already exists');
         if (await User.findOne({ uuid: options.body.uuid })) 
-            throw new ControllerError(400, 'UUID must be unique');
+            throw new ControllerError(400, 'UUID already exists');
        
         options.body.password = bcrypt.hashSync(options.body.password, SALT_ROUNDS);
 

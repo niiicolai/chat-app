@@ -24,11 +24,11 @@ class Service {
             .populate('room_users.user');
         const roomUser = room?.room_users?.find(u => u.uuid === options.uuid);
 
-        if (!room) throw new ControllerError(404, 'Room user not found');
-        if (!roomUser) throw new ControllerError(404, 'Room user not found');
+        if (!room) throw new ControllerError(404, 'room_user not found');
         if (!(await RoomPermissionService.isInRoom({ room_uuid: room.uuid, user: options.user, role_name: null }))) {
             throw new ControllerError(403, 'User is not in the room');
         }
+        if (!roomUser) throw new ControllerError(404, 'room_user not found');
 
         return dto({ ...roomUser._doc, room });
     }
@@ -48,13 +48,14 @@ class Service {
         const room = await Room.findOne({ uuid: options.room_uuid }).populate('room_users.user room_users.room_user_role');
         const roomUser = room?.room_users?.find(u => u.user.uuid === options.user.sub);
 
-        if (!room) throw new ControllerError(404, 'Room not found');
-        if (!roomUser) throw new ControllerError(404, 'Room user not found');
+        if (!room) throw new ControllerError(404, 'room_user not found');
         if (!(await RoomPermissionService.isInRoom({ room_uuid: room.uuid, user: options.user, role_name: null }))) {
             throw new ControllerError(403, 'User is not in the room');
         }
+        if (!roomUser) throw new ControllerError(404, 'room_user not found');
 
         return dto({
+            ...roomUser._doc,
             room: room,
             user: options.user,
             room_user_role: roomUser.room_user_role
@@ -113,8 +114,8 @@ class Service {
         const room = await Room.findOne({ 'room_users.uuid': options.uuid }).populate('room_users.user room_users.room_user_role');
         const roomUser = room?.room_users?.find(u => u.uuid === options.uuid);
 
-        if (!room) throw new ControllerError(404, 'Room not found');
-        if (!roomUser) throw new ControllerError(404, 'Room user not found');
+        if (!room) throw new ControllerError(404, 'room_user not found');
+        if (!roomUser) throw new ControllerError(404, 'room_user not found');
         if (!(await RoomPermissionService.isInRoom({ room_uuid: room.uuid, user: options.user, role_name: 'Admin' }))) {
             throw new ControllerError(403, 'User is not an admin of the room');
         }
@@ -145,8 +146,8 @@ class Service {
         const room = await Room.findOne({ 'room_users.uuid': options.uuid }).populate('room_users.user room_users.room_user_role');
         const roomUser = room?.room_users?.find(u => u.uuid === options.uuid);
 
-        if (!room) throw new ControllerError(404, 'Room not found');
-        if (!roomUser) throw new ControllerError(404, 'Room user not found');
+        if (!room) throw new ControllerError(404, 'room_user not found');
+        if (!roomUser) throw new ControllerError(404, 'room_user not found');
         if (!(await RoomPermissionService.isInRoom({ room_uuid: room.uuid, user: options.user, role_name: 'Admin' }))) {
             throw new ControllerError(403, 'User is not an admin of the room');
         }

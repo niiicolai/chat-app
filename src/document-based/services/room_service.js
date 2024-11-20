@@ -39,11 +39,14 @@ class Service {
     async findOne(options = { uuid: null, user: null }) {
         RoomServiceValidator.findOne(options);
 
+        const room = await populate(Room.findOne({ uuid: options.uuid }));
+
+        if (!room) throw new ControllerError(404, 'room not found');
         if (!(await RoomPermissionService.isInRoom({ room_uuid: options.uuid, user: options.user, role_name: null }))) {
             throw new ControllerError(403, 'User is not in the room');
         }
 
-        return dto(await populate(Room.findOne({ uuid: options.uuid })));
+        return dto(room._doc);
     }
 
     async findAll(options = { user: null, page: null, limit: null }) {
@@ -138,10 +141,7 @@ class Service {
         const room_audit_type = await RoomAuditType.findOne({ name: 'ROOM_CREATED' });
         if (!room_audit_type) throw new ControllerError(500, 'Room audit type not found');
 
-        await Promise.all([
-            new RoomAudit({ uuid: uuidv4(), room: room._id, body: JSON.stringify(body), room_audit_type, user: savedUser._id }).save(),
-            room.save()
-        ]);
+        await room.save();
 
         return dto(room);
     }
@@ -200,12 +200,12 @@ class Service {
     async destroy(options = { uuid: null, user: null }) {
         RoomServiceValidator.destroy(options);
 
+        const room = await Room.findOne({ uuid: options.uuid });
+
+        if (!room) throw new ControllerError(404, 'room not found');
         if (!(await RoomPermissionService.isInRoom({ room_uuid: options.uuid, user: options.user, role_name: 'Admin' }))) {
             throw new ControllerError(403, 'User is not an admin of the room');
         }
-
-        const room = await Room.findOne({ uuid: options.uuid });
-        if (!room) throw new ControllerError(404, 'Room not found');
 
         await Promise.all([
             RoomFile.deleteMany({ room: room._id }),

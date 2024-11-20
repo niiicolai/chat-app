@@ -1,4 +1,4 @@
-import ControllerError from '../../shared/errors/controller_error.js';
+import RoomPermissionServiceValidator from '../../shared/validators/room_permission_service_validator.js';
 import neodeInstance from '../neode/index.js';
 
 class RoomPermissionService {
@@ -12,9 +12,7 @@ class RoomPermissionService {
      * @returns {Boolean}
      */
     async isVerified(options = { user: null }) {
-        if (!options) throw new ControllerError(500, 'isVerified: No options provided');
-        if (!options.user) throw new ControllerError(500, 'isVerified: No user provided');
-        if (!options.user.sub) throw new ControllerError(500, 'isVerified: No user.sub provided');
+        RoomPermissionServiceValidator.isVerified(options);
 
         const { sub: user_uuid } = options.user;
 
@@ -37,10 +35,7 @@ class RoomPermissionService {
      * @returns {Boolean}
      */
     async isInRoom(options = { room_uuid: null, user: null, role_name: null }) {
-        if (!options) throw new ControllerError(500, 'isInRoom: No options provided');
-        if (!options.room_uuid) throw new ControllerError(500, 'isInRoom: No options.room_uuid provided');
-        if (!options.user) throw new ControllerError(500, 'isInRoom: No options.user provided');
-        if (!options.user.sub) throw new ControllerError(500, 'isInRoom: No options.user.sub provided');
+        RoomPermissionServiceValidator.isInRoom(options);
 
         const { room_uuid, user, role_name } = options;
         const { sub: user_uuid } = user;
@@ -66,10 +61,7 @@ class RoomPermissionService {
      * @returns {Boolean}
      */
     async isInRoomByChannel(options = { channel_uuid: null, user: null, role_name: null }) {
-        if (!options) throw new ControllerError(500, 'isInRoomByChannel: No options provided');
-        if (!options.channel_uuid) throw new ControllerError(500, 'isInRoomByChannel: No options.channel_uuid provided');
-        if (!options.user) throw new ControllerError(500, 'isInRoomByChannel: No options.user provided');
-        if (!options.user.sub) throw new ControllerError(500, 'isInRoomByChannel: No options.user.sub provided');
+        RoomPermissionServiceValidator.isInRoomByChannel(options);
 
         const { channel_uuid, user, role_name } = options;
         const { sub: user_uuid } = user;
@@ -94,20 +86,19 @@ class RoomPermissionService {
      * @returns {Boolean}
      */
     async fileExceedsTotalFilesLimit(options = { room_uuid: null, bytes: null }) {
-        if (!options) throw new ControllerError(500, 'fileExceedsTotalFilesLimit: No options provided');
-        if (!options.room_uuid) throw new ControllerError(500, 'fileExceedsTotalFilesLimit: No options.room_uuid provided');
-        if (!options.bytes) throw new ControllerError(500, 'fileExceedsTotalFilesLimit: No options.bytes provided');
+        RoomPermissionServiceValidator.fileExceedsTotalFilesLimit(options);
 
         const { room_uuid, bytes } = options;
 
         return (await neodeInstance.cypher(
-            'MATCH (r:Room {uuid: $room_uuid})-[:HAS_ROOM_FILE]->(rf:RoomFile)'
-          + 'MATCH (r)-[:HAS_ROOM_FILE_SETTINGS]->(rfs:RoomFileSettings)'
-          + 'WITH r, rfs, rf, sum(rf.size) as totalBytes '
-          + 'WHERE totalBytes + $bytes > rfs.total_files_bytes_allowed '
-          + 'RETURN r',
+            'MATCH (r:Room {uuid: $room_uuid}) ' +
+            'MATCH (r)-[:HAS_FILE_SETTINGS]->(rfs:RoomFileSettings) ' +
+            'OPTIONAL MATCH ((rf:RoomFile)-[:HAS_ROOM]->(r)) ' +
+            'WITH r, rfs, rf, sum(rf.size) as totalBytes ' +
+            'WHERE totalBytes + $bytes < rfs.total_files_bytes_allowed ' +
+            'RETURN r',
             { room_uuid, bytes }
-        )).records.length > 0;
+        )).records.length == 0;
     }
 
     /**
@@ -119,18 +110,18 @@ class RoomPermissionService {
      * @returns {Boolean}
      */
     async fileExceedsSingleFileSize(options = { room_uuid: null, bytes: null }) {
-        if (!options) throw new ControllerError(500, 'fileExceedsSingleFileSize: No options provided');
-        if (!options.room_uuid) throw new ControllerError(500, 'fileExceedsSingleFileSize: No options.room_uuid provided');
-        if (!options.bytes) throw new ControllerError(500, 'fileExceedsSingleFileSize: No options.bytes provided');
+        RoomPermissionServiceValidator.fileExceedsSingleFileSize(options);
 
         const { room_uuid, bytes } = options;
 
         return (await neodeInstance.cypher(
-            'MATCH (r:Room {uuid: $room_uuid})-[:HAS_ROOM_FILE_SETTINGS]->(rfs:RoomFileSettings) '
-          + 'WHERE $bytes > rfs.single_file_bytes_allowed '
-          + 'RETURN r',
+            'MATCH (r:Room {uuid: $room_uuid}) ' +
+            'MATCH (r)-[:HAS_FILE_SETTINGS]->(rfs:RoomFileSettings) ' +
+            'WITH r, rfs ' +
+            'WHERE $bytes < rfs.single_file_bytes_allowed ' +
+            'RETURN r',
             { room_uuid, bytes }
-        )).records.length > 0;
+        )).records.length == 0;
     }
 
     /**
@@ -142,15 +133,13 @@ class RoomPermissionService {
      * @returns {Boolean}
      */
     async roomUserCountExceedsLimit(options = { room_uuid: null, add_count: null }) {
-        if (!options) throw new ControllerError(500, 'roomUserCountExceedsLimit: No options provided');
-        if (!options.room_uuid) throw new ControllerError(500, 'roomUserCountExceedsLimit: No options.room_uuid provided');
-        if (!options.add_count) throw new ControllerError(500, 'roomUserCountExceedsLimit: No options.add_count provided');
+        RoomPermissionServiceValidator.roomUserCountExceedsLimit(options);
 
         const { room_uuid, add_count } = options;
 
         return (await neodeInstance.cypher(
             'MATCH (r:Room {uuid: $room_uuid}) '
-          + 'MATCH (r)-[:HAS_ROOM_USER_SETTINGS]->(rus:RoomUserSettings) '
+          + 'MATCH (r)-[:HAS_USER_SETTINGS]->(rus:RoomUserSettings) '
           + 'MATCH (ru:RoomUser)-[:HAS_ROOM]->(r) '
           + 'WITH r, rus, ru, count(ru) as totalUsers '
           + 'WHERE totalUsers + $add_count > rus.max_users '
@@ -168,15 +157,13 @@ class RoomPermissionService {
      * @returns {Boolean}
      */
     async channelCountExceedsLimit(options = { room_uuid: null, add_count: null }) {
-        if (!options) throw new ControllerError(500, 'channelCountExceedsLimit: No options provided');
-        if (!options.room_uuid) throw new ControllerError(500, 'channelCountExceedsLimit: No options.room_uuid provided');
-        if (!options.add_count) throw new ControllerError(500, 'channelCountExceedsLimit: No options.add_count provided');
+        RoomPermissionServiceValidator.channelCountExceedsLimit(options);
 
         const { room_uuid, add_count } = options;
 
         return (await neodeInstance.cypher(
             'MATCH (r:Room {uuid: $room_uuid}) '
-          + 'MATCH (r)-[:HAS_ROOM_CHANNEL_SETTINGS]->(rcs:RoomChannelSettings) '
+          + 'MATCH (r)-[:HAS_CHANNEL_SETTINGS]->(rcs:RoomChannelSettings) '
           + 'MATCH (c:Channel)-[:HAS_ROOM]->(r) '
           + 'WITH r, rcs, c, count(c) as totalChannels '
           + 'WHERE totalChannels + $add_count > rcs.max_channels '

@@ -122,6 +122,14 @@ export default class RoomSeeder {
         await roomUser3.relateTo(room, 'room');
         await roomUser3.relateTo(user3, 'user');
         await roomUser3.relateTo(roomUserRole3, 'room_user_role');
+
+        const roomAuditType = await neodeInstance.model('RoomAuditType').find('ROOM_CREATED');
+        const roomAudit = await neodeInstance.model('RoomAudit').create({
+            uuid: uuidv4(),
+            body: "{}",
+        });
+        await roomAudit.relateTo(room, 'room');
+        await roomAudit.relateTo(roomAuditType, 'room_audit_type');
     }
 
     async down(neodeInstance) {

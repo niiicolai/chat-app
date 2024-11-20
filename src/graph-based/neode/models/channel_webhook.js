@@ -2,7 +2,7 @@ export default {
     uuid: {
         primary: true,
         type: 'uuid',
-        required: true
+        index: true
     },
     name: {
         type: 'string',

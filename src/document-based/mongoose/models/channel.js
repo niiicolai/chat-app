@@ -28,7 +28,10 @@ export default mongoose.model("Channel", new mongoose.Schema({
         required: false 
     },
     channel_type,
-    channel_webhook,
+    channel_webhook: {
+        type: channel_webhook,
+        required: false
+    }
 }, {
     timestamps: {
         createdAt: 'created_at',

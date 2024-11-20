@@ -53,9 +53,9 @@ class UserService {
                 neodeInstance.model('UserStatusState').find('Offline')
             ]);
 
-        if (mailUsed.records.length > 0) throw new ControllerError(400, 'Email must be unique');
-        if (usernameUsed.records.length > 0) throw new ControllerError(400, 'Username must be unique');
-        if (uuidUsed.records.length > 0) throw new ControllerError(400, 'UUID must be unique');
+        if (mailUsed.records.length > 0) throw new ControllerError(400, 'Email already exists');
+        if (usernameUsed.records.length > 0) throw new ControllerError(400, 'Username already exists');
+        if (uuidUsed.records.length > 0) throw new ControllerError(400, 'UUID already exists');
         if (!userLoginType) throw new ControllerError(500, 'User login type not found');
         if (!userStatusState) throw new ControllerError(500, 'User status state not found');
 

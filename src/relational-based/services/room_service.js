@@ -28,15 +28,16 @@ class Service extends MysqlBaseFindService {
         RoomServiceValidator.findOne(options);
 
         const { user, uuid } = options;
-        const { sub: user_uuid } = user;
 
-        const room =  await super.findOne({ uuid, include: this.includeUser(user_uuid) });
+        const [room, userInRoom] = await Promise.all([
+            db.RoomView.findOne({ where: { room_uuid: uuid } }),
+            RoomPermissionService.isInRoom({ room_uuid: uuid, user, role_name: null }),
+        ]);
 
-        if (!(await RoomPermissionService.isInRoom({ room_uuid: uuid, user, role_name: null }))) {
-            throw new ControllerError(403, 'User is not in the room');
-        }
+        if (!room) throw new ControllerError(404, 'room not found');
+        if (!userInRoom) throw new ControllerError(403, 'User is not in the room');
 
-        return room;
+        return dto(room);
     }
 
     async findAll(options = { user: null, page: null, limit: null }) {
@@ -152,13 +153,13 @@ class Service extends MysqlBaseFindService {
         RoomServiceValidator.destroy(options);
 
         const { uuid, user } = options;
+        const [room, userInRoom] = await Promise.all([
+            db.RoomView.findOne({ where: { room_uuid: uuid } }),
+            RoomPermissionService.isInRoom({ room_uuid: uuid, user, role_name: 'Admin' }),
+        ]);
 
-        await service.findOne({ uuid, user });
-
-        if (!(await RoomPermissionService.isInRoom({ room_uuid: uuid, user, role_name: 'Admin' }))) {
-            throw new ControllerError(403, 'User is not an admin of the room');
-        }
-
+        if (!room) throw new ControllerError(404, 'room not found');
+        if (!userInRoom) throw new ControllerError(403, 'User is not an admin of the room');
         
         await db.sequelize.query('CALL delete_room_proc(:uuid, @result)', {
             replacements: { uuid }

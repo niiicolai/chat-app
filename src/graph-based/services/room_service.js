@@ -31,11 +31,13 @@ class Service extends NeodeBaseFindService {
 
         const { user, uuid } = options;
 
+        let room = await neodeInstance.model('Room').find(uuid);
+        if (!room) throw new ControllerError(404, 'room not found');
         if (!(await RoomPermissionService.isInRoom({ room_uuid: uuid, user, role_name: null }))) {
             throw new ControllerError(403, 'User is not in the room');
         }
 
-        const room = await neodeInstance.cypher(
+        room = await neodeInstance.cypher(
             `MATCH (ru:RoomUser)-[:HAS_USER]->(u:User {uuid: $user_uuid})
              MATCH (ru)-[:HAS_ROOM]->(r:Room {uuid: $uuid})
              MATCH (r)-[:HAS_CATEGORY]->(rc:RoomCategory)
@@ -50,8 +52,6 @@ class Service extends NeodeBaseFindService {
              RETURN u, ru, r, rc, rfs, rus, rcs, rrs, rjs, ra, araf, raf, sum(raf.size) as bytes_used, sum(raf.size) / 1048576 as mb_used`,
             { user_uuid: user.sub, uuid }
         );
-
-        if (!room.records.length) return null;
 
         const m = room.records[0];
         const roomInstance = {
@@ -287,7 +287,7 @@ class Service extends NeodeBaseFindService {
         const { uuid, user } = options;
 
         const room = await neodeInstance.model('Room').find(uuid);
-        if (!room) throw new ControllerError(404, 'Room not found');
+        if (!room) throw new ControllerError(404, 'room not found');
 
         if (!(await RoomPermissionService.isInRoom({ room_uuid: uuid, user, role_name: 'Admin' }))) {
             throw new ControllerError(403, 'User is not an admin of the room');

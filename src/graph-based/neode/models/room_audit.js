@@ -18,8 +18,9 @@ export default {
     room: {
         type: 'relationship',
         target: 'Room',
-        relationship: 'HAS_AUDIT',
+        relationship: 'HAS_ROOM',
         direction: 'out',
+        eager: true
     },
     user: {
         type: 'relationship',

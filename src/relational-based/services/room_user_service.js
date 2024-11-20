@@ -59,7 +59,7 @@ class Service extends MysqlBaseFindService {
 
         const existing = await db.RoomUserView.findOne({ where: { room_user_uuid: uuid } });
         if (!existing) {
-            throw new ControllerError(404, 'Room user not found');
+            throw new ControllerError(404, 'room_user not found');
         }
 
         if (!(await RoomPermissionService.isInRoom({ room_uuid: existing.room_uuid, user, role_name: 'Admin' }))) {
@@ -81,7 +81,7 @@ class Service extends MysqlBaseFindService {
         const { uuid, user } = options;
         const existing = await db.RoomUserView.findOne({ where: { room_user_uuid: uuid } });
         if (!existing) {
-            throw new ControllerError(404, 'Room user not found');
+            throw new ControllerError(404, 'room_user not found');
         }
 
         const room_uuid = existing.room_uuid;
