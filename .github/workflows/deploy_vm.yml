@@ -102,8 +102,8 @@ jobs:
       - name: Run MongoDB API tests using Postman
         run: newman run ./test/api_test/Chat\ API\ Test.postman_collection.json --environment ./test/api_test/Chat\ App\ Dev\ MongoDB.postman_environment.json
 
-      #- name: Run Neo4j API tests using Postman
-      #  run: newman run ./test/api_test/Chat\ API\ Test.postman_collection.json --environment ./test/api_test/Chat\ App\ Dev\ Neo4j.postman_environment.json
+      - name: Run Neo4j API tests using Postman
+        run: newman run ./test/api_test/Chat\ API\ Test.postman_collection.json --environment ./test/api_test/Chat\ App\ Dev\ Neo4j.postman_environment.json
 
       - name: Clone frontend repository
         run: git clone https://github.com/niiicolai/chat-app-react.git
@@ -136,10 +136,10 @@ jobs:
           echo "Frontend server did not become ready in time!"
           exit 1
 
-      #- name: Run E2E tests
-      #  run: |
-      #    cd chat-app-react
-      #    npx cypress run
+      - name: Run E2E tests
+        run: |
+          cd chat-app-react
+          npx cypress run
 
       - name: Remove frontend repository
         run: rm -rf chat-app-react

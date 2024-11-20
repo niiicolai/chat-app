@@ -7,6 +7,6 @@ export default class RoomAuditTypeSeeder {
     }
 
     async down() {
-        await RoomAuditType.deleteMany({ name: { $in: data.room_audit_types.map((d) => d.name) } });
+        await RoomAuditType.collection.drop();
     }
 }

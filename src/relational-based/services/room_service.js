@@ -42,7 +42,7 @@ class Service extends MysqlBaseFindService {
     async findAll(options = { user: null, page: null, limit: null }) {
         RoomServiceValidator.findAll(options);
 
-        const { user, page, limit } = options;
+        const { page, limit } = options;
         const { sub: user_uuid } = options.user;
 
         return await super.findAll({ page, limit, include: this.includeUser(user_uuid) });

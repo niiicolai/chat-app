@@ -112,12 +112,8 @@ export default class RoomSeeder {
     }
 
     async down() {
-        const room = await Room.findOne({ uuid: roomUuid });
-        if (!room) return;
-        await Promise.all([
-            RoomFile.deleteMany({ room: room._id }),
-            RoomAudit.deleteMany({ room: room._id }),
-            Room.findOneAndDelete({ uuid: roomUuid })
-        ]);
+        await RoomFile.collection.drop();
+        await RoomAudit.collection.drop();
+        await Room.collection.drop();
     }
 }

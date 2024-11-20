@@ -87,7 +87,7 @@ class UserService {
             user_logins: [{
                 uuid: uuidv4(), 
                 user_login_type, 
-                password: bcrypt.hashSync(password, SALT_ROUNDS)
+                password: options.body.password
             }],
             user_password_resets: [],
         }).save();
@@ -132,6 +132,7 @@ class UserService {
                 userPasswordLogin = { uuid: uuidv4(), user_login_type }
                 savedUser.user_logins.push(userPasswordLogin);
             }
+            
             userPasswordLogin.password = bcrypt.hashSync(body.password, SALT_ROUNDS);
         }
 
@@ -155,10 +156,12 @@ class UserService {
         const { email, password } = options.body;
         const user = await User.findOne({ email });
         const userLogin = user?.user_logins?.find(l => l.user_login_type.name === "Password");
-
+        
         if (!user || !userLogin) throw new ControllerError(400, 'Invalid email or password');
-        if (!bcrypt.compareSync(password, userLogin.password)) throw new ControllerError(400, 'Invalid email or password');
-
+        if (!await bcrypt.compare(password, userLogin.password)) {
+            throw new ControllerError(400, 'Invalid email or password');
+        }
+        
         return { user: dto(user), token: JwtService.sign(user.uuid) };
     }
 
@@ -244,6 +247,33 @@ class UserService {
         user.user_logins = user.user_logins.filter(l => l.uuid !== login_uuid);
 
         await user.save();
+    }
+
+    async createUserLogin(options = { uuid: null, body: null }) {
+        UserServiceValidator.createUserLogin(options);
+
+        const { uuid, body } = options;
+        const user = await User.findOne ({ uuid });
+        if (!user) throw new ControllerError(404, 'User not found');
+
+        const user_login_type = await UserLoginType.findOne({ name: body.user_login_type_name });
+        if (!user_login_type) throw new ControllerError(404, 'User login type not found');
+
+        if (user_login_type.name === 'Password') {
+            if (!body.password) throw new ControllerError(400, 'No password provided');
+            body.password = bcrypt.hashSync(body.password, SALT_ROUNDS);
+        }
+
+        if (user_login_type.name === 'Google') {
+            if (!body.third_party_id) throw new ControllerError(400, 'No third_party_id provided');
+        }
+
+        const userLogin = { user_login_type, ...body };
+        user.user_logins.push(userLogin);
+
+        await user.save();
+
+        return userLoginDto(userLogin);
     }
 }
 

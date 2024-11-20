@@ -7,6 +7,6 @@ export default class ChannelTypeSeeder {
     }
 
     async down() {
-        await ChannelType.deleteMany({ name: { $in: data.channel_types.map((d) => d.name) } });
+        await ChannelType.collection.drop();
     }
 }

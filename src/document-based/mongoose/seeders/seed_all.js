@@ -1,5 +1,5 @@
 import 'dotenv/config'
-import '../index.js';
+import instance from '../index.js';
 
 import ChannelAuditTypeSeeder from "./channel_audit_type.js";
 import ChannelMessageTypeSeeder from './channel_message_type.js';
@@ -16,7 +16,7 @@ import RoomSeeder from './room.js';
 import UserSeeder from './user.js';
 import UserLoginTypeSeeder from './user_login_type.js';
 
-const seeders = [
+const seederTypes = [
     new UserLoginTypeSeeder(),
     new ChannelAuditTypeSeeder(),
     new ChannelMessageTypeSeeder(),
@@ -28,22 +28,28 @@ const seeders = [
     new RoomFileTypeSeeder(),
     new RoomUserRoleSeeder(),
     new UserStatusStateSeeder(),
-    new UserSeeder(),
-    new RoomSeeder(),
-    new ChannelSeeder(),
 ]
+
+const seedSingle = async (seeder, command, now) => {
+    if (command === 'up') {
+        await seeder.down();
+    }
+
+    await seeder[command]();
+    console.log(`${now} - Finished ${command} on ${seeder.constructor.name}`);
+}
 
 export const execute = async (command) => {
     const now = new Date();
     console.log(`${now} - Executing ${command} on all seeders`);
-    
-    for (const seeder of seeders) {
-        if (command === 'up') {
-            await seeder.down(); // Clean up first
-        }
 
-        await seeder[command]();
-    }
+    await Promise.all(seederTypes.map(async (seeder) => {
+        await seedSingle(seeder, command, now);
+    }));
+
+    await seedSingle(new UserSeeder(), command, now);
+    await seedSingle(new RoomSeeder(), command, now);
+    await seedSingle(new ChannelSeeder(), command, now);
 
     console.log(`${now} - Finished ${command} on all seeders`);
     console.log(`Total time: ${new Date() - now}ms`);

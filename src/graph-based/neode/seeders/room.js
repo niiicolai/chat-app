@@ -1,4 +1,5 @@
 import data from "./data.js";
+import { v4 as uuidv4 } from 'uuid';
 
 export default class RoomSeeder {
     async up(neodeInstance) {
@@ -15,7 +16,7 @@ export default class RoomSeeder {
 
         const roomAvatarFileType = await neodeInstance.model('RoomFileType').find('RoomAvatar');
         const roomAvatarFile = await neodeInstance.model('RoomFile').create({
-            uuid: data.room.room_avatar_file.uuid,
+            uuid: uuidv4(),
             src: data.room.room_avatar_file.src,
             size: data.room.room_avatar_file.size,
             created_at: new Date(),

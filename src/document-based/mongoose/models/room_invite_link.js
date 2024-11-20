@@ -4,7 +4,7 @@ export default new mongoose.Schema({
     uuid: { 
         type: String, 
         required: true,
-        unique: true 
+        index: true 
     },
     expires_at: { 
         type: Date, 

@@ -9,7 +9,7 @@ export default class ChannelSeeder {
         const roomJoinSettings = await neodeInstance.model('RoomJoinSettings').find(data.room.room_join_settings.uuid);
         const roomFileType = await neodeInstance.model('RoomFileType').find('ChannelAvatar');
         const roomFile = await neodeInstance.model('RoomFile').create({
-            uuid: channelUuid,
+            uuid: uuidv4(),
             src: "https://ghostchat.fra1.cdn.digitaloceanspaces.com/static/c7QiLXb.png",
             size: 1024,
             created_at: new Date(),

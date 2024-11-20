@@ -11,7 +11,6 @@
     "test:api:mysql": "node ./test/api_test/index.js mysql",
     "test:api:mongodb": "node ./test/api_test/index.js mongodb",
     "test:api:neo4j": "node ./test/api_test/index.js neo4j",
-    "test:sonarqube": "node ./sonarqube.js",
     "db:override": "node db_override.js",
     "sequelize:override": "node ./src/relational-based/scripts/mysql_override.js --run",
     "sequelize:migrate": "sequelize-cli db:migrate",

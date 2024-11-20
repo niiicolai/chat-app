@@ -7,6 +7,6 @@ export default class ChannelMessageUploadTypeSeeder {
     }
 
     async down() {
-        await ChannelMessageUploadType.deleteMany({ name: { $in: data.channel_message_upload_types.map((d) => d.name) } });
+        await ChannelMessageUploadType.collection.drop();
     }
 }

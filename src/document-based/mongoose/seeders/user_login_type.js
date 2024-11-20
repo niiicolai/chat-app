@@ -7,6 +7,6 @@ export default class UserLoginTypeSeeder {
     }
 
     async down() {
-        await UserLoginType.deleteMany({ name: { $in: data.user_login_types.map((d) => d.name) } });
+        await UserLoginType.collection.drop();
     }
 }

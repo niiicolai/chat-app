@@ -7,6 +7,6 @@ export default class RoomFileTypeSeeder {
     }
 
     async down() {
-        await RoomFileType.deleteMany({ name: { $in: data.room_file_types.map((d) => d.name) } });
+        await RoomFileType.collection.drop();
     }
 }

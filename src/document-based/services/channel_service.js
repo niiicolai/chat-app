@@ -154,7 +154,7 @@ class Service {
         }
 
         const [channel_audit_type, savedUser] = await Promise.all([
-            ChannelAuditType.findOne({ name: 'CHANNEL_CREATED' }),
+            ChannelAuditType.findOne({ name: 'MESSAGE_CREATED' }),
             User.findOne({ uuid: user.sub }),
         ]);
 

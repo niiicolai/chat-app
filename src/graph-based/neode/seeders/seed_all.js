@@ -16,7 +16,7 @@ import RoomSeeder from './room.js';
 import ChannelSeeder from './channel.js';
 import UserLoginTypeSeeder from './user_login_type.js';
 
-const seeders = [
+const seederTypes = [
     new UserLoginTypeSeeder(),
     new ChannelAuditTypeSeeder(),
     new ChannelMessageTypeSeeder(),
@@ -28,22 +28,28 @@ const seeders = [
     new RoomFileTypeSeeder(),
     new RoomUserRoleSeeder(),
     new UserStatusStateSeeder(),
-    new UserSeeder(),
-    new RoomSeeder(),
-    new ChannelSeeder()
 ]
+
+const seedSingle = async (seeder, command) => {
+    if (command === 'up') {
+        await seeder.down(instance); // Clean up first
+    }
+
+    await seeder[command](instance);
+    console.log(`Finished ${command} on ${seeder.constructor.name}`);
+}
 
 export const execute = async (command) => {
     const now = new Date();
     console.log(`${now} - Executing ${command} on all seeders`);
     
-    for (const seeder of seeders) {
-        if (command === 'up') {
-            await seeder.down(instance); // Clean up first
-        }
+    await Promise.all(seederTypes.map(async (seeder) => {
+        await seedSingle(seeder, command);
+    }));
 
-        await seeder[command](instance);
-    }
+    await seedSingle(new UserSeeder(), command, now);
+    await seedSingle(new RoomSeeder(), command, now);
+    await seedSingle(new ChannelSeeder(), command, now);
 
     console.log(`${now} - Finished ${command} on all seeders`);
     console.log(`Total time: ${new Date() - now}ms`);

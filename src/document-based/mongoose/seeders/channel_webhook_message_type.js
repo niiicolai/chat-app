@@ -7,6 +7,6 @@ export default class ChannelWebhookMessageTypeSeeder {
     }
 
     async down() {
-        await ChannelWebhookMessageType.deleteMany({ name: { $in: data.channel_webhook_message_types.map((d) => d.name) } });
+        await ChannelWebhookMessageType.collection.drop();
     }
 }

@@ -11,13 +11,13 @@ class Service {
         const { user_uuid } = options;
 
         const user = await neodeInstance.model('User').find(user_uuid);
-        if (!user) throw new ControllerError(404, 'User not found');
+        const userStatus = user ? user.get('user_status').endNode() : null;
+        const userStatusState = userStatus ? userStatus.get('user_status_state').endNode() : null;
 
-        const userStatusInstance = user.get('user_status').endNode();
-        if (!userStatusInstance) throw new ControllerError(500, 'User status not found');
+        if (!userStatus) throw new ControllerError(404, 'User status not found');
 
-        return dto(userStatusInstance.properties(), [
-                { user_status_state: userStatusInstance.get('user_status_state').endNode().properties() },
+        return dto(userStatus.properties(), [
+                { user_status_state: userStatusState.properties() },
                 { user: { uuid: user_uuid} }
             ]
         );

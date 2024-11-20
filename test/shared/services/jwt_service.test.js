@@ -1,4 +1,3 @@
-import 'dotenv/config'
 import { expect, test } from "vitest";
 import JwtService from "../../../src/shared/services/jwt_service.js";
 

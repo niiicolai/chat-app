@@ -7,6 +7,6 @@ export default class ChannelMessageTypeSeeder {
     }
 
     async down() {
-        await ChannelMessageType.deleteMany({ name: { $in: data.channel_message_types.map((d) => d.name) } });
+        await ChannelMessageType.collection.drop();
     }
 }

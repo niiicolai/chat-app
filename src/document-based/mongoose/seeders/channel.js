@@ -103,9 +103,8 @@ export default class ChannelSeeder {
     }
 
     async down() {
-        await Channel.findOneAndDelete({ uuid: channelUuid });
-        await ChannelMessage.findOneAndDelete({ uuid: channelMessageUuid1 });
-        await ChannelMessage.findOneAndDelete({ uuid: channelMessageUuid2 });
-        await RoomFile.findOneAndDelete({ uuid: roomFileUuid });
+        await ChannelAudit.collection.drop();
+        await ChannelMessage.collection.drop();
+        await Channel.collection.drop();
     }
 }

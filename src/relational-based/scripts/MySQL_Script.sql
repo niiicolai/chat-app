@@ -2461,9 +2461,9 @@ SET @room_uuid = 'a595b5cb-7e47-4ce7-9875-cdf99184a73c';
 SET @ch_uuid = UUID();
 SET @ch_uuid3D = UUID();
 SET @msg_uuid = UUID();
-SET @user_uuid = UUID();
-SET @user2_uuid = UUID();
-SET @user3_uuid = UUID();
+SET @user_uuid = 'd5a0831c-88e5-4713-ae0c-c4e86c2f4209';
+SET @user2_uuid = 'cdcf569f-57de-4cb3-98d6-36c7cd7141d6';
+SET @user3_uuid = 'dd1db381-0b0a-4b2c-b0e1-0b5d569e6f9b';
 SET @wh_uuid = UUID();
 
 INSERT INTO UserLoginType (name) VALUES
@@ -2572,8 +2572,8 @@ INSERT INTO UserStatusState (name) VALUES
 SET @loginType = 'Password';
 SET @thirdPartyId = NULL;
 call create_user_proc(@user_uuid, 'admin', 'admin@example.com', @password, @upload_src2, @loginType, @thirdPartyId, @result);
-call create_user_proc(@user2_uuid, 'JohnDoe', 'moderator@example.com', @password, @upload_src3, @loginType, @thirdPartyId, @result);
-call create_user_proc(@user3_uuid, 'JaneDoe', 'member@example.com', @password, @upload_src, @loginType, @thirdPartyId, @result);
+call create_user_proc(@user2_uuid, 'moderator', 'moderator@example.com', @password, @upload_src3, @loginType, @thirdPartyId, @result);
+call create_user_proc(@user3_uuid, 'member', 'member@example.com', @password, @upload_src, @loginType, @thirdPartyId, @result);
 
 
 -- Create the room with the first user as the admin
