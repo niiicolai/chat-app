@@ -73,7 +73,7 @@ jobs:
         
       - name: Wait for dbs and overwite data
         run: |
-          sh ./wait_for_start.sh --db-overwrite
+          sh ./wait_for_dbs.sh --db-overwrite
 
       - name: Run tests
         run: npm test  
