@@ -32,7 +32,7 @@ class Service {
 
         const { uuid, user } = options;
         const channel = await Channel.findOne({ uuid }).populate('room room_file');
-        if (!channel) throw new ControllerError(404, 'Channel not found');
+        if (!channel) throw new ControllerError(404, 'channel not found');
 
         if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid: uuid, user, role_name: null }))) {
             throw new ControllerError(403, 'User is not in the room');
@@ -154,7 +154,7 @@ class Service {
         }
 
         const [channel_audit_type, savedUser] = await Promise.all([
-            ChannelAuditType.findOne({ name: 'CHANNEL_CREATED' }),
+            ChannelAuditType.findOne({ name: 'MESSAGE_CREATED' }),
             User.findOne({ uuid: user.sub }),
         ]);
 

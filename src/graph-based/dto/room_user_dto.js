@@ -1,23 +1,20 @@
 import userDto from './user_dto.js';
 
-export default (entity = {}, eagerRelations = []) => {
-    const room = eagerRelations.find((rel) => rel.room)?.room
-    const user = eagerRelations.find((rel) => rel.user)?.user
-    const role = eagerRelations.find((rel) => rel.room_user_role)?.room_user_role
-
+export default (entity = {}) => {
     const dto = { uuid: entity.uuid };
 
-    if (user) {
-        dto.user = userDto(user);
+    if (entity.user) {
+        dto.user = userDto(entity.user);
+        dto.user_uuid = entity.user.uuid;
         delete dto.user.email;
     }
 
-    if (room) {
-        dto.room_uuid = room.uuid;
+    if (entity.room) {
+        dto.room_uuid = entity.room.uuid;
     }
 
-    if (role) {
-        dto.room_user_role_name = role.name;
+    if (entity.role) {
+        dto.room_user_role_name = entity.role.name;
     }
 
     if (entity.created_at && entity.created_at.year) {

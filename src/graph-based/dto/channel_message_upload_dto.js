@@ -1,4 +1,5 @@
 import dateHelper from './_date_helper.js';
+import channelMessageDto from './channel_message_dto.js';
 
 export default (entity = {}, relations=[]) => {
     const channelMessageUploadType = relations.find((rel) => rel.channelMessageUploadType)?.channelMessageUploadType || null;
@@ -11,7 +12,7 @@ export default (entity = {}, relations=[]) => {
     }
 
     if (channelMessage) {
-        dto.channel_message = channelMessage;
+        dto.channel_message = channelMessageDto(channelMessage);
     }
 
     return dateHelper(entity, dto);

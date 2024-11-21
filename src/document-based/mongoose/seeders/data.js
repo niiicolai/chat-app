@@ -76,9 +76,6 @@ export default {
         { name: 'AVATAR_CREATED' },
         { name: 'AVATAR_EDITED' },
         { name: 'AVATAR_DELETED' },
-        { name: 'CHANNEL_CREATED' },
-        { name: 'CHANNEL_EDITED' },
-        { name: 'CHANNEL_DELETED' },
     ],
     channel_webhook_message_types: [
         { name: 'Custom' },

@@ -1,6 +1,6 @@
-import ControllerError from '../../shared/errors/controller_error.js';
-import dto from '../dto/user_email_verification_dto.js';
+import UserEmailVerificationServiceValidator from '../../shared/validators/user_email_verification_service_validator.js';
 import UserEmailVerificationMailer from '../../shared/mailers/user_email_verification_mailer.js';
+import ControllerError from '../../shared/errors/controller_error.js';
 import neodeInstance from '../neode/index.js';
 
 const WEBSITE_HOST = process.env.WEBSITE_HOST;
@@ -9,16 +9,11 @@ if (!WEBSITE_HOST) console.error('WEBSITE_HOST is not defined in the .env file.\
 
 class UserEmailVerificationService {
     async resend(options = { user_uuid: null }) {
+        UserEmailVerificationServiceValidator.resend(options);
+
         const { user_uuid } = options;
-
-        if (!user_uuid) {
-            throw new ControllerError(500, 'No user_uuid provided');
-        }
-
         const userInstance = await neodeInstance.model('User').find(user_uuid);        
-        if (!userInstance) {
-            throw new ControllerError(404, 'User not found');
-        }
+        if (!userInstance) throw new ControllerError(404, 'User not found');
 
         const emailVerification = userInstance.get('user_email_verification')?.endNode()?.properties();
         if (!emailVerification) {
@@ -39,11 +34,10 @@ class UserEmailVerificationService {
     }
 
     async confirm(options = { uuid: null }) {
-        const { uuid } = options;
+        UserEmailVerificationServiceValidator.confirm(options);
 
-        if (!uuid) {
-            throw new ControllerError(400, 'No uuid provided');
-        }
+        const { uuid } = options;
+        if (!uuid) throw new ControllerError(400, 'No uuid provided');
 
         const userEmailVerification = await neodeInstance.model('UserEmailVerification').find(uuid);
         if (!userEmailVerification) {

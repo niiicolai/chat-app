@@ -8,6 +8,7 @@ import db from '../sequelize/models/index.cjs';
 import dto from '../dto/user_dto.js';
 import userLoginDto from '../dto/user_login_dto.js';
 import bcrypt from 'bcrypt';
+import { v4 as uuidV4 } from 'uuid';
 
 const SALT_ROUNDS = 10;
 const uploader = new UserAvatarUploader();
@@ -156,6 +157,9 @@ class UserService extends MysqlBaseFindService {
     async getUserLogins(options = { uuid: null }) {
         UserServiceValidator.getUserLogins(options);
 
+        const user = await db.UserView.findOne({ where: { user_uuid: options.uuid }});
+        if (!user) throw new ControllerError(404, 'User not found');
+
         const userLogins = await db.UserLoginView.findAll({ where: { user_uuid: options.uuid }});
         return userLogins.map(userLoginDto);
     }
@@ -177,6 +181,37 @@ class UserService extends MysqlBaseFindService {
         await db.sequelize.query('CALL delete_user_login_proc(:login_uuid, @result)', {
             replacements: { login_uuid }
         });
+    }
+
+    async createUserLogin(options = { uuid: null, body: null }) {
+        UserServiceValidator.createUserLogin(options);
+
+        const { uuid, body } = options;
+        const user = await db.UserView.findOne({ where: { user_uuid: uuid }});
+        if (!user) throw new ControllerError(404, 'User not found');
+
+        const loginType = db.UserLoginTypeView.findOne({ where: { user_login_type_name: body.user_login_type_name }});
+        if (!loginType) throw new ControllerError(404, 'User login type not found');
+
+        const { user_login_type_name } = body;
+
+        if (user_login_type_name === 'Password') {
+            if (!body.password) throw new ControllerError(400, 'No password provided');
+            body.password = bcrypt.hashSync(body.password, SALT_ROUNDS);
+        } else body.password = null;
+
+        if (user_login_type_name === 'Google') {
+            if (!body.third_party_id) throw new ControllerError(400, 'No third_party_id provided');
+        } else body.third_party_id = null;
+        
+        const login_uuid = body.uuid;
+        await db.sequelize.query('CALL create_user_login_proc(:login_uuid, :user_uuid, :user_login_type_name, :user_login_password, :third_party_id, @result)', {
+            replacements: { login_uuid, user_uuid: uuid, user_login_type_name, third_party_id: body.third_party_id, user_login_password: body.password }
+        });
+
+        const userLogin = await db.UserLoginView.findOne({ where: { user_login_uuid: login_uuid }});
+
+        return userLoginDto(userLogin);
     }
 }
 

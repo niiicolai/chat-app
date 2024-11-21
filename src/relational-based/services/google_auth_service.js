@@ -37,7 +37,7 @@ class Service {
         const login_type = 'Google';
 
         await db.sequelize.query('CALL create_user_proc(:uuid, :username, :email, :password, :avatar, :login_type, :third_party_id, @result)', {
-            replacements: { uuid, username, email, password: null, avatar, login_type, third_party_id }
+            replacements: { uuid, username, email, password: null, avatar: avatar || null, login_type, third_party_id }
         });
         // Set the email as verified because the user is signing up with Google
         // so we can skip the email verification process

@@ -157,11 +157,10 @@ CREATE TABLE RoomAudit (
     uuid VARCHAR(36) PRIMARY KEY,
     body TEXT NOT NULL,
     room_audit_type_name VARCHAR(255) NOT NULL,
-    room_uuid VARCHAR(36) NOT NULL,
+    room_uuid VARCHAR(36),
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (room_audit_type_name) REFERENCES RoomAuditType(name),
-    FOREIGN KEY (room_uuid) REFERENCES Room(uuid)
+    FOREIGN KEY (room_audit_type_name) REFERENCES RoomAuditType(name)
 );
 
 
@@ -315,11 +314,10 @@ CREATE TABLE ChannelAudit (
     uuid VARCHAR(36) PRIMARY KEY,
     body TEXT NOT NULL,
     channel_audit_type_name VARCHAR(255) NOT NULL,
-    channel_uuid VARCHAR(36) NOT NULL,
+    channel_uuid VARCHAR(36),
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (channel_audit_type_name) REFERENCES ChannelAuditType(name),
-    FOREIGN KEY (channel_uuid) REFERENCES Channel(uuid)
+    FOREIGN KEY (channel_audit_type_name) REFERENCES ChannelAuditType(name)
 );
 
 
@@ -554,18 +552,29 @@ CREATE PROCEDURE check_upload_exceeds_total_proc(
     OUT result BOOLEAN
 )
 BEGIN
-    DECLARE total_files_bytes_allowed BIGINT;
-    DECLARE total_files_bytes_sum BIGINT;
+    DECLARE total_files_bytes_allowed BIGINT DEFAULT 0;
+    DECLARE total_files_bytes_sum BIGINT DEFAULT 0;
 
     -- Sum all the uploads in the room and get the total size allowed
-    SELECT SUM(size), rs.total_files_bytes_allowed INTO total_files_bytes_sum, total_files_bytes_allowed
-    FROM RoomFileSetting rs LEFT JOIN RoomFile rf ON rs.room_uuid = rf.room_uuid
-    WHERE rs.room_uuid = room_uuid_input
-    GROUP BY rs.total_files_bytes_allowed;
-    
+    SELECT 
+        COALESCE(SUM(rf.size), 0),
+        rs.total_files_bytes_allowed
+    INTO 
+        total_files_bytes_sum,
+        total_files_bytes_allowed
+    FROM 
+        RoomFileSetting rs 
+    LEFT JOIN 
+        RoomFile rf 
+    ON 
+        rs.room_uuid = rf.room_uuid
+    WHERE 
+        rs.room_uuid = room_uuid_input
+	GROUP BY rs.total_files_bytes_allowed;
+
     -- Check if the total size + the new upload size exceeds 
     -- the allowed total size for a room.
-    SET result = ((total_files_bytes_sum + new_file_bytes_input) > total_files_bytes_allowed);
+    SET result = (total_files_bytes_sum + new_file_bytes_input) > total_files_bytes_allowed;
 END //
 DELIMITER ;
 
@@ -1702,7 +1711,12 @@ BEGIN
     INSERT INTO RoomChannelSetting (uuid, room_uuid, max_channels, message_days_to_live) VALUES (UUID(), NEW.uuid, 5, 30);
     INSERT INTO RoomAvatar (uuid, room_uuid, room_file_uuid) VALUES (UUID(), NEW.uuid, NULL);
     -- Add information to the audit log
-    INSERT INTO RoomAudit (uuid, body, room_uuid, room_audit_type_name) VALUES (UUID(), 'Room created.', NEW.uuid, 'ROOM_CREATED');
+    INSERT INTO RoomAudit (uuid, body, room_uuid, room_audit_type_name) VALUES (
+        UUID(), 
+        JSON_OBJECT('uuid', NEW.uuid, 'name', NEW.name, 'description', NEW.description, 'room_category_name', NEW.room_category_name, 'created_at', NEW.created_at, 'updated_at', NEW.updated_at),
+        NEW.uuid, 
+        'ROOM_CREATED'
+    );
 END //
 DELIMITER ;
 
@@ -1716,7 +1730,12 @@ AFTER UPDATE ON Room
 FOR EACH ROW
 BEGIN
     -- Add information to the audit log
-    INSERT INTO RoomAudit (uuid, body, room_uuid, room_audit_type_name) VALUES (UUID(), 'Room edited.', NEW.uuid, 'ROOM_EDITED');
+    INSERT INTO RoomAudit (uuid, body, room_uuid, room_audit_type_name) VALUES (
+        UUID(), 
+        JSON_OBJECT('uuid', NEW.uuid, 'name', NEW.name, 'description', NEW.description, 'room_category_name', NEW.room_category_name, 'created_at', NEW.created_at, 'updated_at', NEW.updated_at),
+        NEW.uuid, 
+        'ROOM_EDITED'
+    );
 END //
 DELIMITER ;
 
@@ -1739,10 +1758,13 @@ BEGIN
     DELETE FROM RoomAvatar WHERE room_uuid = OLD.uuid;
     DELETE FROM RoomFile WHERE room_uuid = OLD.uuid;
     DELETE FROM Channel WHERE room_uuid = OLD.uuid;
-    -- Must be last because the other delete triggers insert into this table
-    -- So if this is deleted first, the other triggers would insert and the
-    -- room deletions would fail because there would be room audit rows.
-    DELETE FROM RoomAudit WHERE room_uuid = OLD.uuid;
+
+    INSERT INTO RoomAudit (uuid, body, room_uuid, room_audit_type_name) VALUES (
+        UUID(), 
+        JSON_OBJECT('uuid', OLD.uuid, 'name', OLD.name, 'description', OLD.description, 'room_category_name', OLD.room_category_name, 'created_at', OLD.created_at, 'updated_at', OLD.updated_at),
+        OLD.uuid, 
+        'ROOM_DELETED'
+    );
 END //
 DELIMITER ;
 
@@ -1756,7 +1778,12 @@ AFTER UPDATE ON RoomJoinSetting
 FOR EACH ROW
 BEGIN
     -- Add information to the audit log
-    INSERT INTO RoomAudit (uuid, body, room_uuid, room_audit_type_name) VALUES (UUID(), 'Join setting edited.', NEW.room_uuid, 'JOIN_SETTING_EDITED');
+    INSERT INTO RoomAudit (uuid, body, room_uuid, room_audit_type_name) VALUES (
+        UUID(), 
+        JSON_OBJECT('uuid', NEW.uuid, 'join_channel_uuid', NEW.join_channel_uuid, 'join_message', NEW.join_message, 'room_uuid', NEW.room_uuid, 'created_at', NEW.created_at, 'updated_at', NEW.updated_at),
+        NEW.room_uuid, 
+        'JOIN_SETTING_EDITED'
+    );
 END //
 DELIMITER ;
 
@@ -1770,7 +1797,12 @@ AFTER INSERT ON RoomInviteLink
 FOR EACH ROW
 BEGIN
     -- Add information to the audit log
-    INSERT INTO RoomAudit (uuid, body, room_uuid, room_audit_type_name) VALUES (UUID(), 'Invite link created.', NEW.room_uuid, 'INVITE_LINK_CREATED');
+    INSERT INTO RoomAudit (uuid, body, room_uuid, room_audit_type_name) VALUES (
+        UUID(), 
+        JSON_OBJECT('uuid', NEW.uuid, 'room_uuid', NEW.room_uuid, 'expires_at', NEW.expires_at, 'created_at', NEW.created_at, 'updated_at', NEW.updated_at),
+        NEW.room_uuid, 
+        'INVITE_LINK_CREATED'
+    );
 END //
 DELIMITER ;
 
@@ -1784,7 +1816,12 @@ AFTER UPDATE ON RoomInviteLink
 FOR EACH ROW
 BEGIN
     -- Add information to the audit log
-    INSERT INTO RoomAudit (uuid, body, room_uuid, room_audit_type_name) VALUES (UUID(), 'Invite link edited.', NEW.room_uuid, 'INVITE_LINK_EDITED');
+    INSERT INTO RoomAudit (uuid, body, room_uuid, room_audit_type_name) VALUES (
+        UUID(), 
+        JSON_OBJECT('uuid', NEW.uuid, 'room_uuid', NEW.room_uuid, 'expires_at', NEW.expires_at, 'created_at', NEW.created_at, 'updated_at', NEW.updated_at), 
+        NEW.room_uuid, 
+        'INVITE_LINK_EDITED'
+    );
 END //
 DELIMITER ;
 
@@ -1798,7 +1835,12 @@ BEFORE DELETE ON RoomInviteLink
 FOR EACH ROW
 BEGIN
     -- Add information to the audit log
-    INSERT INTO RoomAudit (uuid, body, room_uuid, room_audit_type_name) VALUES (UUID(), 'Invite link deleted.', OLD.room_uuid, 'INVITE_LINK_DELETED');
+    INSERT INTO RoomAudit (uuid, body, room_uuid, room_audit_type_name) VALUES (
+        UUID(), 
+        JSON_OBJECT('uuid', OLD.uuid, 'room_uuid', OLD.room_uuid, 'expires_at', OLD.expires_at, 'created_at', OLD.created_at, 'updated_at', OLD.updated_at),
+        OLD.room_uuid, 
+        'INVITE_LINK_DELETED'
+    );
 END //
 DELIMITER ;
 
@@ -1812,7 +1854,12 @@ AFTER INSERT ON RoomUser
 FOR EACH ROW
 BEGIN
     -- Add information to the audit log
-    INSERT INTO RoomAudit (uuid, body, room_uuid, room_audit_type_name) VALUES (UUID(), 'User added.', NEW.room_uuid, 'USER_ADDED');    
+    INSERT INTO RoomAudit (uuid, body, room_uuid, room_audit_type_name) VALUES (
+        UUID(), 
+        JSON_OBJECT('uuid', NEW.uuid, 'room_uuid', NEW.room_uuid, 'user_uuid', NEW.user_uuid, 'room_user_role_name', NEW.room_user_role_name, 'created_at', NEW.created_at, 'updated_at', NEW.updated_at),
+        NEW.room_uuid, 
+        'USER_ADDED'
+    );    
 END //
 DELIMITER ;
 
@@ -1826,7 +1873,12 @@ BEFORE DELETE ON RoomUser
 FOR EACH ROW
 BEGIN
     -- Add information to the audit log
-    INSERT INTO RoomAudit (uuid, body, room_uuid, room_audit_type_name) VALUES (UUID(), 'User removed.', OLD.room_uuid, 'USER_REMOVED');
+    INSERT INTO RoomAudit (uuid, body, room_uuid, room_audit_type_name) VALUES (
+        UUID(), 
+        JSON_OBJECT('uuid', OLD.uuid, 'room_uuid', OLD.room_uuid, 'user_uuid', OLD.user_uuid, 'room_user_role_name', OLD.room_user_role_name, 'created_at', OLD.created_at, 'updated_at', OLD.updated_at),
+        OLD.room_uuid, 
+        'USER_REMOVED'
+    );
 END //
 DELIMITER ;
 
@@ -1840,7 +1892,12 @@ AFTER INSERT ON RoomFile
 FOR EACH ROW
 BEGIN
     -- Add information to the audit log
-    INSERT INTO RoomAudit (uuid, body, room_uuid, room_audit_type_name) VALUES (UUID(), 'File created.', NEW.room_uuid, 'FILE_CREATED');
+    INSERT INTO RoomAudit (uuid, body, room_uuid, room_audit_type_name) VALUES (
+        UUID(), 
+        JSON_OBJECT('uuid', NEW.uuid, 'src', NEW.src, 'size', NEW.size, 'room_uuid', NEW.room_uuid, 'room_file_type_name', NEW.room_file_type_name, 'created_at', NEW.created_at, 'updated_at', NEW.updated_at),
+        NEW.room_uuid, 
+        'FILE_CREATED'
+    );
 END //
 DELIMITER ;
 
@@ -1870,7 +1927,12 @@ BEGIN
         DELETE FROM ChannelMessageUpload WHERE room_file_uuid = OLD.uuid;
     end if;
     -- Add information to the audit log
-    INSERT INTO RoomAudit (uuid, body, room_uuid, room_audit_type_name) VALUES (UUID(), 'File deleted.', OLD.room_uuid, 'FILE_DELETED');
+    INSERT INTO RoomAudit (uuid, body, room_uuid, room_audit_type_name) VALUES (
+        UUID(), 
+        JSON_OBJECT('uuid', OLD.uuid, 'src', OLD.src, 'size', OLD.size, 'room_uuid', OLD.room_uuid, 'room_file_type_name', OLD.room_file_type_name, 'created_at', OLD.created_at, 'updated_at', OLD.updated_at),
+        OLD.room_uuid, 
+        'FILE_DELETED'
+        );
 END //
 DELIMITER ;
 
@@ -1884,7 +1946,12 @@ AFTER INSERT ON RoomAvatar
 FOR EACH ROW
 BEGIN
     -- Add information to the audit log
-    INSERT INTO RoomAudit (uuid, body, room_uuid, room_audit_type_name) VALUES (UUID(), 'Avatar created.', NEW.room_uuid, 'AVATAR_CREATED');
+    INSERT INTO RoomAudit (uuid, body, room_uuid, room_audit_type_name) VALUES (
+        UUID(), 
+        JSON_OBJECT('uuid', NEW.uuid, 'room_uuid', NEW.room_uuid, 'room_file_uuid', NEW.room_file_uuid, 'created_at', NEW.created_at, 'updated_at', NEW.updated_at),
+        NEW.room_uuid, 
+        'AVATAR_CREATED'
+    );
 END //
 DELIMITER ;
 
@@ -1898,7 +1965,12 @@ AFTER UPDATE ON RoomAvatar
 FOR EACH ROW
 BEGIN
     -- Add information to the audit log
-    INSERT INTO RoomAudit (uuid, body, room_uuid, room_audit_type_name) VALUES (UUID(), 'Avatar edited.', NEW.room_uuid, 'AVATAR_EDITED');
+    INSERT INTO RoomAudit (uuid, body, room_uuid, room_audit_type_name) VALUES (
+        UUID(), 
+        JSON_OBJECT('uuid', NEW.uuid, 'room_uuid', NEW.room_uuid, 'room_file_uuid', NEW.room_file_uuid, 'created_at', NEW.created_at, 'updated_at', NEW.updated_at),
+        NEW.room_uuid, 
+        'AVATAR_EDITED'
+    );
 END //
 DELIMITER ;
 
@@ -1912,10 +1984,14 @@ BEFORE DELETE ON RoomAvatar
 FOR EACH ROW
 BEGIN
     -- Add information to the audit log
-    INSERT INTO RoomAudit (uuid, body, room_uuid, room_audit_type_name) VALUES (UUID(), 'Avatar deleted.', OLD.room_uuid, 'AVATAR_DELETED');
+    INSERT INTO RoomAudit (uuid, body, room_uuid, room_audit_type_name) VALUES (
+        UUID(), 
+        JSON_OBJECT('uuid', OLD.uuid, 'room_uuid', OLD.room_uuid, 'room_file_uuid', OLD.room_file_uuid, 'created_at', OLD.created_at, 'updated_at', OLD.updated_at),
+        OLD.room_uuid, 
+        'AVATAR_DELETED'
+    );
 END //
 DELIMITER ;
-
 
 
 -- Trigger to create audit log when a channel is created
@@ -1926,7 +2002,12 @@ AFTER INSERT ON Channel
 FOR EACH ROW
 BEGIN
     -- Add information to the audit log
-    INSERT INTO RoomAudit (uuid, body, room_uuid, room_audit_type_name) VALUES (UUID(), 'Channel created.', NEW.room_uuid, 'CHANNEL_CREATED');
+    INSERT INTO ChannelAudit (uuid, body, channel_uuid, channel_audit_type_name) VALUES (
+		UUID(), 
+        JSON_OBJECT('uuid', NEW.uuid, 'name', NEW.name, 'description', NEW.description, 'channel_type_name', NEW.channel_type_name, 'room_uuid', NEW.room_uuid, 'room_file_uuid', NEW.room_file_uuid, 'created_at', NEW.created_at, 'updated_at', NEW.updated_at),
+        NEW.uuid, 
+        'CHANNEL_CREATED'
+	);
 END //
 DELIMITER ;
 
@@ -1940,7 +2021,12 @@ AFTER UPDATE ON Channel
 FOR EACH ROW
 BEGIN
     -- Add information to the audit log
-    INSERT INTO RoomAudit (uuid, body, room_uuid, room_audit_type_name) VALUES (UUID(), 'Channel edited.', NEW.room_uuid, 'CHANNEL_EDITED');
+    INSERT INTO ChannelAudit (uuid, body, channel_uuid, channel_audit_type_name) VALUES (
+		UUID(), 
+        JSON_OBJECT('uuid', NEW.uuid, 'name', NEW.name, 'description', NEW.description, 'channel_type_name', NEW.channel_type_name, 'room_uuid', NEW.room_uuid, 'room_file_uuid', NEW.room_file_uuid, 'created_at', NEW.created_at, 'updated_at', NEW.updated_at),
+        NEW.uuid, 
+        'CHANNEL_EDITED'
+	);
 END //
 DELIMITER ;
 
@@ -1953,19 +2039,18 @@ CREATE TRIGGER channel_before_delete
 BEFORE DELETE ON Channel
 FOR EACH ROW
 BEGIN
-    -- Add information to the audit log
-    INSERT INTO RoomAudit (uuid, body, room_uuid, room_audit_type_name) VALUES (UUID(), 'Channel deleted.', OLD.room_uuid, 'CHANNEL_DELETED');
     -- Clear the join channel uuid from the room join setting if it is the same as the channel being deleted
     UPDATE RoomJoinSetting SET join_channel_uuid = NULL WHERE join_channel_uuid = OLD.uuid;
 
     -- Delete all related rows
     DELETE FROM ChannelMessage WHERE channel_uuid = OLD.uuid;
     DELETE FROM ChannelWebhook WHERE channel_uuid = OLD.uuid;
-
-    -- Must be last because the other delete triggers insert into this table
-    -- So if this is deleted first, the other triggers would insert and the
-    -- channel deletions would fail because there would be channel audit rows.
-    DELETE FROM ChannelAudit WHERE channel_uuid = OLD.uuid; 
+    INSERT INTO ChannelAudit (uuid, body, channel_uuid, channel_audit_type_name) VALUES (
+		UUID(), 
+        JSON_OBJECT('uuid', OLD.uuid, 'name', OLD.name, 'description', OLD.description, 'channel_type_name', OLD.channel_type_name, 'room_uuid', OLD.room_uuid, 'room_file_uuid', OLD.room_file_uuid, 'created_at', OLD.created_at, 'updated_at', OLD.updated_at),
+        OLD.uuid, 
+        'CHANNEL_DELETED'
+	);
 END //
 DELIMITER ;
 
@@ -1979,7 +2064,12 @@ AFTER INSERT ON ChannelMessage
 FOR EACH ROW
 BEGIN
     -- Add information to the audit log
-    INSERT INTO ChannelAudit (uuid, body, channel_uuid, channel_audit_type_name) VALUES (UUID(), 'Message created.', NEW.channel_uuid, 'MESSAGE_CREATED');
+    INSERT INTO ChannelAudit (uuid, body, channel_uuid, channel_audit_type_name) VALUES (
+        UUID(), 
+        JSON_OBJECT('uuid', NEW.uuid, 'body', NEW.body, 'channel_uuid', NEW.channel_uuid, 'user_uuid', NEW.user_uuid, 'channel_message_type_name', NEW.channel_message_type_name, 'created_at', NEW.created_at, 'updated_at', NEW.updated_at),
+        NEW.channel_uuid, 
+        'MESSAGE_CREATED'
+    );
 END //
 DELIMITER ;
 
@@ -1993,7 +2083,12 @@ AFTER UPDATE ON ChannelMessage
 FOR EACH ROW
 BEGIN
     -- Add information to the audit log
-    INSERT INTO ChannelAudit (uuid, body, channel_uuid, channel_audit_type_name) VALUES (UUID(), 'Message edited.', NEW.channel_uuid, 'MESSAGE_EDITED');
+    INSERT INTO ChannelAudit (uuid, body, channel_uuid, channel_audit_type_name) VALUES (
+        UUID(), 
+        JSON_OBJECT('uuid', NEW.uuid, 'body', NEW.body, 'channel_uuid', NEW.channel_uuid, 'user_uuid', NEW.user_uuid, 'channel_message_type_name', NEW.channel_message_type_name, 'created_at', NEW.created_at, 'updated_at', NEW.updated_at),
+        NEW.channel_uuid, 
+        'MESSAGE_EDITED'
+    );
 END //
 DELIMITER ;
 
@@ -2007,8 +2102,14 @@ BEFORE DELETE ON ChannelMessage
 FOR EACH ROW
 BEGIN
     -- Add information to the audit log
-    INSERT INTO ChannelAudit (uuid, body, channel_uuid, channel_audit_type_name) VALUES (UUID(), 'Message deleted.', OLD.channel_uuid, 'MESSAGE_DELETED');
     DELETE FROM ChannelMessageUpload WHERE channel_message_uuid = OLD.uuid;
+    INSERT INTO ChannelAudit (uuid, body, channel_uuid, channel_audit_type_name) VALUES (
+        UUID(), 
+        JSON_OBJECT('uuid', OLD.uuid, 'body', OLD.body, 'channel_uuid', OLD.channel_uuid, 'user_uuid', OLD.user_uuid, 'channel_message_type_name', OLD.channel_message_type_name, 'created_at', OLD.created_at, 'updated_at', OLD.updated_at),
+        OLD.channel_uuid, 
+        'MESSAGE_DELETED'
+    );
+    
 END //
 DELIMITER ;
 
@@ -2022,7 +2123,12 @@ AFTER INSERT ON ChannelWebhook
 FOR EACH ROW
 BEGIN
     -- Add information to the audit log
-    INSERT INTO ChannelAudit (uuid, body, channel_uuid, channel_audit_type_name) VALUES (UUID(), 'Webhook created.', NEW.channel_uuid, 'WEBHOOK_CREATED');
+    INSERT INTO ChannelAudit (uuid, body, channel_uuid, channel_audit_type_name) VALUES (
+        UUID(),
+        JSON_OBJECT('uuid', NEW.uuid, 'name', NEW.name, 'description', NEW.description, 'channel_uuid', NEW.channel_uuid, 'room_file_uuid', NEW.room_file_uuid, 'created_at', NEW.created_at, 'updated_at', NEW.updated_at),
+        NEW.channel_uuid, 
+        'WEBHOOK_CREATED'
+    );
 END //
 DELIMITER ;
 
@@ -2035,7 +2141,12 @@ BEFORE DELETE ON ChannelWebhook
 FOR EACH ROW
 BEGIN    
     -- Add information to the audit log
-    INSERT INTO ChannelAudit (uuid, body, channel_uuid, channel_audit_type_name) VALUES (UUID(), 'Webhook deleted.', OLD.channel_uuid, 'WEBHOOK_DELETED');
+    INSERT INTO ChannelAudit (uuid, body, channel_uuid, channel_audit_type_name) VALUES (
+        UUID(), 
+        JSON_OBJECT('uuid', OLD.uuid, 'name', OLD.name, 'description', OLD.description, 'channel_uuid', OLD.channel_uuid, 'room_file_uuid', OLD.room_file_uuid, 'created_at', OLD.created_at, 'updated_at', OLD.updated_at),
+        OLD.channel_uuid, 
+        'WEBHOOK_DELETED'
+    );
     -- Delete all related rows
     DELETE FROM ChannelWebhookMessage WHERE channel_webhook_uuid = OLD.uuid;
 END //
@@ -2458,12 +2569,12 @@ SET @upload_src = 'https://ghostchat.fra1.cdn.digitaloceanspaces.com/static/c7Qi
 SET @upload_src2 = 'https://ghostchat.fra1.cdn.digitaloceanspaces.com/static/LemonadeGuyCardboardAndPencilWithShadow-8cdc3130cc5498718fce7ee9d1ff5d92ddcc2ed81c689a1bf275bd14189a607c-512.jpg'; 
 SET @upload_src3 = 'https://ghostchat.fra1.cdn.digitaloceanspaces.com/static/mobile-park-character-animating.png';
 SET @room_uuid = 'a595b5cb-7e47-4ce7-9875-cdf99184a73c';
-SET @ch_uuid = UUID();
+SET @ch_uuid = '1c9437b0-4e88-4a8e-84f0-679c7714407f';
 SET @ch_uuid3D = UUID();
 SET @msg_uuid = UUID();
-SET @user_uuid = UUID();
-SET @user2_uuid = UUID();
-SET @user3_uuid = UUID();
+SET @user_uuid = 'd5a0831c-88e5-4713-ae0c-c4e86c2f4209';
+SET @user2_uuid = 'cdcf569f-57de-4cb3-98d6-36c7cd7141d6';
+SET @user3_uuid = 'dd1db381-0b0a-4b2c-b0e1-0b5d569e6f9b';
 SET @wh_uuid = UUID();
 
 INSERT INTO UserLoginType (name) VALUES
@@ -2471,6 +2582,9 @@ INSERT INTO UserLoginType (name) VALUES
 ('Google');
 
 INSERT INTO ChannelAuditType (name) VALUES
+('CHANNEL_CREATED'),
+('CHANNEL_EDITED'),
+('CHANNEL_DELETED'),
 ('MESSAGE_CREATED'),
 ('MESSAGE_EDITED'),
 ('MESSAGE_DELETED'),
@@ -2492,12 +2606,7 @@ INSERT INTO RoomAuditType (name) VALUES
 ('FILE_DELETED'),
 ('AVATAR_CREATED'),
 ('AVATAR_EDITED'),
-('AVATAR_DELETED'),
-('CHANNEL_CREATED'),
-('CHANNEL_EDITED'),
-('CHANNEL_DELETED');
-
-
+('AVATAR_DELETED');
 
 INSERT INTO RoomCategory (name) VALUES
 ('General'),
@@ -2572,8 +2681,8 @@ INSERT INTO UserStatusState (name) VALUES
 SET @loginType = 'Password';
 SET @thirdPartyId = NULL;
 call create_user_proc(@user_uuid, 'admin', 'admin@example.com', @password, @upload_src2, @loginType, @thirdPartyId, @result);
-call create_user_proc(@user2_uuid, 'JohnDoe', 'moderator@example.com', @password, @upload_src3, @loginType, @thirdPartyId, @result);
-call create_user_proc(@user3_uuid, 'JaneDoe', 'member@example.com', @password, @upload_src, @loginType, @thirdPartyId, @result);
+call create_user_proc(@user2_uuid, 'moderator', 'moderator@example.com', @password, @upload_src3, @loginType, @thirdPartyId, @result);
+call create_user_proc(@user3_uuid, 'member', 'member@example.com', @password, @upload_src, @loginType, @thirdPartyId, @result);
 
 
 -- Create the room with the first user as the admin
@@ -2582,7 +2691,7 @@ call create_room_proc(@user_uuid, @room_uuid, 'General Chat', 'A room for genera
 
 
 -- Create channels for the room
-call create_channel_proc(@ch_uuid, 'General Discussion', 'Main channel for general talk', 'Text', 100450, @upload_src, @room_uuid, @result);
+call create_channel_proc(@ch_uuid, 'General Discussion', 'General discussion channel', 'Text', 100450, @upload_src, @room_uuid, @result);
 call create_channel_proc(UUID(), 'Call Chat', 'Channel for voice and video calls', 'Call', 100450, @upload_src, @room_uuid, @result);
 
 

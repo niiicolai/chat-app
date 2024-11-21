@@ -5,7 +5,7 @@ export default (entity = {}) => {
     const dto = {
         uuid: entity.room_file_uuid,
         src: entity.room_file_src,
-        size_bytes: entity.room_file_size_bytes,
+        size: entity.room_file_size,
         size_mb: entity.room_file_size_mb,
         room_file_type_name: entity.room_file_type_name,
         room_uuid: entity.room_uuid,

@@ -13,11 +13,11 @@ export default (entity = {}, relations=[]) => {
     const dto = {
         uuid: entity.uuid,
         src: entity.src,
-        size_bytes: entity.size_bytes,
+        size: entity?.size?.low || entity.size,
     };
 
-    if (dto.size_bytes) {
-        dto.size_bytes = parseFloat(dto.size_bytes / 1024 / 1024).toFixed(2);
+    if (dto.size) {
+        dto.size_mb = parseFloat(dto.size / 1024 / 1024).toFixed(2);
     }
 
     if (room) {

@@ -1,4 +1,3 @@
-import 'dotenv/config'
 import { expect, test } from "vitest";
 import { getJoinMessage } from "../../../src/shared/utils/join_message_utils.js";
 

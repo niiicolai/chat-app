@@ -40,7 +40,7 @@ class Service {
             .populate('channel.channel_webhook')
             .populate('channel.channel_webhook.room_file')
         
-        if (!channelMessage) throw new ControllerError(404, 'Channel message not found');
+        if (!channelMessage) throw new ControllerError(404, 'channel_message not found');
         if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid: channelMessage.channel.uuid, user, role_name: null }))) {
             throw new ControllerError(403, 'User is not in the room');
         }
@@ -122,10 +122,6 @@ class Service {
         const { uuid, body: msg, channel_uuid } = body;
         const { sub: user_uuid } = user;
 
-        if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid, user, role_name: null }))) {
-            throw new ControllerError(403, 'User is not in the room');
-        }
-
         const [channel, savedUser, channel_message_type] = await Promise.all([
             Channel.findOne({ uuid: channel_uuid }).populate('room'),
             User.findOne({ uuid: user_uuid }),
@@ -135,6 +131,9 @@ class Service {
         if (!channel) throw new ControllerError(404, 'Channel not found');
         if (!savedUser) throw new ControllerError(404, 'User not found');
         if (!channel_message_type) throw new ControllerError(500, 'Channel message type not found');
+        if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid, user, role_name: null }))) {
+            throw new ControllerError(403, 'User is not in the room');
+        }
         
         const channelMessage = new ChannelMessage({
             uuid,
@@ -217,14 +216,15 @@ class Service {
             .populate('channel.channel_webhook')
             .populate('channel.channel_webhook.room_file')
             .populate('channel.room');
-        if (!channelMessage) throw new ControllerError(404, 'Channel message not found');
+        if (!channelMessage) throw new ControllerError(404, 'channel_message not found');
 
         const channel_uuid = channelMessage.channel.uuid;
         const isOwner = channelMessage.user?.uuid === user_uuid;
-
-        if (!isOwner &&
-            !(await RoomPermissionService.isInRoomByChannel({ channel_uuid, user, role_name: 'Moderator' })) &&
-            !(await RoomPermissionService.isInRoomByChannel({ channel_uuid, user, role_name: 'Admin' }))) {
+        const [moderator, admin] = await Promise.all([
+            RoomPermissionService.isInRoomByChannel({ channel_uuid, user, role_name: 'Moderator' }),
+            RoomPermissionService.isInRoomByChannel({ channel_uuid, user, role_name: 'Admin' }),
+        ]);
+        if (!isOwner && !moderator && !admin) {
             throw new ControllerError(403, 'User is not an owner of the message, or an admin or moderator of the room');
         }
 
@@ -265,15 +265,19 @@ class Service {
         const channelMessage = await ChannelMessage.findOne({ uuid })
             .populate('channel')
             .populate('channel.room')
-            .populate('channel_message_upload.room_file');
-        if (!channelMessage) throw new ControllerError(404, 'Channel message not found');
+            .populate('channel_message_upload.room_file')
+            .populate('user');
+        if (!channelMessage) throw new ControllerError(404, 'channel_message not found');
 
         const channel_uuid = channelMessage.channel.uuid;
         const isOwner = channelMessage.user?.uuid === user_uuid;
 
-        if (!isOwner &&
-            !(await RoomPermissionService.isInRoomByChannel({ channel_uuid, user, role_name: 'Moderator' })) &&
-            !(await RoomPermissionService.isInRoomByChannel({ channel_uuid, user, role_name: 'Admin' }))) {
+        const [moderator, admin] = await Promise.all([
+            RoomPermissionService.isInRoomByChannel({ channel_uuid, user, role_name: 'Moderator' }),
+            RoomPermissionService.isInRoomByChannel({ channel_uuid, user, role_name: 'Admin' }),
+        ]);
+
+        if (!isOwner && !moderator && !admin) {
             throw new ControllerError(403, 'User is not an owner of the message, or an admin or moderator of the room');
         }
 

@@ -7,6 +7,6 @@ export default class RoomUserRoleSeeder {
     }
 
     async down() {
-        await RoomUserRole.deleteMany({ name: { $in: data.room_user_roles.map((d) => d.name) } });
+        await RoomUserRole.collection.drop();
     }
 }

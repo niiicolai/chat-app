@@ -85,7 +85,7 @@ export default {
     room_audits: {
         type: 'relationship',
         target: 'RoomAudit',
-        relationship: 'HAS_AUDIT',
+        relationship: 'HAS_ROOM',
         direction: 'in',
     },
     channels: {

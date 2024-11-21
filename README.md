@@ -83,7 +83,6 @@ docker-compose -f compose-hub-image.yml up
 | **Testing**            | Unit Testing                        | [ ]     |
 |                        | Integration Testing                 | [ ]     |
 |                        | Postman API Testing                 | [x]     |
-|                        | SonarQube                           | [ ]     |
 
 ## Development Environment Setup
 The following are the steps to set up the development environment for the chat application.
@@ -153,12 +152,6 @@ npm run neode:seed:undo             # Revert all seeded data
 ### Unit & Integration Test
 ```bash
 npm test
-```
-
-### SonarQube
-Ensure that SonarQube is running before executing the following command.
-```bash
-npm run test:sonarqube              # Run SonarQube analysis
 ```
 
 ### Postman API Test

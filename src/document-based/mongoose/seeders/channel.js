@@ -31,8 +31,8 @@ export default class ChannelSeeder {
         const channel_type = await ChannelType.findOne({ name: "Text" });
         const channel = await new Channel({ 
             uuid: channelUuid, 
-            name: "Test Channel", 
-            description: "Test Channel Description",
+            name: "General Discussion", 
+            description: "General discussion channel",
             channel_type,
             room: room._id,
             channel_webhook: {
@@ -88,24 +88,11 @@ export default class ChannelSeeder {
                 channel_webhook: channel.channel_webhook._id
             }
         }).save(); 
-
-        /**
-         * Create a Channel Audit
-         */
-        const channel_audit_type = await ChannelAuditType.findOne({ name: "CHANNEL_CREATED" });
-        await new ChannelAudit({
-            uuid: "c0b5f0a3-4c1a-4c3f-9c4f-9a7e3a1b6b6b",
-            body: "Test Channel Audit",
-            channel: channel._id,
-            channel_audit_type,
-            user: user1._id
-        }).save();
     }
 
     async down() {
-        await Channel.findOneAndDelete({ uuid: channelUuid });
-        await ChannelMessage.findOneAndDelete({ uuid: channelMessageUuid1 });
-        await ChannelMessage.findOneAndDelete({ uuid: channelMessageUuid2 });
-        await RoomFile.findOneAndDelete({ uuid: roomFileUuid });
+        await ChannelAudit.collection.drop();
+        await ChannelMessage.collection.drop();
+        await Channel.collection.drop();
     }
 }

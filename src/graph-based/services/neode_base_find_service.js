@@ -14,7 +14,9 @@ export default class NeodeBaseFindService {
     }
 
     async findOne(options) {
-        if (!options) throw new ControllerError(400, 'Options are required');
+        if (!options || typeof options !== 'object' || Array.isArray(options)) {
+            throw new ControllerError(500, 'Invalid options provided');
+        }
         if (!options[this.pkName]) throw new ControllerError(400, `${this.pkName} is required`);
 
         const pk = options[this.pkName];
@@ -61,7 +63,9 @@ export default class NeodeBaseFindService {
         }}); 
      */
     async findAll(options = { page: null, limit: null, override: null }) {
-        if (!options) throw new ControllerError(400, 'Options are required');
+        if (!options || typeof options !== 'object' || Array.isArray(options)) {
+            throw new ControllerError(500, 'Invalid options provided');
+        }
         if (options.page && isNaN(options.page)) throw new ControllerError(400, 'page must be a number');
         if (options.page && options.page < 1) throw new ControllerError(400, 'page must be greater than 0');
         if (options.limit && isNaN(options.limit)) throw new ControllerError(400, 'limit must be a number');

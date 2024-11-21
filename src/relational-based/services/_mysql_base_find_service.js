@@ -9,6 +9,10 @@ export default class MysqlBaseFindService {
     }
 
     async findOne(options = { where: null, include: null }) {
+        if (!options || typeof options !== 'object' || Array.isArray(options)) {
+            throw new ControllerError(500, 'Invalid options provided');
+        }
+        
         const inputName = this.pkName.replace(`${this.name}_`, '');
         const { [inputName]: pk } = options;
 
@@ -32,7 +36,11 @@ export default class MysqlBaseFindService {
         return this.dto(m);
     }
 
-    async findAll(options = { page: null, limit: null, where: {}, include: [] }) {  
+    async findAll(options = { page: null, limit: null, where: {}, include: [] }) {
+        if (!options || typeof options !== 'object' || Array.isArray(options)) {
+            throw new ControllerError(500, 'Invalid options provided');
+        }
+
         const { page, limit } = options;
 
         if (page && isNaN(page)) {

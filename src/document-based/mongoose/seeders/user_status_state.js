@@ -7,6 +7,6 @@ export default class UserStatusStateSeeder {
     }
 
     async down() {
-        await UserStatusState.deleteMany({ name: { $in: data.user_status_states.map((d) => d.name) } });
+        await UserStatusState.collection.drop();
     }
 }

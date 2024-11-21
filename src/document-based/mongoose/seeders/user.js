@@ -96,6 +96,6 @@ export default class UserSeeder {
     }
 
     async down() {
-        await User.deleteMany({ uuid: { $in: data.users.map((d) => d.uuid) } });
+        await User.collection.drop();
     }
 }

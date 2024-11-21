@@ -18,3 +18,4 @@ import './websocket_server.js'
 
 // Initialize the cron jobs
 import './cron.js'
+console.warn('todo: add search endpoint')

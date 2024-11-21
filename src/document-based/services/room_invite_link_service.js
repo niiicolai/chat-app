@@ -27,8 +27,8 @@ class Service {
         const room = await Room.findOne({ room_invite_links: { $elemMatch: { uuid: options.uuid } } });
         const room_invite_link = room?.room_invite_links?.find(u => u.uuid === options.uuid);
 
-        if (!room) throw new ControllerError(404, 'Room Invite Link not found');
-        if (!room_invite_link) throw new ControllerError(404, 'Room Invite Link not found');
+        if (!room) throw new ControllerError(404, 'room_invite_link not found');
+        if (!room_invite_link) throw new ControllerError(404, 'room_invite_link not found');
 
         if (!(await RoomPermissionService.isInRoom({ room_uuid: room.uuid, user: options.user, role_name: null }))) {
             throw new ControllerError(403, 'User is not in the room');
@@ -91,14 +91,17 @@ class Service {
         if (!(await RoomPermissionService.isInRoom({ room_uuid: body.room_uuid, user, role_name: 'Admin' }))) {
             throw new ControllerError(403, 'User is not an admin of the room');
         }
-
+        
         const room = await Room.findOne({ uuid: body.room_uuid });
         if (!room) throw new ControllerError(404, 'Room not found');
 
         room.room_invite_links.push(body);
         await room.save();
 
-        return dto({ ...room.room_invite_links[room.room_invite_links.length - 1]._doc, room });
+        const roomUpdated = await Room.findOne({ uuid: body.room_uuid });
+        const room_invite_link = roomUpdated.room_invite_links[room.room_invite_links.length - 1];
+
+        return dto({ ...room_invite_link._doc, room });
     }
 
     /**
@@ -147,7 +150,7 @@ class Service {
         const room_invite_link = room?.room_invite_links?.find(u => u.uuid === options.uuid);
 
         if (!room) throw new ControllerError(404, 'Room not found');
-        if (!room_invite_link) throw new ControllerError(404, 'Room Invite Link not found');
+        if (!room_invite_link) throw new ControllerError(404, 'room_invite_link not found');
         if (!(await RoomPermissionService.isInRoom({ room_uuid: room.uuid, user: options.user, role_name: 'Admin' }))) {
             throw new ControllerError(403, 'User is not an admin of the room');
         }

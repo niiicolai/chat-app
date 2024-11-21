@@ -7,6 +7,6 @@ export default class ChannelAuditTypeSeeder {
     }
 
     async down() {
-        await ChannelAuditType.deleteMany({ name: { $in: data.channel_audit_types.map((d) => d.name) } });
+        await ChannelAuditType.collection.drop();
     }
 }

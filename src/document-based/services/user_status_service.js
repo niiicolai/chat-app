@@ -19,7 +19,6 @@ class Service {
         const user = await User.findOne({ uuid: options.user_uuid });
         const userStatus = user?.user_status;
 
-        if (!user) throw new ControllerError(404, 'User not found');
         if (!userStatus) throw new ControllerError(404, 'User status not found');
 
         return dto({ ...userStatus._doc, user });

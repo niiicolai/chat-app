@@ -1,3 +1,4 @@
+import RoomServiceValidator from '../../shared/validators/room_service_validator.js';
 import ControllerError from '../../shared/errors/controller_error.js';
 import StorageService from '../../shared/services/storage_service.js';
 import RoomPermissionService from './room_permission_service.js';
@@ -26,17 +27,17 @@ class Service extends NeodeBaseFindService {
     }
 
     async findOne(options = { uuid: null, user: null }) {
-        if (!options) throw new ControllerError(500, 'No options provided');
-        if (!options.uuid) throw new ControllerError(400, 'No options.uuid provided');
-        if (!options.user) throw new ControllerError(500, 'No options.user provided');
+        RoomServiceValidator.findOne(options);
 
         const { user, uuid } = options;
 
+        let room = await neodeInstance.model('Room').find(uuid);
+        if (!room) throw new ControllerError(404, 'room not found');
         if (!(await RoomPermissionService.isInRoom({ room_uuid: uuid, user, role_name: null }))) {
             throw new ControllerError(403, 'User is not in the room');
         }
 
-        const room = await neodeInstance.cypher(
+        room = await neodeInstance.cypher(
             `MATCH (ru:RoomUser)-[:HAS_USER]->(u:User {uuid: $user_uuid})
              MATCH (ru)-[:HAS_ROOM]->(r:Room {uuid: $uuid})
              MATCH (r)-[:HAS_CATEGORY]->(rc:RoomCategory)
@@ -52,15 +53,13 @@ class Service extends NeodeBaseFindService {
             { user_uuid: user.sub, uuid }
         );
 
-        if (!room.records.length) return null;
-
         const m = room.records[0];
-        const roomInstance = { 
+        const roomInstance = {
             ...m.get('r').properties,
             bytes_used: m.get('bytes_used').low,
             mb_used: m.get('mb_used').low
         };
-        
+
         const rel = [
             { roomCategory: m.get('rc').properties },
             { roomUser: m.get('ru').properties },
@@ -78,49 +77,45 @@ class Service extends NeodeBaseFindService {
     }
 
     async findAll(options = { user: null, page: null, limit: null }) {
-        if (!options) throw new ControllerError(500, 'No options provided');
-        if (!options.user) throw new ControllerError(500, 'No options.user provided');
-        if (!options.user.sub) throw new ControllerError(500, 'No options.user.sub provided');
+        RoomServiceValidator.findAll(options);
 
         const { user, page, limit } = options;
 
-        return super.findAll({ page, limit, override: {
-            match: [
-                'MATCH (ru:RoomUser)-[:HAS_USER]->(u:User {uuid: $user_uuid})',
-                'MATCH (ru)-[:HAS_ROOM]->(r:Room)',
-                'MATCH (r)-[:HAS_CATEGORY]->(rc:RoomCategory)',
-                'MATCH (r)-[:HAS_FILE_SETTINGS]->(rfs:RoomFileSettings)',
-                'MATCH (r)-[:HAS_USER_SETTINGS]->(rus:RoomUserSettings)',
-                'MATCH (r)-[:HAS_CHANNEL_SETTINGS]->(rcs:RoomChannelSettings)',
-                'MATCH (r)-[:HAS_RULES_SETTINGS]->(rrs:RoomRulesSettings)',
-                'MATCH (r)-[:HAS_JOIN_SETTINGS]->(rjs:RoomJoinSettings)',
-                'OPTIONAL MATCH (ra:RoomAvatar)-[:HAS_ROOM]->(r)',
-                'OPTIONAL MATCH (ra)-[:HAS_ROOM_FILE]->(raf:RoomFile)'
-            ],
-            return: ['r', 'ru', 'rc', 'rfs', 'rus', 'rcs', 'rrs', 'rjs', 'ra', 'raf'],
-            map: { model: 'r', relationships: [
-                { alias: 'ru', to: 'roomUser' },
-                { alias: 'rc', to: 'roomCategory' },
-                { alias: 'rfs', to: 'roomFileSettings' },
-                { alias: 'rus', to: 'roomUserSettings' },
-                { alias: 'rcs', to: 'roomChannelSettings' },
-                { alias: 'rrs', to: 'roomRulesSettings' },
-                { alias: 'rjs', to: 'roomJoinSettings' },
-                { alias: 'ra', to: 'roomAvatar' },
-                { alias: 'raf', to: 'roomFile' }
-            ]},
-            params: { user_uuid: user.sub }
-        }}); 
+        return super.findAll({
+            page, limit, override: {
+                match: [
+                    'MATCH (ru:RoomUser)-[:HAS_USER]->(u:User {uuid: $user_uuid})',
+                    'MATCH (ru)-[:HAS_ROOM]->(r:Room)',
+                    'MATCH (r)-[:HAS_CATEGORY]->(rc:RoomCategory)',
+                    'MATCH (r)-[:HAS_FILE_SETTINGS]->(rfs:RoomFileSettings)',
+                    'MATCH (r)-[:HAS_USER_SETTINGS]->(rus:RoomUserSettings)',
+                    'MATCH (r)-[:HAS_CHANNEL_SETTINGS]->(rcs:RoomChannelSettings)',
+                    'MATCH (r)-[:HAS_RULES_SETTINGS]->(rrs:RoomRulesSettings)',
+                    'MATCH (r)-[:HAS_JOIN_SETTINGS]->(rjs:RoomJoinSettings)',
+                    'OPTIONAL MATCH (r)-[:HAS_ROOM_AVATAR]->(ra:RoomAvatar)',
+                    'OPTIONAL MATCH (ra)-[:HAS_ROOM_FILE]->(raf:RoomFile)'
+                ],
+                return: ['r', 'ru', 'rc', 'rfs', 'rus', 'rcs', 'rrs', 'rjs', 'ra', 'raf'],
+                map: {
+                    model: 'r', relationships: [
+                        { alias: 'ru', to: 'roomUser' },
+                        { alias: 'rc', to: 'roomCategory' },
+                        { alias: 'rfs', to: 'roomFileSettings' },
+                        { alias: 'rus', to: 'roomUserSettings' },
+                        { alias: 'rcs', to: 'roomChannelSettings' },
+                        { alias: 'rrs', to: 'roomRulesSettings' },
+                        { alias: 'rjs', to: 'roomJoinSettings' },
+                        { alias: 'ra', to: 'roomAvatar' },
+                        { alias: 'raf', to: 'roomFile' }
+                    ]
+                },
+                params: { user_uuid: user.sub }
+            }
+        });
     }
 
     async create(options = { body: null, file: null, user: null }) {
-        if (!options) throw new ControllerError(500, 'No options provided');
-        if (!options.body) throw new ControllerError(400, 'No options.body provided');
-        if (!options.user) throw new ControllerError(500, 'No options.user provided');
-        if (!options.body.uuid) throw new ControllerError(400, 'No options.body.uuid provided');
-        if (!options.body.name) throw new ControllerError(400, 'No options.body.name provided');
-        if (!options.body.description) throw new ControllerError(400, 'No options.body.description provided');
-        if (!options.body.room_category_name) throw new ControllerError(400, 'No options.body.room_category_name provided');
+        RoomServiceValidator.create(options);
 
         const { body, file, user } = options;
 
@@ -157,7 +152,7 @@ class Service extends NeodeBaseFindService {
             name: body.name,
             description: body.description,
         })
-        
+
         await room.relateTo(roomJoinSettings, 'room_join_settings');
         await room.relateTo(roomFileSettings, 'room_file_settings');
         await room.relateTo(roomUserSettings, 'room_user_settings');
@@ -216,10 +211,7 @@ class Service extends NeodeBaseFindService {
     }
 
     async update(options = { uuid: null, body: null, file: null, user: null }) {
-        if (!options) throw new ControllerError(500, 'No options provided');
-        if (!options.uuid) throw new ControllerError(400, 'No options.uuid provided');
-        if (!options.body) throw new ControllerError(400, 'No options.body provided');
-        if (!options.user) throw new ControllerError(500, 'No options.user provided');
+        RoomServiceValidator.update(options);
 
         const { uuid, body, file, user } = options;
         const { name, description, room_category_name } = body;
@@ -260,7 +252,7 @@ class Service extends NeodeBaseFindService {
             if (!roomAvatarInstance) throw new ControllerError(404, 'RoomAvatar not found');
 
             const oldRoomFile = roomAvatarInstance.get('room_file')?.endNode()?.properties();
-            
+
             if (oldRoomFile) {
                 const oldRoomFileInstance = await neodeInstance.model('RoomFile').find(oldRoomFile.uuid);
                 if (!oldRoomFileInstance) throw new ControllerError(404, 'RoomFile not found');
@@ -281,8 +273,8 @@ class Service extends NeodeBaseFindService {
             await roomFile.relateTo(roomFileType, 'room_file_type');
             await roomFile.relateTo(roomInstance, 'room');
             await roomInstance.relateTo(roomFile, 'room_avatar');
-            
-            
+
+
             await roomAvatarInstance.relateTo(roomFile, 'room_file');
         }
 
@@ -290,47 +282,24 @@ class Service extends NeodeBaseFindService {
     }
 
     async destroy(options = { uuid: null, user: null }) {
-        if (!options) throw new ControllerError(500, 'No options provided');
-        if (!options.uuid) throw new ControllerError(400, 'No options.uuid provided');
-        if (!options.user) throw new ControllerError(500, 'No options.user provided');
-        
+        RoomServiceValidator.destroy(options);
+
         const { uuid, user } = options;
+
+        const room = await neodeInstance.model('Room').find(uuid);
+        if (!room) throw new ControllerError(404, 'room not found');
 
         if (!(await RoomPermissionService.isInRoom({ room_uuid: uuid, user, role_name: 'Admin' }))) {
             throw new ControllerError(403, 'User is not an admin of the room');
         }
 
-        const session = neodeInstance.session();
-        session.writeTransaction(async (transaction) => {
-            await transaction.run(
-                `MATCH (r:Room {uuid: $uuid})
-                 MATCH (r)-[:HAS_JOIN_SETTINGS]->(rjs:RoomJoinSettings)
-                 MATCH (r)-[:HAS_RULES_SETTINGS]->(rrs:RoomRulesSettings)
-                 MATCH (r)-[:HAS_FILE_SETTINGS]->(rfs:RoomFileSettings)
-                 MATCH (r)-[:HAS_USER_SETTINGS]->(rus:RoomUserSettings)
-                 MATCH (r)-[:HAS_CHANNEL_SETTINGS]->(rcs:RoomChannelSettings)
-                 MATCH (r)-[:HAS_ROOM_AVATAR]->(ra:RoomAvatar)
-                 OPTIONAL MATCH (ra)-[:HAS_FILE]->(raf:RoomFile)
-                 OPTIONAL MATCH (ril:RoomInviteLink)-[:HAS_ROOM]->(r)
-                 OPTIONAL MATCH (ru:RoomUser)-[:HAS_ROOM]->(r)
-                 OPTIONAL MATCH (c:Channel)-[:HAS_ROOM]->(r)
-                 OPTIONAL MATCH (cw:ChannelWebhook)-[:HAS_CHANNEL]->(c)
-                 OPTIONAL MATCH (cwm:ChannelWebhookMessage)-[:HAS_CHANNEL_WEBHOOK]->(cw)
-                 OPTIONAL MATCH (cm:ChannelMessage)-[:HAS_CHANNEL]->(c)
-                 OPTIONAL MATCH (cmu:ChannelMessageUpload)-[:HAS_CHANNEL_MESSAGE]->(cm)
-                 DETACH DELETE r, rjs, rrs, rfs, rus, rcs, ra, raf, ril, ru, c, cw, cwm, cm, cmu`,
-                { uuid }
-            );
-        });
+        await room.delete();
 
         console.warn('TODO: DELETE FILES in room_service.js');
     }
 
     async editSettings(options = { uuid: null, body: null, user: null }) {
-        if (!options) throw new ControllerError(500, 'No options provided');
-        if (!options.uuid) throw new ControllerError(400, 'No options.uuid provided');
-        if (!options.body) throw new ControllerError(400, 'No options.body provided');
-        if (!options.user) throw new ControllerError(500, 'No options.user provided');
+        RoomServiceValidator.editSettings(options);
 
         const { uuid, body, user } = options;
         const { join_message, rules_text, join_channel_uuid } = body;
@@ -379,9 +348,7 @@ class Service extends NeodeBaseFindService {
     }
 
     async leave(options = { uuid: null, user: null }) {
-        if (!options) throw new ControllerError(500, 'No options provided');
-        if (!options.uuid) throw new ControllerError(400, 'No options.uuid provided');
-        if (!options.user) throw new ControllerError(500, 'No options.user provided');
+        RoomServiceValidator.leave(options);
 
         const { uuid, user } = options;
         const { sub: user_uuid } = user;

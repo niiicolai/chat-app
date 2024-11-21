@@ -18,7 +18,9 @@ export default class MongodbBaseFindService {
     }
 
     async findOne(options = {}, onBeforeFind = (query) => query, where = {}) {
-        if (!options) throw new ControllerError(500, 'No options provided');
+        if (!options || typeof options !== 'object' || Array.isArray(options)) {
+            throw new ControllerError(500, 'Invalid options provided');
+        }
         if (!options[this.pkName]) throw new ControllerError(400, `${this.pkName} is required`);
         if (typeof options[this.pkName] !== 'string') throw new ControllerError(400, `${this.pkName} must be a string`);
         if (typeof onBeforeFind !== 'function') throw new ControllerError(500, 'onBeforeFind must be a function');
@@ -43,6 +45,10 @@ export default class MongodbBaseFindService {
      * @param {Function} onBeforeFind
      */
     async findAll(options = { page: null, limit: null, where: null, aggregate: null }, onBeforeFind = (query) => query) {
+        if (!options || typeof options !== 'object' || Array.isArray(options)) {
+            throw new ControllerError(500, 'Invalid options provided');
+        }
+
         let { page, limit } = options;
 
         if (typeof onBeforeFind !== 'function') {

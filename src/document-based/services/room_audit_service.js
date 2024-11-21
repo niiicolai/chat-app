@@ -20,7 +20,7 @@ class Service {
         RoomAuditServiceValidator.findOne(options);
 
         const roomAudit = await RoomAudit.findOne({ uuid: options.uuid }).populate('room');
-        if (!roomAudit) throw new ControllerError(404, 'Room audit not found');
+        if (!roomAudit) throw new ControllerError(404, 'room_audit not found');
 
         if (!(await RoomPermissionService.isInRoom({ room_uuid: roomAudit.room.uuid, user: options.user, role_name: null }))) {
             throw new ControllerError(403, 'User is not in the room');

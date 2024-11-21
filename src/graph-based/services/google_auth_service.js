@@ -49,7 +49,7 @@ class Service {
             uuid,
             username,
             email,
-            avatar_src,
+            avatar_src: avatar_src || null,
             created_at: new Date(),
             updated_at: new Date()
         });

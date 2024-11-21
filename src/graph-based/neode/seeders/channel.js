@@ -1,7 +1,7 @@
 import data from "./data.js";
 import { v4 as uuidv4 } from 'uuid';
 
-const channelUuid = "a595b5cb-7e47-4ce7-9875-cdf99184a73c";
+const channelUuid = "1c9437b0-4e88-4a8e-84f0-679c7714407f";
 
 export default class ChannelSeeder {
     async up(neodeInstance) {
@@ -9,7 +9,7 @@ export default class ChannelSeeder {
         const roomJoinSettings = await neodeInstance.model('RoomJoinSettings').find(data.room.room_join_settings.uuid);
         const roomFileType = await neodeInstance.model('RoomFileType').find('ChannelAvatar');
         const roomFile = await neodeInstance.model('RoomFile').create({
-            uuid: channelUuid,
+            uuid: uuidv4(),
             src: "https://ghostchat.fra1.cdn.digitaloceanspaces.com/static/c7QiLXb.png",
             size: 1024,
             created_at: new Date(),
@@ -21,7 +21,7 @@ export default class ChannelSeeder {
 
         const channelType = await neodeInstance.model('ChannelType').find('Text');
         const channel = await neodeInstance.model('Channel').create({
-            uuid: uuidv4(),
+            uuid: channelUuid,
             name: "General Discussion",
             description: "General discussion channel",
             created_at: new Date(),
@@ -146,6 +146,14 @@ export default class ChannelSeeder {
 
         await channelMessageUpload.relateTo(channelMessageUploadType, 'channel_message_upload_type');
         await channelMessageUpload.relateTo(channelMessageUploadFile, 'room_file');
+
+        const channelAuditType = await neodeInstance.model('ChannelAuditType').find('CHANNEL_CREATED');
+        const channelAudit = await neodeInstance.model('ChannelAudit').create({
+            uuid: uuidv4(),
+            body: "Channel created",
+        });
+        await channelAudit.relateTo(channel, 'channel');
+        await channelAudit.relateTo(channelAuditType, 'channel_audit_type');
     }
 
     async down(neodeInstance) {

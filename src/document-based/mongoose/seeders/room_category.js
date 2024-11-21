@@ -7,6 +7,6 @@ export default class RoomCategorySeeder {
     }
 
     async down() {
-        await RoomCategory.deleteMany({ name: { $in: data.room_categories.map((d) => d.name) } });
+        await RoomCategory.collection.drop();
     }
 }

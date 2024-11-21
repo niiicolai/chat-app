@@ -6,8 +6,8 @@ export default (entity = {}) => {
     const dto = {
         uuid: entity.uuid,
         src: entity.src,
-        size_bytes: entity.size_bytes,
-        size_mb: entity.size_mb,
+        size: entity.size,
+        size_mb: entity.size ? entity.size / 1024 / 1024 : 0,
         room_file_type_name: entity.room_file_type?.name,
         room_uuid: entity.room?.uuid,
         created_at: entity.created_at,

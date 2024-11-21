@@ -49,4 +49,12 @@ export default class UserServiceValidator {
         if (!options) throw new ControllerError(500, 'No options provided');
         if (!options.uuid) throw new ControllerError(400, 'No UUID provided');
     }
+
+    static createUserLogin(options = { uuid: null, body: null }) {
+        if (!options || typeof options != 'object') throw new ControllerError(500, 'No options provided');
+        if (!options.uuid) throw new ControllerError(400, 'No UUID provided');
+        if (!options.body) throw new ControllerError(400, 'No body provided');
+        if (!options.body.uuid) throw new ControllerError(400, 'No uuid provided');
+        if (!options.body.user_login_type_name) throw new ControllerError(400, 'No user login type provided');
+    }
 };

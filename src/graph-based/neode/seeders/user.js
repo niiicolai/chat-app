@@ -21,14 +21,14 @@ export default class UserSeeder {
             });
             
             const userEmailVerification = await neodeInstance.model('UserEmailVerification').create({
-                uuid: state.uuid,
+                uuid: uuidv4(),
                 is_verified: true,
                 created_at: new Date(),
                 updated_at: new Date()
             });
 
             const userPasswordReset = await neodeInstance.model('UserPasswordReset').create({
-                uuid: state.uuid,
+                uuid: uuidv4(),
                 expires_at: new Date(),
                 created_at: new Date(),
                 updated_at: new Date()
@@ -64,9 +64,9 @@ export default class UserSeeder {
             const userEmailVerification = await user.get("user_email_verification");
             const userPasswordReset = await user.get("user_password_resets");
 
-            await userState.delete();
-            await userEmailVerification.delete();
-            await userPasswordReset.delete();
+            await userState?.delete();
+            await userEmailVerification?.delete();
+            await userPasswordReset?.delete();
             await user.delete();
         }        
     }

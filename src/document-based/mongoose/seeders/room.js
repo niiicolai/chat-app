@@ -99,25 +99,11 @@ export default class RoomSeeder {
         }).save();
         room.room_avatar.room_file = roomAvatarFile._id;
         await room.save();
-
-        // Create Room Audit
-        const room_audit_type = await RoomAuditType.findOne({ name: "ROOM_CREATED" });
-        await new RoomAudit({
-            uuid: uuidv4(),
-            body: "Room created",
-            room: room._id,
-            room_audit_type,
-            user: user1._id
-        }).save();
     }
 
     async down() {
-        const room = await Room.findOne({ uuid: roomUuid });
-        if (!room) return;
-        await Promise.all([
-            RoomFile.deleteMany({ room: room._id }),
-            RoomAudit.deleteMany({ room: room._id }),
-            Room.findOneAndDelete({ uuid: roomUuid })
-        ]);
+        await RoomFile.collection.drop();
+        await RoomAudit.collection.drop();
+        await Room.collection.drop();
     }
 }

@@ -59,6 +59,7 @@ export default class RoomServiceValidator {
     static editSettings(options = { uuid: null, body: null, user: null }) {
         if (!options) throw new ControllerError(500, 'No options provided');
         if (!options.uuid) throw new ControllerError(400, 'No uuid provided');
+        if (!options.body) throw new ControllerError(400, 'No body provided');
         if (!options.user) throw new ControllerError(500, 'No user provided');
         if (!options.user.sub) throw new ControllerError(500, 'No user.sub provided');        
     }

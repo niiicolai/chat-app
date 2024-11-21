@@ -33,7 +33,6 @@ export default (entity = {}) => {
         dto.channel_webhook_message = channelWebhookMessageDto(entity.channel_webhook_message);
         
         if (entity.channel_webhook) {
-            console.log(entity.channel_webhook);
             dto.channel_webhook_message.channel_webhook = channelWebhookDto({
                 ...entity.channel_webhook,
                 ...(entity.channel_webhook.room_file && { room_file: entity.channel_webhook.room_file })
