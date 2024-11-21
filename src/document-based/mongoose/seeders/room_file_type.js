@@ -7,6 +7,8 @@ export default class RoomFileTypeSeeder {
     }
 
     async down() {
-        await RoomFileType.collection.drop();
+        if (await RoomFileType.exists()) {
+            await RoomFileType.collection.drop();
+        }
     }
 }

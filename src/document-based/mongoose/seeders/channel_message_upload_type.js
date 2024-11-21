@@ -7,6 +7,8 @@ export default class ChannelMessageUploadTypeSeeder {
     }
 
     async down() {
-        await ChannelMessageUploadType.collection.drop();
+        if (await ChannelMessageUploadType.exists()) {
+            await ChannelMessageUploadType.collection.drop();
+        }
     }
 }

@@ -7,6 +7,8 @@ export default class RoomCategorySeeder {
     }
 
     async down() {
-        await RoomCategory.collection.drop();
+        if (await RoomCategory.exists()) {
+            await RoomCategory.collection.drop();
+        }
     }
 }

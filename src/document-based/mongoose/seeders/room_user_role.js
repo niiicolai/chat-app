@@ -7,6 +7,8 @@ export default class RoomUserRoleSeeder {
     }
 
     async down() {
-        await RoomUserRole.collection.drop();
+        if (await RoomUserRole.exists()) {
+            await RoomUserRole.collection.drop();
+        }
     }
 }

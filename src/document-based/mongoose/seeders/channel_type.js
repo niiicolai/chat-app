@@ -7,6 +7,8 @@ export default class ChannelTypeSeeder {
     }
 
     async down() {
-        await ChannelType.collection.drop();
+        if (await ChannelType.exists()) {
+            await ChannelType.collection.drop();
+        }
     }
 }
