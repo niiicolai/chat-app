@@ -63,6 +63,9 @@ jobs:
       
       - name: Install dependencies
         run: npm ci
+
+      - name: Run tests
+        run: npm test  
         
       - name: Install mongosh
         run: |
@@ -89,9 +92,6 @@ jobs:
           echo "Server did not become ready in time!"
           kill $SERVER_PID # If server is still not ready, kill it
           exit 1
-        
-      - name: Run tests
-        run: npm test
 
       - name: Install Newman
         run: npm install -g newman
