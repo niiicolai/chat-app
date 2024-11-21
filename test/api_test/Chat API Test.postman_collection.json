@@ -341,7 +341,6 @@
 									"    \"uuid\",\r",
 									"    \"username\",\r",
 									"    \"email\",\r",
-									"    \"email_verified\",\r",
 									"    \"created_at\",\r",
 									"    \"updated_at\",\r",
 									"].forEach(expected => {\r",
@@ -354,7 +353,6 @@
 									"    { prop: \"uuid\", type: \"string\" },\r",
 									"    { prop: \"email\", type: \"string\" },\r",
 									"    { prop: \"username\", type: \"string\" },\r",
-									"    { prop: \"email_verified\", type: \"boolean\" },\r",
 									"    { prop: \"created_at\", type: \"string\" },\r",
 									"    { prop: \"updated_at\", type: \"string\" },\r",
 									"].forEach(expected => {\r",
@@ -2530,8 +2528,6 @@
 									"        \"name\",\r",
 									"        \"description\",\r",
 									"        \"room_category_name\",\r",
-									"        \"bytes_used\",\r",
-									"        \"mb_used\",\r",
 									"        \"created_at\",\r",
 									"        \"updated_at\",\r",
 									"        \"joinSettings\",\r",
@@ -2551,8 +2547,6 @@
 									"        { prop: \"name\", type: \"string\" },\r",
 									"        { prop: \"description\", type: \"string\" },\r",
 									"        { prop: \"room_category_name\", type: \"string\" },\r",
-									"        { prop: \"bytes_used\", type: \"number\" },\r",
-									"        { prop: \"mb_used\", type: \"number\" },\r",
 									"        { prop: \"created_at\", type: \"string\" },\r",
 									"        { prop: \"updated_at\", type: \"string\" },\r",
 									"        { prop: \"joinSettings\", type: \"object\" },\r",
@@ -4536,8 +4530,6 @@
 									"\r",
 									"[\r",
 									"    \"uuid\",\r",
-									"    \"expires_at\",\r",
-									"    \"never_expires\",\r",
 									"    \"room_uuid\",\r",
 									"    \"created_at\",\r",
 									"    \"updated_at\",\r",
@@ -4549,8 +4541,6 @@
 									"\r",
 									"[\r",
 									"    { prop: \"uuid\", type: \"string\" },\r",
-									"    { prop: \"expires_at\", type: \"string\" },\r",
-									"    { prop: \"never_expires\", type: \"boolean\" },\r",
 									"    { prop: \"room_uuid\", type: \"string\" },\r",
 									"    { prop: \"created_at\", type: \"string\" },\r",
 									"    { prop: \"updated_at\", type: \"string\" },\r",
@@ -5307,52 +5297,6 @@
 									"pm.request.headers.add({\r",
 									"    key: \"Authorization\", \r",
 									"    value: pm.environment.get(\"AuthorizationMod\") \r",
-									"});"
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Response must return 403\", function() {\r",
-									"    pm.response.to.have.status(403);\r",
-									"});\r",
-									""
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						}
-					],
-					"request": {
-						"method": "DELETE",
-						"header": [],
-						"url": {
-							"raw": "{{BaseUrl}}/room_invite_link/{{RoomInviteLinkUuid}}",
-							"host": [
-								"{{BaseUrl}}"
-							],
-							"path": [
-								"room_invite_link",
-								"{{RoomInviteLinkUuid}}"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Delete 403 (Member)",
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"exec": [
-									"pm.request.headers.add({\r",
-									"    key: \"Authorization\", \r",
-									"    value: pm.environment.get(\"AuthorizationMember\") \r",
 									"});"
 								],
 								"type": "text/javascript",
@@ -6149,65 +6093,6 @@
 					"response": []
 				},
 				{
-					"name": "Update 403 (Member)",
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"exec": [
-									"pm.request.headers.add({\r",
-									"    key: \"Authorization\", \r",
-									"    value: pm.environment.get(\"AuthorizationMember\") \r",
-									"});\r",
-									"\r",
-									"pm.environment.set('RoomUserUpdateBodyForbidden', JSON.stringify({\r",
-									"    room_user_role_name: \"Admin\"\r",
-									"}))"
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Response must return 403\", function() {\r",
-									"    pm.response.to.have.status(403);\r",
-									"});\r",
-									""
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						}
-					],
-					"request": {
-						"method": "PATCH",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{{RoomUserUpdateBodyForbidden}}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{BaseUrl}}/room_user/{{RoomUserUuid}}",
-							"host": [
-								"{{BaseUrl}}"
-							],
-							"path": [
-								"room_user",
-								"{{RoomUserUuid}}"
-							]
-						}
-					},
-					"response": []
-				},
-				{
 					"name": "Delete 403 (No room user)",
 					"event": [
 						{
@@ -6217,52 +6102,6 @@
 									"pm.request.headers.add({\r",
 									"    key: \"Authorization\", \r",
 									"    value: pm.environment.get(\"SecondaryUserToken\") \r",
-									"});"
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Response must return 403\", function() {\r",
-									"    pm.response.to.have.status(403);\r",
-									"});\r",
-									""
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						}
-					],
-					"request": {
-						"method": "DELETE",
-						"header": [],
-						"url": {
-							"raw": "{{BaseUrl}}/room_user/{{RoomUserUuid}}",
-							"host": [
-								"{{BaseUrl}}"
-							],
-							"path": [
-								"room_user",
-								"{{RoomUserUuid}}"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Delete 403 (Member)",
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"exec": [
-									"pm.request.headers.add({\r",
-									"    key: \"Authorization\", \r",
-									"    value: pm.environment.get(\"AuthorizationMember\") \r",
 									"});"
 								],
 								"type": "text/javascript",
@@ -10756,7 +10595,6 @@
 									"    \"uuid\",\r",
 									"    \"name\",\r",
 									"    \"description\",\r",
-									"    \"room_uuid\",\r",
 									"    \"channel_uuid\",\r",
 									"    \"created_at\",\r",
 									"    \"updated_at\"\r",
@@ -10771,7 +10609,6 @@
 									"    { prop: \"name\", type: \"string\" },\r",
 									"    { prop: \"description\", type: \"string\" },\r",
 									"    { prop: \"channel_uuid\", type: \"string\" },\r",
-									"    { prop: \"room_uuid\", type: \"string\" },\r",
 									"    { prop: \"created_at\", type: \"string\" },\r",
 									"    { prop: \"updated_at\", type: \"string\" },\r",
 									"].forEach(expected => {\r",
@@ -10832,7 +10669,6 @@
 									"    \"name\",\r",
 									"    \"description\",\r",
 									"    \"channel_uuid\",\r",
-									"    \"room_uuid\",\r",
 									"    \"created_at\",\r",
 									"    \"updated_at\"\r",
 									"].forEach(expected => {\r",
@@ -10846,7 +10682,6 @@
 									"    { prop: \"name\", type: \"string\" },\r",
 									"    { prop: \"description\", type: \"string\" },\r",
 									"    { prop: \"channel_uuid\", type: \"string\" },\r",
-									"    { prop: \"room_uuid\", type: \"string\" },\r",
 									"    { prop: \"created_at\", type: \"string\" },\r",
 									"    { prop: \"updated_at\", type: \"string\" },\r",
 									"].forEach(expected => {\r",
@@ -11061,7 +10896,6 @@
 									"        \"name\",\r",
 									"        \"description\",\r",
 									"        \"channel_uuid\",\r",
-									"        \"room_uuid\",\r",
 									"        \"created_at\",\r",
 									"        \"updated_at\",\r",
 									"    ].forEach(expected => {\r",
@@ -11075,7 +10909,6 @@
 									"        { prop: \"name\", types: [\"string\"] },\r",
 									"        { prop: \"description\", types: [\"string\"] },\r",
 									"        { prop: \"channel_uuid\", types: [\"string\"] },\r",
-									"        { prop: \"room_uuid\", types: [\"string\"] },\r",
 									"        { prop: \"created_at\", types: [\"string\"] },\r",
 									"        { prop: \"updated_at\", types: [\"string\"] },\r",
 									"    ].forEach(expected => {\r",
@@ -11299,7 +11132,6 @@
 									"    \"uuid\",\r",
 									"    \"name\",\r",
 									"    \"description\",\r",
-									"    \"room_uuid\",\r",
 									"    \"channel_uuid\",\r",
 									"    \"created_at\",\r",
 									"    \"updated_at\"\r",
@@ -11314,7 +11146,6 @@
 									"    { prop: \"name\", type: \"string\" },\r",
 									"    { prop: \"description\", type: \"string\" },\r",
 									"    { prop: \"channel_uuid\", type: \"string\" },\r",
-									"    { prop: \"room_uuid\", type: \"string\" },\r",
 									"    { prop: \"created_at\", type: \"string\" },\r",
 									"    { prop: \"updated_at\", type: \"string\" },\r",
 									"].forEach(expected => {\r",
