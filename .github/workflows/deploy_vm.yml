@@ -52,6 +52,10 @@ jobs:
           - 7474:7474
         env:
           NEO4J_AUTH: neo4j/password
+          NEO4J_server.http.advertised_address: "localhost:7474"
+          NEO4J_server.bolt.advertised_address: "localhost:7687"
+          NEO4J_dbms_security_procedures_unrestricted: "apoc.*"
+
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
