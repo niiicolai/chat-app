@@ -588,6 +588,139 @@
 						}
 					},
 					"response": []
+				},
+				{
+					"name": "Get User Logins",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const isUserLoginValid = (userLogin) => {\r",
+									"    [\r",
+									"        \"uuid\",\r",
+									"        \"user_login_type_name\",\r",
+									"        \"created_at\",\r",
+									"        \"updated_at\",\r",
+									"    ].forEach(expected => {\r",
+									"        pm.test(`response must include ${expected} property`, function () {\r",
+									"            pm.expect(userLogin).to.have.property(expected);\r",
+									"        });\r",
+									"    });\r",
+									"\r",
+									"    [\r",
+									"        { prop: \"uuid\", types: [\"string\"] },\r",
+									"        { prop: \"user_login_type_name\", types: [\"string\"] },\r",
+									"        { prop: \"created_at\", types: [\"string\"] },\r",
+									"        { prop: \"updated_at\", types: [\"string\"] },\r",
+									"    ].forEach(expected => {\r",
+									"        pm.test(`response property ${expected.prop} must be of type ${expected.types}`, function () {\r",
+									"            pm.expect(expected.types.includes(typeof userLogin[expected.prop]))\r",
+									"                .to.equal(true);\r",
+									"        });\r",
+									"    });\r",
+									"};\r",
+									"\r",
+									"const responseJSON = pm.response.json();\r",
+									"\r",
+									"pm.test(\"reponse must be an array\", function () {\r",
+									"    pm.expect(responseJSON).to.be.an('array');\r",
+									"});\r",
+									"\r",
+									"pm.test(\"response data items must be valid user logins\", function () {\r",
+									"    responseJSON.forEach(userLogin => isUserLoginValid(userLogin));\r",
+									"});\r",
+									"\r",
+									"responseJSON.forEach(userLogin => {\r",
+									"    if (userLogin.user_login_type_name === 'Password') {\r",
+									"        pm.environment.set('UserPasswordLoginUuid', responseJSON[0].uuid)\r",
+									"    }\r",
+									"})\r",
+									"\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/user/me/logins",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"user",
+								"me",
+								"logins"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete User Password Login 400",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"pm.request.headers.add({\r",
+									"    key: \"Authorization\", \r",
+									"    value: pm.environment.get(\"Authorization\") \r",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Response must return 400\", function() {\r",
+									"    pm.response.to.have.status(400);\r",
+									"});\r",
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{BaseUrl}}/user/me/login/{{UserPasswordLoginUuid}}",
+							"host": [
+								"{{BaseUrl}}"
+							],
+							"path": [
+								"user",
+								"me",
+								"login",
+								"{{UserPasswordLoginUuid}}"
+							]
+						}
+					},
+					"response": []
 				}
 			]
 		},
@@ -6016,65 +6149,6 @@
 					"response": []
 				},
 				{
-					"name": "Update 403 (Moderator)",
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"exec": [
-									"pm.request.headers.add({\r",
-									"    key: \"Authorization\", \r",
-									"    value: pm.environment.get(\"AuthorizationMod\") \r",
-									"});\r",
-									"\r",
-									"pm.environment.set('RoomUserUpdateBodyForbidden', JSON.stringify({\r",
-									"    room_user_role_name: \"Admin\"\r",
-									"}))"
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Response must return 403\", function() {\r",
-									"    pm.response.to.have.status(403);\r",
-									"});\r",
-									""
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						}
-					],
-					"request": {
-						"method": "PATCH",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{{RoomUserUpdateBodyForbidden}}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{BaseUrl}}/room_user/{{RoomUserUuid}}",
-							"host": [
-								"{{BaseUrl}}"
-							],
-							"path": [
-								"room_user",
-								"{{RoomUserUuid}}"
-							]
-						}
-					},
-					"response": []
-				},
-				{
 					"name": "Update 403 (Member)",
 					"event": [
 						{
@@ -6143,52 +6217,6 @@
 									"pm.request.headers.add({\r",
 									"    key: \"Authorization\", \r",
 									"    value: pm.environment.get(\"SecondaryUserToken\") \r",
-									"});"
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Response must return 403\", function() {\r",
-									"    pm.response.to.have.status(403);\r",
-									"});\r",
-									""
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						}
-					],
-					"request": {
-						"method": "DELETE",
-						"header": [],
-						"url": {
-							"raw": "{{BaseUrl}}/room_user/{{RoomUserUuid}}",
-							"host": [
-								"{{BaseUrl}}"
-							],
-							"path": [
-								"room_user",
-								"{{RoomUserUuid}}"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Delete 403 (Moderator)",
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"exec": [
-									"pm.request.headers.add({\r",
-									"    key: \"Authorization\", \r",
-									"    value: pm.environment.get(\"AuthorizationMod\") \r",
 									"});"
 								],
 								"type": "text/javascript",
@@ -10911,72 +10939,6 @@
 					"response": []
 				},
 				{
-					"name": "Create 403 (Moderator)",
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"exec": [
-									"const { v4: uuidV4 } = require('uuid');\r",
-									"const channel_uuid = pm.environment.get('ChannelUuid')\r",
-									"\r",
-									"pm.request.headers.add({\r",
-									"    key: \"Authorization\", \r",
-									"    value: pm.environment.get(\"AuthorizationMod\") \r",
-									"});\r",
-									"\r",
-									"pm.environment.set('ChannelWebhookCreateBodyForbidden', JSON.stringify({\r",
-									"    uuid: uuidV4(),\r",
-									"    name: `test-${uuidV4()}`,\r",
-									"    description: `test-${uuidV4()}`,\r",
-									"    channel_uuid \r",
-									"}))\r",
-									"\r",
-									""
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Response must return 403\", function() {\r",
-									"    pm.response.to.have.status(403);\r",
-									"});\r",
-									""
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{{ChannelWebhookCreateBodyForbidden}}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{BaseUrl}}/channel_webhook",
-							"host": [
-								"{{BaseUrl}}"
-							],
-							"path": [
-								"channel_webhook"
-							]
-						}
-					},
-					"response": []
-				},
-				{
 					"name": "Create 403 (Member)",
 					"event": [
 						{
@@ -11301,52 +11263,6 @@
 									"pm.request.headers.add({\r",
 									"    key: \"Authorization\", \r",
 									"    value: pm.environment.get(\"SecondaryUserToken\") \r",
-									"});"
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						}
-					],
-					"request": {
-						"method": "PATCH",
-						"header": [],
-						"url": {
-							"raw": "{{BaseUrl}}/channel_webhook/{{ChannelWebhookUuid}}",
-							"host": [
-								"{{BaseUrl}}"
-							],
-							"path": [
-								"channel_webhook",
-								"{{ChannelWebhookUuid}}"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Update 403 (Moderator)",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Response must return 403\", function() {\r",
-									"    pm.response.to.have.status(403);\r",
-									"});\r",
-									""
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						},
-						{
-							"listen": "prerequest",
-							"script": {
-								"exec": [
-									"pm.request.headers.add({\r",
-									"    key: \"Authorization\", \r",
-									"    value: pm.environment.get(\"AuthorizationMod\") \r",
 									"});"
 								],
 								"type": "text/javascript",
@@ -11912,98 +11828,6 @@
 					"response": []
 				},
 				{
-					"name": "Delete 403 (Moderator)",
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"exec": [
-									"pm.request.headers.add({\r",
-									"    key: \"Authorization\", \r",
-									"    value: pm.environment.get(\"AuthorizationMod\") \r",
-									"});"
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Response must return 403\", function() {\r",
-									"    pm.response.to.have.status(403);\r",
-									"});\r",
-									""
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						}
-					],
-					"request": {
-						"method": "DELETE",
-						"header": [],
-						"url": {
-							"raw": "{{BaseUrl}}/channel_webhook/{{ChannelWebhookUuid}}",
-							"host": [
-								"{{BaseUrl}}"
-							],
-							"path": [
-								"channel_webhook",
-								"{{ChannelWebhookUuid}}"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Delete 403 (Member)",
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"exec": [
-									"pm.request.headers.add({\r",
-									"    key: \"Authorization\", \r",
-									"    value: pm.environment.get(\"AuthorizationMember\") \r",
-									"});"
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Response must return 403\", function() {\r",
-									"    pm.response.to.have.status(403);\r",
-									"});\r",
-									""
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						}
-					],
-					"request": {
-						"method": "DELETE",
-						"header": [],
-						"url": {
-							"raw": "{{BaseUrl}}/channel_webhook/{{ChannelWebhookUuid}}",
-							"host": [
-								"{{BaseUrl}}"
-							],
-							"path": [
-								"channel_webhook",
-								"{{ChannelWebhookUuid}}"
-							]
-						}
-					},
-					"response": []
-				},
-				{
 					"name": "Delete 204",
 					"event": [
 						{
@@ -12375,98 +12199,6 @@
 									"pm.request.headers.add({\r",
 									"    key: \"Authorization\", \r",
 									"    value: pm.environment.get(\"SecondaryUserToken\") \r",
-									"});"
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Response must return 403\", function() {\r",
-									"    pm.response.to.have.status(403);\r",
-									"});\r",
-									""
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						}
-					],
-					"request": {
-						"method": "DELETE",
-						"header": [],
-						"url": {
-							"raw": "{{BaseUrl}}/channel/{{ChannelUuid}}",
-							"host": [
-								"{{BaseUrl}}"
-							],
-							"path": [
-								"channel",
-								"{{ChannelUuid}}"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Delete 403 (Moderator)",
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"exec": [
-									"pm.request.headers.add({\r",
-									"    key: \"Authorization\", \r",
-									"    value: pm.environment.get(\"AuthorizationMod\") \r",
-									"});"
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Response must return 403\", function() {\r",
-									"    pm.response.to.have.status(403);\r",
-									"});\r",
-									""
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						}
-					],
-					"request": {
-						"method": "DELETE",
-						"header": [],
-						"url": {
-							"raw": "{{BaseUrl}}/channel/{{ChannelUuid}}",
-							"host": [
-								"{{BaseUrl}}"
-							],
-							"path": [
-								"channel",
-								"{{ChannelUuid}}"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Delete 403 (Member)",
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"exec": [
-									"pm.request.headers.add({\r",
-									"    key: \"Authorization\", \r",
-									"    value: pm.environment.get(\"AuthorizationMember\") \r",
 									"});"
 								],
 								"type": "text/javascript",
