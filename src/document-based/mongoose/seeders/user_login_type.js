@@ -7,6 +7,8 @@ export default class UserLoginTypeSeeder {
     }
 
     async down() {
-        await UserLoginType.collection.drop();
+        if (await UserLoginType.exists()) {
+            await UserLoginType.collection.drop();
+        }
     }
 }

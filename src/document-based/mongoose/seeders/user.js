@@ -25,77 +25,79 @@ export default class UserSeeder {
         await Promise.all([
             new User({
                 ...data.users[0],
-                user_email_verification: { 
-                    uuid: userEmailVerificationUuid1, 
-                    is_verified: true 
+                user_email_verification: {
+                    uuid: userEmailVerificationUuid1,
+                    is_verified: true
                 },
-                user_status: { 
-                    uuid: userStatus1Uuid, 
-                    last_seen_at: new Date(), 
-                    message: "I'm back!", 
-                    total_online_hours: 0, 
-                    user_status_state 
+                user_status: {
+                    uuid: userStatus1Uuid,
+                    last_seen_at: new Date(),
+                    message: "I'm back!",
+                    total_online_hours: 0,
+                    user_status_state
                 },
-                user_logins: [{ 
-                    uuid: uuidv4(), 
-                    user_login_type, 
-                    password: data.user_login.password 
+                user_logins: [{
+                    uuid: uuidv4(),
+                    user_login_type,
+                    password: data.user_login.password
                 }],
-                user_password_resets: [{ 
-                    uuid: uuidv4(), 
-                    expires_at: new Date() 
+                user_password_resets: [{
+                    uuid: uuidv4(),
+                    expires_at: new Date()
                 }]
             }).save(),
             new User({
                 ...data.users[1],
-                user_email_verification: { 
-                    uuid: userEmailVerificationUuid2, 
-                    is_verified: true 
+                user_email_verification: {
+                    uuid: userEmailVerificationUuid2,
+                    is_verified: true
                 },
-                user_status: { 
-                    uuid: userStatus2Uuid, 
-                    last_seen_at: new Date(), 
-                    message: "I'm back!", 
-                    total_online_hours: 0, 
-                    user_status_state 
+                user_status: {
+                    uuid: userStatus2Uuid,
+                    last_seen_at: new Date(),
+                    message: "I'm back!",
+                    total_online_hours: 0,
+                    user_status_state
                 },
-                user_logins: [{ 
-                    uuid: uuidv4(), 
-                    user_login_type, 
-                    password: data.user_login.password 
+                user_logins: [{
+                    uuid: uuidv4(),
+                    user_login_type,
+                    password: data.user_login.password
                 }],
-                user_password_resets: [{ 
-                    uuid: uuidv4(), 
-                    expires_at: new Date() 
+                user_password_resets: [{
+                    uuid: uuidv4(),
+                    expires_at: new Date()
                 }]
             }).save(),
             new User({
                 ...data.users[2],
-                user_email_verification: { 
-                    uuid: userEmailVerificationUuid3, 
-                    is_verified: true 
+                user_email_verification: {
+                    uuid: userEmailVerificationUuid3,
+                    is_verified: true
                 },
-                user_status: { 
-                    uuid: userStatus3Uuid, 
-                    last_seen_at: new Date(), 
-                    message: "I'm back!", 
-                    total_online_hours: 0, 
-                    user_status_state 
+                user_status: {
+                    uuid: userStatus3Uuid,
+                    last_seen_at: new Date(),
+                    message: "I'm back!",
+                    total_online_hours: 0,
+                    user_status_state
                 },
-                user_logins: [{ 
-                    uuid: uuidv4(), 
-                    user_login_type, 
-                    password: data.user_login.password 
+                user_logins: [{
+                    uuid: uuidv4(),
+                    user_login_type,
+                    password: data.user_login.password
                 }],
-                user_password_resets: [{ 
-                    uuid: uuidv4(), 
-                    expires_at: new Date() 
+                user_password_resets: [{
+                    uuid: uuidv4(),
+                    expires_at: new Date()
                 }]
             }).save()
         ]);
     }
 
     async down() {
-        await User.collection.drop();
+        if (await User.exists()) {
+            await User.collection.drop();
+        }
     }
 }

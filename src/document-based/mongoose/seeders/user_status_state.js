@@ -7,6 +7,8 @@ export default class UserStatusStateSeeder {
     }
 
     async down() {
-        await UserStatusState.collection.drop();
+        if (await UserStatusState.exists()) {
+            await UserStatusState.collection.drop();
+        }
     }
 }

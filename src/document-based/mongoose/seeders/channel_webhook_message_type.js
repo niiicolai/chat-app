@@ -7,6 +7,8 @@ export default class ChannelWebhookMessageTypeSeeder {
     }
 
     async down() {
-        await ChannelWebhookMessageType.collection.drop();
+        if (await ChannelWebhookMessageType.exists()) {
+            await ChannelWebhookMessageType.collection.drop();
+        }
     }
 }

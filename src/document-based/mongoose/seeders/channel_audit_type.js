@@ -7,6 +7,8 @@ export default class ChannelAuditTypeSeeder {
     }
 
     async down() {
-        await ChannelAuditType.collection.drop();
+        if (await ChannelAuditType.exists()) {
+            await ChannelAuditType.collection.drop();
+        }
     }
 }

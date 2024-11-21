@@ -7,6 +7,8 @@ export default class RoomAuditTypeSeeder {
     }
 
     async down() {
-        await RoomAuditType.collection.drop();
+        if (await RoomAuditType.exists()) {
+            await RoomAuditType.collection.drop();
+        }
     }
 }

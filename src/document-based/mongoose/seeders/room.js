@@ -102,8 +102,16 @@ export default class RoomSeeder {
     }
 
     async down() {
-        await RoomFile.collection.drop();
-        await RoomAudit.collection.drop();
-        await Room.collection.drop();
+        if (await RoomFile.exists()) {
+            await RoomFile.collection.drop();
+        }
+
+        if (await RoomAudit.exists()) {
+            await RoomAudit.collection.drop();
+        }
+
+        if (await Room.exists()) {
+            await Room.collection.drop();
+        }
     }
 }

@@ -10,7 +10,6 @@ import ChannelMessageType from '../models/channel_message_type.js';
 import ChannelMessageUploadType from '../models/channel_message_upload_type.js';
 import ChannelWebhookMessageType from '../models/channel_webhook_message_type.js';
 import ChannelAudit from '../models/channel_audit.js';
-import ChannelAuditType from '../models/channel_audit_type.js';
 
 import data from './data.js';
 
@@ -91,8 +90,16 @@ export default class ChannelSeeder {
     }
 
     async down() {
-        await ChannelAudit.collection.drop();
-        await ChannelMessage.collection.drop();
-        await Channel.collection.drop();
+        if (await ChannelAudit.exists()) {
+            await ChannelAudit.collection.drop();
+        }
+
+        if (await ChannelMessage.exists()) {
+            await ChannelMessage.collection.drop();
+        }
+
+        if (await Channel.exists()) {
+            await Channel.collection.drop();
+        }
     }
 }
