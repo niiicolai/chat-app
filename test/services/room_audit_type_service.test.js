@@ -25,9 +25,6 @@ const roomAuditTypeServiceTest = (RoomAuditTypeService, name) => {
         ['AVATAR_CREATED'],
         ['AVATAR_EDITED'],
         ['AVATAR_DELETED'],
-        ['CHANNEL_CREATED'],
-        ['CHANNEL_EDITED'],
-        ['CHANNEL_DELETED'],
     ])(`(${name}) - RoomAuditTypeService.findOne valid partitions`, async (name) => {
         const result = await RoomAuditTypeService.findOne({ name });
 
@@ -65,7 +62,7 @@ const roomAuditTypeServiceTest = (RoomAuditTypeService, name) => {
         expect(result).toHaveProperty('total');
         expect(result).toHaveProperty('data');
 
-        expect(result.total).toBe(17);
+        expect(result.total).toBe(14);
         expect(result.data[0]).toHaveProperty('name');
         expect(result.data[0]).toHaveProperty('created_at');
         expect(result.data[0]).toHaveProperty('updated_at');

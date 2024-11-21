@@ -11,6 +11,9 @@ const channelAuditTypeServiceTest = (ChannelAuditTypeService, name) => {
     });
 
     test.each([
+        ['CHANNEL_CREATED'],
+        ['CHANNEL_EDITED'],
+        ['CHANNEL_DELETED'],
         ['MESSAGE_CREATED'],
         ['MESSAGE_EDITED'],
         ['MESSAGE_DELETED'],
@@ -59,7 +62,7 @@ const channelAuditTypeServiceTest = (ChannelAuditTypeService, name) => {
         expect(result).toHaveProperty('total');
         expect(result).toHaveProperty('data');
 
-        expect(result.total).toBe(6);
+        expect(result.total).toBe(9);
         expect(result.data[0]).toHaveProperty('name');
         expect(result.data[0]).toHaveProperty('created_at');
         expect(result.data[0]).toHaveProperty('updated_at');

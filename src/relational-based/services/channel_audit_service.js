@@ -7,7 +7,7 @@ import dto from '../dto/channel_audit_dto.js';
 
 class Service extends MysqlBaseFindService {
     constructor() {
-        super(db.ChannelMessageView, dto);
+        super(db.ChannelAuditView, dto);
     }
 
     async findOne(options = { uuid: null, user: null }) {

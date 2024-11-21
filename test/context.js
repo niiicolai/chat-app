@@ -23,5 +23,11 @@ export const context = {
     name: 'General Chat',
     description: 'A room for general discussion',
     room_category_name: 'General'
+  },
+  channel: {
+    uuid: '1c9437b0-4e88-4a8e-84f0-679c7714407f',
+    name: 'General Discussion',
+    description: 'General discussion channel',
+    channel_type_name: 'Text'
   }
 };

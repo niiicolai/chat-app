@@ -1,56 +1,75 @@
-import dto from '../dto/type_dto.js';
-import NeodeBaseFindService from './neode_base_find_service.js';
+import ChannelAuditServiceValidator from '../../shared/validators/channel_audit_service_validator.js';
 import ControllerError from '../../shared/errors/controller_error.js';
 import RoomPermissionService from './room_permission_service.js';
+import neodeInstance from '../neode/index.js';
+import dto from '../dto/channel_audit_dto.js';
+import neo4j from 'neo4j-driver';
 
-class Service extends NeodeBaseFindService {
-    constructor() {
-        super('uuid', 'ChannelAudit', dto);
-    }
+class Service {
 
     async findOne(options = { uuid: null, user: null }) {
-        if (!options) throw new ControllerError(500, 'No options provided');
-        if (!options.uuid) throw new ControllerError(400, 'No uuid provided');
-        if (!options.user) throw new ControllerError(500, 'No user provided');
+        ChannelAuditServiceValidator.findOne(options);
 
         const { uuid, user } = options;
 
-        const channelAudit = await super.findOne({ uuid, eager: ['channel_audit_type', 'channel'] });
-        if (!channelAudit) throw new ControllerError(404, 'Channel audit not found');
+        const channelAudit = await neodeInstance.model('ChannelAudit').find(uuid);
+        if (!channelAudit) throw new ControllerError(404, 'channel_audit not found');
 
-        const channel_uuid = channelAudit.channel_uuid;
-        if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid, user, role_name: null }))) {
+        const channel = channelAudit.get('channel').endNode().properties();
+        const channel_audit_type = channelAudit.get('channel_audit_type').endNode().properties();
+
+        if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid: channel.uuid, user, role_name: null }))) {
             throw new ControllerError(403, 'User is not in the room');
         }
 
-        return channelAudit;
+        return dto({
+            ...channelAudit.properties(),
+            channel_audit_type,
+            channel,
+        });
     }
 
     async findAll(options = { channel_uuid: null, user: null, page: null, limit: null }) {
-        if (!options) throw new ControllerError(500, 'No options provided');
-        if (!options.channel_uuid) throw new ControllerError(400, 'No channel_uuid provided');
-        if (!options.user) throw new ControllerError(500, 'No user provided');
+        options = ChannelAuditServiceValidator.findAll(options);
 
-        const { channel_uuid, user, page, limit } = options;
+        const { channel_uuid, user, page, limit, offset } = options;
 
         if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid, user, role_name: null }))) {
             throw new ControllerError(403, 'User is not in the room');
         }
 
-        return super.findAll({ page, limit, override: {
-            match: [
-                'MATCH (ca:ChannelAudit)-[:HAS_CHANNEL]->(c:Channel {uuid: $channel_uuid})',
-                'MATCH (ca)-[:HAS_CHANNEL_AUDIT_TYPE]->(cat:ChannelAuditType)',
-                'MATCH (ca)-[:HAS_USER]->(u:User)',
-            ],
-            return: ['ca', 'cat', 'u', 'c'],
-            map: { model: 'ca', relationships: [
-                { alias: 'cat', to: 'channelAuditType' },
-                { alias: 'u', to: 'user' },
-                { alias: 'c', to: 'channel' },
-            ]},
-            params: { channel_uuid }
-        }}); 
+        const result = await neodeInstance.batch([
+            { query:
+                `MATCH (ca:ChannelAudit)-[:HAS_CHANNEL]->(c:Channel {uuid: $channel_uuid}) ` +
+                `MATCH (ca)-[:HAS_AUDIT_TYPE]->(cat:ChannelAuditType) ` +
+                `ORDER BY ca.created_at DESC ` +
+                (offset ? `SKIP $offset `:``) + (limit ? `LIMIT $limit ` : ``) +
+                `RETURN ca, cat`,
+              params: {
+                channel_uuid,
+                ...(offset && { offset: neo4j.int(offset) }),
+                ...(limit && { limit: neo4j.int(limit) }),
+              }
+            }, 
+            { query: 
+                `MATCH (ca:ChannelAudit)-[:HAS_CHANNEL]->(c:Channel {uuid: $channel_uuid}) ` +
+                `RETURN COUNT(ca) AS count`, 
+              params: {
+                channel_uuid,
+              } 
+            },
+        ]);
+        const total = result[1].records[0].get('count').low;
+        return {
+            total, 
+            data: result[0].records.map(record => dto({
+                ...record.get('ca').properties,
+                channel_audit_type: record.get('cat').properties,
+                channel: { uuid: channel_uuid },
+            })),
+            ...(limit && { limit }),
+            ...(page && limit && { page, pages: Math.ceil(total / limit) }),
+        };
     }
 }
 

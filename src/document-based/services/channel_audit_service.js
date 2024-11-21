@@ -22,7 +22,7 @@ class Service {
         const { uuid, user } = options;
 
         const channelAudit = await ChannelAudit.findOne({ uuid }).populate('channel');
-        if (!channelAudit) throw new ControllerError(404, 'Channel Audit not found');
+        if (!channelAudit) throw new ControllerError(404, 'channel_audit not found');
 
         if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid: channelAudit.channel.uuid, user, role_name: null }))) {
             throw new ControllerError(403, 'User is not in the room');
