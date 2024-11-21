@@ -59,7 +59,11 @@ jobs:
           node-version: 18
 
       - name: Create .env file
-        run: echo "${{ secrets.TEST_ENV_FILE }}" > .env    
+        run: echo "${{ secrets.TEST_ENV_FILE }}" > .env   
+        
+      - name: Wait for dbs and overwite data
+        run: |
+          sh ./wait_for_start.sh --db-overwrite
       
       - name: Install dependencies
         run: npm ci
@@ -76,7 +80,7 @@ jobs:
 
       - name: Start the server in the background
         run: |
-          sh ./wait_for_start.sh --db-overwrite & # Start the server in background
+          sh ./start.sh --db-overwrite & # Start the server in background
           SERVER_PID=$! # Capture the server's PID
 
       - name: Wait for the server to be ready
