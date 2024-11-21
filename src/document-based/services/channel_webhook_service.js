@@ -121,7 +121,7 @@ class Service {
         const { uuid, name, description, channel_uuid } = body;
 
         if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid, user, role_name: 'Admin' }))) {
-            throw new ControllerError(403, 'User is not an admin in the room');
+            throw new ControllerError(403, 'User is not an admin of the room');
         }
 
         if (await Channel.findOne({ channel_webhook: { uuid } })) {
@@ -199,7 +199,7 @@ class Service {
         if (!channel) throw new ControllerError(404, 'Channel not found');
         if (!channelWebhook) throw new ControllerError(404, 'Channel Webhook not found');
         if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid: channel.uuid, user, role_name: 'Admin' }))) {
-            throw new ControllerError(403, 'User is not an admin in the room');
+            throw new ControllerError(403, 'User is not an admin of the room');
         }
 
         if (name) channelWebhook.name = name;
@@ -260,7 +260,7 @@ class Service {
         if (!channelWebhook) throw new ControllerError(404, 'Channel Webhook not found');
 
         if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid: channel.uuid, user, role_name: 'Admin' }))) {
-            throw new ControllerError(403, 'User is not an admin in the room');
+            throw new ControllerError(403, 'User is not an admin of the room');
         }
 
         if (channelWebhook.room_file) {

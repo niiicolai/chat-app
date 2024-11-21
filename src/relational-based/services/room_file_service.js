@@ -1,10 +1,10 @@
 import RoomFileServiceValidator from '../../shared/validators/room_file_service_validator.js';
 import MysqlBaseFindService from './_mysql_base_find_service.js';
-import db from '../sequelize/models/index.cjs';
 import ControllerError from '../../shared/errors/controller_error.js';
 import StorageService from '../../shared/services/storage_service.js';
 import RoomPermissionService from './room_permission_service.js';
 import dto from '../dto/room_file_dto.js';
+import db from '../sequelize/models/index.cjs';
 
 const storage = new StorageService('room_file');
 
@@ -43,10 +43,13 @@ class Service extends MysqlBaseFindService {
         const existing = await service.findOne({ uuid, user });
         const { room_file_type_name } = existing;
         const isMessageUpload = room_file_type_name === 'MessageUpload';
+        const [owner, admin, moderator] = await Promise.all([
+            this.isOwner({ uuid, isMessageUpload, user }),
+            RoomPermissionService.isInRoom({ room_uuid: existing.room_uuid, user, role_name: 'Admin' }),
+            RoomPermissionService.isInRoom({ room_uuid: existing.room_uuid, user, role_name: 'Moderator' }),
+        ]);
 
-        if (!this.isOwner({ uuid, isMessageUpload, user }) && isMessageUpload && 
-            !(await RoomPermissionService.isInRoom({ room_uuid: existing.room_uuid, user, role_name: 'Moderator' })) &&
-            !(await RoomPermissionService.isInRoom({ room_uuid: existing.room_uuid, user, role_name: 'Admin' }))) {
+        if (!owner && !admin && !moderator) {
             throw new ControllerError(403, 'User is not an owner of the file, or an admin or moderator of the room');
         }
 

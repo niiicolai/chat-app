@@ -33,6 +33,8 @@ export default class ChannelWebhookServiceValidator {
         if (!options) throw new ControllerError(500, 'No options provided');
         if (!options.uuid) throw new ControllerError(400, 'No uuid provided');
         if (!options.user) throw new ControllerError(500, 'No user provided');
+        if (!options.user.sub) throw new ControllerError(500, 'No user.sub provided');
+        if (!options.body) throw new ControllerError(400, 'No body provided');
     }
 
     static destroy(options = { uuid: null, user: null }) {

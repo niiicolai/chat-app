@@ -26,6 +26,7 @@ export default (entity = {}) => {
 
     if (entity.user_uuid) {
         dto.user = userDto(entity);
+        delete dto.user.email;
     }
 
     if (entity.channel_webhook_message_uuid) {

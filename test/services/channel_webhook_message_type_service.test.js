@@ -34,7 +34,7 @@ const channelWebhookMessageTypeServiceTest = (ChannelWebhookMessageTypeService, 
         [{ name: 1 }, 'channel_webhook_message_type not found'],
         [{ name: "test" }, 'channel_webhook_message_type not found'],
     ])(`(${name}) - ChannelWebhookMessageTypeService.findOne invalid partitions`, async (options, expected) => {
-        expect(() => ChannelWebhookMessageTypeService.findOne(options)).rejects.toThrowError(expected);
+        expect(async () => await ChannelWebhookMessageTypeService.findOne(options)).rejects.toThrowError(expected);
     });
 
     test.each([
@@ -74,7 +74,7 @@ const channelWebhookMessageTypeServiceTest = (ChannelWebhookMessageTypeService, 
         [{ page: 1, limit: -1 }, 'limit must be greater than 0'],
         [{ page: 1, limit: "test" }, 'limit must be a number'],
     ])(`(${name}) - ChannelWebhookMessageTypeService.findAll invalid partitions`, async (options, expected) => {
-        expect(() => ChannelWebhookMessageTypeService.findAll(options)).rejects.toThrowError(expected);
+        expect(async () => await ChannelWebhookMessageTypeService.findAll(options)).rejects.toThrowError(expected);
     });
 };
 

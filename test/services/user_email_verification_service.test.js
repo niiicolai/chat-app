@@ -22,7 +22,7 @@ const userEmailVerificationServiceTest = (UserEmailVerificationService, name) =>
         [ { user_uuid: context.mod.sub }, 'User email already verified' ],
         [ { user_uuid: context.member.sub }, 'User email already verified' ],
     ])(`(${name}) - UserEmailVerificationService.resend invalid partitions`, async (options, expected) => {
-        expect(() => UserEmailVerificationService.resend(options)).rejects.toThrowError(expected);
+        expect(async () => await UserEmailVerificationService.resend(options)).rejects.toThrowError(expected);
     });
 
 
@@ -35,7 +35,7 @@ const userEmailVerificationServiceTest = (UserEmailVerificationService, name) =>
         [ { test: null }, 'No uuid provided' ],
         [ { uuid: "test" }, 'User email verification not found. Ensure the link is correct.' ],
     ])(`(${name}) - UserEmailVerificationService.confirm invalid partitions`, async (options, expected) => {
-        expect(() => UserEmailVerificationService.confirm(options)).rejects.toThrowError(expected);
+        expect(async () => await UserEmailVerificationService.confirm(options)).rejects.toThrowError(expected);
     });
 };
 

@@ -98,11 +98,16 @@ class Service extends MysqlBaseFindService {
         const { body: msg } = body;
         const { sub: user_uuid } = user;
 
-        const existing = await service.findOne({ uuid, user });
+        const existing = await db.ChannelMessageView.findOne({ where: { channel_message_uuid: uuid } });
+        if (!existing) throw new ControllerError(404, 'channel_message not found');
 
-        if (existing.user?.uuid !== user_uuid &&
-            !(await RoomPermissionService.isInRoomByChannel({ channel_uuid: existing.channel_uuid, user, role_name: 'Moderator' })) &&
-            !(await RoomPermissionService.isInRoomByChannel({ channel_uuid: existing.channel_uuid, user, role_name: 'Admin' }))) {
+        const isOwner = existing.user_uuid === user_uuid;
+        const [moderator, admin] = await Promise.all([
+            RoomPermissionService.isInRoomByChannel({ channel_uuid: existing.channel_uuid, user, role_name: 'Moderator' }),
+            RoomPermissionService.isInRoomByChannel({ channel_uuid: existing.channel_uuid, user, role_name: 'Admin' }),
+        ]);
+
+        if (!isOwner && !moderator && !admin) {
             throw new ControllerError(403, 'User is not an owner of the message, or an admin or moderator of the room');
         }
 
@@ -135,12 +140,16 @@ class Service extends MysqlBaseFindService {
         const { uuid, user } = options;
         const { sub: user_uuid } = user;
 
-        const existing = await service.findOne({ uuid, user });
-        const channel_uuid = existing.channel_uuid;
+        const existing = await db.ChannelMessageView.findOne({ where: { channel_message_uuid: uuid } });
+        if (!existing) throw new ControllerError(404, 'channel_message not found');
 
-        if (existing.user_uuid !== user_uuid &&
-            !(await RoomPermissionService.isInRoomByChannel({ channel_uuid, user, role_name: 'Moderator' })) &&
-            !(await RoomPermissionService.isInRoomByChannel({ channel_uuid, user, role_name: 'Admin' }))) {
+        const channel_uuid = existing.channel_uuid;
+        const isOwner = existing.user_uuid === user_uuid;
+        const [moderator, admin] = await Promise.all([
+            RoomPermissionService.isInRoomByChannel({ channel_uuid, user, role_name: 'Moderator' }),
+            RoomPermissionService.isInRoomByChannel({ channel_uuid, user, role_name: 'Admin' }),
+        ]);
+        if (!isOwner && !moderator && !admin) {
             throw new ControllerError(403, 'User is not an owner of the message, or an admin or moderator of the room');
         }
 

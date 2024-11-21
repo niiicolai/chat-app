@@ -118,7 +118,7 @@ const roomPermissionServiceTest = (
         [{ room_uuid: "test" }, 'No options.user provided'],
         [{ room_uuid: "test", user: { } }, 'No options.user.sub provided'],
     ])(`(${name}) - RoomPermissionService.isInRoom invalid partitions`, async (options, expected) => {
-        expect(() => RoomPermissionService.isInRoom(options)).rejects.toThrowError(expected);
+        expect(async () => await RoomPermissionService.isInRoom(options)).rejects.toThrowError(expected);
     });
 
     test.each([
@@ -152,7 +152,7 @@ const roomPermissionServiceTest = (
         [{ channel_uuid: "test" }, 'No options.user provided'],
         [{ channel_uuid: "test", user: { } }, 'No options.user.sub provided'],
     ])(`(${name}) - RoomPermissionService.isInRoomByChannel invalid partitions`, async (options, expected) => {
-        expect(() => RoomPermissionService.isInRoomByChannel(options)).rejects.toThrowError(expected);
+        expect(async () => await RoomPermissionService.isInRoomByChannel(options)).rejects.toThrowError(expected);
     });
 
     test(`(${name}) - RoomPermissionService.fileExceedsTotalFilesLimit valid partitions`, async () => {
@@ -176,7 +176,7 @@ const roomPermissionServiceTest = (
         [{}, 'No options.room_uuid provided'],
         [{ room_uuid: "test" }, 'No options.bytes provided'],
     ])(`(${name}) - RoomPermissionService.fileExceedsTotalFilesLimit invalid partitions`, async (options, expected) => {
-        expect(() => RoomPermissionService.fileExceedsTotalFilesLimit(options)).rejects.toThrowError(expected);
+        expect(async () => await RoomPermissionService.fileExceedsTotalFilesLimit(options)).rejects.toThrowError(expected);
     });
 
     test(`(${name}) - RoomPermissionService.fileExceedsSingleFileSize valid partitions`, async () => {
@@ -200,7 +200,7 @@ const roomPermissionServiceTest = (
         [{}, 'No options.room_uuid provided'],
         [{ room_uuid: "test" }, 'No options.bytes provided'],
     ])(`(${name}) - RoomPermissionService.fileExceedsSingleFileSize invalid partitions`, async (options, expected) => {
-        expect(() => RoomPermissionService.fileExceedsSingleFileSize(options)).rejects.toThrowError(expected);
+        expect(async () => await RoomPermissionService.fileExceedsSingleFileSize(options)).rejects.toThrowError(expected);
     });
 
     test(`(${name}) - RoomPermissionService.roomUserCountExceedsLimit valid partitions`, async () => {
@@ -224,7 +224,7 @@ const roomPermissionServiceTest = (
         [{}, 'No options.room_uuid provided'],
         [{ room_uuid: "test" }, 'No options.add_count provided'],
     ])(`(${name}) - RoomPermissionService.roomUserCountExceedsLimit invalid partitions`, async (options, expected) => {
-        expect(() => RoomPermissionService.roomUserCountExceedsLimit(options)).rejects.toThrowError(expected);
+        expect(async () => await RoomPermissionService.roomUserCountExceedsLimit(options)).rejects.toThrowError(expected);
     });
 
     test(`(${name}) - RoomPermissionService.channelCountExceedsLimit valid partitions`, async () => {
@@ -248,7 +248,7 @@ const roomPermissionServiceTest = (
         [{}, 'No options.room_uuid provided'],
         [{ room_uuid: "test" }, 'No options.add_count provided'],
     ])(`(${name}) - RoomPermissionService.channelCountExceedsLimit invalid partitions`, async (options, expected) => {
-        expect(() => RoomPermissionService.channelCountExceedsLimit(options)).rejects.toThrowError(expected);
+        expect(async () => await RoomPermissionService.channelCountExceedsLimit(options)).rejects.toThrowError(expected);
     });
 };
 

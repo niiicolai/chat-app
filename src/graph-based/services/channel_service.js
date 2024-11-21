@@ -1,3 +1,4 @@
+import ChannelServiceValidator from '../../shared/validators/channel_service_validator.js';
 import ControllerError from '../../shared/errors/controller_error.js';
 import StorageService from '../../shared/services/storage_service.js';
 import RoomPermissionService from './room_permission_service.js';
@@ -14,19 +15,16 @@ class Service extends NeodeBaseFindService {
     }
 
     async findOne(options = { uuid: null, user: null }) {
-        if (!options) throw new ControllerError(500, 'No options provided');
-        if (!options.uuid) throw new ControllerError(400, 'No uuid provided');
-        if (!options.user) throw new ControllerError(500, 'No user provided');
-        if (!options.user.sub) throw new ControllerError(500, 'No user.sub provided');
+        ChannelServiceValidator.findOne(options);
 
         const { user, uuid } = options;
+
+        const channelInstance = await neodeInstance.model('Channel').find(uuid);
+        if (!channelInstance) throw new ControllerError(404, 'channel not found');
 
         if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid: uuid, user, role_name: null }))) {
             throw new ControllerError(403, 'User is not in the room');
         }
-
-        const channelInstance = await neodeInstance.model('Channel').find(uuid);
-        if (!channelInstance) throw new ControllerError(404, 'Channel not found');
 
         const channelType = channelInstance.get('channel_type').endNode().properties();
         const room = channelInstance.get('room').endNode().properties();
@@ -35,10 +33,7 @@ class Service extends NeodeBaseFindService {
     }
 
     async findAll(options = { room_uuid: null, user: null, page: null, limit: null }) {
-        if (!options) throw new ControllerError(500, 'No options provided');
-        if (!options.room_uuid) throw new ControllerError(400, 'No room_uuid provided');
-        if (!options.user) throw new ControllerError(500, 'No user provided');
-        if (!options.user.sub) throw new ControllerError(500, 'No user.sub provided');
+        options = ChannelServiceValidator.findAll(options);
 
         const { room_uuid, user, page, limit } = options;
 
@@ -63,15 +58,7 @@ class Service extends NeodeBaseFindService {
     }
 
     async create(options = { body: null, file: null, user: null }) {
-        if (!options) throw new ControllerError(500, 'No options provided');
-        if (!options.body) throw new ControllerError(400, 'No body provided');
-        if (!options.user) throw new ControllerError(500, 'No user provided');
-        if (!options.user.sub) throw new ControllerError(500, 'No user.sub provided');
-        if (!options.body.uuid) throw new ControllerError(400, 'No body.uuid provided');
-        if (!options.body.name) throw new ControllerError(400, 'No body.name provided');
-        if (!options.body.description) throw new ControllerError(400, 'No body.description provided');
-        if (!options.body.channel_type_name) throw new ControllerError(400, 'No body.channel_type_name provided');
-        if (!options.body.room_uuid) throw new ControllerError(400, 'No body.room_uuid provided');
+        ChannelServiceValidator.create(options);
 
         const { body, file, user } = options;
         const { uuid, name, description, channel_type_name, room_uuid } = body;
@@ -119,11 +106,7 @@ class Service extends NeodeBaseFindService {
     }
 
     async update(options = { uuid: null, body: null, file: null, user: null }) {
-        if (!options) throw new ControllerError(500, 'No options provided');
-        if (!options.uuid) throw new ControllerError(400, 'No uuid provided');
-        if (!options.body) throw new ControllerError(400, 'No body provided');
-        if (!options.user) throw new ControllerError(500, 'No user provided');
-        if (!options.user.sub) throw new ControllerError(500, 'No user.sub provided');
+        ChannelServiceValidator.update(options);
 
         const { uuid, body, file, user } = options;
         const { name, description } = body;
@@ -171,10 +154,7 @@ class Service extends NeodeBaseFindService {
     }
             
     async destroy(options = { uuid: null, user: null }) {
-        if (!options) throw new ControllerError(500, 'No options provided');
-        if (!options.uuid) throw new ControllerError(400, 'No uuid provided');
-        if (!options.user) throw new ControllerError(500, 'No user provided');
-        if (!options.user.sub) throw new ControllerError(500, 'No user.sub provided');
+        ChannelServiceValidator.destroy(options);
 
         const { uuid, user } = options;
 
@@ -188,6 +168,9 @@ class Service extends NeodeBaseFindService {
         const roomFile = await channelInstance.get('room_file')?.endNode()?.properties();
         const src = roomFile?.src;
 
+        await channelInstance.delete();
+
+        /*
         const session = neodeInstance.session();
         session.writeTransaction(async (transaction) => {
             await transaction.run(
@@ -208,7 +191,7 @@ class Service extends NeodeBaseFindService {
             }
 
             console.warn('TODO: delete all channel messages files and webhook files');
-        });
+        });*/
     }
 }
 

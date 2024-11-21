@@ -34,7 +34,7 @@ const userStatusServiceTest = (UserStatusService, name) => {
         [[], 'No user_uuid provided'],
         [{ user_uuid: 'test' }, 'User status not found'],
     ])(`(${name}) - UserStatusService.findOne invalid partitions`, async (options, expected) => {
-        expect(() => UserStatusService.findOne(options)).rejects.toThrowError(expected);
+        expect(async () => await UserStatusService.findOne(options)).rejects.toThrowError(expected);
     });
 
     test.each([
@@ -62,7 +62,7 @@ const userStatusServiceTest = (UserStatusService, name) => {
         [{ user_uuid: null }, 'No user_uuid provided'],
         [{ user_uuid: 'test' }, 'User status not found'],
     ])(`(${name}) - UserStatusService.update invalid partitions`, async (options, expected) => {
-        expect(() => UserStatusService.findOne(options)).rejects.toThrowError(expected);
+        expect(async () => await UserStatusService.findOne(options)).rejects.toThrowError(expected);
     });
 };
 

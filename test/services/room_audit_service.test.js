@@ -1,10 +1,27 @@
 import RelationalRoomAuditService from '../../src/relational-based/services/room_audit_service.js';
-import DocumentRoomAuditService from '../../src/document-based/services/room_audit_service.js';
-import GraphRoomAuditService from '../../src/graph-based/services/room_audit_service.js';
-import { context } from '../context.js';
-import { test, expect } from 'vitest';
+import RelationalUserService from '../../src/relational-based/services/user_service.js';
 
-const roomAuditServiceTest = (RoomAuditService, name) => {
+import DocumentRoomAuditService from '../../src/document-based/services/room_audit_service.js';
+import DocumentUserService from '../../src/document-based/services/user_service.js';
+
+import GraphRoomAuditService from '../../src/graph-based/services/room_audit_service.js';
+import GraphUserService from '../../src/graph-based/services/user_service.js';
+
+import { context } from '../context.js';
+import { test, expect, beforeAll } from 'vitest';
+import { v4 as uuidv4 } from 'uuid';
+
+const roomAuditServiceTest = (RoomAuditService, UserService, name) => {
+    const user = { 
+        uuid: uuidv4(),
+        username: `test-${uuidv4()}`,
+        email: `test-${uuidv4()}@example.com`,
+        password: '12345678',
+    };
+
+    beforeAll(async () => {
+        await UserService.create({ body: user });
+    });
 
     test(`(${name}) - RoomAuditService must implement expected methods`, () => {
         expect(RoomAuditService).toHaveProperty('findOne');
@@ -50,7 +67,7 @@ const roomAuditServiceTest = (RoomAuditService, name) => {
         [{ room_uuid: "test", user: { sub: "test" }, page: 1, limit: -1 }, 'limit must be greater than 0'],
         [{ room_uuid: "test", user: { sub: "test" }, page: 1, limit: "test" }, 'limit must be a number'],
     ])(`(${name}) - RoomAuditService.findAll invalid partitions`, async (options, expected) => {
-        expect(() => RoomAuditService.findAll(options)).rejects.toThrowError(expected);
+        expect(async () => await RoomAuditService.findAll(options)).rejects.toThrowError(expected);
     });
     
     test(`(${name}) - RoomAuditService.findOne valid partitions`, async () => {
@@ -77,10 +94,43 @@ const roomAuditServiceTest = (RoomAuditService, name) => {
         [{ uuid: "test", user: { } }, 'No user.sub provided'],
         [{ uuid: "test", user: { sub: "test" } }, 'room_audit not found'],
     ])(`(${name}) - RoomAuditService.findOne invalid partitions`, async (options, expected) => {
-        expect(() => RoomAuditService.findOne(options)).rejects.toThrowError(expected);
+        expect(async () => await RoomAuditService.findOne(options)).rejects.toThrowError(expected);
+    });
+
+    /**
+     * Security Checks
+     */
+
+    test.each([
+        [user.uuid],
+    ])(`(${name}) - RoomAuditService.findOne return error for users who are not member`, async (sub) => {
+        const audits = await RoomAuditService.findAll({ room_uuid: context.room.uuid, user: context.admin, limit: 1 });
+        expect(async () => await RoomAuditService.findOne({ user: { sub }, uuid: audits.data[0].uuid }))
+            .rejects.toThrow("User is not in the room");
+    });
+
+    test.each([
+        [user.uuid],
+    ])(`(${name}) - RoomAuditService.findAll return error for users who are not member`, async (sub) => {
+        expect(async () => await RoomAuditService.findAll({ room_uuid: context.room.uuid, user: { sub } }))
+            .rejects.toThrow("User is not in the room");
     });
 };
 
-roomAuditServiceTest(RelationalRoomAuditService, 'Relational');
-roomAuditServiceTest(DocumentRoomAuditService, 'Document');
-roomAuditServiceTest(GraphRoomAuditService, 'Graph');
+roomAuditServiceTest(
+    RelationalRoomAuditService,
+    RelationalUserService, 
+    'Relational'
+);
+
+roomAuditServiceTest(
+    DocumentRoomAuditService, 
+    DocumentUserService,
+    'Document'
+);
+
+roomAuditServiceTest(
+    GraphRoomAuditService,
+    GraphUserService, 
+    'Graph'
+);

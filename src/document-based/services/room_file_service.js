@@ -1,14 +1,12 @@
+import RoomFileServiceValidator from '../../shared/validators/room_file_service_validator.js';
 import ControllerError from '../../shared/errors/controller_error.js';
 import StorageService from '../../shared/services/storage_service.js';
 import RoomPermissionService from './room_permission_service.js';
 import dto from '../dto/room_file_dto.js';
 import RoomFile from '../mongoose/models/room_file.js';
 import Room from '../mongoose/models/room.js';
-import ChannelMessageUpload from '../mongoose/models/channel_message_upload.js';
 import ChannelMessage from '../mongoose/models/channel_message.js';
-import ChannelWebhook from '../mongoose/models/channel_webhook.js';
 import Channel from '../mongoose/models/channel.js';
-import RoomFileServiceValidator from '../../shared/validators/room_file_service_validator.js';
 
 const storage = new StorageService('room_file');
 
@@ -27,7 +25,7 @@ class Service {
         RoomFileServiceValidator.findOne(options);
 
         const roomFile = await RoomFile.findOne({ uuid: options.uuid }).populate('room');
-        if (!roomFile) throw new ControllerError(404, 'Room file not found');
+        if (!roomFile) throw new ControllerError(404, 'room_file not found');
 
         if (!(await RoomPermissionService.isInRoom({ room_uuid: roomFile.room.uuid, user: options.user, role_name: null }))) {
             throw new ControllerError(403, 'User is not in the room');

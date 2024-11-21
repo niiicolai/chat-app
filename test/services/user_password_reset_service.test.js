@@ -3,6 +3,7 @@ import DocumentUserPasswordResetService from '../../src/document-based/services/
 import GraphUserPasswordResetService from '../../src/graph-based/services/user_password_reset_service.js';
 import { test, expect } from 'vitest';
 import { context } from '../context.js';
+import { v4 as uuidv4 } from 'uuid';
 
 const userPasswordResetServiceTest = (UserPasswordResetService, name) => {
 
@@ -12,7 +13,7 @@ const userPasswordResetServiceTest = (UserPasswordResetService, name) => {
     });
 
     test.each([
-        [{ body: { email: "test" } }],
+        [{ body: { email: `test-${uuidv4()}@example.com` } }],
         [{ body: { email: context.admin.email } }],
         [{ body: { email: context.mod.email } }],
         [{ body: { email: context.member.email } }],
@@ -28,7 +29,7 @@ const userPasswordResetServiceTest = (UserPasswordResetService, name) => {
         [ { email: null }, 'No body provided' ],
         [ { test: null }, 'No body provided' ],
     ])(`(${name}) - UserPasswordResetService.create invalid partitions`, async (options, expected) => {
-        expect(() => UserPasswordResetService.create(options)).rejects.toThrowError(expected);
+        expect(async () => await UserPasswordResetService.create(options)).rejects.toThrowError(expected);
     });
 
     test.each([
@@ -41,7 +42,7 @@ const userPasswordResetServiceTest = (UserPasswordResetService, name) => {
         [ { uuid: "test" }, 'No body provided' ],
         [ { uuid: "test", body: null }, 'No body provided' ],
     ])(`(${name}) - UserPasswordResetService.resetPassword invalid partitions`, async (options, expected) => {
-        expect(() => UserPasswordResetService.resetPassword(options)).rejects.toThrowError(expected);
+        expect(async () => await UserPasswordResetService.resetPassword(options)).rejects.toThrowError(expected);
     });
 };
 

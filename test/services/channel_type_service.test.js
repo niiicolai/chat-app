@@ -34,7 +34,7 @@ const channelAuditTypeServiceTest = (ChannelTypeService, name) => {
         [{ name: 1 }, 'channel_type not found'],
         [{ name: "test" }, 'channel_type not found'],
     ])(`(${name}) - ChannelTypeService.findOne invalid partitions`, async (options, expected) => {
-        expect(() => ChannelTypeService.findOne(options)).rejects.toThrowError(expected);
+        expect(async () => await ChannelTypeService.findOne(options)).rejects.toThrowError(expected);
     });
 
     test.each([
@@ -74,7 +74,7 @@ const channelAuditTypeServiceTest = (ChannelTypeService, name) => {
         [{ page: 1, limit: -1 }, 'limit must be greater than 0'],
         [{ page: 1, limit: "test" }, 'limit must be a number'],
     ])(`(${name}) - ChannelTypeService.findAll invalid partitions`, async (options, expected) => {
-        expect(() => ChannelTypeService.findAll(options)).rejects.toThrowError(expected);
+        expect(async () => await ChannelTypeService.findAll(options)).rejects.toThrowError(expected);
     });
 }
 

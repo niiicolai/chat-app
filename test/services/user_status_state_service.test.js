@@ -36,7 +36,7 @@ const userStatusStateServiceTest = (UserStatusStateService, name) => {
         [{ name: 1 }, 'user_status_state not found'],
         [{ name: "test" }, 'user_status_state not found'],
     ])(`(${name}) - UserStatusStateService.findOne invalid partitions`, async (options, expected) => {
-        expect(() => UserStatusStateService.findOne(options)).rejects.toThrowError(expected);
+        expect(async () => await UserStatusStateService.findOne(options)).rejects.toThrowError(expected);
     });
 
     test.each([
@@ -76,7 +76,7 @@ const userStatusStateServiceTest = (UserStatusStateService, name) => {
         [{ page: 1, limit: -1 }, 'limit must be greater than 0'],
         [{ page: 1, limit: "test" }, 'limit must be a number'],
     ])(`(${name}) - UserStatusStateService.findAll invalid partitions`, async (options, expected) => {
-        expect(() => UserStatusStateService.findAll(options)).rejects.toThrowError(expected);
+        expect(async () => await UserStatusStateService.findAll(options)).rejects.toThrowError(expected);
     });
 
 }

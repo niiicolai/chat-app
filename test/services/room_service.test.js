@@ -92,7 +92,7 @@ const roomServiceTest = (RoomService, UserService, name) => {
         [{ uuid: "test", user: { sub: null } }, 'No user.sub provided'],
         [{ uuid: "test", user: { sub: "test" } }, 'room not found'],
     ])(`(${name}) - RoomService.findOne invalid partitions`, async (options, expected) => {
-        expect(() => RoomService.findOne(options)).rejects.toThrowError(expected);
+        expect(async () => await RoomService.findOne(options)).rejects.toThrowError(expected);
     });
    
     test.each([
@@ -133,7 +133,7 @@ const roomServiceTest = (RoomService, UserService, name) => {
         [{ user: context.admin, page: 1, limit: -1 }, 'limit must be greater than 0'],
         [{ user: context.admin, page: 1, limit: "test" }, 'limit must be a number'],
     ])(`(${name}) - RoomService.findAll invalid partitions`, async (options, expected) => {
-        expect(() => RoomService.findAll(options)).rejects.toThrowError(expected);
+        expect(async () => await RoomService.findAll(options)).rejects.toThrowError(expected);
     });
     
     test.each([
@@ -163,7 +163,7 @@ const roomServiceTest = (RoomService, UserService, name) => {
             'No room_category_name provided'
         ],
     ])(`(${name}) - RoomService.create invalid partitions`, async (options, expected) => {
-        expect(() => RoomService.create(options)).rejects.toThrowError(expected);
+        expect(async () => await RoomService.create(options)).rejects.toThrowError(expected);
     });
  
     test.each([
@@ -186,7 +186,7 @@ const roomServiceTest = (RoomService, UserService, name) => {
         [{ body: { }, uuid: "test" }, 'No user provided'],
         [{ body: { }, uuid: "test", user: { } }, 'No user.sub provided'],
     ])(`(${name}) - RoomService.update invalid partitions`, async (options, expected) => {
-        expect(() => RoomService.update(options)).rejects.toThrowError(expected);
+        expect(async () => await RoomService.update(options)).rejects.toThrowError(expected);
     });
     
     test.each([
@@ -213,7 +213,7 @@ const roomServiceTest = (RoomService, UserService, name) => {
         [{ uuid: "test", body: { } }, 'No user provided'],
         [{ uuid: "test", body: { }, user: { } }, 'No user.sub provided'],
     ])(`(${name}) - RoomService.editSettings invalid partitions`, async (options, expected) => {
-        expect(() => RoomService.editSettings(options)).rejects.toThrowError(expected);
+        expect(async () => await RoomService.editSettings(options)).rejects.toThrowError(expected);
     });
 
     test.each([
@@ -222,7 +222,7 @@ const roomServiceTest = (RoomService, UserService, name) => {
         [{ user: context.member, uuid: member_room_uuid }],
     ])(`(${name}) - RoomService.destroy valid partitions`, async (options) => {
         await RoomService.destroy(options);
-        expect(() => RoomService.findOne({ uuid: options.uuid, user: options.user }))
+        expect(async () => await RoomService.findOne({ uuid: options.uuid, user: options.user }))
             .rejects.toThrowError('room not found');
     });
 
@@ -237,7 +237,7 @@ const roomServiceTest = (RoomService, UserService, name) => {
         [{ uuid: "test", user: { } }, 'No user.sub provided'],
         [{ uuid: "test", user: { sub: "test" } }, 'room not found'],
     ])(`(${name}) - RoomService.destroy invalid partitions`, async (options, expected) => {
-        expect(() => RoomService.destroy(options)).rejects.toThrowError(expected);
+        expect(async () => await RoomService.destroy(options)).rejects.toThrowError(expected);
     });
 
     /**
@@ -245,7 +245,7 @@ const roomServiceTest = (RoomService, UserService, name) => {
      */
 
     test(`(${name}) - RoomService.findOne return error for users who are not members`, async () => {
-        expect(() => RoomService.findOne({ uuid: context.room.uuid, user: { sub: user.uuid } }))
+        expect(async () => await RoomService.findOne({ uuid: context.room.uuid, user: { sub: user.uuid } }))
             .rejects.toThrowError("User is not in the room");
     });
 
@@ -254,7 +254,7 @@ const roomServiceTest = (RoomService, UserService, name) => {
         [context.member.sub],
         [user.uuid],
     ])(`(${name}) - RoomService.update return error for users who are not admin`, async (sub) => {
-        expect(() => RoomService.update({ uuid: context.room.uuid, user: { sub }, body: { description: "test" } }))
+        expect(async () => await RoomService.update({ uuid: context.room.uuid, user: { sub }, body: { description: "test" } }))
             .rejects.toThrowError(/User is not an admin of the room|User is not in the room/);
     });
 
@@ -263,7 +263,7 @@ const roomServiceTest = (RoomService, UserService, name) => {
         [context.member.sub],
         [user.uuid],
     ])(`(${name}) - RoomService.destroy returns an error for users who are not admin`, async (sub) => {
-        await expect(RoomService.destroy({ uuid: context.room.uuid, user: { sub } }))
+        expect(async () => await RoomService.destroy({ uuid: context.room.uuid, user: { sub } }))
             .rejects
             .toThrow(/User is not an admin of the room|User is not in the room/);
     });
@@ -273,7 +273,7 @@ const roomServiceTest = (RoomService, UserService, name) => {
         [context.member.sub],
         [user.uuid],
     ])(`(${name}) - RoomService.editSettings returns an error for users who are not admin`, async (sub) => {
-        await expect(RoomService.editSettings({ uuid: context.room.uuid, user: { sub }, body: {} }))
+        expect(async () => await RoomService.editSettings({ uuid: context.room.uuid, user: { sub }, body: {} }))
             .rejects
             .toThrow(/User is not an admin of the room|User is not in the room/);
     });

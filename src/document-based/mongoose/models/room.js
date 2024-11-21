@@ -10,6 +10,7 @@ import room_avatar from "./room_avatar.js";
 import room_user from "./room_user.js";
 import room_invite_link from "./room_invite_link.js";
 import RoomAudit from "./room_audit.js";
+import { v4 as uuidv4 } from 'uuid';
 
 const roomSchema = new mongoose.Schema({
     uuid: { 
@@ -45,7 +46,7 @@ const roomSchema = new mongoose.Schema({
 roomSchema.post('save', async (doc) => {
     const isNew = doc.created_at === doc.updated_at;
     await RoomAudit.create({
-        uuid: doc.uuid,
+        uuid: uuidv4(),
         body: doc,
         room: doc._id,
         room_audit_type: (isNew ? 'ROOM_CREATED' : 'ROOM_EDITED'),
@@ -54,7 +55,7 @@ roomSchema.post('save', async (doc) => {
 
 roomSchema.post('remove', async (doc) => {
     await RoomAudit.create({
-        uuid: doc.uuid,
+        uuid: uuidv4(),
         body: doc,
         room: doc._id,
         room_audit_type: 'ROOM_DELETED',

@@ -52,7 +52,7 @@ const roomCategoryServiceTest = (RoomCategoryService, name) => {
         [{ name: 1 }, 'room_category not found'],
         [{ name: "test" }, 'room_category not found'],
     ])(`(${name}) - RoomCategoryService.findOne invalid partitions`, async (options, expected) => {
-        expect(() => RoomCategoryService.findOne(options)).rejects.toThrowError(expected);
+        expect(async () => await RoomCategoryService.findOne(options)).rejects.toThrowError(expected);
     });
 
     test.each([
@@ -92,7 +92,7 @@ const roomCategoryServiceTest = (RoomCategoryService, name) => {
         [{ page: 1, limit: -1 }, 'limit must be greater than 0'],
         [{ page: 1, limit: "test" }, 'limit must be a number'],
     ])(`(${name}) - RoomCategoryService.findAll invalid partitions`, async (options, expected) => {
-        expect(() => RoomCategoryService.findAll(options)).rejects.toThrowError(expected);
+        expect(async () => await RoomCategoryService.findAll(options)).rejects.toThrowError(expected);
     });
 };
 

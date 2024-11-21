@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 
 import { roomFileTypeSchema as room_file_type } from "./room_file_type.js";
 import RoomAudit from "./room_audit.js";
+import { v4 as uuidv4 } from 'uuid';
 
 const roomFileSchema = new mongoose.Schema({
     uuid: { 
@@ -33,7 +34,7 @@ const roomFileSchema = new mongoose.Schema({
 roomFileSchema.post('save', async (doc) => {
     const isNew = doc.created_at === doc.updated_at;
     await RoomAudit.create({
-        uuid: doc.uuid,
+        uuid: uuidv4(),
         body: doc,
         room: doc.room,
         room_audit_type: (isNew ? 'FILE_CREATED' : 'FILE_EDITED'),
@@ -42,7 +43,7 @@ roomFileSchema.post('save', async (doc) => {
 
 roomFileSchema.post('remove', async (doc) => {
     await RoomAudit.create({
-        uuid: doc.uuid,
+        uuid: uuidv4(),
         body: doc,
         room: doc.room,
         room_audit_type: 'FILE_DELETED',

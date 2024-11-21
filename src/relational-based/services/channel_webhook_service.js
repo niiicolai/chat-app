@@ -4,6 +4,7 @@ import db from '../sequelize/models/index.cjs';
 import ControllerError from '../../shared/errors/controller_error.js';
 import StorageService from '../../shared/services/storage_service.js';
 import RoomPermissionService from './room_permission_service.js';
+import channelMessageDto from '../dto/channel_message_dto.js';
 import dto from '../dto/channel_webhook_dto.js';
 import { broadcastChannel } from '../../../websocket_server.js';
 import { v4 as uuidv4 } from 'uuid';
@@ -46,7 +47,7 @@ class Service extends MysqlBaseFindService {
         const { uuid, name, description, channel_uuid } = body;
 
         if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid, user, role_name: 'Admin' }))) {
-            throw new ControllerError(403, 'User is not an admin in the room');
+            throw new ControllerError(403, 'User is not an admin of the room');
         }
 
         const channel = await db.ChannelView.findOne({ where: { channel_uuid } });
@@ -98,7 +99,7 @@ class Service extends MysqlBaseFindService {
         const existing = await service.findOne({ uuid, user });
 
         if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid: existing.channel_uuid, user, role_name: 'Admin' }))) {
-            throw new ControllerError(403, 'User is not an admin in the room');
+            throw new ControllerError(403, 'User is not an admin of the room');
         }
 
         if (!name) {
@@ -144,7 +145,7 @@ class Service extends MysqlBaseFindService {
         const existing = await service.findOne({ uuid, user });
 
         if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid: existing.channel_uuid, user, role_name: 'Admin' }))) {
-            throw new ControllerError(403, 'User is not an admin in the room');
+            throw new ControllerError(403, 'User is not an admin of the room');
         }
 
         await db.sequelize.query('CALL delete_channel_webhook_proc(:uuid, @result)', {
@@ -177,11 +178,14 @@ class Service extends MysqlBaseFindService {
             },
         });
 
+        const channelMessage = await db.ChannelMessageView.findOne({ where: { channel_message_uuid } });
+        if (!channelMessage) throw new ControllerError(500, 'Channel Message not found');
+
         /**
           * Broadcast the channel message to all users
           * in the room where the channel message was deleted.
           */
-        broadcastChannel(`channel-${channel_uuid}`, 'chat_message_created', { channel_uuid });
+        broadcastChannel(`channel-${channel_uuid}`, 'chat_message_created', channelMessageDto(channelMessage));
     }
 }
 

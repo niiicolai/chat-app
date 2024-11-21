@@ -1,3 +1,4 @@
+import RoomFileServiceValidator from '../../shared/validators/room_file_service_validator.js';
 import ControllerError from '../../shared/errors/controller_error.js';
 import StorageService from '../../shared/services/storage_service.js';
 import RoomPermissionService from './room_permission_service.js';
@@ -14,15 +15,12 @@ class Service extends NeodeBaseFindService {
     }
 
     async findOne(options = { uuid: null, user: null }) {
-        if (!options) throw new ControllerError(500, 'No options provided');
-        if (!options.uuid) throw new ControllerError(400, 'No uuid provided');
-        if (!options.user) throw new ControllerError(500, 'No user provided');
-        if (!options.user.sub) throw new ControllerError(500, 'No user.sub provided');
+        RoomFileServiceValidator.findOne(options);
 
         const { user, uuid } = options;
         
         const roomFileInstance = await neodeInstance.model('RoomFile').find(uuid);
-        if (!roomFileInstance) throw new ControllerError(404, 'Room file not found');
+        if (!roomFileInstance) throw new ControllerError(404, 'room_file not found');
 
         const room = roomFileInstance.get('room').endNode().properties();
         if (!room) throw new ControllerError(404, 'Room not found');
@@ -38,10 +36,7 @@ class Service extends NeodeBaseFindService {
     }
 
     async findAll(options = { room_uuid: null, user: null, page: null, limit: null }) {
-        if (!options) throw new ControllerError(500, 'No options provided');
-        if (!options.room_uuid) throw new ControllerError(400, 'No room_uuid provided');
-        if (!options.user) throw new ControllerError(500, 'No user provided');
-        if (!options.user.sub) throw new ControllerError(500, 'No user.sub provided');
+        RoomFileServiceValidator.findAll(options);
 
         const { room_uuid, user, page, limit } = options;
 
@@ -72,10 +67,7 @@ class Service extends NeodeBaseFindService {
     }
 
     async destroy(options = { uuid: null, user: null }) {
-        if (!options) throw new ControllerError(500, 'No options provided');
-        if (!options.uuid) throw new ControllerError(400, 'No uuid provided');
-        if (!options.user) throw new ControllerError(500, 'No user provided');
-        if (!options.user.sub) throw new ControllerError(500, 'No user.sub provided');
+        RoomFileServiceValidator.destroy(options);
 
         const { uuid, user } = options;
 
@@ -89,11 +81,12 @@ class Service extends NeodeBaseFindService {
         if (!room) throw new ControllerError(500, 'Room not found');
 
         const isMessageUpload = roomFileType.name === 'ChannelMessageUpload';
-
-        if (isMessageUpload &&
-            !this.isOwner({ uuid, user }) &&
-            !(await RoomPermissionService.isInRoom({ room_uuid: room.uuid, user, role_name: 'Moderator' })) &&
-            !(await RoomPermissionService.isInRoom({ room_uuid: room.uuid, user, role_name: 'Admin' }))) {
+        const [owner, admin, moderator] = await Promise.all([
+            this.isOwner({ uuid, user }),
+            RoomPermissionService.isInRoom({ room_uuid: room.uuid, user, role_name: 'Admin' }),
+            RoomPermissionService.isInRoom({ room_uuid: room.uuid, user, role_name: 'Moderator' })
+        ]);
+        if (!owner && !admin && !moderator) {
             throw new ControllerError(403, 'User is not an owner of the file, or an admin or moderator of the room');
         }
 
@@ -128,8 +121,8 @@ class Service extends NeodeBaseFindService {
             `RETURN cmu, cm, u`, { uuid }
         );
 
-        if (!channelMessageUpload.records.length) throw new ControllerError(404, 'isOwner: Channel message upload not found');
-        if (!channelMessageUpload.records[0].get('u')) throw new ControllerError(404, 'isOwner: Channel message not found');
+        if (!channelMessageUpload.records.length) return false;
+        if (!channelMessageUpload.records[0].get('u')) return false;
 
         return channelMessageUpload.records[0].get('u').properties.uuid === user_uuid;
     }

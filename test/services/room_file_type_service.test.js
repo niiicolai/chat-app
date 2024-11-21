@@ -36,7 +36,7 @@ const roomFileTypeServiceTest = (RoomFileTypeService, name) => {
         [{ name: 1 }, 'room_file_type not found'],
         [{ name: "test" }, 'room_file_type not found'],
     ])(`(${name}) - RoomFileTypeService.findOne invalid partitions`, async (options, expected) => {
-        expect(() => RoomFileTypeService.findOne(options)).rejects.toThrowError(expected);
+        expect(async () => await RoomFileTypeService.findOne(options)).rejects.toThrowError(expected);
     });
 
     test.each([
@@ -76,7 +76,7 @@ const roomFileTypeServiceTest = (RoomFileTypeService, name) => {
         [{ page: 1, limit: -1 }, 'limit must be greater than 0'],
         [{ page: 1, limit: "test" }, 'limit must be a number'],
     ])(`(${name}) - RoomFileTypeService.findAll invalid partitions`, async (options, expected) => {
-        expect(() => RoomFileTypeService.findAll(options)).rejects.toThrowError(expected);
+        expect(async () => await RoomFileTypeService.findAll(options)).rejects.toThrowError(expected);
     });
 };
 

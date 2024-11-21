@@ -1,3 +1,4 @@
+import ChannelWebhookServiceValidator from '../../shared/validators/channel_webhook_service_validator.js';
 import ControllerError from '../../shared/errors/controller_error.js';
 import StorageService from '../../shared/services/storage_service.js';
 import RoomPermissionService from './room_permission_service.js';
@@ -16,35 +17,23 @@ class Service extends NeodeBaseFindService {
     }
 
     async findOne(options = { uuid: null, user: null }) {
-        if (!options) throw new ControllerError(500, 'No options provided');
-        if (!options.uuid) throw new ControllerError(400, 'No uuid provided');
-        if (!options.user) throw new ControllerError(500, 'No user provided');
-        if (!options.user.sub) throw new ControllerError(500, 'No user.sub provided');
+        ChannelWebhookServiceValidator.findOne(options);
 
-        const { user, uuid } = options;
+        const webhhook = await neodeInstance.model('ChannelWebhook').find(options.uuid);
+        if (!webhhook) throw new ControllerError(404, 'Channel Webhook not found');
 
-        const webhookInstance = await neodeInstance.model('ChannelWebhook').find(uuid);
-        if (!webhookInstance) throw new ControllerError(404, 'Channel Webhook not found');
+        const channel = webhhook.get('channel').endNode().properties();
+        const roomFile = webhhook.get('room_file')?.endNode()?.properties();
 
-        const channel = webhookInstance.get('channel').endNode().properties();
-        if (!channel) throw new ControllerError(404, 'Channel not found');
-
-        if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid: channel.uuid, user, role_name: null }))) {
+        if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid: channel.uuid, user: options.user, role_name: null }))) {
             throw new ControllerError(403, 'User is not in the room');
         }
 
-        const roomFile = webhookInstance.get('room_file')?.endNode()?.properties();
-        const relations = [{ channel }];
-        if (roomFile) relations.push({ roomFile });
-
-        return dto(webhookInstance.properties(), relations);
+        return dto(webhhook.properties(), [{ channel }, { roomFile }]);
     }
 
     async findAll(options = { room_uuid: null, user: null, page: null, limit: null }) {
-        if (!options) throw new ControllerError(500, 'No options provided');
-        if (!options.room_uuid) throw new ControllerError(400, 'No room_uuid provided');
-        if (!options.user) throw new ControllerError(500, 'No user provided');
-        if (!options.user.sub) throw new ControllerError(500, 'No user.sub provided');
+        options = ChannelWebhookServiceValidator.findAll(options);
 
         const { room_uuid, user, page, limit } = options;
 
@@ -70,20 +59,13 @@ class Service extends NeodeBaseFindService {
     }
 
     async create(options = { body: null, file: null, user: null }) {
-        if (!options) throw new ControllerError(500, 'No options provided');
-        if (!options.body) throw new ControllerError(400, 'No body provided');
-        if (!options.user) throw new ControllerError(500, 'No user provided');
-        if (!options.user.sub) throw new ControllerError(500, 'No user.sub provided');
-        if (!options.body.uuid) throw new ControllerError(400, 'No uuid provided');
-        if (!options.body.name) throw new ControllerError(400, 'No name provided');
-        if (!options.body.description) throw new ControllerError(400, 'No description provided');
-        if (!options.body.channel_uuid) throw new ControllerError(400, 'No channel_uuid provided');
+        ChannelWebhookServiceValidator.create(options);
 
         const { body, file, user } = options;
         const { uuid, name, description, channel_uuid } = body;
 
         if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid, user, role_name: 'Admin' }))) {
-            throw new ControllerError(403, 'User is not an admin in the room');
+            throw new ControllerError(403, 'User is not an admin of the room');
         }
 
         const channelInstance = await neodeInstance.model('Channel').find(channel_uuid);
@@ -133,11 +115,7 @@ class Service extends NeodeBaseFindService {
     }
 
     async update(options = { uuid: null, body: null, file: null, user: null }) {
-        if (!options) throw new ControllerError(500, 'No options provided');
-        if (!options.uuid) throw new ControllerError(400, 'No uuid provided');
-        if (!options.body) throw new ControllerError(400, 'No body provided');
-        if (!options.user) throw new ControllerError(500, 'No user provided');
-        if (!options.user.sub) throw new ControllerError(500, 'No user.sub provided');
+        ChannelWebhookServiceValidator.update(options);
 
         const { uuid, body, file, user } = options;
         const { name, description } = body;
@@ -149,7 +127,7 @@ class Service extends NeodeBaseFindService {
         if (!channel) throw new ControllerError(404, 'Channel not found');
 
         if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid: channel.uuid, user, role_name: 'Admin' }))) {
-            throw new ControllerError(403, 'User is not an admin in the room');
+            throw new ControllerError(403, 'User is not an admin of the room');
         }
 
         const props = {};
@@ -183,10 +161,7 @@ class Service extends NeodeBaseFindService {
     }
 
     async destroy(options = { uuid: null, user: null }) {
-        if (!options) throw new ControllerError(500, 'No options provided');
-        if (!options.uuid) throw new ControllerError(400, 'No uuid provided');
-        if (!options.user) throw new ControllerError(500, 'No user provided');
-        if (!options.user.sub) throw new ControllerError(500, 'No user.sub provided');
+        ChannelWebhookServiceValidator.destroy(options);
 
         const { uuid, user } = options;
 
@@ -197,7 +172,7 @@ class Service extends NeodeBaseFindService {
         if (!channel) throw new ControllerError(404, 'Channel not found');
 
         if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid: channel.uuid, user, role_name: 'Admin' }))) {
-            throw new ControllerError(403, 'User is not an admin in the room');
+            throw new ControllerError(403, 'User is not an admin of the room');
         }
 
         const src = webhookInstance.get('room_file')?.endNode()?.properties()?.src;
@@ -221,10 +196,7 @@ class Service extends NeodeBaseFindService {
     }
 
     async message(options = { uuid: null, body: null }) {
-        if (!options) throw new ControllerError(500, 'No options provided');
-        if (!options.uuid) throw new ControllerError(400, 'No uuid provided');
-        if (!options.body) throw new ControllerError(400, 'No body provided');
-        if (!options.body.message) throw new ControllerError(400, 'No message provided');
+        ChannelWebhookServiceValidator.message(options);
 
         const { uuid, body } = options;
         const { message } = body;

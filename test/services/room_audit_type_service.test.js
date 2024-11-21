@@ -46,7 +46,7 @@ const roomAuditTypeServiceTest = (RoomAuditTypeService, name) => {
         [{ name: 1 }, 'room_audit_type not found'],
         [{ name: "test" }, 'room_audit_type not found'],
     ])(`(${name}) - RoomAuditTypeService.findOne invalid partitions`, async (options, expected) => {
-        expect(() => RoomAuditTypeService.findOne(options)).rejects.toThrowError(expected);
+        expect(async () => await RoomAuditTypeService.findOne(options)).rejects.toThrowError(expected);
     });
 
     test.each([
@@ -86,7 +86,7 @@ const roomAuditTypeServiceTest = (RoomAuditTypeService, name) => {
         [{ page: 1, limit: -1 }, 'limit must be greater than 0'],
         [{ page: 1, limit: "test" }, 'limit must be a number'],
     ])(`(${name}) - RoomAuditTypeService.findAll invalid partitions`, async (options, expected) => {
-        expect(() => RoomAuditTypeService.findAll(options)).rejects.toThrowError(expected);
+        expect(async () => await RoomAuditTypeService.findAll(options)).rejects.toThrowError(expected);
     });
 };
 

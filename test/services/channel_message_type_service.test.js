@@ -35,7 +35,7 @@ const channelMessageTypeServiceTest = (ChannelMessageTypeService, name) => {
         [{ name: 1 }, 'channel_message_type not found'],
         [{ name: "test" }, 'channel_message_type not found'],
     ])(`(${name}) - ChannelMessageTypeService.findOne invalid partitions`, async (options, expected) => {
-        expect(() => ChannelMessageTypeService.findOne(options)).rejects.toThrowError(expected);
+        expect(async () => await ChannelMessageTypeService.findOne(options)).rejects.toThrowError(expected);
     });
 
     test.each([
@@ -77,7 +77,7 @@ const channelMessageTypeServiceTest = (ChannelMessageTypeService, name) => {
         [{ page: 1, limit: -1 }, 'limit must be greater than 0'],
         [{ page: 1, limit: "test" }, 'limit must be a number'],
     ])(`(${name}) - ChannelMessageTypeService.findAll invalid partitions`, async (options, expected) => {
-        expect(() => ChannelMessageTypeService.findAll(options)).rejects.toThrowError(expected);
+        expect(async () => await ChannelMessageTypeService.findAll(options)).rejects.toThrowError(expected);
     });
 }
 

@@ -1,3 +1,4 @@
+import ChannelMessageServiceValidator from '../../shared/validators/channel_message_service_validator.js';
 import ControllerError from '../../shared/errors/controller_error.js';
 import StorageService from '../../shared/services/storage_service.js';
 import RoomPermissionService from './room_permission_service.js';
@@ -19,15 +20,12 @@ class Service extends NeodeBaseFindService {
     }
 
     async findOne(options = { uuid: null, user: null }) {
-        if (!options) throw new ControllerError(400, 'No options provided');
-        if (!options.uuid) throw new ControllerError(400, 'No uuid provided');
-        if (!options.user) throw new ControllerError(500, 'No user provided');
-        if (!options.user.sub) throw new ControllerError(500, 'No user.sub provided');
+        ChannelMessageServiceValidator.findOne(options);
 
         const { user, uuid } = options;
-        
+
         const messageInstance = await neodeInstance.model('ChannelMessage').find(uuid);
-        if (!messageInstance) throw new ControllerError(404, 'Channel message not found');
+        if (!messageInstance) throw new ControllerError(404, 'channel_message not found');
 
         const channelMessageType = messageInstance.get('channel_message_type').endNode().properties();
         if (!channelMessageType) throw new ControllerError(404, 'Channel message type not found');
@@ -51,10 +49,7 @@ class Service extends NeodeBaseFindService {
     }
 
     async findAll(options = { channel_uuid: null, user: null, page: null, limit: null }) {
-        if (!options) throw new ControllerError(400, 'No options provided');
-        if (!options.channel_uuid) throw new ControllerError(400, 'No channel_uuid provided');
-        if (!options.user) throw new ControllerError(500, 'No user provided');
-        if (!options.user.sub) throw new ControllerError(500, 'No user.sub provided');
+        options = ChannelMessageServiceValidator.findAll(options);
 
         const { channel_uuid, user, page, limit } = options;
 
@@ -62,41 +57,39 @@ class Service extends NeodeBaseFindService {
             throw new ControllerError(403, 'User is not in the room');
         }
 
-        return super.findAll({ page, limit, override: {
-            match: [
-                'MATCH (cm:ChannelMessage)-[:HAS_CHANNEL]->(c:Channel {uuid: $channel_uuid})',
-                'MATCH (cm)-[:HAS_CHANNEL_MESSAGE_TYPE]->(cmt:ChannelMessageType)',
-                'OPTIONAL MATCH (cm)-[:HAS_USER]->(u:User)',
-                'OPTIONAL MATCH (cm)-[:HAS_CHANNEL_MESSAGE_UPLOAD]->(cmu:ChannelMessageUpload)-[:HAS_ROOM_FILE]->(rf:RoomFile)',
-                'OPTIONAL MATCH (cmu)-[:HAS_CHANNEL_MESSAGE_UPLOAD_TYPE]->(cmmut:ChannelMessageUploadType)',
-                'OPTIONAL MATCH (cm)-[:HAS_CHANNEL_WEBHOOK_MESSAGE]->(cwm:ChannelWebhookMessage)-[:HAS_CHANNEL_WEBHOOK_MESSAGE_TYPE]->(cwm_type:ChannelWebhookMessageType)',
-                'OPTIONAL MATCH (cwm)-[:HAS_CHANNEL_WEBHOOK]->(cw:ChannelWebhook)-[:HAS_CHANNEL_FILE]->(cwrf:RoomFile)',
-            ],
-            return: ['cm', 'cmt', 'u', 'cmu', 'rf', 'cwm', 'cwm_type', 'cw', 'cwrf', 'cmmut', 'c'],
-            map: { model: 'cm', relationships: [
-                { alias: 'cmt', to: 'channelMessageType' },
-                { alias: 'c', to: 'channel' },
-                { alias: 'u', to: 'user' },
-                { alias: 'cmu', to: 'channelMessageUpload' },
-                { alias: 'rf', to: 'roomFile' },
-                { alias: 'cmmut', to: 'channelMessageUploadType' },
-                { alias: 'cwm', to: 'channelWebhookMessage' },
-                { alias: 'cwm_type', to: 'channelWebhookMessageType' },
-                { alias: 'cw', to: 'channelWebhook' },
-                { alias: 'cwrf', to: 'channelWebhookFile' },
-            ]},
-            params: { channel_uuid }
-        }}); 
+        return super.findAll({
+            page, limit, override: {
+                match: [
+                    'MATCH (cm:ChannelMessage)-[:HAS_CHANNEL]->(c:Channel {uuid: $channel_uuid})',
+                    'MATCH (cm)-[:HAS_CHANNEL_MESSAGE_TYPE]->(cmt:ChannelMessageType)',
+                    'OPTIONAL MATCH (cm)-[:HAS_USER]->(u:User)',
+                    'OPTIONAL MATCH (cm)-[:HAS_CHANNEL_MESSAGE_UPLOAD]->(cmu:ChannelMessageUpload)-[:HAS_ROOM_FILE]->(rf:RoomFile)',
+                    'OPTIONAL MATCH (cmu)-[:HAS_CHANNEL_MESSAGE_UPLOAD_TYPE]->(cmmut:ChannelMessageUploadType)',
+                    'OPTIONAL MATCH (cm)-[:HAS_CHANNEL_WEBHOOK_MESSAGE]->(cwm:ChannelWebhookMessage)-[:HAS_CHANNEL_WEBHOOK_MESSAGE_TYPE]->(cwm_type:ChannelWebhookMessageType)',
+                    'OPTIONAL MATCH (cwm)-[:HAS_CHANNEL_WEBHOOK]->(cw:ChannelWebhook)-[:HAS_CHANNEL_FILE]->(cwrf:RoomFile)',
+                ],
+                return: ['cm', 'cmt', 'u', 'cmu', 'rf', 'cwm', 'cwm_type', 'cw', 'cwrf', 'cmmut', 'c'],
+                map: {
+                    model: 'cm', relationships: [
+                        { alias: 'cmt', to: 'channelMessageType' },
+                        { alias: 'c', to: 'channel' },
+                        { alias: 'u', to: 'user' },
+                        { alias: 'cmu', to: 'channelMessageUpload' },
+                        { alias: 'rf', to: 'roomFile' },
+                        { alias: 'cmmut', to: 'channelMessageUploadType' },
+                        { alias: 'cwm', to: 'channelWebhookMessage' },
+                        { alias: 'cwm_type', to: 'channelWebhookMessageType' },
+                        { alias: 'cw', to: 'channelWebhook' },
+                        { alias: 'cwrf', to: 'channelWebhookFile' },
+                    ]
+                },
+                params: { channel_uuid }
+            }
+        });
     }
 
     async create(options = { body: null, file: null, user: null }) {
-        if (!options) throw new ControllerError(400, 'No options provided');
-        if (!options.body) throw new ControllerError(400, 'No body provided');
-        if (!options.user) throw new ControllerError(500, 'No user provided');
-        if (!options.user.sub) throw new ControllerError(500, 'No user.sub provided');
-        if (!options.body.uuid) throw new ControllerError(400, 'No body.uuid provided');
-        if (!options.body.body) throw new ControllerError(400, 'No body.body provided');
-        if (!options.body.channel_uuid) throw new ControllerError(400, 'No body.channel_uuid provided');
+        ChannelMessageServiceValidator.create(options);
 
         const { body, file, user } = options;
         const { uuid, body: msg, channel_uuid } = body;
@@ -140,7 +133,7 @@ class Service extends NeodeBaseFindService {
             const roomFile = await neodeInstance.model('RoomFile').create({ uuid: uuidv4(), src, size });
             await roomFile.relateTo(roomInstance, 'room');
             await roomFile.relateTo(roomFileType, 'room_file_type');
-            
+
             const chUploadTypeName = getUploadType(file);
             const chUploadType = await neodeInstance.model('ChannelMessageUploadType').find(chUploadTypeName);
             if (!chUploadType) throw new ControllerError(404, 'Channel message upload type not found');
@@ -164,17 +157,14 @@ class Service extends NeodeBaseFindService {
     }
 
     async update(options = { uuid: null, body: null, user: null }) {
-        if (!options) throw new ControllerError(400, 'No options provided');
-        if (!options.uuid) throw new ControllerError(400, 'No uuid provided');
-        if (!options.user) throw new ControllerError(500, 'No user provided');
-        if (!options.user.sub) throw new ControllerError(500, 'No user.sub provided');
+        ChannelMessageServiceValidator.update(options);
 
         const { uuid, body, user } = options;
         const { body: msg } = body;
         const { sub: user_uuid } = user;
 
         const channelMessageInstance = await neodeInstance.model('ChannelMessage').find(uuid);
-        if (!channelMessageInstance) throw new ControllerError(404, 'Channel message not found');
+        if (!channelMessageInstance) throw new ControllerError(404, 'channel_message not found');
 
         const channel = channelMessageInstance.get('channel').endNode().properties();
         if (!channel) throw new ControllerError(404, 'Channel not found');
@@ -205,16 +195,13 @@ class Service extends NeodeBaseFindService {
     }
 
     async destroy(options = { uuid: null, user: null }) {
-        if (!options) throw new ControllerError(400, 'No options provided');
-        if (!options.uuid) throw new ControllerError(400, 'No uuid provided');
-        if (!options.user) throw new ControllerError(500, 'No user provided');
-        if (!options.user.sub) throw new ControllerError(500, 'No user.sub provided');
+        ChannelMessageServiceValidator.destroy(options);
 
         const { uuid, user } = options;
         const { sub: user_uuid } = user;
 
         const channelMessageInstance = await neodeInstance.model('ChannelMessage').find(uuid);
-        if (!channelMessageInstance) throw new ControllerError(404, 'Channel message not found');
+        if (!channelMessageInstance) throw new ControllerError(404, 'channel_message not found');
 
         const channel = channelMessageInstance.get('channel').endNode().properties();
         if (!channel) throw new ControllerError(500, 'Channel not found');
@@ -222,10 +209,12 @@ class Service extends NeodeBaseFindService {
         const channelMessageUser = channelMessageInstance.get('user')?.endNode()?.properties();
         const isOwner = channelMessageUser?.uuid === user_uuid;
         const channel_uuid = channel.uuid;
+        const [moderator, admin] = await Promise.all([
+            RoomPermissionService.isInRoomByChannel({ channel_uuid, user, role_name: 'Moderator' }),
+            RoomPermissionService.isInRoomByChannel({ channel_uuid, user, role_name: 'Admin' })
+        ]);
 
-        if (!isOwner &&
-            !(await RoomPermissionService.isInRoomByChannel({ channel_uuid, user, role_name: 'Moderator' })) &&
-            !(await RoomPermissionService.isInRoomByChannel({ channel_uuid, user, role_name: 'Admin' }))) {
+        if (!isOwner && !moderator && !admin) {
             throw new ControllerError(403, 'User is not an owner of the message, or an admin or moderator of the room');
         }
 
@@ -239,27 +228,16 @@ class Service extends NeodeBaseFindService {
             src = roomFile.src;
         }
 
-        const session = neodeInstance.session();
-        session.writeTransaction(async (transaction) => {
-            await transaction.run(
-                `MATCH (cm:ChannelMessage { uuid: $uuid }) ` +
-                `OPTIONAL MATCH (cm)-[:HAS_CHANNEL_MESSAGE_UPLOAD]->(cmu:ChannelMessageUpload)-[:HAS_ROOM_FILE]->(rf:RoomFile) ` +
-                `OPTIONAL MATCH (cm)-[:HAS_CHANNEL_WEBHOOK_MESSAGE]->(cwm:ChannelWebhookMessage) ` +
-                `DETACH DELETE cm, cmu, rf, cwm`,
-                { uuid }
-            );
+        await channelMessageInstance.delete()
+            .then(() => {
+                if (src) storage.deleteFile(storage.parseKey(src));
 
-            if (src) {
-                const key = storage.parseKey(src);
-                await storage.deleteFile(key);
-            }
-        });
-
-        /**
-          * Broadcast the channel message to all users
-          * in the room where the channel message was deleted.
-          */
-        broadcastChannel(`channel-${channel_uuid}`, 'chat_message_deleted', { uuid });
+                /**
+                 * Broadcast the channel message to all users
+                 * in the room where the channel message was deleted.
+                 */
+                broadcastChannel(`channel-${channel_uuid}`, 'chat_message_deleted', { uuid });
+            });
     }
 }
 
