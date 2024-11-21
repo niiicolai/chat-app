@@ -60,6 +60,13 @@ jobs:
 
       - name: Create .env file
         run: echo "${{ secrets.TEST_ENV_FILE }}" > .env   
+
+      - name: Install mongosh
+        run: |
+          wget -qO - https://www.mongodb.org/static/pgp/server-6.0.asc | sudo apt-key add -
+          echo "deb [ arch=amd64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/6.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-6.0.list
+          sudo apt-get update
+          sudo apt-get install -y mongodb-mongosh
         
       - name: Wait for dbs and overwite data
         run: |
@@ -70,13 +77,6 @@ jobs:
 
       - name: Run tests
         run: npm test  
-        
-      - name: Install mongosh
-        run: |
-          wget -qO - https://www.mongodb.org/static/pgp/server-6.0.asc | sudo apt-key add -
-          echo "deb [ arch=amd64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/6.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-6.0.list
-          sudo apt-get update
-          sudo apt-get install -y mongodb-mongosh
 
       - name: Start the server in the background
         run: |
