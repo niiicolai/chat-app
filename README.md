@@ -80,8 +80,8 @@ docker-compose -f compose-hub-image.yml up
 |                        | GitHub Secrets                      | [x]     |
 |                        | Virtual Machine                     | [x]     |
 |                        | Docker Hub                          | [x]     |
-| **Testing**            | Unit Testing                        | [ ]     |
-|                        | Integration Testing                 | [ ]     |
+| **Testing**            | Unit Testing                        | [x]     |
+|                        | Integration Testing                 | [x]     |
 |                        | Postman API Testing                 | [x]     |
 
 ## Development Environment Setup
