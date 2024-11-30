@@ -10,6 +10,7 @@ import dto from '../dto/user_dto.js';
 import userLoginDto from '../dto/user_login_dto.js';
 import bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
+import mongoose from '../mongoose/index.js';
 
 const SALT_ROUNDS = 10;
 const uploader = new UserAvatarUploader();
@@ -26,7 +27,7 @@ class UserService {
     async findOne(options = { uuid: null }) {
         UserServiceValidator.findOne(options);
 
-        const user = await User.findOne({ uuid: options.uuid })
+        const user = await User.findOne({ _id: options.uuid })
         if (!user) throw new ControllerError(404, 'User not found');
 
         return dto(user);
@@ -46,14 +47,14 @@ class UserService {
      */
     async create(options = { body: null, file: null }) {
         UserServiceValidator.create(options);
-        
-        if (await User.findOne({ email: options.body.email })) 
+
+        if (await User.findOne({ email: options.body.email }))
             throw new ControllerError(400, 'Email already exists');
-        if (await User.findOne({ username: options.body.username })) 
+        if (await User.findOne({ username: options.body.username }))
             throw new ControllerError(400, 'Username already exists');
-        if (await User.findOne({ uuid: options.body.uuid })) 
+        if (await User.findOne({ _id: options.body.uuid }))
             throw new ControllerError(400, 'UUID already exists');
-       
+
         options.body.password = bcrypt.hashSync(options.body.password, SALT_ROUNDS);
 
         const [user_status_state, user_login_type] = await Promise.all([
@@ -66,37 +67,54 @@ class UserService {
 
         const { body, file } = options;
         const { uuid, email, username, password } = body;
-        const avatar_src = (file && file.size > 0) ? await uploader.create(file, uuid) : null;
-        
-        const savedUser = await new User({
-            uuid,
-            username,
-            email,
-            avatar_src,
-            user_email_verification: { 
-                uuid: uuidv4(), 
-                is_verified: (process.env.NODE_ENV === 'test')
-            },
-            user_status: {
-                uuid: uuidv4(), 
-                last_seen_at: new Date(), 
-                message: "No msg yet.", 
-                total_online_hours: 0, 
-                user_status_state
-            },
-            user_logins: [{
-                uuid: uuidv4(), 
-                user_login_type, 
-                password: options.body.password
-            }],
-            user_password_resets: [],
-        }).save();
-        
-        if (process.env.NODE_ENV !== 'test') {
-            await UserEmailVerificationService.resend({ user_uuid: uuid });
-        }
 
-        return { user: dto(savedUser), token: JwtService.sign(uuid) };
+        const session = await mongoose.startSession();
+        session.startTransaction();
+        try {
+            const avatar_src = (file && file.size > 0) ? await uploader.create(file, uuid) : null;
+            const user_email_verification = {
+                uuid: uuidv4(),
+                is_verified: (process.env.NODE_ENV === 'test')
+            };
+            const user_status = {
+                uuid: uuidv4(),
+                last_seen_at: new Date(),
+                message: "No msg yet.",
+                total_online_hours: 0,
+                user_status_state
+            };
+            const user_logins = [{
+                uuid: uuidv4(),
+                user_login_type,
+                password
+            }];
+            const newUser = new User({
+                _id: uuid,
+                username,
+                email,
+                avatar_src,
+                user_email_verification,
+                user_status,
+                user_logins,
+                user_password_resets: []
+            });
+
+            const savedUser = await newUser.save({ session });
+
+            if (process.env.NODE_ENV !== 'test') {
+                await UserEmailVerificationService.resend({ user_uuid: uuid });
+            }
+
+            return { user: dto(savedUser), token: JwtService.sign(uuid) };
+        } catch (error) {
+            await session.abortTransaction();
+            throw error;
+        } finally {
+            if (session.inTransaction()) {
+                await session.commitTransaction();
+            }
+            session.endSession();
+        }
     }
 
     /**
@@ -117,22 +135,22 @@ class UserService {
         const { body, file, user } = options;
         const { sub: uuid } = user;
 
-        const savedUser = await User.findOne({ uuid });
+        const savedUser = await User.findOne({ _id: uuid });
         if (!savedUser) throw new ControllerError(404, 'User not found');
 
         if (body.username) savedUser.username = body.username;
         if (body.email) savedUser.email = body.email;
-        if (file && file.size > 0) 
+        if (file && file.size > 0)
             savedUser.avatar_src = await uploader.createOrUpdate(savedUser.avatar_src, file, uuid);
 
         if (body.password) {
             const user_login_type = await UserLoginType.findOne({ name: "Password" });
             let userPasswordLogin = savedUser.user_logins.find(l => l.user_login_type.name === "Password");
-            if (!userPasswordLogin) { 
+            if (!userPasswordLogin) {
                 userPasswordLogin = { uuid: uuidv4(), user_login_type }
                 savedUser.user_logins.push(userPasswordLogin);
             }
-            
+
             userPasswordLogin.password = bcrypt.hashSync(body.password, SALT_ROUNDS);
         }
 
@@ -152,16 +170,16 @@ class UserService {
      */
     async login(options = { body: null }) {
         UserServiceValidator.login(options);
-        
+
         const { email, password } = options.body;
         const user = await User.findOne({ email });
         const userLogin = user?.user_logins?.find(l => l.user_login_type.name === "Password");
-        
+
         if (!user || !userLogin) throw new ControllerError(400, 'Invalid email or password');
         if (!await bcrypt.compare(password, userLogin.password)) {
             throw new ControllerError(400, 'Invalid email or password');
         }
-        
+
         return { user: dto(user), token: JwtService.sign(user.uuid) };
     }
 
@@ -175,14 +193,25 @@ class UserService {
     async destroy(options = { uuid: null }) {
         UserServiceValidator.destroy(options);
 
-        const { uuid } = options;
-        const savedUser = await User.findOne({ uuid });
-        if (!savedUser) throw new ControllerError(400, 'User not found');
+        const session = await mongoose.startSession();
+        try {
+            session.startTransaction();
 
-        await User.findOneAndDelete({ uuid });
+            const user = await User.findOne({ _id: options.uuid }).session(session);
+            if (!user) throw new ControllerError(400, 'User not found');
 
-        if (savedUser.avatar_src) {
-            await uploader.destroy(savedUser.avatar_src);
+            await UserService.findOneAndDelete({ _id: options.uuid }, session);
+
+            if (user.avatar_src) {
+                await uploader.destroy(uploader.parseKey(user.avatar_src));
+            }
+
+            await session.commitTransaction();
+        } catch (error) {
+            await session.abortTransaction();
+            throw error;
+        } finally {
+            session.endSession();
         }
     }
 
@@ -197,12 +226,12 @@ class UserService {
         UserServiceValidator.destroyAvatar(options);
 
         const { uuid } = options;
-        const savedUser = await User.findOne({ uuid });
+        const savedUser = await User.findOne({ _id: uuid });
         if (!savedUser) throw new ControllerError(400, 'User not found');
 
         if (savedUser.avatar_src) {
             await Promise.all([
-                User.findOneAndUpdate({ uuid }, { avatar_src: null }),
+                User.findOneAndUpdate({ _id: uuid }, { avatar_src: null }),
                 uploader.destroy(savedUser.avatar_src)
             ]);
         }
@@ -217,8 +246,8 @@ class UserService {
      */
     async getUserLogins(options = { uuid: null }) {
         UserServiceValidator.getUserLogins(options);
-        
-        const user = await User.findOne({ uuid: options.uuid });
+
+        const user = await User.findOne({ _id: options.uuid });
         if (!user) throw new ControllerError(404, 'User not found');
 
         return user.user_logins.map(userLoginDto);
@@ -236,7 +265,7 @@ class UserService {
         UserServiceValidator.destroyUserLogins(options);
 
         const { uuid, login_uuid } = options;
-        const user = await User.findOne({ uuid });
+        const user = await User.findOne({ _id: uuid });
         const userLogin = user?.user_logins?.find(l => l.uuid === login_uuid);
 
         if (!user) throw new ControllerError(404, 'User not found');
@@ -253,7 +282,7 @@ class UserService {
         UserServiceValidator.createUserLogin(options);
 
         const { uuid, body } = options;
-        const user = await User.findOne ({ uuid });
+        const user = await User.findOne({ _id: uuid });
         if (!user) throw new ControllerError(404, 'User not found');
 
         const user_login_type = await UserLoginType.findOne({ name: body.user_login_type_name });

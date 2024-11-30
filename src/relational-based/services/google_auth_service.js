@@ -1,11 +1,18 @@
 import GoogleAuthServiceValidator from '../../shared/validators/google_auth_service_validator.js';
+import DuplicateThirdPartyLoginError from '../../shared/errors/duplicate_third_party_login_error.js';
+import DuplicateEntryError from '../../shared/errors/duplicate_entry_error.js';
+import EntityNotFoundError from '../../shared/errors/entity_not_found_error.js';
 import JwtService from '../../shared/services/jwt_service.js';
-import ControllerError from '../../shared/errors/controller_error.js';
 import db from '../sequelize/models/index.cjs';
 import dto from '../dto/user_dto.js';
 import { v4 as uuidv4 } from 'uuid';
 
-class Service {
+/**
+ * @class GoogleAuthService
+ * @description Service class for Google authentication.
+ * @exports GoogleAuthService
+ */
+class GoogleAuthService {
 
     /**
      * @function create
@@ -15,42 +22,50 @@ class Service {
      * @param {Object} options.info.data
      * @param {String} options.info.data.id
      * @param {String} options.info.data.email
-     * @param {String} options.info.data.picture
      * @returns {Object}
      */
     async create(options={ info: null }) {
         GoogleAuthServiceValidator.create(options);
 
-        const { id: third_party_id, email, picture: avatar } = options.info.data;
+        const { id: third_party_id, email } = options.info.data;
 
-        if (await db.UserView.findOne({ where: { user_email: email } })) {
-            throw new ControllerError(400, 'Account already linked already exists. Please login instead!');
-        }
+        await db.sequelize.transaction(async (transaction) => {
+            const [userWithMailExist, userWithThirdPartyIdExist] = await Promise.all([
+                db.UserView.findOne({ where: { user_email: email }, transaction }),
+                db.UserLoginView.findOne({ where: { user_login_third_party_id: third_party_id }, transaction })
+            ]);
+            if (userWithMailExist) throw new DuplicateEntryError('user', 'email', email);
+            if (userWithThirdPartyIdExist) throw new DuplicateEntryError('user_login', 'third_party_id', third_party_id);
 
-        if (await db.UserLoginView.findOne({ where: { user_login_third_party_id: third_party_id } })) {
-            throw new ControllerError(400, 'Account already linked already exists. Please login instead!');
-        }
+            const replacements = {
+                uuid: uuidv4(),
+                username: `user${new Date().getTime()}`,
+                email,
+                password: null,
+                avatar: null,
+                login_type: 'Google',
+                third_party_id
+            }
 
-        const now = new Date();
-        const uuid = uuidv4();
-        const username = `user${now.getTime()}`;
-        const login_type = 'Google';
+            await db.sequelize.query('CALL create_user_proc(:uuid, :username, :email, :password, :avatar, :login_type, :third_party_id, @result)', {
+                replacements,
+                transaction
+            });
 
-        await db.sequelize.query('CALL create_user_proc(:uuid, :username, :email, :password, :avatar, :login_type, :third_party_id, @result)', {
-            replacements: { uuid, username, email, password: null, avatar: avatar || null, login_type, third_party_id }
+            // Set the email as verified because the user is signing up with Google
+            // so we can skip the email verification process
+            await db.sequelize.query('CALL set_user_email_verification_proc(:user_uuid, :user_is_verified, @result)', {
+                replacements: { user_uuid: replacements.uuid, user_is_verified: true },
+                transaction
+            });
         });
-        // Set the email as verified because the user is signing up with Google
-        // so we can skip the email verification process
-        await db.sequelize.query('CALL set_user_email_verification_proc(:user_uuid, :user_is_verified, @result)', {
-            replacements: { user_uuid: uuid, user_is_verified: true }
-        });
-        
-        const savedUser = await db.UserView.findOne({ where: { user_email: email } });
-        const user = dto(savedUser);
-        const token = JwtService.sign(user.uuid);
-        const result = { user, token };
 
-        return result
+        return await db.UserView.findOne({ where: { user_email: email } })
+            .then(savedUser => {
+                const user = dto(savedUser);
+                const token = JwtService.sign(user.uuid);
+                return { user, token };
+            });
     }
 
     /**
@@ -71,14 +86,10 @@ class Service {
             user_login_third_party_id: third_party_id,
             user_login_type_name: 'Google'
         }});
-        if (!userLogin) {
-            throw new ControllerError(400, 'User not found');
-        }
+        if (!userLogin) throw new EntityNotFoundError('user_login');
 
         const savedUser = await db.UserView.findOne({ where: { user_uuid: userLogin.user_uuid } });
-        if (!savedUser) {
-            throw new ControllerError(400, 'User not found');
-        }
+        if (!savedUser) throw new EntityNotFoundError('user');
 
         const user = dto(savedUser);
         const token = JwtService.sign(user.uuid);
@@ -100,20 +111,29 @@ class Service {
 
         const { third_party_id, type, user } = options;
 
-        if (await db.UserLoginView.findOne({ where: { user_login_third_party_id: third_party_id } })) {
-            throw new ControllerError(400, 'Account already linked already exists. Please login instead!');
-        }
+        await db.sequelize.transaction(async (transaction) => {
+            const userLogin = await db.UserLoginView.findOne({ 
+                where: { user_uuid: user.uuid, user_login_type_name: 'Google' }, 
+                transaction 
+            });
+            if (userLogin) throw new DuplicateThirdPartyLoginError("Google");
 
-        if (type !== 'Google') {
-            throw new ControllerError(400, 'Only Google are currently supported');
-        }
+            const replacements = {
+                login_uuid: uuidv4(),
+                user_uuid: user.uuid,
+                login_type: type,
+                third_party_id,
+                password: null
+            }
 
-        await db.sequelize.query('CALL create_user_login_proc(:login_uuid, :user_uuid, :login_type, :third_party_id, :password, @result)', {
-            replacements: { login_uuid: uuidv4(), user_uuid: user.sub, login_type: type, third_party_id, password: null } 
+            await db.sequelize.query('CALL create_user_login_proc(:login_uuid, :user_uuid, :login_type, :third_party_id, :password, @result)', {
+                replacements,
+                transaction
+            });
         });
     }
 }
 
-const service = new Service();
+const service = new GoogleAuthService();
 
 export default service;

@@ -41,20 +41,24 @@ class Service extends NeodeBaseFindService {
             throw new ControllerError(403, 'User is not in the room');
         }
 
-        return super.findAll({ page, limit, override: {
-            match: [
-                'MATCH (c:Channel)-[:HAS_ROOM]->(r:Room {uuid: $room_uuid})',
-                'MATCH (c)-[:HAS_CHANNEL_TYPE]->(ct:ChannelType)',
-                'OPTIONAL MATCH (c)-[:HAS_CHANNEL_FILE]->(rf:RoomFile)',
-            ],
-            return: ['c', 'r', 'ct', 'rf'],
-            map: { model: 'c', relationships: [
-                { alias: 'r', to: 'room' },
-                { alias: 'ct', to: 'channelType' },
-                { alias: 'rf', to: 'roomFile' },
-            ]},
-            params: { room_uuid }
-        }}); 
+        return super.findAll({
+            page, limit, override: {
+                match: [
+                    'MATCH (c:Channel)-[:HAS_ROOM]->(r:Room {uuid: $room_uuid})',
+                    'MATCH (c)-[:HAS_CHANNEL_TYPE]->(ct:ChannelType)',
+                    'OPTIONAL MATCH (c)-[:HAS_CHANNEL_FILE]->(rf:RoomFile)',
+                ],
+                return: ['c', 'r', 'ct', 'rf'],
+                map: {
+                    model: 'c', relationships: [
+                        { alias: 'r', to: 'room' },
+                        { alias: 'ct', to: 'channelType' },
+                        { alias: 'rf', to: 'roomFile' },
+                    ]
+                },
+                params: { room_uuid }
+            }
+        });
     }
 
     async create(options = { body: null, file: null, user: null }) {
@@ -63,44 +67,70 @@ class Service extends NeodeBaseFindService {
         const { body, file, user } = options;
         const { uuid, name, description, channel_type_name, room_uuid } = body;
 
-        const roomInstance = await neodeInstance.model('Room').find(room_uuid);
-        if (!roomInstance) throw new ControllerError(404, 'Room not found');
+        const [room, channelType, isAdmin, exceedsChannelCount] = await Promise.all([
+            neodeInstance.model('Room').find(room_uuid),
+            neodeInstance.model('ChannelType').find(channel_type_name),
+            RoomPermissionService.isInRoom({ room_uuid, user, role_name: 'Admin' }),
+            RoomPermissionService.channelCountExceedsLimit({ room_uuid, add_count: 1 }),
+        ]);
 
-        const channelTypeInstance = await neodeInstance.model('ChannelType').find(channel_type_name);
-        if (!channelTypeInstance) throw new ControllerError(404, 'Channel type not found');
-
-        if (!(await RoomPermissionService.isInRoom({ room_uuid, user, role_name: 'Admin' }))) {
-            throw new ControllerError(403, 'User is not an admin of the room');
-        }
-
-        if (await RoomPermissionService.channelCountExceedsLimit({ room_uuid, add_count: 1 })) {
-            throw new ControllerError(400, 'Room channel count exceeds limit. The room cannot have more channels');
-        }
-
-        const channelInstance = await neodeInstance.model('Channel').create({ uuid, name, description });
-
-        await channelInstance.relateTo(roomInstance, 'room');
-        await channelInstance.relateTo(channelTypeInstance, 'channel_type');
+        if (!room) throw new ControllerError(404, 'Room not found');
+        if (!channelType) throw new ControllerError(404, 'Channel type not found');
+        if (!isAdmin) throw new ControllerError(403, 'User is not an admin of the room');
+        if (exceedsChannelCount) throw new ControllerError(400, 'Room channel count exceeds limit. The room cannot have more channels');
 
         if (file && file.size > 0) {
-            const { size } = file;
+            const [exceedsTotal, exceedsSingle] = await Promise.all([
+                RoomPermissionService.fileExceedsTotalFilesLimit({ room_uuid, bytes: file.size }),
+                RoomPermissionService.fileExceedsSingleFileSize({ room_uuid, bytes: file.size }),
+            ]);
 
-            if ((await RoomPermissionService.fileExceedsTotalFilesLimit({ room_uuid, bytes: size }))) {
-                throw new ControllerError(400, 'The room does not have enough space for this file');
-            }
-
-            if ((await RoomPermissionService.fileExceedsSingleFileSize({ room_uuid, bytes: size }))) {
-                throw new ControllerError(400, 'File exceeds single file size limit');
-            }
-
-            const roomFileTypeInstance = await neodeInstance.model('RoomFileType').find('ChannelAvatar');
-            const src = await storage.uploadFile(file, uuid);
-            const roomFileInstance = await neodeInstance.model('RoomFile').create({ uuid, src, size });
-
-            await channelInstance.relateTo(roomFileInstance, 'room_file');
-            await roomFileInstance.relateTo(roomInstance, 'room');
-            await roomFileInstance.relateTo(roomFileTypeInstance, 'room_file_type');
+            if (exceedsTotal) throw new ControllerError(400, 'The room does not have enough space for this file');
+            if (exceedsSingle) throw new ControllerError(400, 'File exceeds single file size limit');
         }
+
+        // Create transaction
+        const session = neodeInstance.session();
+        const result = await session.writeTransaction(async (transaction) => {
+            const channel = await transaction.run(
+                `MATCH (r:Room { uuid: $room_uuid }) ` +
+                `MATCH (ct:ChannelType { name: $channel_type_name }) ` +
+                `CREATE (c:Channel { uuid: $uuid, name: $name, description: $description }) ` +
+                `CREATE (r)-[:COMMUNICATES_IN]->(c) ` +
+                `CREATE (c)-[:TYPE_IS]->(ct) ` +
+                `RETURN c`,
+                { uuid, name, description, room_uuid, channel_type_name }
+            );
+
+            if (file && file.size > 0) {
+                const { size } = file;
+                // Upload using a two step process
+                // to ensure the room file is valid before uploading
+                // and not end up with a file that is not linked to a room file.
+                // Ensure the room file is valid
+                await transaction.run(
+                    `MATCH (c:Channel { uuid: $uuid }) ` +
+                    `MATCH (r:Room { uuid: $room_uuid }) ` +
+                    `MATCH (rft:RoomFileType { name: 'ChannelAvatar' }) ` +
+                    `CREATE (rf:RoomFile { uuid: $uuid, size: $size }) ` +
+                    `CREATE (c)-[:AVATAR_IS]->(rf) ` +
+                    `CREATE (rf)-[:STORED_IN]->(r) ` +
+                    `CREATE (rf)-[:TYPE_IS]->(rft)`,
+                    { uuid, room_uuid, size }
+                );
+                
+                // then ensure the file is uploaded
+                const src = await storage.uploadFile(file, uuid);
+                // then update the room file
+                await transaction.run(
+                    `MATCH (rf:RoomFile { uuid: $uuid }) ` +
+                    `SET rf.src = $src ` +
+                    `RETURN rf`,
+                    { uuid, src }
+                );
+            }
+        });
+
 
         return this.findOne({ uuid, user });
     }
@@ -152,7 +182,7 @@ class Service extends NeodeBaseFindService {
 
         return this.findOne({ uuid, user });
     }
-            
+
     async destroy(options = { uuid: null, user: null }) {
         ChannelServiceValidator.destroy(options);
 

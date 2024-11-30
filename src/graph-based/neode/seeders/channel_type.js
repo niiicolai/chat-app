@@ -1,6 +1,10 @@
-import data from "./data.js";
+import data from '../../../seed_data.js';
 
 export default class ChannelTypeSeeder {
+    order() {
+        return 0;
+    }
+    
     async up(neodeInstance) {
         for (let state of data.channel_types) {
             neodeInstance.model('ChannelType').create({

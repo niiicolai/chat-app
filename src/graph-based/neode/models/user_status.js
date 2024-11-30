@@ -1,3 +1,4 @@
+
 export default {
     uuid: {
         primary: true,
@@ -19,17 +20,10 @@ export default {
     user_status_state: {
         type: 'relationship',
         target: 'UserStatusState',
-        relationship: 'HAS_USER_STATUS_STATE',
+        relationship: 'STATE_IS',
         direction: 'out',
         required: false,
         eager: true
-    },
-    user: {
-        type: 'relationship',
-        target: 'User',
-        relationship: 'HAS_USER_STATUS',
-        direction: 'in',
-        required: false
     },
     created_at: {
         type: 'datetime',
@@ -42,3 +36,4 @@ export default {
         default: () => new Date().toISOString()
     }
 }
+

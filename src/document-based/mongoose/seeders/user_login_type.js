@@ -1,5 +1,5 @@
 import UserLoginType from '../models/user_login_type.js';
-import data from './data.js';
+import data from '../../../seed_data.js';
 
 export default class UserLoginTypeSeeder {
     async up() {

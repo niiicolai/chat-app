@@ -1,6 +1,10 @@
-import data from "./data.js";
+import data from '../../../seed_data.js';
 
 export default class RoomCategorySeeder {
+    order() {
+        return 0;
+    }
+    
     async up(neodeInstance) {
         for (let state of data.room_categories) {
             neodeInstance.model('RoomCategory').create({

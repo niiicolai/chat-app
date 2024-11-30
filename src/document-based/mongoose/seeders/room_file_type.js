@@ -1,5 +1,5 @@
 import RoomFileType from '../models/room_file_type.js';
-import data from './data.js';
+import data from '../../../seed_data.js';
 
 export default class RoomFileTypeSeeder {
     async up() {

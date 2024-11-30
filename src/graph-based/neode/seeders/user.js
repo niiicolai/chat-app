@@ -1,7 +1,11 @@
-import data from "./data.js";
+import data from '../../../seed_data.js';
 import { v4 as uuidv4 } from 'uuid';
 
 export default class UserSeeder {
+    order() {
+        return 1;
+    }
+
     async up(neodeInstance) {
         const userStatusState = await neodeInstance.model('UserStatusState').find('Offline');
         const userLoginType = await neodeInstance.model('UserLoginType').find('Password');

@@ -1,5 +1,5 @@
 import RoomAuditType from '../models/room_audit_type.js';
-import data from './data.js';
+import data from '../../../seed_data.js';
 
 export default class RoomAuditTypeSeeder {
     async up() {

@@ -1,5 +1,5 @@
 import RoomCategory from '../models/room_category.js';
-import data from './data.js';
+import data from '../../../seed_data.js';
 
 export default class RoomCategorySeeder {
     async up() {

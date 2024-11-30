@@ -28,12 +28,7 @@ const isValidRoomInviteLink = (roomInviteLink) => {
 
 const roomInviteLinkServiceTest = (RoomInviteLinkService, RoomUserService, UserService, name) => {
     const room_invite_link_uuid = uuidv4();
-    const user = { 
-        uuid: uuidv4(),
-        username: `test-${uuidv4()}`,
-        email: `test-${uuidv4()}@example.com`,
-        password: '12345678',
-    };
+    const user = context.fn.fakeUser();
 
     beforeAll(async () => {
         await UserService.create({ body: user });

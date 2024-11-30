@@ -64,45 +64,58 @@ class UserService {
         const { body, file } = options;
         const { uuid, email, username, password } = body;
 
-        const [avatar_src, userLogin, userState, userEmailVerification] = await Promise.all([
-            (file && file.size > 0) ? uploader.create(file, uuid) : null,
-            neodeInstance.model('UserLogin').create({ uuid: uuidv4(), password }),
-            neodeInstance.model('UserStatus').create({
-                last_seen_at: new Date(),
-                message: "No message",
-                total_online_hours: 0,
-            }),
-            neodeInstance.model('UserEmailVerification').create({
-                uuid: uuidv4(),
-                is_verified: (process.env.NODE_ENV === 'test'),
-            }),
+        // start transaction
+        const session = neodeInstance.session();
+        const transaction = session.beginTransaction();
+
+        try {
+            const [avatar_src, userLogin, userState, userEmailVerification] = await Promise.all([
+                (file && file.size > 0) ? uploader.create(file, uuid) : null,
+                neodeInstance.model('UserLogin').create({ uuid: uuidv4(), password }, transaction),
+                neodeInstance.model('UserStatus').create({
+                    last_seen_at: new Date(),
+                    message: "No message",
+                    total_online_hours: 0,
+                }),
+                neodeInstance.model('UserEmailVerification').create({
+                    uuid: uuidv4(),
+                    is_verified: (process.env.NODE_ENV === 'test'),
+                }),
+                
+            ]);
+            const savedUser = await neodeInstance.model('User').create({
+                uuid,
+                username,
+                email,
+                avatar_src,
+            });
             
-        ]);
-        const savedUser = await neodeInstance.model('User').create({
-            uuid,
-            username,
-            email,
-            avatar_src,
-        });
-        await Promise.all([
-            userState.relateTo(userStatusState, 'user_status_state'),
-            savedUser.relateTo(userState, 'user_status'),
-            savedUser.relateTo(userEmailVerification, 'user_email_verification'),
-            userLogin.relateTo(savedUser, 'user'),
-            userLogin.relateTo(userLoginType, 'user_login_type'),
-        ]);
+            await Promise.all([
+                userState.relateTo(userStatusState, 'user_status_state'),
+                savedUser.relateTo(userState, 'user_status'),
+                savedUser.relateTo(userEmailVerification, 'user_email_verification'),
+                userLogin.relateTo(savedUser, 'user'),
+                userLogin.relateTo(userLoginType, 'user_login_type'),
+            ]);
 
-        if (process.env.NODE_ENV !== 'test') {
-            await UserEmailVerificationService.resend({ user_uuid: uuid });
+            if (process.env.NODE_ENV !== 'test') {
+                await UserEmailVerificationService.resend({ user_uuid: uuid });
+            }
+
+            return {
+                token: JwtService.sign(uuid),
+                user: dto(savedUser.properties(), [
+                    { user_status: userState.properties() },
+                    { user_email_verification: userEmailVerification.properties() }
+                ]),
+            };
+        } catch (error) {
+            await transaction.rollback();
+            throw error;
+        } finally {
+            if (transaction.isOpen()) await transaction.commit();
+            session.close();
         }
-
-        return {
-            token: JwtService.sign(uuid),
-            user: dto(savedUser.properties(), [
-                { user_status: userState.properties() },
-                { user_email_verification: userEmailVerification.properties() }
-            ]),
-        };
     }
 
     async update(options = { body: null, file: null, user: null }) {

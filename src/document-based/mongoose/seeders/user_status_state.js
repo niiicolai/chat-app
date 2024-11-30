@@ -1,5 +1,5 @@
 import UserStatusState from '../models/user_status_state.js';
-import data from './data.js';
+import data from '../../../seed_data.js';
 
 export default class UserStatusStateSeeder {
     async up() {

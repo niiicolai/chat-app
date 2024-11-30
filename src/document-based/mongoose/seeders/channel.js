@@ -11,7 +11,7 @@ import ChannelMessageUploadType from '../models/channel_message_upload_type.js';
 import ChannelWebhookMessageType from '../models/channel_webhook_message_type.js';
 import ChannelAudit from '../models/channel_audit.js';
 
-import data from './data.js';
+import data from '../../../seed_data.js';
 
 const channelUuid = "1c9437b0-4e88-4a8e-84f0-679c7714407f";
 const channelWebhookUuid = "3219fadb-a982-4b4c-81a3-d7b70b4c9963";

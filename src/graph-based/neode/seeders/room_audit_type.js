@@ -1,6 +1,10 @@
-import data from "./data.js";
+import data from '../../../seed_data.js';
 
 export default class RoomAuditTypeSeeder {
+    order() {
+        return 0;
+    }
+    
     async up(neodeInstance) {
         for (let state of data.room_audit_types) {
             neodeInstance.model('RoomAuditType').create({

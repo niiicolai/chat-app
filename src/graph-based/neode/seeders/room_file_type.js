@@ -1,6 +1,10 @@
-import data from "./data.js";
+import data from '../../../seed_data.js';
 
 export default class RoomFileTypeSeeder {
+    order() {
+        return 0;
+    }
+    
     async up(neodeInstance) {
         for (let state of data.room_file_types) {
             neodeInstance.model('RoomFileType').create({

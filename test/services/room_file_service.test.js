@@ -9,15 +9,9 @@ import GraphUserService from '../../src/graph-based/services/user_service.js';
 
 import { context } from '../context.js';
 import { test, expect, beforeAll } from 'vitest';
-import { v4 as uuidv4 } from 'uuid';
 
 const roomFileServiceTest = (RoomFileService, UserService, name) => {
-    const user = { 
-        uuid: uuidv4(),
-        username: `test-${uuidv4()}`,
-        email: `test-${uuidv4()}@example.com`,
-        password: '12345678',
-    };
+    const user = context.fn.fakeUser();
 
     beforeAll(async () => {
         await UserService.create({ body: user });

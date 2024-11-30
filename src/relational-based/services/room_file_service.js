@@ -1,91 +1,154 @@
 import RoomFileServiceValidator from '../../shared/validators/room_file_service_validator.js';
-import MysqlBaseFindService from './_mysql_base_find_service.js';
-import ControllerError from '../../shared/errors/controller_error.js';
+import OwnershipOrLeastModRequiredError from '../../shared/errors/ownership_or_least_mod_required_error.js';
+import EntityNotFoundError from '../../shared/errors/entity_not_found_error.js';
+import RoomMemberRequiredError from '../../shared/errors/room_member_required_error.js';
 import StorageService from '../../shared/services/storage_service.js';
-import RoomPermissionService from './room_permission_service.js';
+import RPS from './room_permission_service.js';
 import dto from '../dto/room_file_dto.js';
 import db from '../sequelize/models/index.cjs';
 
+/**
+ * @constant storage
+ * @description Storage service instance for room files.
+ * @type {StorageService}
+ */
 const storage = new StorageService('room_file');
 
-class Service extends MysqlBaseFindService {
-    constructor() {
-        super(db.RoomFileView, dto);
-    }
+/**
+ * @class RoomFileService
+ * @description Service class for room files.
+ * @exports RoomFileService
+ */
+class RoomFileService {
 
+    /**
+     * @function findOne
+     * @description Find a room file by UUID.
+     * @param {Object} options
+     * @param {string} options.uuid
+     * @param {string} options.user
+     * @param {string} options.user.sub
+     * @returns {Promise<Object>}
+     */
     async findOne(options = { uuid: null, user: null }) {
         RoomFileServiceValidator.findOne(options);
-        const { user, uuid } = options;
-        const r = await super.findOne({ uuid });
 
-        if (!(await RoomPermissionService.isInRoom({ room_uuid: r.room_uuid, user, role_name: null }))) {
-            throw new ControllerError(403, 'User is not in the room');
-        }
+        const entity = await db.RoomFileView.findByPk(options.uuid);
+        if (!entity) throw new EntityNotFoundError('room_audit');
 
-        return r;
+        const isInRoom = await RPS.isInRoom({ room_uuid: entity.room_uuid, user: options.user, role_name: null });
+        if (!isInRoom) throw new RoomMemberRequiredError();
+
+        return dto(entity);
     }
 
+    /**
+     * @function findAll
+     * @description Find all room files by room UUID.
+     * @param {Object} options
+     * @param {string} options.room_uuid
+     * @param {string} options.user
+     * @param {string} options.user.sub
+     * @param {number} options.page optional
+     * @param {number} options.limit optional
+     * @returns {Promise<Object>}
+     */
     async findAll(options = { room_uuid: null, user: null, page: null, limit: null }) {
         options = RoomFileServiceValidator.findAll(options);
+
         const { room_uuid, user, page, limit } = options;
 
-        if (!(await RoomPermissionService.isInRoom({ room_uuid, user, role_name: null }))) {
-            throw new ControllerError(403, 'User is not in the room');
-        }
+        const room = await db.RoomView.findOne({ uuid: room_uuid });
+        if (!room) throw new EntityNotFoundError('room');
 
-        return await super.findAll({ page, limit, where: { room_uuid } });
-    }
+        const isInRoom = await RPS.isInRoom({ room_uuid, user, role_name: null });
+        if (!isInRoom) throw new RoomMemberRequiredError();
 
-    async destroy(options = { uuid: null, user: null }) {
-        RoomFileServiceValidator.destroy(options);
-        const { uuid, user } = options;
-
-        const existing = await service.findOne({ uuid, user });
-        const { room_file_type_name } = existing;
-        const isMessageUpload = room_file_type_name === 'MessageUpload';
-        const [owner, admin, moderator] = await Promise.all([
-            this.isOwner({ uuid, isMessageUpload, user }),
-            RoomPermissionService.isInRoom({ room_uuid: existing.room_uuid, user, role_name: 'Admin' }),
-            RoomPermissionService.isInRoom({ room_uuid: existing.room_uuid, user, role_name: 'Moderator' }),
+        const [total, data] = await Promise.all([
+            db.RoomFileView.count({ room_uuid }),
+            db.RoomFileView.findAll({
+                where: { room_uuid },
+                ...(limit && { limit }),
+                ...(offset && { offset })
+            })
         ]);
 
-        if (!owner && !admin && !moderator) {
-            throw new ControllerError(403, 'User is not an owner of the file, or an admin or moderator of the room');
-        }
-
-        await db.sequelize.query('CALL delete_room_file_proc(:uuid, @result)', {
-            replacements: {
-                uuid,
-            },
-        });
-
-        const result = await db.sequelize.query('SELECT @result as result');
-
-        /**
-         * If the file was successfully deleted from the database, 
-         * delete the file from storage as well
-         */
-        if (result[0][0].result === 1) {
-            const key = storage.parseKey(existing.src);
-            storage.deleteFile(key);
-        }
+        return {
+            data: data.map(entity => dto(entity)),
+            total,
+            ...(limit && { limit }),
+            ...(page && { page }),
+            ...(page && { pages: Math.ceil(total / limit) })
+        };
     }
 
-    async isOwner(options = { uuid: null, isMessageUpload: null, user: null }) {
-        RoomFileServiceValidator.isOwner(options);
-        const { uuid, isMessageUpload, user } = options;
-        const { sub: user_uuid } = user;
+    /**
+     * @function destroy
+     * @description Delete a room file by UUID.
+     * @param {Object} options
+     * @param {string} options.uuid
+     * @param {string} options.user
+     * @param {string} options.user.sub
+     * @returns {Promise<void>}
+     */
+    async destroy(options = { uuid: null, user: null }) {
+        RoomFileServiceValidator.destroy(options);
 
-        if (isMessageUpload) {
-            const { messageUpload } = await db.ChannelMessage.findOne({ include: [{ model: db.ChannelMessageUpload, where: { uuid } }] });
-            if (messageUpload && messageUpload.user_uuid === user_uuid) {
-                return true;
-            }            
-        }
-        return false;
+        const { uuid, user } = options;
+
+        await db.sequelize.transaction(async (transaction) => {
+            const roomFile = await db.RoomFile.findOne({ where: { uuid }, transaction });
+            if (!roomFile) throw new EntityNotFoundError('room_file');
+
+            const [isOwner, isAdmin, isModerator] = await Promise.all([
+                this.isOwner({ uuid, isMessageUpload: (roomFile.room_file_type_name === 'MessageUpload'), user }, transaction),
+                RPS.isInRoom({ room_uuid: existing.room_uuid, user, role_name: 'Admin' }, transaction),
+                RPS.isInRoom({ room_uuid: existing.room_uuid, user, role_name: 'Moderator' }, transaction),
+            ]);
+
+            if (!isOwner && !isAdmin && !isModerator) {
+                throw new OwnershipOrLeastModRequiredError('room_file');
+            }
+
+            await db.sequelize.query('CALL delete_room_file_proc(:uuid, @result)', {
+                replacements: { uuid },
+                transaction
+            });
+
+            // File must be deleted after the database operation to prevent
+            // an inconsistent state.
+            const key = storage.parseKey(roomFile.src);
+            await storage.deleteFile(key);
+        });
+    }
+
+    /**
+     * @function isOwner
+     * @description Check if a user is the owner of a room file.
+     * @param {Object} options
+     * @param {string} options.uuid
+     * @param {boolean} options.isMessageUpload
+     * @param {string} options.user
+     * @param {string} options.user.sub
+     * @param {Object} transaction optional
+     * @returns {Promise<boolean>}
+     */
+    async isOwner(options = { uuid: null, isMessageUpload: null, user: null }, transaction = null) {
+        RoomFileServiceValidator.isOwner(options);
+
+        const { uuid, isMessageUpload, user } = options;
+
+        if (!isMessageUpload) return false;
+
+        const { messageUpload } = await db.ChannelMessage.findOne({ 
+            include: [{ model: db.ChannelMessageUpload, where: { uuid } }],
+            transaction 
+        });
+
+        return messageUpload && messageUpload.user_uuid === user.uuid;
     }
 };
 
-const service = new Service();
+const service = new RoomFileService();
 
 export default service;

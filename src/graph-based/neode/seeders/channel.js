@@ -1,9 +1,13 @@
-import data from "./data.js";
+import data from '../../../seed_data.js';
 import { v4 as uuidv4 } from 'uuid';
 
 const channelUuid = "1c9437b0-4e88-4a8e-84f0-679c7714407f";
 
 export default class ChannelSeeder {
+    order() {
+        return 3;
+    }
+
     async up(neodeInstance) {
         const room = await neodeInstance.model('Room').find(data.room.uuid);
         const roomJoinSettings = await neodeInstance.model('RoomJoinSettings').find(data.room.room_join_settings.uuid);

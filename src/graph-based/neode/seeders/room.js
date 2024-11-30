@@ -1,7 +1,11 @@
-import data from "./data.js";
+import data from '../../../seed_data.js';
 import { v4 as uuidv4 } from 'uuid';
 
 export default class RoomSeeder {
+    order() {
+        return 2;
+    }
+
     async up(neodeInstance) {
         const roomCategory = await neodeInstance.model('RoomCategory').find('General');
         const room = await neodeInstance.model('Room').create({
@@ -16,11 +20,9 @@ export default class RoomSeeder {
 
         const roomAvatarFileType = await neodeInstance.model('RoomFileType').find('RoomAvatar');
         const roomAvatarFile = await neodeInstance.model('RoomFile').create({
-            uuid: uuidv4(),
-            src: data.room.room_avatar_file.src,
-            size: data.room.room_avatar_file.size,
-            created_at: new Date(),
-            updated_at: new Date()
+            uuid: data.room.room_avatar.room_file.uuid,
+            src: data.room.room_avatar.room_file.src,
+            size: data.room.room_avatar.room_file.size,
         });
 
         await roomAvatarFile.relateTo(room, 'room');
@@ -28,8 +30,6 @@ export default class RoomSeeder {
         
         const roomAvatar = await neodeInstance.model('RoomAvatar').create({
             uuid: data.room.room_avatar.uuid,
-            created_at: new Date(),
-            updated_at: new Date()
         });
 
         await room.relateTo(roomAvatar, 'room_avatar');
@@ -38,8 +38,6 @@ export default class RoomSeeder {
         const roomJoinSettings = await neodeInstance.model('RoomJoinSettings').create({
             uuid: data.room.room_join_settings.uuid,
             join_message: "{name} joined the room!",
-            created_at: new Date(),
-            updated_at: new Date()
         });
 
         const roomFileSettings = await neodeInstance.model('RoomFileSettings').create({
@@ -47,30 +45,22 @@ export default class RoomSeeder {
             file_days_to_live: 30,
             total_files_bytes_allowed: 52428800,
             single_file_bytes_allowed: 5242880,
-            created_at: new Date(),
-            updated_at: new Date()
         });
 
         const roomUserSettings = await neodeInstance.model('RoomUserSettings').create({
             uuid: data.room.room_user_settings.uuid,
             max_users: 25,
-            created_at: new Date(),
-            updated_at: new Date()
         });
 
         const roomChannelSettings = await neodeInstance.model('RoomChannelSettings').create({
             uuid: data.room.room_channel_settings.uuid,
             max_channels: 10,
             message_days_to_live: 30,
-            created_at: new Date(),
-            updated_at: new Date()
         });
 
         const roomRulesSettings = await neodeInstance.model('RoomRulesSettings').create({
             uuid: data.room.room_rules_settings.uuid,
             rules_text: "# Chat Rules\n\n1. No spamming\n2. No trolling\n3. No NSFW content\n\nBreaking the rules will result in a ban.",
-            created_at: new Date(),
-            updated_at: new Date()
         });
 
         await room.relateTo(roomJoinSettings, 'room_join_settings');
@@ -81,8 +71,6 @@ export default class RoomSeeder {
 
         const roomInviteLink = await neodeInstance.model('RoomInviteLink').create({
             uuid: data.room.room_invite_link.uuid,
-            created_at: new Date(),
-            updated_at: new Date()
         });
         
         await roomInviteLink.relateTo(room, 'room');        
@@ -97,18 +85,12 @@ export default class RoomSeeder {
 
         const roomUser1 = await neodeInstance.model('RoomUser').create({
             uuid: data.room.room_users[0].uuid,
-            created_at: new Date(),
-            updated_at: new Date()
         });
         const roomUser2 = await neodeInstance.model('RoomUser').create({
             uuid: data.room.room_users[1].uuid,
-            created_at: new Date(),
-            updated_at: new Date()
         });
         const roomUser3 = await neodeInstance.model('RoomUser').create({
             uuid: data.room.room_users[2].uuid,
-            created_at: new Date(),
-            updated_at: new Date()
         });
 
         await roomUser1.relateTo(room, 'room');

@@ -1,5 +1,5 @@
 import ChannelWebhookMessageType from '../models/channel_webhook_message_type.js';
-import data from './data.js';
+import data from '../../../seed_data.js';
 
 export default class ChannelWebhookMessageTypeSeeder {
     async up() {

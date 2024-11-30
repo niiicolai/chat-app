@@ -74,9 +74,9 @@ class Service {
 
         return {
             total,
-            data: await Promise.all(channels.map(async (channel) => {
+            data: channels.map(async (channel) => {
                 return dto({ ...channel._doc, room: { uuid: room_uuid } });
-            })),
+            }),
             ...(limit && { limit }),
             ...(page && limit && { page, pages: Math.ceil(total / limit) }),
         };

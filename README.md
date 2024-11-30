@@ -26,8 +26,8 @@ docker-compose -f compose-hub-image.yml up
 |                        | Swagger API Documentation           | [x]     |
 |                        | Authentication Middleware           | [x]     |
 |                        | Logging Middleware                  | [x]     |
-|                        | CSRF Middleware                     | [ ]     |
-|                        | Origin Middleware                   | [ ]     |
+|                        | CSRF Middleware                     | [x]     |
+|                        | Origin Middleware                   | [x]     |
 |                        | File Middleware                     | [x]     |
 |                        | File Upload                         | [x]     |
 |                        | MySQL API                           | [x]     |
@@ -67,7 +67,7 @@ docker-compose -f compose-hub-image.yml up
 | **MongoDB**            | Schemas                             | [x]     |
 |                        | ODM                                 | [x]     |
 |                        | Seeding                             | [x]     |
-|                        | Constraints                         | [ ]     |
+|                        | Constraints                         | [x]     |
 |                        | Indexes                             | [x]     |
 |                        | Custom Functions                    | [ ]     |
 | **Neo4j**              | Schemas                             | [x]     |

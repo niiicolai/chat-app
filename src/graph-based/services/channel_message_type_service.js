@@ -2,7 +2,6 @@ import TypeServiceValidator from '../../shared/validators/type_service_validator
 import ControllerError from '../../shared/errors/controller_error.js';
 import neodeInstance from '../neode/index.js';
 import dto from '../dto/type_dto.js';
-import neo4j from 'neo4j-driver';
 
 class Service {
     async findOne(options = { name: null }) {
@@ -18,22 +17,16 @@ class Service {
         options = TypeServiceValidator.findAll(options);
 
         const { page, limit, offset } = options;
-        const result = await neodeInstance.batch([
-            { query:
-                `MATCH (uss:ChannelMessageType) ORDER BY uss.created_at DESC ` +
-                (offset ? `SKIP $offset `:``) + (limit ? `LIMIT $limit ` : ``) +
-                `RETURN uss`,
-              params: {
-                ...(offset && { offset: neo4j.int(offset) }),
-                ...(limit && { limit: neo4j.int(limit) }),
-              }
-            }, 
-            { query: `MATCH (uss:ChannelMessageType) RETURN COUNT(uss) AS count`, params: {} },
+        const [ total, data ] = await Promise.all([
+            neodeInstance.cypher("MATCH (n:ChannelMessageType) RETURN count(n) as total")
+                .then(result => result.records[0].get('total').toNumber()),
+            neodeInstance.model("ChannelMessageType")
+                .all({}, {created_at: 'DESC'}, (limit || 0), (offset || 0))
+                .then(results => results.map(result => dto(result.properties())))
         ]);
-        const total = result[1].records[0].get('count').low;
         return {
             total, 
-            data: result[0].records.map(record => dto(record.get('uss').properties)),
+            data,
             ...(limit && { limit }),
             ...(page && limit && { page, pages: Math.ceil(total / limit) }),
         };
@@ -43,3 +36,4 @@ class Service {
 const service = new Service();
 
 export default service;
+

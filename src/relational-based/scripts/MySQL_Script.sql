@@ -119,8 +119,7 @@ CREATE TABLE User (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT user_username_unique UNIQUE (username),
     CONSTRAINT user_email_unique UNIQUE (email),
-    CHECK (CHAR_LENGTH(username) >= 3 AND CHAR_LENGTH(username) <= 255),
-    CHECK (CHAR_LENGTH(email) >= 3 AND CHAR_LENGTH(email) <= 255)
+    CHECK (CHAR_LENGTH(password) >= 8 AND CHAR_LENGTH(password) <= 255)
 );
 
 DROP TABLE IF EXISTS UserLogin;
@@ -189,7 +188,8 @@ CREATE TABLE RoomFile (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (room_uuid) REFERENCES Room(uuid),
-    FOREIGN KEY (room_file_type_name) REFERENCES RoomFileType(name)
+    FOREIGN KEY (room_file_type_name) REFERENCES RoomFileType(name),
+    INDEX (size)
 );
 
 
@@ -472,13 +472,7 @@ END //
 DELIMITER ;
 
 
--- Time to live for files should be handle by the client
--- because the MySQL server doesn't have access to the S3 bucket
-
-
-
 -- ### FUNCTIONS ###
-
 
 
 -- Convert bytes to kilobytes in SQL
@@ -1344,7 +1338,8 @@ DELIMITER ;
 
 
 -- Create a new channel message with an optional upload
--- It runs in a transaction to ensure that both inserts are successful
+-- The application is responsible for running this in a transaction
+-- because it involves operations with an external file system.
 DROP PROCEDURE IF EXISTS create_channel_message_proc;
 DELIMITER //
 CREATE PROCEDURE create_channel_message_proc(
@@ -1361,39 +1356,23 @@ CREATE PROCEDURE create_channel_message_proc(
 )
 BEGIN
     DECLARE room_file_uuid VARCHAR(36);
-    DECLARE exit_code VARCHAR(5);
-    DECLARE exit_message TEXT;
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION
-    BEGIN
-        GET DIAGNOSTICS CONDITION 1
-            exit_code = RETURNED_SQLSTATE, 
-            exit_message = MESSAGE_TEXT;
-        ROLLBACK;
-        -- Print the error message and code
-        SELECT CONCAT('Error Code: ', exit_code, ' Error Message: ', exit_message) AS error_output;
-        
-        SET result = FALSE;
-    END;
 
-    START TRANSACTION;
-
-        -- Insert the channel message
-        INSERT INTO ChannelMessage (uuid, body, channel_uuid, user_uuid, channel_message_type_name)
+    -- Insert the channel message
+    INSERT INTO ChannelMessage (uuid, body, channel_uuid, user_uuid, channel_message_type_name)
         VALUES (message_uuid_input, message_body_input, channel_uuid_input, user_uuid_input, channel_message_type_name_input);
         
-        -- Check if the channel message upload is not null and insert it into the ChannelMessageUpload table
-        IF channel_message_upload_src_input IS NOT NULL THEN
-            SET room_file_uuid = UUID();
+    -- Check if the channel message upload is not null and insert it into the ChannelMessageUpload table
+    IF channel_message_upload_src_input IS NOT NULL THEN
+        SET room_file_uuid = UUID();
 
-            -- Create a room file
-            INSERT INTO RoomFile (uuid, src, size, room_uuid, room_file_type_name)
+        -- Create a room file
+        INSERT INTO RoomFile (uuid, src, size, room_uuid, room_file_type_name)
             VALUES (room_file_uuid, channel_message_upload_src_input, channel_message_upload_size_input, room_uuid_input, 'ChannelMessageUpload');
 
-            -- Create a channel message upload
-            INSERT INTO ChannelMessageUpload (uuid, channel_message_uuid, channel_message_upload_type_name, room_file_uuid)
+        -- Create a channel message upload
+        INSERT INTO ChannelMessageUpload (uuid, channel_message_uuid, channel_message_upload_type_name, room_file_uuid)
             VALUES (UUID(), message_uuid_input, channel_message_upload_type_name_input, room_file_uuid);
-        END IF;
-    COMMIT;
+    END IF;
     SET result = TRUE;
 END //
 DELIMITER ;

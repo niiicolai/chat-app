@@ -8,7 +8,7 @@ import RoomAuditType from '../models/room_audit_type.js';
 import User from '../models/user.js';
 import { v4 as uuidv4 } from 'uuid';
 
-import data from './data.js';
+import data from '../../../seed_data.js';
 
 export const roomUuid = "a595b5cb-7e47-4ce7-9875-cdf99184a73c";
 const roomUserSettingsUuid = "986f3733-7bbd-4744-8ce2-ad11ddd95462";

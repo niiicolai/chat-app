@@ -1,4 +1,6 @@
 import authMiddleware from '../middlewares/auth_middleware.js';
+import csrfMiddleware from '../middlewares/csrf_middleware.js';
+import originMiddleware from '../middlewares/origin_middleware.js';
 import errorHandler from './_error_handler.js';
 import express from 'express';
 
@@ -7,7 +9,7 @@ export default (crudService) => {
     const ctrl = { router };
 
     ctrl.resend = () => {
-        router.post('/user_email_verification/me/resend', [authMiddleware], async (req, res) => {
+        router.post('/user_email_verification/me/resend', [originMiddleware, csrfMiddleware, authMiddleware], async (req, res) => {
             await errorHandler(res, async () => {
                 const { sub: user_uuid } = req.user;
                 await crudService.resend({ user_uuid });

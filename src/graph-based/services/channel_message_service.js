@@ -11,8 +11,6 @@ import { broadcastChannel } from '../../../websocket_server.js';
 
 const storage = new StorageService('channel_message_upload');
 
-console.error('TODO: findOne in channel_message_service.js doesn\'t return the upload');
-
 class Service extends NeodeBaseFindService {
 
     constructor() {

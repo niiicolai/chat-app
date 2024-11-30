@@ -1,4 +1,6 @@
 import authMiddleware from '../middlewares/auth_middleware.js';
+import csrfMiddleware from '../middlewares/csrf_middleware.js';
+import originMiddleware from '../middlewares/origin_middleware.js';
 import errorHandler from './_error_handler.js';
 import express from 'express';
 import multer from 'multer';
@@ -9,7 +11,7 @@ export default (crudService) => {
     const ctrl = { router };
 
     ctrl.findOne = () => {
-        router.get('/channel_webhook/:uuid', [authMiddleware], async (req, res) => {
+        router.get('/channel_webhook/:uuid', [originMiddleware, authMiddleware], async (req, res) => {
             await errorHandler(res, async () => {
                 const result = await crudService.findOne({ uuid: req.params.uuid, user: req.user });
                 res.json(result);
@@ -18,7 +20,7 @@ export default (crudService) => {
     }
 
     ctrl.findAll = () => {
-        router.get('/channel_webhooks', [authMiddleware], async (req, res) => {
+        router.get('/channel_webhooks', [originMiddleware, authMiddleware], async (req, res) => {
             await errorHandler(res, async () => {
                 const { page, limit } = req.query;
                 const result = await crudService.findAll({ page, limit, user: req.user, room_uuid: req.query.room_uuid });
@@ -37,7 +39,7 @@ export default (crudService) => {
     }
 
     ctrl.create = () => {
-        router.post('/channel_webhook', [authMiddleware, uploadMiddleware], async (req, res) => {
+        router.post('/channel_webhook', [originMiddleware, csrfMiddleware, authMiddleware, uploadMiddleware], async (req, res) => {
             await errorHandler(res, async () => {
                 const result = await crudService.create({ body: req.body, user: req.user, file: req.file });
                 res.json(result);
@@ -46,7 +48,7 @@ export default (crudService) => {
     }
 
     ctrl.update = () => {
-        router.patch('/channel_webhook/:uuid', [authMiddleware, uploadMiddleware], async (req, res) => {
+        router.patch('/channel_webhook/:uuid', [originMiddleware, csrfMiddleware, authMiddleware, uploadMiddleware], async (req, res) => {
             await errorHandler(res, async () => {
                 const result = await crudService.update({ body: req.body, uuid: req.params.uuid, user: req.user, file: req.file });
                 res.json(result);
@@ -55,7 +57,7 @@ export default (crudService) => {
     }
 
     ctrl.destroy = () => {
-        router.delete('/channel_webhook/:uuid', [authMiddleware], async (req, res) => {
+        router.delete('/channel_webhook/:uuid', [originMiddleware, csrfMiddleware, authMiddleware], async (req, res) => {
             await errorHandler(res, async () => {
                 await crudService.destroy({ uuid: req.params.uuid, user: req.user });
                 res.sendStatus(204);

@@ -1,138 +1,191 @@
 import RoomPermissionServiceValidator from '../../shared/validators/room_permission_service_validator.js';
 import db from '../sequelize/models/index.cjs';
 
+/**
+ * @class RoomPermissionService
+ * @description Service class for room permissions.
+ * @exports RoomPermissionService
+ */
 class RoomPermissionService {
 
-    async isVerified(options = { user: null }) {
+    /**
+     * @function isVerified
+     * @description Check if a user's email is verified.
+     * @param {Object} options
+     * @param {Object} options.user
+     * @param {string} options.user.sub
+     * @param {Object} options.transaction optional
+     * @returns {Promise<boolean>}
+     */
+    async isVerified(options = { user: null }, transaction = null) {
         RoomPermissionServiceValidator.isVerified(options);
-
-        const { user } = options;
-        const { sub: user_uuid } = user;
-        const exists = await db.UserEmailVerificationView.findOne({
-            where: {
-                user_uuid,
-            },
+        
+        const userEmailVerification = await db.UserEmailVerificationView.findOne({
+            where: { user_uuid: options.user.sub },
+            ...(transaction && { transaction }),
         });
-
-        return exists && exists.user_email_verified;
+        
+        return userEmailVerification && userEmailVerification.user_email_verified;
     }
 
-    async isInRoom(options = { room_uuid: null, user: null, role_name: null }) {
+    /**
+     * @function isInRoom
+     * @description Check if a user is a member of a room.
+     * @param {Object} options
+     * @param {string} options.room_uuid
+     * @param {Object} options.user
+     * @param {string} options.user.sub
+     * @param {string} options.role_name
+     * @param {Object} options.transaction optional
+     * @returns {Promise<boolean>}
+     */
+    async isInRoom(options = { room_uuid: null, user: null, role_name: null }, transaction = null) {
         RoomPermissionServiceValidator.isInRoom(options);
 
         const { room_uuid, user } = options;
-        const { sub: user_uuid } = user;
-        const exists = await db.RoomUserView.findOne({
-            where: {
-                room_uuid,
-                user_uuid,
-            },
+
+        const roomUser = await db.RoomUserView.findOne({
+            where: { room_uuid, user_uuid: user.sub },
+            ...(transaction && { transaction }),
         });
+        if (!roomUser) return false;
 
-        if (exists) {
-            if (options.role_name && exists.room_user_role_name !== options.role_name) {
-                return false;
-            }
-
-            return true;
-        }
-
-        return false;
+        return options.role_name ? roomUser.room_user_role_name === options.role_name : true;
     }
 
-    async isInRoomByChannel(options = { channel_uuid: null, user: null, role_name: null }) {
+    /**
+     * @function isInRoomByChannel
+     * @description Check if a user is a member of a room by channel.
+     * @param {Object} options
+     * @param {string} options.channel_uuid
+     * @param {Object} options.user
+     * @param {string} options.user.sub
+     * @param {string} options.role_name
+     * @param {Object} options.transaction optional
+     * @returns {Promise<boolean>}
+     */
+    async isInRoomByChannel(options = { channel_uuid: null, user: null, role_name: null }, transaction = null) {
         RoomPermissionServiceValidator.isInRoomByChannel(options);
 
         const { channel_uuid, user } = options;
-        const { sub: user_uuid } = user;
-        const ch = await db.ChannelView.findOne({
-            where: {
-                channel_uuid,
-            },
+
+        const channel = await db.ChannelView.findOne({ 
+            where: { channel_uuid }, 
+            ...(transaction && { transaction }) 
         });
-        const exists = await db.RoomUserView.findOne({
-            where: {
-                room_uuid: ch.room_uuid,
-                user_uuid,
-            },
+        if (!channel) return false;
+
+        const roomUser = await db.RoomUserView.findOne({ 
+            where: { room_uuid: channel.room_uuid, user_uuid: user.sub },
+            ...(transaction && { transaction }) 
         });
+        if (!roomUser) return false;
 
-        if (exists) {
-            if (options.role_name && exists.room_user_role_name !== options.role_name) {
-                return false;
-            }
-
-            return true;
-        }
-
-        return false;
+        return options.role_name ? roomUser.room_user_role_name === options.role_name : true;
     }
 
-    async fileExceedsTotalFilesLimit(options = { room_uuid: null, bytes: null }) {
+    /**
+     * @function fileExceedsTotalFilesLimit
+     * @description Check if adding x number of bytes to a room exceeds the total files limit.
+     * @param {Object} options
+     * @param {string} options.room_uuid
+     * @param {number} options.bytes
+     * @param {Object} options.transaction optional
+     * @returns {Promise<boolean>}
+     */
+    async fileExceedsTotalFilesLimit(options = { room_uuid: null, bytes: null }, transaction = null) {
         RoomPermissionServiceValidator.fileExceedsTotalFilesLimit(options);
 
         const { room_uuid, bytes } = options;
+
         await db.sequelize.query('CALL check_upload_exceeds_total_proc(:bytes, :room_uuid, @result)', {
-            replacements: {
-                bytes,
-                room_uuid,
-            },
+            replacements: { bytes, room_uuid },
+            ...(transaction && { transaction }),
         });
-        
-        const [[{ result }]] = await db.sequelize.query('SELECT @result AS result');
-        const exceeds = result === 1;
-        console.log(exceeds);
-        return exceeds;
+
+        const [[{ result }]] = await db.sequelize.query('SELECT @result AS result', { 
+            ...(transaction && { transaction }), 
+        });
+
+        return (result === 1);
     }
 
-    async fileExceedsSingleFileSize(options = { room_uuid: null, bytes: null }) {
+    /**
+     * @function fileExceedsSingleFileSize
+     * @description Check if adding x number of bytes to a room exceeds the single file size limit.
+     * @param {Object} options
+     * @param {string} options.room_uuid
+     * @param {number} options.bytes
+     * @param {Object} options.transaction optional
+     * @returns {Promise<boolean>}
+     */
+    async fileExceedsSingleFileSize(options = { room_uuid: null, bytes: null }, transaction = null) {
         RoomPermissionServiceValidator.fileExceedsSingleFileSize(options);
 
         const { room_uuid, bytes } = options;
+
         await db.sequelize.query('CALL check_upload_exceeds_single_proc(:bytes, :room_uuid, @result)', {
-            replacements: {
-                bytes,
-                room_uuid,
-            },
+            replacements: { bytes, room_uuid },
+            ...(transaction && { transaction }),
         });
 
-        const [[{ result }]] = await db.sequelize.query('SELECT @result AS result');
-        const exceeds = result === 1;
+        const [[{ result }]] = await db.sequelize.query('SELECT @result AS result', { 
+            ...(transaction && { transaction }), 
+        });
         
-        return exceeds;
+        return (result === 1);
     }
 
-    async roomUserCountExceedsLimit(options = { room_uuid: null, add_count: null }) {
+    /**
+     * @function roomUserCountExceedsLimit
+     * @description Check if adding x number of users to a room exceeds the user limit.
+     * @param {Object} options
+     * @param {string} options.room_uuid
+     * @param {number} options.add_count
+     * @param {Object} options.transaction optional
+     * @returns {Promise<boolean>}
+     */
+    async roomUserCountExceedsLimit(options = { room_uuid: null, add_count: null }, transaction = null) {
         RoomPermissionServiceValidator.roomUserCountExceedsLimit(options);
 
         const { room_uuid, add_count } = options;
 
         await db.sequelize.query('CALL check_users_exceeds_total_proc(:room_uuid, :add_count, @result)', {
-            replacements: {
-                room_uuid,
-                add_count,
-            },
+            replacements: { room_uuid, add_count },
+            ...(transaction && { transaction }),
         });
 
-        const [[{ result }]] = await db.sequelize.query('SELECT @result AS result');
-        const exceeds = result === 1;
-        return exceeds;
+        const [[{ result }]] = await db.sequelize.query('SELECT @result AS result', {
+            ...(transaction && { transaction }),
+        });
+
+        return (result === 1);
     }
 
-    async channelCountExceedsLimit(options = { room_uuid: null, add_count: null }) {
+    /**
+     * @function channelCountExceedsLimit
+     * @description Check if adding x number of channels to a room exceeds the channel limit.
+     * @param {Object} options
+     * @param {string} options.room_uuid
+     * @param {number} options.add_count
+     * @param {Object} options.transaction optional
+     * @returns {Promise<boolean>}
+     */
+    async channelCountExceedsLimit(options = { room_uuid: null, add_count: null }, transaction = null) {
         RoomPermissionServiceValidator.channelCountExceedsLimit(options);
 
         const { room_uuid, add_count } = options;
+
         await db.sequelize.query('CALL check_channels_exceeds_total_proc(:room_uuid, :add_count, @result)', {
-            replacements: {
-                room_uuid,
-                add_count,
-            },
+            replacements: { room_uuid, add_count },
+            ...(transaction && { transaction }),
         });
 
-        const [[{ result }]] = await db.sequelize.query('SELECT @result AS result');
-        const exceeds = result === 1;
-        return exceeds;
+        const [[{ result }]] = await db.sequelize.query('SELECT @result AS result', {
+            ...(transaction && { transaction }),
+        });
+
+        return (result === 1);
     }
 }
 

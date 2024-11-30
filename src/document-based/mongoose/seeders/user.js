@@ -7,7 +7,7 @@ import UserLogin from '../models/user_login.js';
 import UserLoginType from '../models/user_login_type.js';
 import { v4 as uuidv4 } from 'uuid';
 
-import data from './data.js';
+import data from '../../../seed_data.js';
 
 const userEmailVerificationUuid1 = "563bae61-9b96-48e8-81b6-6691934f7d67";
 const userEmailVerificationUuid2 = "b787b970-6e59-4c58-a9f7-a48a4fc6bcf3";
@@ -25,6 +25,7 @@ export default class UserSeeder {
         await Promise.all([
             new User({
                 ...data.users[0],
+                _id: data.users[0].uuid,
                 user_email_verification: {
                     uuid: userEmailVerificationUuid1,
                     is_verified: true
@@ -48,6 +49,7 @@ export default class UserSeeder {
             }).save(),
             new User({
                 ...data.users[1],
+                _id: data.users[1].uuid,
                 user_email_verification: {
                     uuid: userEmailVerificationUuid2,
                     is_verified: true
@@ -71,6 +73,7 @@ export default class UserSeeder {
             }).save(),
             new User({
                 ...data.users[2],
+                _id: data.users[2].uuid,
                 user_email_verification: {
                     uuid: userEmailVerificationUuid3,
                     is_verified: true

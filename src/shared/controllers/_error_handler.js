@@ -2,6 +2,8 @@ import ControllerError from '../errors/controller_error.js';
 import rollbar from '../../../rollbar.js';
 
 export default async (res, c) => {
+    if (typeof c !== 'function') console.log('Error Handler: c is not a function');
+
     try {
         await c();
     } catch (error) {

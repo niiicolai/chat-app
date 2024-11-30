@@ -1,7 +1,6 @@
 import jwt from 'jsonwebtoken';
 import validator from 'validator';
 
-
 /**
  * @const SECRET
  * @description The secret used to sign the token.

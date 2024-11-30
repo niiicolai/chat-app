@@ -1,5 +1,5 @@
 import RoomUserRole from '../models/room_user_role.js';
-import data from './data.js';
+import data from '../../../seed_data.js';
 
 export default class RoomUserRoleSeeder {
     async up() {

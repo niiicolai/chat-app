@@ -1,5 +1,5 @@
 import ChannelMessageType from '../models/channel_message_type.js';
-import data from './data.js';
+import data from '../../../seed_data.js';
 
 export default class ChannelMessageTypeSeeder {
     async up() {

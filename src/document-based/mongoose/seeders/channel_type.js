@@ -1,5 +1,5 @@
 import ChannelType from '../models/channel_type.js';
-import data from './data.js';
+import data from '../../../seed_data.js';
 
 export default class ChannelTypeSeeder {
     async up() {
