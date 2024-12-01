@@ -1,6 +1,7 @@
 import UserPasswordResetServiceValidator from '../../shared/validators/user_password_reset_service_validator.js';
 import UserCreatePasswordResetMailer from '../../shared/mailers/user_create_password_reset_mailer.js';
 import UserConfirmPasswordResetMailer from '../../shared/mailers/user_confirm_password_reset_mailer.js';
+import EntityNotFoundError from '../../shared/errors/entity_not_found_error.js';
 import ControllerError from '../../shared/errors/controller_error.js';
 import UserLoginType from '../mongoose/models/user_login_type.js';
 import User from '../mongoose/models/user.js';

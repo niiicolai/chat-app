@@ -1,20 +1,17 @@
 import mongoose from "mongoose";
 
 export default new mongoose.Schema({
-    uuid: { 
-        type: String, 
-        required: true
-    },
+    _id: mongoose.Schema.Types.UUID,
     name: { 
-        type: String, 
+        type: mongoose.Schema.Types.String, 
         required: true 
     },
     description: { 
-        type: String, 
+        type: mongoose.Schema.Types.String, 
         required: true 
     },
     room_file: { 
-        type: mongoose.Schema.Types.ObjectId, 
+        type: mongoose.Schema.Types.UUID, 
         ref: 'RoomFile', 
         required: false 
     },

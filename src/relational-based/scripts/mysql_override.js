@@ -20,18 +20,21 @@ export async function overrideMySQL() {
     const mysqlScript = path.join(dir, 'MySQL_Script.sql');
     
     const mysqlCommand = `mysql --user=${dbConfig.username} --password=${dbConfig.password} --host=${dbConfig.host} --port=${dbConfig.port} ${dbConfig.database} < ${mysqlScript}`;
-    exec(mysqlCommand, (error, stdout, stderr) => {
-        if (error) {
-            console.error(`Error executing SQL script: ${error.message}`);
-            return;
-        }
-
-        if (stderr) {
-            console.error(`MySQL stderr: ${stderr}`);
-            return;
-        }
-
-        console.log(`Successfully executed SQL script: ${stdout}`);
+    
+    return new Promise((resolve, reject) => {
+        exec(mysqlCommand, (error, stdout, stderr) => {
+            if (error) {
+                console.error(`Error executing SQL script: ${error.message}`);
+                reject(error);
+            }
+    
+            if (stderr) {
+                console.error(`MySQL stderr: ${stderr}`);
+            }
+    
+            console.log(`Successfully executed SQL script: ${mysqlScript}`);
+            resolve(stdout);
+        });
     });
 }
 

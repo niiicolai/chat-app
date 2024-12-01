@@ -26,6 +26,24 @@ const uploader = new UserAvatarUploader();
 class UserService {
 
     /**
+     * @function findOne
+     * @description Find a user by UUID.
+     * @param {Object} options
+     * @param {string} options.uuid
+     * @param {string} options.user
+     * @param {string} options.user.sub
+     * @returns {Promise<Object>}
+     */
+    async findOne(options = { uuid: null }) {
+        UserServiceValidator.findOne(options);
+
+        const entity = await db.UserView.findByPk(options.uuid);
+        if (!entity) throw new EntityNotFoundError('user');
+
+        return dto(entity);
+    }
+
+    /**
      * @function create
      * @description Create a user.
      * @param {Object} options
@@ -44,48 +62,42 @@ class UserService {
         const { uuid, email, username, password } = options.body;
 
         await db.sequelize.transaction(async (transaction) => {
-            const [uuidInUse, emailInUse, usernameInUse] = await Promise.all([
+            await Promise.all([
                 db.UserView.findOne({ where: { user_uuid: uuid }, transaction }),
                 db.UserView.findOne({ where: { user_email: email }, transaction }),
                 db.UserView.findOne({ where: { user_username: username }, transaction })
-            ]);
+            ]).then(([uuidInUse, emailInUse, usernameInUse]) => {
+                if (uuidInUse) throw new DuplicateEntryError('user', 'uuid', uuid);
+                if (emailInUse) throw new DuplicateEntryError('user', 'email', email);
+                if (usernameInUse) throw new DuplicateEntryError('user', 'username', username);
+            });
 
-            if (uuidInUse) throw new DuplicateEntryError('user', 'uuid', uuid);
-            if (emailInUse) throw new DuplicateEntryError('user', 'email', email);
-            if (usernameInUse) throw new DuplicateEntryError('user', 'username', username);
-
-            const replacements = {
+            await db.UserView.createUserProcStatic({
                 uuid,
                 username,
                 email,
                 password: await PwdService.hash(password),
                 avatar: (file && file.size > 0) ? await uploader.create(file, uuid) : null,
                 login_type: 'Password',
-                third_party_id: null
-            }
-
-            await db.sequelize.query('CALL create_user_proc(:uuid, :username, :email, :password, :avatar, :login_type, :third_party_id, @result)', {
-                replacements,
-                transaction
-            });
-
-            /**
-             * Set the email as verified if the environment is test,
-             * to avoid having to confirm the email verification
-             * when running end-to-end tests.
-             */
-            const env = process.env.NODE_ENV || 'development';
-            if (env === 'test') {
-                await db.sequelize.query('CALL set_user_email_verification_proc(:user_uuid, :user_is_verified, @result)', {
-                    replacements: { user_uuid: uuid, user_is_verified: true },
-                    transaction
-                });
+            }, transaction);
+            
+            if (process.env.NODE_ENV === 'test') {
+                /**
+                 * Set the email as verified if the environment is test,
+                 * to avoid having to confirm the email verification
+                 * when running end-to-end tests.
+                 */
+                await db.UserView.setUserEmailVerificationProcStatic({
+                    user_uuid: uuid,
+                    is_verified: true
+                }, transaction);
             } else {
                 await UserEmailVerificationService.resend({ user_uuid: uuid }, transaction);
             }
         });
 
-        return await db.UserView.findOne({ where: { user_uuid: uuid } })
+        return await db.UserView
+            .findOne({ where: { user_uuid: uuid } })
             .then(entity => dto(entity))
             .then(user => { return { user, token: JwtService.sign(user.uuid) } })
     }
@@ -100,7 +112,7 @@ class UserService {
      * @param {String} options.body.password optional
      * @param {Object} options.file optional
      * @param {Object} options.user
-     * @param {String} options.user.uuid
+     * @param {String} options.user.sub
      * @returns {Promise<Object>}
      */
     async update(options = { body: null, file: null, user: null }) {
@@ -110,7 +122,7 @@ class UserService {
         
         await db.sequelize.transaction(async (transaction) => {
             const savedUser = await db.UserView.findOne({ 
-                where: { user_uuid: user.uuid }, 
+                where: { user_uuid: user.sub }, 
                 transaction 
             });
             if (!savedUser) throw new EntityNotFoundError('user');
@@ -125,22 +137,12 @@ class UserService {
                 throw new DuplicateEntryError('user', 'email', body.email);
             }
 
-            const replacements = {
-                uuid: user.uuid,
-                username: body.username || savedUser.user_username,
-                email: body.email || savedUser.user_email,
-                password: body.password 
-                    ? await PwdService.hash(body.password) 
-                    : savedUser.user_password,
-                avatar: (file && file.size > 0)
-                    ? await uploader.create(file, user.uuid)
-                    : savedUser.user_avatar_src
-            }
-
-            await db.sequelize.query('CALL edit_user_proc(:uuid, :username, :email, :password, :avatar, @result)', {
-                replacements,
-                transaction
-            });
+            await savedUser.editUserProc({
+                ...(body.username && { username: body.username }),
+                ...(body.email && { email: body.email }),
+                ...(body.password && { password: await PwdService.hash(body.password) }),
+                ...(file && file.size > 0 && { avatar: await uploader.create(file, user.sub) })
+            }, transaction);
 
             // Old file must be deleted last to prevent database update failures
             // to delete the file if the database update fails.
@@ -149,7 +151,8 @@ class UserService {
             }
         });
 
-        return await db.UserView.findOne({ where: { user_uuid: user.uuid } })
+        return await db.UserView
+            .findOne({ where: { user_uuid: user.sub } })
             .then(entity => dto(entity));
     }
 
@@ -203,10 +206,7 @@ class UserService {
             });
             if (!savedUser) throw new EntityNotFoundError('user');
 
-            await db.sequelize.query('CALL delete_user_proc(:uuid, @result)', {
-                replacements: { uuid: options.uuid },
-                transaction
-            });
+            await savedUser.deleteUserProc(transaction);
 
             if (savedUser.user_avatar_src) {
                 await uploader.destroy(savedUser.user_avatar_src);
@@ -230,13 +230,8 @@ class UserService {
                 transaction
             });
             if (!savedUser) throw new EntityNotFoundError('user');
-
             if (savedUser.user_avatar_src) {
-                await db.sequelize.query('CALL delete_user_avatar_proc(:user_uuid, @result)', {
-                    replacements: { user_uuid: options.uuid },
-                    transaction
-                });
-
+                await savedUser.deleteUserAvatarProc(transaction);
                 await uploader.destroy(savedUser.user_avatar_src);
             }
         });
@@ -278,7 +273,9 @@ class UserService {
                 where: { user_uuid: uuid, user_login_uuid: login_uuid },
                 transaction
             });
+
             if (!userLogin) throw new EntityNotFoundError('user_login');
+
             if (userLogin.user_login_type_name === 'Password') {
                 throw new ControllerError(400, 'Cannot delete password login');
             }
@@ -291,10 +288,7 @@ class UserService {
                 throw new ControllerError(400, 'Cannot delete last login');
             }
 
-            await db.sequelize.query('CALL delete_user_login_proc(:login_uuid, @result)', {
-                replacements: { login_uuid },
-                transaction
-            });
+            await userLogin.deleteUserLoginProc(transaction);
         });
     }
 
@@ -327,30 +321,20 @@ class UserService {
             });
             if (!loginType) throw new EntityNotFoundError('user_login_type');
 
-            if (body.user_login_type_name === 'Password') {
-                if (!body.password) throw new ControllerError(400, 'No password provided');
+            if (body.password) {
                 body.password = await PwdService.hash(body.password);
-            } else body.password = null;
-
-            if (body.user_login_type_name === 'Google') {
-                if (!body.third_party_id) throw new ControllerError(400, 'No third_party_id provided');
-            } else body.third_party_id = null;
-            
-            const replacements = {
-                login_uuid: uuidV4(),
-                user_uuid: uuid,
-                user_login_type_name: body.user_login_type_name,
-                user_login_password: body.password,
-                third_party_id: body.third_party_id
             }
-
-            await db.sequelize.query('CALL create_user_login_proc(:login_uuid, :user_uuid, :user_login_type_name, :user_login_password, :third_party_id, @result)', {
-                replacements,
-                transaction
-            });
+            
+            await user.createUserLoginProc({
+                login_uuid: body.uuid,
+                user_login_type_name: body.user_login_type_name,
+                ...body.password && { user_login_password: body.password },
+                ...body.third_party_id && { third_party_id: body.third_party_id }
+            }, transaction);
         });
 
-        return await db.UserLoginView.findOne({ where: { user_login_uuid: options.body.uuid }})
+        return await db.UserLoginView
+            .findByPk(body.uuid)
             .then(entity => userLoginDto(entity));
     }
 }

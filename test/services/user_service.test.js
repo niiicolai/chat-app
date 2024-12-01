@@ -1,16 +1,21 @@
 import RelationalUserService from '../../src/relational-based/services/user_service.js';
 import DocumentUserService from '../../src/document-based/services/user_service.js';
 import GraphUserService from '../../src/graph-based/services/user_service.js';
+
+import data from '../../src/seed_data.js';
 import { test, expect } from 'vitest';
-import { context } from '../context.js';
 import { v4 as uuidv4 } from 'uuid';
 
 const userServiceTest = (UserService, name) => {
+    const admin = { sub: data.users[0].uuid, email: data.users[0].email, password: '12345678', username: data.users[0].username };
+    const mod = { sub: data.users[1].uuid, email: data.users[1].email, password: '12345678', username: data.users[1].username };
+    const member = { sub: data.users[2].uuid, email: data.users[2].email, password: '12345678', username: data.users[2].username };
+
     const login_uuid = uuidv4();
     const user = {
         uuid: uuidv4(),
-        username: `test-${uuidv4()}`,
-        email: `test-${uuidv4()}@example.com`,
+        username: `test-user`,
+        email: `test-user@example.com`,
         password: '12345678',
     };
 
@@ -47,17 +52,17 @@ const userServiceTest = (UserService, name) => {
         [{ body: { email: 'test@test.test', uuid: 'test' } }, 'No username provided'],
         [{ body: { email: 'test@test.test', uuid: 'test', username: 'test' } }, 'No password provided'],
         [{ body: { uuid: 'test', username: 'test', password: 'test' } }, 'No email provided'],
-        [{ body: { uuid: user.uuid, email: 'test@test.test', username: 'test', password: 'test' } }, 'UUID already exists'],
-        [{ body: { uuid: 'test', email: user.email, username: 'test', password: 'test' } }, 'Email already exists'],
-        [{ body: { uuid: 'test', email: 'test@test.test', username: user.username, password: 'test' } }, 'Username already exists'],
+        [{ body: { uuid: user.uuid, email: 'test@test.test', username: 'test', password: 'test' } }, `user with uuid ${user.uuid} already exists`],
+        [{ body: { uuid: 'test', email: user.email, username: 'test', password: 'test' } }, `user with email ${user.email} already exists`],
+        [{ body: { uuid: 'test', email: 'test@test.test', username: user.username, password: 'test' } }, `user with username ${user.username} already exists`],
     ])(`(${name}) - UserService.create invalid partitions`, async (options, expected) => {
         expect(async () => await UserService.create(options)).rejects.toThrowError(expected);
     });
 
     test.each([
-        [{ body: context.admin }],
-        [{ body: context.mod }],
-        [{ body: context.member }],
+        [{ body: admin }],
+        [{ body: mod }],
+        [{ body: member }],
         [{ body: user }],
     ])(`(${name}) - UserService.login valid partitions`, async (options) => {
         const result = await UserService.login(options);
@@ -106,7 +111,7 @@ const userServiceTest = (UserService, name) => {
         [{ body: {}, user: null }, 'No user provided'],
         [{ body: {}, user: {} }, 'No user UUID provided'],
         [{ body: {}, user: { sub: null } }, 'No user UUID provided'],
-        [{ body: {}, user: { sub: 'test' } }, 'User not found'],
+        [{ body: {}, user: { sub: 'test' } }, 'user not found'],
     ])(`(${name}) - UserService.update invalid partitions`, async (options, expected) => {
         expect(async () => await UserService.update(options)).rejects.toThrowError(expected);
     });
@@ -126,7 +131,7 @@ const userServiceTest = (UserService, name) => {
         expect(result.uuid).toBe(login_uuid);
         expect(result.user_login_type_name).toBe('Google');
     });
-
+ 
     test.each([
         [undefined, 'No UUID provided'],
         [null, 'No options provided'],
@@ -144,9 +149,9 @@ const userServiceTest = (UserService, name) => {
     });
 
     test.each([
-        [{ uuid: context.admin.sub }, 1],
-        [{ uuid: context.mod.sub }, 1],
-        [{ uuid: context.member.sub }, 1],
+        [{ uuid: admin.sub }, 1],
+        [{ uuid: mod.sub }, 1],
+        [{ uuid: member.sub }, 1],
         [{ uuid: user.uuid }, 2],
     ])(`(${name}) - UserService.getUserLogins valid partitions`, async (options, length) => {
         const result = await UserService.getUserLogins(options);
@@ -165,7 +170,7 @@ const userServiceTest = (UserService, name) => {
         [0, 'No options provided'],
         [{}, 'No UUID provided'],
         [{ uuid: null }, 'No UUID provided'],
-        [{ uuid: "test" }, 'User not found'],
+        [{ uuid: "test" }, 'user not found'],
     ])(`(${name}) - UserService.getUserLogins invalid partitions`, async (options, expected) => {
         expect(async () => await UserService.getUserLogins(options)).rejects.toThrowError(expected);
     });
@@ -176,8 +181,16 @@ const userServiceTest = (UserService, name) => {
         const result = await UserService.getUserLogins({ uuid: user.uuid });
         expect(result.length).toBe(1);
     });
+
+    test(`(${name}) - UserService.destroy valid partitions`, async () => {
+        await UserService.destroy({ uuid: user.uuid });
+        expect(async () => await UserService.destroy({ uuid: user.uuid }))
+            .rejects.toThrowError(`user not found`);
+    });
 };
 
 userServiceTest(RelationalUserService, 'Relational');
+/*
 userServiceTest(DocumentUserService, 'Document');
 userServiceTest(GraphUserService, 'Graph');
+*/

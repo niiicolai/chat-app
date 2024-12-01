@@ -1,6 +1,8 @@
 import RelationalChannelAuditTypeService from '../../src/relational-based/services/channel_audit_type_service.js';
 import DocumentChannelAuditTypeService from '../../src/document-based/services/channel_audit_type_service.js';
 import GraphChannelAuditTypeService from '../../src/graph-based/services/channel_audit_type_service.js';
+
+import data from '../../src/seed_data.js';
 import { test, expect } from 'vitest';
 
 const channelAuditTypeServiceTest = (ChannelAuditTypeService, name) => {
@@ -11,15 +13,7 @@ const channelAuditTypeServiceTest = (ChannelAuditTypeService, name) => {
     });
 
     test.each([
-        ['CHANNEL_CREATED'],
-        ['CHANNEL_EDITED'],
-        ['CHANNEL_DELETED'],
-        ['MESSAGE_CREATED'],
-        ['MESSAGE_EDITED'],
-        ['MESSAGE_DELETED'],
-        ['WEBHOOK_CREATED'],
-        ['WEBHOOK_DELETED'],
-        ['WEBHOOK_EDITED'],
+        data.channel_audit_types.map(cat => cat.name),
     ])(`(${name}) - ChannelAuditTypeService.findOne valid partitions`, async (name) => {
         const result = await ChannelAuditTypeService.findOne({ name });
 

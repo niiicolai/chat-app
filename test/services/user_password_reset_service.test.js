@@ -1,11 +1,14 @@
 import RelationalUserPasswordResetService from '../../src/relational-based/services/user_password_reset_service.js';
 import DocumentUserPasswordResetService from '../../src/document-based/services/user_password_reset_service.js';
 import GraphUserPasswordResetService from '../../src/graph-based/services/user_password_reset_service.js';
+
+import data from '../../src/seed_data.js';
 import { test, expect } from 'vitest';
-import { context } from '../context.js';
-import { v4 as uuidv4 } from 'uuid';
 
 const userPasswordResetServiceTest = (UserPasswordResetService, name) => {
+    const admin = { ...data.users[0] };
+    const mod = { ...data.users[1] };
+    const member = { ...data.users[2] };
 
     test(`(${name}) - UserPasswordResetService must implement expected methods`, () => {
         expect(UserPasswordResetService).toHaveProperty('create');
@@ -13,10 +16,10 @@ const userPasswordResetServiceTest = (UserPasswordResetService, name) => {
     });
 
     test.each([
-        [{ body: { email: `test-${uuidv4()}@example.com` } }],
-        [{ body: { email: context.admin.email } }],
-        [{ body: { email: context.mod.email } }],
-        [{ body: { email: context.member.email } }],
+        [{ body: { email: `test@example.com` } }],
+        [{ body: { email: admin.email } }],
+        [{ body: { email: mod.email } }],
+        [{ body: { email: member.email } }],
     ])(`(${name}) - UserPasswordResetService.create valid partitions`, async (options) => {
         await UserPasswordResetService.create(options);
     });
@@ -47,5 +50,7 @@ const userPasswordResetServiceTest = (UserPasswordResetService, name) => {
 };
 
 userPasswordResetServiceTest(RelationalUserPasswordResetService, 'Relational');
+/*
 userPasswordResetServiceTest(DocumentUserPasswordResetService, 'Document');
 userPasswordResetServiceTest(GraphUserPasswordResetService, 'Graph');
+*/

@@ -1,6 +1,8 @@
 import RelationalRoomAuditTypeService from '../../src/relational-based/services/room_audit_type_service.js';
 import DocumentRoomAuditTypeService from '../../src/document-based/services/room_audit_type_service.js';
 import GraphRoomAuditTypeService from '../../src/graph-based/services/room_audit_type_service.js';
+
+import data from '../../src/seed_data.js';
 import { test, expect } from 'vitest';
 
 const roomAuditTypeServiceTest = (RoomAuditTypeService, name) => {
@@ -11,20 +13,7 @@ const roomAuditTypeServiceTest = (RoomAuditTypeService, name) => {
     });
 
     test.each([
-        ['ROOM_CREATED'],
-        ['ROOM_EDITED'],
-        ['ROOM_DELETED'],
-        ['JOIN_SETTING_EDITED'],
-        ['INVITE_LINK_CREATED'],
-        ['INVITE_LINK_EDITED'],
-        ['INVITE_LINK_DELETED'],
-        ['USER_ADDED'],
-        ['USER_REMOVED'],
-        ['FILE_CREATED'],
-        ['FILE_DELETED'],
-        ['AVATAR_CREATED'],
-        ['AVATAR_EDITED'],
-        ['AVATAR_DELETED'],
+        data.room_audit_types.map(rat => rat.name),
     ])(`(${name}) - RoomAuditTypeService.findOne valid partitions`, async (name) => {
         const result = await RoomAuditTypeService.findOne({ name });
 

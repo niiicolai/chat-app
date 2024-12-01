@@ -1,13 +1,9 @@
 import mongoose from "mongoose";
 
 export default new mongoose.Schema({
-    uuid: { 
-        type: String, 
-        required: true,
-        index: true 
-    },
+    _id: mongoose.Schema.Types.UUID,
     is_verified: { 
-        type: Boolean, 
+        type: mongoose.Schema.Types.Boolean, 
         required: true 
     },
 }, {

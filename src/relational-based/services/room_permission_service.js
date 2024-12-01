@@ -95,19 +95,8 @@ class RoomPermissionService {
      */
     async fileExceedsTotalFilesLimit(options = { room_uuid: null, bytes: null }, transaction = null) {
         RoomPermissionServiceValidator.fileExceedsTotalFilesLimit(options);
-
         const { room_uuid, bytes } = options;
-
-        await db.sequelize.query('CALL check_upload_exceeds_total_proc(:bytes, :room_uuid, @result)', {
-            replacements: { bytes, room_uuid },
-            ...(transaction && { transaction }),
-        });
-
-        const [[{ result }]] = await db.sequelize.query('SELECT @result AS result', { 
-            ...(transaction && { transaction }), 
-        });
-
-        return (result === 1);
+        return await db.RoomView.checkUploadExceedsTotalProcStatic({ bytes, room_uuid }, transaction);
     }
 
     /**
@@ -121,19 +110,8 @@ class RoomPermissionService {
      */
     async fileExceedsSingleFileSize(options = { room_uuid: null, bytes: null }, transaction = null) {
         RoomPermissionServiceValidator.fileExceedsSingleFileSize(options);
-
         const { room_uuid, bytes } = options;
-
-        await db.sequelize.query('CALL check_upload_exceeds_single_proc(:bytes, :room_uuid, @result)', {
-            replacements: { bytes, room_uuid },
-            ...(transaction && { transaction }),
-        });
-
-        const [[{ result }]] = await db.sequelize.query('SELECT @result AS result', { 
-            ...(transaction && { transaction }), 
-        });
-        
-        return (result === 1);
+        return await db.RoomView.checkUploadExceedsSingleProcStatic({ bytes, room_uuid }, transaction);
     }
 
     /**
@@ -147,19 +125,8 @@ class RoomPermissionService {
      */
     async roomUserCountExceedsLimit(options = { room_uuid: null, add_count: null }, transaction = null) {
         RoomPermissionServiceValidator.roomUserCountExceedsLimit(options);
-
         const { room_uuid, add_count } = options;
-
-        await db.sequelize.query('CALL check_users_exceeds_total_proc(:room_uuid, :add_count, @result)', {
-            replacements: { room_uuid, add_count },
-            ...(transaction && { transaction }),
-        });
-
-        const [[{ result }]] = await db.sequelize.query('SELECT @result AS result', {
-            ...(transaction && { transaction }),
-        });
-
-        return (result === 1);
+        return await db.RoomView.checkUsersExceedsTotalProcStatic({ room_uuid, add_count }, transaction);
     }
 
     /**
@@ -173,19 +140,8 @@ class RoomPermissionService {
      */
     async channelCountExceedsLimit(options = { room_uuid: null, add_count: null }, transaction = null) {
         RoomPermissionServiceValidator.channelCountExceedsLimit(options);
-
         const { room_uuid, add_count } = options;
-
-        await db.sequelize.query('CALL check_channels_exceeds_total_proc(:room_uuid, :add_count, @result)', {
-            replacements: { room_uuid, add_count },
-            ...(transaction && { transaction }),
-        });
-
-        const [[{ result }]] = await db.sequelize.query('SELECT @result AS result', {
-            ...(transaction && { transaction }),
-        });
-
-        return (result === 1);
+        return await db.RoomView.checkChannelsExceedsTotalProcStatic({ room_uuid, add_count }, transaction);
     }
 }
 

@@ -1,3 +1,4 @@
+
 export default {
     users: [
         {
@@ -5,79 +6,311 @@ export default {
             username: "admin",
             email: "admin@example.com",
             avatar_src: "https://ghostchat.fra1.cdn.digitaloceanspaces.com/static/c7QiLXb.png",
+            user_status: {
+                uuid: "d5a0831c-88e5-4713-ae0c-c4e86c2f4209",
+                last_seen_at: "2021-09-01T00:00:00.000Z",
+                message: "I'm back!",
+                total_online_hours: 0,
+                user_status_state: "Offline"
+            },
+            user_email_verification: {
+                uuid: "d5a0831c-88e5-4713-ae0c-c4e86c2f4209",
+                is_verified: true
+            },
+            user_logins: [{
+                uuid: "d5a0831c-88e5-4713-ae0c-c4e86c2f4209",
+                user_login_type: "Password",
+                password: '$2b$10$sB6/ocJJK9HodVv7qEozKO826Ik5gmZH/1GU/xReM1ijIjlA7hvTa'
+            }],
+            user_password_resets: [{
+                uuid: "d5a0831c-88e5-4713-ae0c-c4e86c2f4209",
+                expires_at: new Date()
+            }]
         },
         {
             uuid: "cdcf569f-57de-4cb3-98d6-36c7cd7141d6",
             username: "moderator",
             email: "moderator@example.com",
             avatar_src: "https://ghostchat.fra1.cdn.digitaloceanspaces.com/static/LemonadeGuyCardboardAndPencilWithShadow-8cdc3130cc5498718fce7ee9d1ff5d92ddcc2ed81c689a1bf275bd14189a607c-512.jpg",
+            user_status: {
+                uuid: "cdcf569f-57de-4cb3-98d6-36c7cd7141d6",
+                last_seen_at: "2021-09-01T00:00:00.000Z",
+                message: "I'm back!",
+                total_online_hours: 0,
+                user_status_state: "Offline"
+            },
+            user_email_verification: {
+                uuid: "cdcf569f-57de-4cb3-98d6-36c7cd7141d6",
+                is_verified: true
+            },
+            user_logins: [{
+                uuid: "cdcf569f-57de-4cb3-98d6-36c7cd7141d6",
+                user_login_type: "Password",
+                password: '$2b$10$sB6/ocJJK9HodVv7qEozKO826Ik5gmZH/1GU/xReM1ijIjlA7hvTa'
+            }],
+            user_password_resets: [{
+                uuid: "cdcf569f-57de-4cb3-98d6-36c7cd7141d6",
+                expires_at: new Date()
+            }]
         },
         {
             uuid: "dd1db381-0b0a-4b2c-b0e1-0b5d569e6f9b",
             username: "member",
             email: "member@example.com",
             avatar_src: "https://ghostchat.fra1.cdn.digitaloceanspaces.com/static/mobile-park-character-animating.png",
-        }
-    ],
-    user_login: {
-        password: '$2b$10$sB6/ocJJK9HodVv7qEozKO826Ik5gmZH/1GU/xReM1ijIjlA7hvTa',
-        user_login_type_name: 'Password',
-    },
-    room: {
-        uuid: "a595b5cb-7e47-4ce7-9875-cdf99184a73c",
-        name: 'General Chat',
-        description: 'A room for general discussion',
-        room_category_name: 'General',
-        room_join_settings: {
-            uuid: "c23d7a4e-b515-49e7-a754-64c57152607c",
-            join_message: 'Welcome to the room!',
-        },
-        room_file_settings: {
-            uuid: "dafd92a0-9319-442f-93d8-1a601d65a00c",
-            file_days_to_live: 30,
-            total_files_bytes_allowed: 100000000,
-            single_file_bytes_allowed: 5000000,
-        },
-        room_user_settings: {
-            uuid: "986f3733-7bbd-4744-8ce2-ad11ddd95462",
-            max_users: 25,
-        },
-        room_channel_settings: {
-            uuid: "c08d0b09-698f-46d5-8903-dc1236bf0b95",
-            max_channels: 5,
-            message_days_to_live: 30,
-        },
-        room_rules_settings: {
-            uuid: "1d9ace5f-b43a-46d4-aa61-2671fe5ced52",
-            rules_text: '# Rules\n 1. No Spamming!',
-        },
-        room_avatar: {
-            uuid: "dd1db381-0b0a-4b2c-b0e1-0b5d569e6f9b",
-            room_file: {
-                uuid: "1d9ace5f-b43a-46d4-aa61-2671fe5ced52",
-                src: 'https://ghostchat.fra1.cdn.digitaloceanspaces.com/static/room-avatar.jpg',
-                size: 1000000,
-                room_file_type_name: 'RoomAvatar',
-            }
-        },
-        room_invite_link: {
-            uuid: "0bd06de6-b6df-4abe-8385-5e57cdb13649",
-        },
-        room_users: [
-            {
-                uuid: "d5a0831c-88e5-4713-ae0c-c4e86c2f4209",
-                room_user_role_name: 'Admin',
-            },
-            {
-                uuid: "cdcf569f-57de-4cb3-98d6-36c7cd7141d6",
-                room_user_role_name: 'Moderator',
-            },
-            {
+            user_status: {
                 uuid: "dd1db381-0b0a-4b2c-b0e1-0b5d569e6f9b",
-                room_user_role_name: 'Member',
-            }
-        ],
-    },
+                last_seen_at: "2021-09-01T00:00:00.000Z",
+                message: "I'm back!",
+                total_online_hours: 0,
+                user_status_state: "Offline"
+            },
+            user_email_verification: {
+                uuid: "dd1db381-0b0a-4b2c-b0e1-0b5d569e6f9b",
+                is_verified: true
+            },
+            user_logins: [{
+                uuid: "dd1db381-0b0a-4b2c-b0e1-0b5d569e6f9b",
+                user_login_type: "Password",
+                password: '$2b$10$sB6/ocJJK9HodVv7qEozKO826Ik5gmZH/1GU/xReM1ijIjlA7hvTa'
+            }],
+            user_password_resets: [{
+                uuid: "dd1db381-0b0a-4b2c-b0e1-0b5d569e6f9b",
+                expires_at: new Date()
+            }]
+        },
+        {
+            uuid: "dd1db481-0b0a-4b2c-b0e1-0b5d569e6f9b",
+            username: "not_in_a_room",
+            email: "not_in_a_room@example.com",
+            avatar_src: "https://ghostchat.fra1.cdn.digitaloceanspaces.com/static/mobile-park-character-animating.png",
+            user_status: {
+                uuid: "dd1db481-0b0a-4b2c-b0e1-0b5d569e6f9b",
+                last_seen_at: "2021-09-01T00:00:00.000Z",
+                message: "I'm back!",
+                total_online_hours: 0,
+                user_status_state: "Offline"
+            },
+            user_email_verification: {
+                uuid: "dd1db481-0b0a-4b2c-b0e1-0b5d569e6f9b",
+                is_verified: true
+            },
+            user_logins: [{
+                uuid: "dd1db481-0b0a-4b2c-b0e1-0b5d569e6f9b",
+                user_login_type: "Password",
+                password: '$2b$10$sB6/ocJJK9HodVv7qEozKO826Ik5gmZH/1GU/xReM1ijIjlA7hvTa'
+            }],
+            user_password_resets: [{
+                uuid: "dd1db481-0b0a-4b2c-b0e1-0b5d569e6f9b",
+                expires_at: new Date()
+            }]
+        },
+    ],
+    rooms: [
+        {
+            uuid: "a595b5cb-7e47-4ce7-9875-cdf99184a73c",
+            name: 'General Chat',
+            description: 'A room for general discussion',
+            room_category_name: 'General',
+            room_join_settings: {
+                uuid: "c23d7a4e-b515-49e7-a754-64c57152607c",
+                join_message: 'Welcome to the room!',
+            },
+            room_file_settings: {
+                uuid: "dafd92a0-9319-442f-93d8-1a601d65a00c",
+                file_days_to_live: 30,
+                total_files_bytes_allowed: 100000000,
+                single_file_bytes_allowed: 5000000,
+            },
+            room_user_settings: {
+                uuid: "986f3733-7bbd-4744-8ce2-ad11ddd95462",
+                max_users: 25,
+            },
+            room_channel_settings: {
+                uuid: "c08d0b09-698f-46d5-8903-dc1236bf0b95",
+                max_channels: 5,
+                message_days_to_live: 30,
+            },
+            room_rules_settings: {
+                uuid: "1d9ace5f-b43a-46d4-aa61-2671fe5ced52",
+                rules_text: '# Rules\n 1. No Spamming!',
+            },
+            room_avatar: {
+                uuid: "dd1db381-0b0a-4b2c-b0e1-0b5d569e6f9b",
+                room_file_uuid: "1d9ace5f-b43a-46d4-aa61-2671fe5ced52"
+            },
+            room_invite_link: {
+                uuid: "0bd06de6-b6df-4abe-8385-5e57cdb13649",
+            },
+            room_users: [
+                {
+                    uuid: "d5a0831c-88e5-4713-ae0c-c4e86c2f4209",
+                    room_user_role_name: 'Admin',
+                    user_uuid: "d5a0831c-88e5-4713-ae0c-c4e86c2f4209",
+                },
+                {
+                    uuid: "cdcf569f-57de-4cb3-98d6-36c7cd7141d6",
+                    room_user_role_name: 'Moderator',
+                    user_uuid: "cdcf569f-57de-4cb3-98d6-36c7cd7141d6",
+                },
+                {
+                    uuid: "dd1db381-0b0a-4b2c-b0e1-0b5d569e6f9b",
+                    room_user_role_name: 'Member',
+                    user_uuid: "dd1db381-0b0a-4b2c-b0e1-0b5d569e6f9b",
+                }
+            ],
+            room_files: [
+                {
+                    uuid: "1d9ace5f-b43a-46d4-aa61-2671fe5ced52",
+                    src: 'https://ghostchat.fra1.cdn.digitaloceanspaces.com/static/room-avatar.jpg',
+                    size: 1000000,
+                    room_file_type_name: 'RoomAvatar',
+                },
+                {
+                    uuid: "a595b5cb-7e47-4ce7-9875-cdf99184a73c",
+                    src: 'https://ghostchat.fra1.cdn.digitaloceanspaces.com/static/room-avatar.jpg',
+                    size: 1000000,
+                    room_file_type_name: 'ChannelMessageUpload',
+                },
+            ],
+            channels: [
+                {
+                    uuid: "1c9437b0-4e88-4a8e-84f0-679c7714407f",
+                    name: "General Discussion",
+                    description: "General discussion channel",
+                    channel_type_name: "Text",
+                    channel_webhook: {
+                        uuid: "1c9437b0-4e88-4a8e-84f0-679c7714407f",
+                        name: "Test Channel Webhook",
+                        description: "Test Channel Webhook Description",
+                    },
+                    channel_messages: [
+                        {
+                            uuid: "1c9437b0-4e88-4a8e-84f0-679c7714407f",
+                            body: "Test Channel Message 1",
+                            channel_message_type_name: "User",
+                            user_uuid: "d5a0831c-88e5-4713-ae0c-c4e86c2f4209",
+                            channel_message_upload: {
+                                uuid: "1c9437b0-4e88-4a8e-84f0-679c7714407f",
+                                room_file_uuid: "a595b5cb-7e47-4ce7-9875-cdf99184a73c",
+                                channel_message_upload_type_name: "Image"
+                            }
+                        },
+                        {
+                            uuid: "a595b5cb-7e47-4ce7-9875-cdf99184a73c",
+                            body: "Test Channel Message 2",
+                            channel_message_type_name: "Webhook",
+                            channel_webhook_message: {
+                                uuid: "1c9437b0-4e88-4a8e-84f0-679c7714407f",
+                                body: "Test Channel Message 2e",
+                                channel_webhook_message_type_name: "Custom",
+                            }
+                        },
+                    ]
+                },
+                {
+                    uuid: "a595b5cb-7e47-4ce7-9875-cdf99184a73c",
+                    name: "Call",
+                    description: "General call channel",
+                    channel_type_name: "Call",
+                    channel_webhook: null,
+                    channel_messages: []
+                },
+            ]
+        },
+        {
+            uuid: "a525b5cb-7e47-4ce7-9875-cdf99184a73c",
+            name: 'General Chat2',
+            description: 'A room for general discussion2',
+            room_category_name: 'General',
+            room_join_settings: {
+                uuid: "c22d7a4e-b515-49e7-a754-64c57152607c",
+                join_message: 'Welcome to the room!',
+            },
+            room_file_settings: {
+                uuid: "dafd91a0-9319-442f-93d8-1a601d65a00c",
+                file_days_to_live: 30,
+                total_files_bytes_allowed: 100000000,
+                single_file_bytes_allowed: 5000000,
+            },
+            room_user_settings: {
+                uuid: "986f1733-7bbd-4744-8ce2-ad11ddd95462",
+                max_users: 25,
+            },
+            room_channel_settings: {
+                uuid: "c08d1b09-698f-46d5-8903-dc1236bf0b95",
+                max_channels: 5,
+                message_days_to_live: 30,
+            },
+            room_rules_settings: {
+                uuid: "1d2ace5f-b43a-46d4-aa61-2671fe5ced52",
+                rules_text: '# Rules\n 1. No Spamming!',
+            },
+            room_avatar: {
+                uuid: "dd3db381-0b0a-4b2c-b0e1-0b5d569e6f9b",
+            },
+            room_invite_link: {
+                uuid: "0bd16de6-b6df-4abe-8385-5e57cdb13649",
+            },
+            room_users: [
+                {
+                    uuid: "d5a2831c-88e5-4713-ae0c-c4e86c2f4209",
+                    room_user_role_name: 'Admin',
+                    user_uuid: "d5a0831c-88e5-4713-ae0c-c4e86c2f4209",
+                },
+                {
+                    uuid: "cdcf369f-57de-4cb3-98d6-36c7cd7141d6",
+                    room_user_role_name: 'Moderator',
+                    user_uuid: "cdcf569f-57de-4cb3-98d6-36c7cd7141d6",
+                },
+                {
+                    uuid: "dd1db481-0b0a-4b2c-b0e1-0b5d569e6f9b",
+                    room_user_role_name: 'Member',
+                    user_uuid: "dd1db381-0b0a-4b2c-b0e1-0b5d569e6f9b",
+                }
+            ],
+            room_files: [],
+            channels: [
+                {
+                    uuid: "1c9337b0-4e88-4a8e-84f0-679c7714407f",
+                    name: "General Discussion",
+                    description: "General discussion channel",
+                    channel_type_name: "Text",
+                    channel_webhook: {
+                        uuid: "1c9237b0-4e88-4a8e-84f0-679c7714407f",
+                        name: "Test Channel Webhook",
+                        description: "Test Channel Webhook Description",
+                    },
+                    channel_messages: [
+                        {
+                            uuid: "1c9237b0-4e88-4a8e-84f0-679c7714407f",
+                            body: "Test Channel Message 1",
+                            channel_message_type_name: "User",
+                            user_uuid: "d5a0831c-88e5-4713-ae0c-c4e86c2f4209",
+                        },
+                        {
+                            uuid: "a592b5cb-7e47-4ce7-9875-cdf99184a73c",
+                            body: "Test Channel Message 2",
+                            channel_message_type_name: "Webhook",
+                            channel_webhook_message: {
+                                uuid: "1c9427b0-4e88-4a8e-84f0-679c7714407f",
+                                body: "Test Channel Message 2e",
+                                channel_webhook_message_type_name: "Custom",
+                            }
+                        },
+                    ]
+                },
+                {
+                    uuid: "a595b2cb-7e47-4ce7-9875-cdf99184a73c",
+                    name: "Call",
+                    description: "General call channel",
+                    channel_type_name: "Call",
+                    channel_webhook: null,
+                    channel_messages: []
+                },
+            ]
+        },
+    ],
     user_status_states: [
         { name: 'Online' },
         { name: 'Away' },
@@ -166,4 +399,8 @@ export default {
         { name: 'Password' },
         { name: 'Google' },
     ],
+    user_login: {
+        password: '$2b$10$sB6/ocJJK9HodVv7qEozKO826Ik5gmZH/1GU/xReM1ijIjlA7hvTa',
+        user_login_type_name: 'Password',
+    },
 };

@@ -3,7 +3,9 @@ import data from '../../../seed_data.js';
 
 export default class RoomAuditTypeSeeder {
     async up() {
-        await RoomAuditType.insertMany(data.room_audit_types);
+        await RoomAuditType.insertMany(data.room_audit_types.map((type) => {
+            return { _id: type.name }
+        }));
     }
 
     async down() {

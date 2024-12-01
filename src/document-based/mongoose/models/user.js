@@ -1,25 +1,24 @@
 import mongoose from "mongoose";
 
-// Import schemas for subdocuments
-import user_login from "./user_login.js";
-import user_password_reset from "./user_password_reset.js";
-import user_email_verification from "./user_email_verification.js";
-import user_status from "./user_status.js";
+import user_login from "../subdocuments/user_login.js";
+import user_password_reset from "../subdocuments/user_password_reset.js";
+import user_email_verification from "../subdocuments/user_email_verification.js";
+import user_status from "../subdocuments/user_status.js";
 
 const userSchema = new mongoose.Schema({
     _id: mongoose.Schema.Types.UUID,
     username: { 
-        type: String, 
+        type: mongoose.Schema.Types.String, 
         required: true, 
         unique: true 
     },
     email: { 
-        type: String, 
+        type: mongoose.Schema.Types.String, 
         required: true, 
         unique: true 
     },
     avatar_src: { 
-        type: String, 
+        type: mongoose.Schema.Types.String, 
         required: false 
     },
     user_password_resets: [user_password_reset],
@@ -35,5 +34,3 @@ const userSchema = new mongoose.Schema({
 });
 
 export default mongoose.model("User", userSchema);
-
-

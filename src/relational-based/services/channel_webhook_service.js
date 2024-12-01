@@ -63,7 +63,7 @@ class ChannelWebhookService {
     async findAll(options = { room_uuid: null, user: null, page: null, limit: null }) {
         options = ChannelWebhookServiceValidator.findAll(options);
 
-        const { room_uuid, user, page, limit } = options;
+        const { room_uuid, user, page, limit, offset } = options;
 
         const room = await db.RoomView.findOne({ uuid: room_uuid });
         if (!room) throw new EntityNotFoundError('room');
@@ -103,55 +103,49 @@ class ChannelWebhookService {
      * @param {string} options.user.sub
      * @returns {Promise<Object>}
      */
-    async create(options={ body: null, file: null, user: null }) {
+    async create(options = { body: null, file: null, user: null }) {
         ChannelWebhookServiceValidator.create(options);
 
         const { body, file, user } = options;
         const { uuid, name, description, channel_uuid } = body;
 
         await db.sequelize.transaction(async (transaction) => {
-            const channel = await db.ChannelView.findOne({ where: { channel_uuid } });
-            if (!channel) throw new EntityNotFoundError('channel');
+            const channel = await Promise.all([
+                db.ChannelView.findOne({ where: { channel_uuid }, transaction }),
+                db.ChannelWebhookView.findOne({ where: { channel_webhook_uuid: uuid }, transaction }),
+                db.ChannelWebhookView.findOne({ where: { channel_uuid }, transaction }),
+                RPS.isInRoomByChannel({ channel_uuid, user, role_name: 'Admin' }, transaction),
+            ]).then(([channel, uuidInUse, duplicateChannelWebhook, isAdmin]) => {
+                if (!channel) throw new EntityNotFoundError('channel');
+                if (!isAdmin) throw new AdminPermissionRequiredError();
+                if (uuidInUse) throw new DuplicateEntryError('channel_webhook', 'UUID', uuid);
+                if (duplicateChannelWebhook) throw new DuplicateEntryError('channel_webhook', 'channel_uuid', channel_uuid);
+                return channel;
+            });
 
-            const isAdmin = await RPS.isInRoomByChannel({ channel_uuid, user, role_name: 'Admin' });
-            if (!isAdmin) throw new AdminPermissionRequiredError();
+            if (file && file.size > 0) {
+                await Promise.all([
+                    RPS.fileExceedsTotalFilesLimit({ room_uuid: channel.room_uuid, bytes: file.size }, transaction),
+                    RPS.fileExceedsSingleFileSize({ room_uuid: channel.room_uuid, bytes: file.size }, transaction)
+                ]).then(([exceedsTotalFiles, exceedsSingleFileSize]) => {
+                    if (exceedsTotalFiles) throw new ExceedsRoomTotalFilesLimitError();
+                    if (exceedsSingleFileSize) throw new ExceedsSingleFileSizeError();
+                });
+            }
 
-            const uuidInUse = await db.ChannelWebhookView.findOne({ where: { channel_webhook_uuid: uuid } });
-            if (uuidInUse) throw new DuplicateEntryError('channel_webhook', 'UUID', uuid);
-
-            const dupliateChannelWebhook = await db.ChannelWebhookView.findOne({ where: { channel_uuid } });
-            if (dupliateChannelWebhook) throw new DuplicateEntryError('channel_webhook', 'channel_uuid', channel_uuid);
-
-            const replacements = {
+            await db.ChannelWebhookView.createChannelWebhookProc({
                 uuid,
                 name,
                 description,
                 channel_uuid,
                 room_uuid: channel.room_uuid,
-                src: null,
-                bytes: null,
-            };
-
-            if (file && file.size > 0) {
-                const [totalFiles, singleFileSize] = await Promise.all([
-                    RPS.fileExceedsTotalFilesLimit({ room_uuid: channel.room_uuid, bytes: file.size }),
-                    RPS.fileExceedsSingleFileSize({ room_uuid: channel.room_uuid, bytes: file.size })
-                ]);
-
-                if (totalFiles) throw new ExceedsRoomTotalFilesLimitError();
-                if (singleFileSize) throw new ExceedsSingleFileSizeError();
-
-                replacements.src = await storage.uploadFile(file, uuid);
-                replacements.bytes = file.size;
-            }
-
-            await db.sequelize.query('CALL create_channel_webhook_proc(:uuid, :channel_uuid, :name, :description, :src, :bytes, :room_uuid, @result)', {
-                replacements,
-                transaction
-            });
+                bytes: (file && file.size > 0 ? file.size : null),
+                src: (file && file.size > 0 ? await storage.uploadFile(file, uuid) : null)
+            }, transaction);
         });
 
-        return await db.ChannelWebhookView.findByPk(uuid)
+        return await db.ChannelWebhookView
+            .findByPk(uuid)
             .then((channelWebhook) => dto(channelWebhook));
     }
 
@@ -168,59 +162,53 @@ class ChannelWebhookService {
      * @param {string} options.user.sub
      * @returns {Promise<Object>}
      */
-    async update(options={ uuid: null, body: null, file: null, user: null }) {
+    async update(options = { uuid: null, body: null, file: null, user: null }) {
         ChannelWebhookServiceValidator.update(options);
 
         const { uuid, body, file, user } = options;
         const { name, description } = body;
 
         await db.sequelize.transaction(async (transaction) => {
-            const channelWebhook = await db.ChannelWebhookView.findByPk(uuid);
+            const channelWebhook = await db.ChannelWebhookView.findByPk(uuid, { transaction });
             if (!channelWebhook) throw new EntityNotFoundError('channel_webhook');
 
-            const isAdmin = await RPS.isInRoomByChannel({ channel_uuid: channelWebhook.channel_uuid, user, role_name: 'Admin' });
-            if (!isAdmin) throw new AdminPermissionRequiredError();
-
-            const replacements = {
-                uuid,
-                name: name || channelWebhook.name,
-                description: description || channelWebhook.description,
-                src: channelWebhook.src,
-                bytes: channelWebhook.bytes,
-                room_uuid: channelWebhook.room_uuid,
-            };
+            await RPS.isInRoomByChannel(
+                { channel_uuid: channelWebhook.channel_uuid, user, role_name: 'Admin' },
+                transaction
+            ).then((isAdmin) => { 
+                if (!isAdmin) throw new AdminPermissionRequiredError(); 
+            });
 
             if (file && file.size > 0) {
-                const [totalFiles, singleFileSize] = await Promise.all([
-                    RPS.fileExceedsTotalFilesLimit({ room_uuid: channelWebhook.room_uuid, bytes: file.size }),
-                    RPS.fileExceedsSingleFileSize({ room_uuid: channelWebhook.room_uuid, bytes: file.size })
-                ]);
-
-                if (totalFiles) throw new ExceedsRoomTotalFilesLimitError();
-                if (singleFileSize) throw new ExceedsSingleFileSizeError();
-
-                replacements.src = await storage.uploadFile(file, uuid);
-                replacements.bytes = file.size;
+                await Promise.all([
+                    RPS.fileExceedsTotalFilesLimit({ room_uuid: channelWebhook.room_uuid, bytes: file.size }, transaction),
+                    RPS.fileExceedsSingleFileSize({ room_uuid: channelWebhook.room_uuid, bytes: file.size }, transaction)
+                ]).then(([exceedsTotalFiles, exceedsSingleFileSize]) => {
+                    if (exceedsTotalFiles) throw new ExceedsRoomTotalFilesLimitError();
+                    if (exceedsSingleFileSize) throw new ExceedsSingleFileSizeError();
+                });
             }
 
-            await db.sequelize.query('CALL edit_channel_webhook_proc(:uuid, :name, :description, :src, :bytes, :room_uuid, @result)', {
-                replacements,
-                transaction
-            });
+            await channelWebhook.editChannelWebhookProc({
+                ...(name && { name }),
+                ...(description && { description }),
+                ...(file && file.size > 0 && {
+                    bytes: file.size,
+                    src: await storage.uploadFile(file, uuid)
+                }),
+            }, transaction);
 
             // Old room file must be deleted last to prevent deleting a file
             // on the object storage and then failing to update the database.
             // This would result in an inconsistent state.
             if (file && file.size > 0 && channelWebhook.room_file_uuid) {
-                await db.sequelize.query('CALL delete_room_file_proc(:uuid, @result)', {
-                    replacements: { uuid: channelWebhook.room_file_uuid },
-                    transaction
-                });
+                await db.RoomFileView.deleteRoomFileProcStatic({ uuid: channelWebhook.room_file_uuid }, transaction);
                 await storage.deleteFile(storage.parseKey(channelWebhook.room_file_src));
             }
         });
 
-        return await db.ChannelWebhookView.findByPk(uuid)
+        return await db.ChannelWebhookView
+            .findByPk(uuid)
             .then((channelWebhook) => dto(channelWebhook));
     }
 
@@ -233,25 +221,27 @@ class ChannelWebhookService {
      * @param {string} options.user.sub
      * @returns {Promise<void>}
      */
-    async destroy(options={ uuid: null, user: null }) {
+    async destroy(options = { uuid: null, user: null }) {
         ChannelWebhookServiceValidator.destroy(options);
 
         const { uuid, user } = options;
-        
+
         await db.sequelize.transaction(async (transaction) => {
-            const channelWebhook = await db.ChannelWebhookView.findByPk(uuid);
+            const channelWebhook = await db.ChannelWebhookView.findByPk(uuid, { transaction });
             if (!channelWebhook) throw new EntityNotFoundError('channel_webhook');
 
-            const isAdmin = await RPS.isInRoomByChannel({ channel_uuid: channelWebhook.channel_uuid, user, role_name: 'Admin' });
-            if (!isAdmin) throw new AdminPermissionRequiredError();
-
-            await db.sequelize.query('CALL delete_channel_webhook_proc(:uuid, @result)', {
-                replacements: { uuid },
+            await RPS.isInRoomByChannel(
+                { channel_uuid: channelWebhook.channel_uuid, user, role_name: 'Admin' },
                 transaction
+            ).then((isAdmin) => {
+                if (!isAdmin) throw new AdminPermissionRequiredError();
             });
 
+            await channelWebhook.deleteChannelWebhookProc(transaction);
+
             if (channelWebhook.room_file_uuid) {
-                await storage.deleteFile(storage.parseKey(channelWebhook.room_file_src));
+                const key = storage.parseKey(channelWebhook.room_file_src);
+                await storage.deleteFile(key);
             }
         });
     }
@@ -265,7 +255,7 @@ class ChannelWebhookService {
      * @param {string} options.body.message
      * @returns {Promise<void>}
      */
-    async message(options={ uuid: null, body: null }) {
+    async message(options = { uuid: null, body: null }) {
         ChannelWebhookServiceValidator.message(options);
 
         const { uuid, body } = options;
@@ -273,19 +263,14 @@ class ChannelWebhookService {
         const channel_message_uuid = uuidv4();
 
         await db.sequelize.transaction(async (transaction) => {
-            const channelWebhook = await db.ChannelWebhookView.findByPk(uuid);
+            const channelWebhook = await db.ChannelWebhookView.findByPk(uuid, { transaction });
             if (!channelWebhook) throw new EntityNotFoundError('channel_webhook');
 
-            await db.sequelize.query('CALL create_webhook_message_proc(:message_uuid_input, :message_body_input, :channel_uuid_input, :channel_webhook_uuid_input, :channel_webhook_message_type_name_input, @result)', {
-                replacements: {
-                    message_uuid_input: channel_message_uuid,
-                    message_body_input: message,
-                    channel_uuid_input: channelWebhook.channel_uuid,
-                    channel_webhook_uuid_input: uuid,
-                    channel_webhook_message_type_name_input: 'Custom',
-                },
-                transaction
-            });
+            await channelWebhook.createChannelWebhookMessageProc({
+                message,
+                channel_message_uuid,
+                channel_webhook_message_type_name: 'Custom'
+            }, transaction);
         });
 
         const channelMessage = await db.ChannelMessageView.findOne({ where: { channel_message_uuid } });

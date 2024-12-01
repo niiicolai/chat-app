@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import './seeders/seed_all.js';
 
 const env = process.env.NODE_ENV || 'development';
 const e = { development: 'DEV', test: 'TEST', production: 'PROD' };

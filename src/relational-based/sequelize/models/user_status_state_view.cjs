@@ -10,6 +10,10 @@ module.exports = (sequelize, DataTypes) => {
          * The `models/index` file will call this method automatically.
          */
         static associate(models) {
+            models.UserStatusStateView.hasMany(models.UserStatusView, {
+                foreignKey: 'user_status_state_name',
+                sourceKey: 'user_status_state_name',
+            });
         }
     }
     UserStatusStateView.init({

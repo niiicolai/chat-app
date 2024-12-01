@@ -56,7 +56,7 @@ class RoomService {
         const entity = await db.RoomView.findByPk(options.uuid);
         if (!entity) throw new EntityNotFoundError('room');
 
-        const isInRoom = await RPS.isInRoom({ room_uuid: entity.uuid, user: options.user, role_name: null });
+        const isInRoom = await RPS.isInRoom({ room_uuid: options.uuid, user: options.user, role_name: null });
         if (!isInRoom) throw new RoomMemberRequiredError();
 
         return dto(entity);
@@ -77,10 +77,13 @@ class RoomService {
 
         const { user, page, limit, offset } = options;
 
-        const params = { include: [{ 
-            model: db.RoomUserView, 
-            where: { user_uuid: user.sub } } 
-        ]};
+        const params = {
+            include: [{
+                model: db.RoomUserView,
+                where: { user_uuid: user.sub }
+            }
+            ]
+        };
 
         const [total, data] = await Promise.all([
             db.RoomView.count(params),
@@ -120,27 +123,17 @@ class RoomService {
         const { body, file, user } = options;
 
         await db.sequelize.transaction(async (transaction) => {
-            const isVerified = await RoomPermissionService.isVerified({ user });
-            if (!isVerified) throw new VerifiedEmailRequiredError('create a room');
-
-            const uuidInUse = await db.RoomView.findOne({ where: { room_uuid: body.uuid } });
-            if (uuidInUse) throw new DuplicateEntryError('room', 'uuid', body.uuid);
-
-            const nameInUse = await db.RoomView.findOne({ where: { room_name: body.name } });
-            if (nameInUse) throw new DuplicateEntryError('room', 'name', body.name);
-
-            const validCategory = await db.RoomCategoryView.findOne({ where: { name: body.room_category_name } });
-            if (!validCategory) throw new EntityNotFoundError('room_category');
-
-            const replacements = {
-                uuid: body.uuid,
-                name: body.name,
-                description: body.description,
-                room_category_name: body.room_category_name,
-                room_user_role: 'Admin',
-                src: null,
-                bytes: null,
-            };
+            await Promise.all([
+                RPS.isVerified({ user }, transaction),
+                db.RoomView.findOne({ where: { room_uuid: body.uuid }, transaction }),
+                db.RoomView.findOne({ where: { room_name: body.name }, transaction }),
+                db.RoomCategoryView.findOne({ where: { room_category_name: body.room_category_name }, transaction }),
+            ]).then(([isVerified, uuidInUse, nameInUse, validCategory]) => {
+                if (!isVerified) throw new VerifiedEmailRequiredError('create a room');
+                if (uuidInUse) throw new DuplicateEntryError('room', 'uuid', body.uuid);
+                if (nameInUse) throw new DuplicateEntryError('room', 'name', body.name);
+                if (!validCategory) throw new EntityNotFoundError('room_category');
+            });
 
             if (file && file.size > 0) {
                 if (file.size > parseFloat(DEFAULT_ROOM_TOTAL_UPLOAD_SIZE)) {
@@ -149,18 +142,24 @@ class RoomService {
                 if (file.size > parseFloat(DEFAULT_ROOM_UPLOAD_SIZE)) {
                     throw new ControllerError(400, 'File exceeds single file size limit');
                 }
-
-                replacements.src = await storage.uploadFile(file, body.uuid);
-                replacements.bytes = file.size;
             }
 
-            await db.sequelize.query('CALL create_room_proc(:uuid, :name, :description, :room_category_name, :room_user_role, :src, :bytes, @result)', {
-                replacements,
-                transaction,
-            });
+            await db.RoomView.createRoomProcStatic({
+                user_uuid: user.sub,
+                uuid: body.uuid,
+                name: body.name,
+                description: body.description,
+                room_category_name: body.room_category_name,
+                room_user_role: 'Admin',
+                ...(file && file.size > 0 && {
+                    bytes: file.size,
+                    src: await storage.uploadFile(file, body.uuid),
+                }),
+            }, transaction);
         });
 
-        return await db.RoomView.findByPk(body.uuid)
+        return await db.RoomView
+            .findByPk(body.uuid)
             .then(entity => dto(entity));
     }
 
@@ -189,11 +188,11 @@ class RoomService {
             if (!room) throw new EntityNotFoundError('room');
 
             const isAdmin = await RPS.isInRoom(
-                { room_uuid: uuid, user, role_name: 'Admin' }, 
+                { room_uuid: uuid, user, role_name: 'Admin' },
                 transaction
             );
-            
-            if (!isAdmin) throw new AdminPermissionRequiredError();            
+
+            if (!isAdmin) throw new AdminPermissionRequiredError();
 
             if (name && name !== room.name) {
                 const nameInUse = await db.RoomView.findOne({ where: { room_name: name }, transaction });
@@ -205,46 +204,37 @@ class RoomService {
                 if (!validCategory) throw new EntityNotFoundError('room_category');
             }
 
-            const replacements = {
-                uuid,
-                name: name || room.name,
-                description: description || room.description,
-                room_category_name: room_category_name || room.room_category_name,
-                src: room.room_file_src,
-                bytes: room.room_file_size,
-            };
-
             if (file && file.size > 0) {
-                const [total, single] = await Promise.all([
+                await Promise.all([
                     RPS.fileExceedsTotalFilesLimit({ room_uuid: uuid, bytes: file.size }, transaction),
                     RPS.fileExceedsSingleFileSize({ room_uuid: uuid, bytes: file.size }, transaction),
-                ]);
-
-                if (total) throw new ExceedsRoomTotalFilesLimitError();
-                if (single) throw new ExceedsSingleFileSizeError();
-
-                replacements.src = await storage.uploadFile(file, uuid);
-                replacements.bytes = file.size;
+                ]).then(([total, single]) => {
+                    if (total) throw new ExceedsRoomTotalFilesLimitError();
+                    if (single) throw new ExceedsSingleFileSizeError();
+                });
             }
 
-            await db.sequelize.query('CALL edit_room_proc(:uuid, :name, :description, :room_category_name, :src, :bytes, @result)', {
-                replacements,
-                transaction,
-            });
+            await room.editRoomProc({
+                ...(name && { name }),
+                ...(description && { description }),
+                ...(room_category_name && { room_category_name }),
+                ...(file && file.size > 0 && {
+                    bytes: file.size,
+                    src: await storage.uploadFile(file, uuid),
+                }),
+            }, transaction);
 
             // Old room file must be deleted last to prevent deleting a file
             // on the object storage and then failing to update the database.
             // This would result in an inconsistent state.
             if (file && file.size > 0 && room.room_file_uuid) {
-                await db.sequelize.query('CALL delete_room_file_proc(:uuid, @result)', {
-                    replacements: { uuid: room.room_file_uuid },
-                    transaction
-                });
+                await db.RoomFileView.deleteRoomFileProcStatic({ uuid: room.room_file_uuid }, transaction);
                 await storage.deleteFile(storage.parseKey(room.room_file_src));
             }
         });
 
-        return await db.RoomView.findByPk(uuid)
+        return await db.RoomView
+            .findByPk(uuid)
             .then(entity => dto(entity));
     }
 
@@ -266,22 +256,20 @@ class RoomService {
             const room = await db.RoomView.findByPk(uuid, { transaction });
             if (!room) throw new EntityNotFoundError('room');
 
-            const isAdmin = await RPS.isInRoom(
-                { room_uuid: uuid, user, role_name: 'Admin' }, 
+            await RPS.isInRoom(
+                { room_uuid: uuid, user, role_name: 'Admin' },
                 transaction
-            );
-
-            if (!isAdmin) throw new AdminPermissionRequiredError();
-
-            await db.sequelize.query('CALL delete_room_proc(:uuid, @result)', {
-                replacements: { uuid },
-                transaction
+            ).then((isAdmin) => {
+                if (!isAdmin) throw new AdminPermissionRequiredError();
             });
+
+            await room.deleteRoomProc(transaction);
 
             // Room file must be deleted after the database operation to prevent
             // an inconsistent state.
             if (room.room_file_uuid) {
-                await storage.deleteFile(storage.parseKey(room.room_file_src));
+                const key = storage.parseKey(room.room_file_src);
+                await storage.deleteFile(key);
             }
         });
     }
@@ -309,35 +297,30 @@ class RoomService {
             const room = await db.RoomView.findByPk(uuid, { transaction });
             if (!room) throw new EntityNotFoundError('room');
 
-            const isAdmin = await RPS.isInRoom(
-                { room_uuid: uuid, user, role_name: 'Admin' }, 
+            await RPS.isInRoom(
+                { room_uuid: uuid, user, role_name: 'Admin' },
                 transaction
-            );
+            ).then((isAdmin) => {
+                if (!isAdmin) throw new AdminPermissionRequiredError();
+            });
 
-            if (!isAdmin) throw new AdminPermissionRequiredError();
             if (join_message && !join_message.includes('{name}')) {
                 throw new ControllerError(400, 'Join message must include {name}');
             }
 
             if (join_channel_uuid && join_channel_uuid !== room.join_channel_uuid) {
-                const channel = await db.ChannelView.findOne({ 
+                const channel = await db.ChannelView.findOne({
                     where: { channel_uuid: join_channel_uuid, room_uuid: uuid },
                     transaction
                 });
                 if (!channel) throw new EntityNotFoundError('channel');
             }
 
-            const replacements = {
-                uuid,
-                join_message: join_message || room.join_message,
-                rules_text: rules_text || room.rules_text,
-                join_channel_uuid: join_channel_uuid || room.join_channel_uuid,
-            };
-
-            await db.sequelize.query('CALL edit_room_setting_proc(:uuid, :join_message, :join_channel_uuid, :rules_text, @result)', {
-                replacements,
-                transaction,
-            });
+            await room.editRoomSettingProc({
+                ...(join_message && { join_message }),
+                ...(join_channel_uuid && { join_channel_uuid }),
+                ...(rules_text && { rules_text }),
+            }, transaction);
         });
     }
 
@@ -354,29 +337,27 @@ class RoomService {
         RoomServiceValidator.leave(options);
 
         const { uuid, user } = options;
-        
+
         await db.sequelize.transaction(async (transaction) => {
             const room = await db.RoomView.findByPk(uuid, { transaction });
             if (!room) throw new EntityNotFoundError('room');
 
-            const isAdmin = await RPS.isInRoom(
-                { room_uuid: uuid, user, role_name: 'Admin' }, 
-                transaction
-            );
-            
-            const roomAdminCount = await db.RoomUserView.count({
-                where: { room_uuid: uuid, room_user_role_name: 'Admin' },
-                transaction
+            await Promise.all([
+                RPS.isInRoom(
+                    { room_uuid: uuid, user, role_name: 'Admin' },
+                    transaction
+                ),
+                db.RoomUserView.count({
+                    where: { room_uuid: uuid, room_user_role_name: 'Admin' },
+                    transaction
+                }),
+            ]).then(([isAdmin, roomAdminCount]) => {
+                if (isAdmin && roomAdminCount === 1) {
+                    throw new RoomLeastOneAdminRequiredError();
+                }
             });
 
-            if (isAdmin && roomAdminCount === 1) {
-                throw new RoomLeastOneAdminRequiredError();
-            }
-
-            await db.sequelize.query('CALL leave_room_proc(:user_uuid, :uuid, @result)', {
-                replacements: { user_uuid: user.sub, uuid },
-                transaction,
-            });
+            await room.leaveRoomProc({ user_uuid: user.sub }, transaction);
         });
     }
 };

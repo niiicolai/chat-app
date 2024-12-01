@@ -1,17 +1,13 @@
 import mongoose from "mongoose";
 
 export default new mongoose.Schema({
-    uuid: { 
-        type: String, 
-        required: true,
-        unique: true 
-    },
+    _id: mongoose.Schema.Types.UUID,
     max_channels: { 
-        type: Number, 
+        type: mongoose.Schema.Types.Number, 
         required: true 
     },
     message_days_to_live: { 
-        type: Number, 
+        type: mongoose.Schema.Types.Number, 
         required: true 
     },
 }, {

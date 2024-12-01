@@ -1,11 +1,7 @@
 import mongoose from "mongoose";
 
-export const channelAuditTypeSchema = new mongoose.Schema({
-    name: { 
-        type: String, 
-        required: true,
-        index: true
-    },
+const channelAuditTypeSchema = new mongoose.Schema({
+    _id: mongoose.Schema.Types.String,
 }, {
     timestamps: {
         createdAt: 'created_at',

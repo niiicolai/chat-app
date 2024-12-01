@@ -1,14 +1,14 @@
 import TypeServiceValidator from '../../shared/validators/type_service_validator.js';
+import EntityNotFoundError from '../../shared/errors/entity_not_found_error.js';
 import UserStatusState from '../mongoose/models/user_status_state.js';
-import ControllerError from '../../shared/errors/controller_error.js';
 import dto from '../dto/type_dto.js';
 
 class Service {
     async findOne(options = { name: null }) {
         TypeServiceValidator.findOne(options);
 
-        const result = await UserStatusState.findOne({ name: options.name });
-        if (!result) throw new ControllerError(404, 'user_status_state not found');
+        const result = await UserStatusState.findOne({ _id: options.name });
+        if (!result) throw new EntityNotFoundError('user_status_state');
 
         return dto(result._doc);
     }

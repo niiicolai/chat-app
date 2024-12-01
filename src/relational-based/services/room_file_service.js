@@ -34,7 +34,7 @@ class RoomFileService {
         RoomFileServiceValidator.findOne(options);
 
         const entity = await db.RoomFileView.findByPk(options.uuid);
-        if (!entity) throw new EntityNotFoundError('room_audit');
+        if (!entity) throw new EntityNotFoundError('room_file');
 
         const isInRoom = await RPS.isInRoom({ room_uuid: entity.room_uuid, user: options.user, role_name: null });
         if (!isInRoom) throw new RoomMemberRequiredError();
@@ -56,7 +56,7 @@ class RoomFileService {
     async findAll(options = { room_uuid: null, user: null, page: null, limit: null }) {
         options = RoomFileServiceValidator.findAll(options);
 
-        const { room_uuid, user, page, limit } = options;
+        const { room_uuid, user, page, limit, offset } = options;
 
         const room = await db.RoomView.findOne({ uuid: room_uuid });
         if (!room) throw new EntityNotFoundError('room');
@@ -97,23 +97,20 @@ class RoomFileService {
         const { uuid, user } = options;
 
         await db.sequelize.transaction(async (transaction) => {
-            const roomFile = await db.RoomFile.findOne({ where: { uuid }, transaction });
+            const roomFile = await db.RoomFileView.findByPk(uuid, { transaction });
             if (!roomFile) throw new EntityNotFoundError('room_file');
 
             const [isOwner, isAdmin, isModerator] = await Promise.all([
                 this.isOwner({ uuid, isMessageUpload: (roomFile.room_file_type_name === 'MessageUpload'), user }, transaction),
-                RPS.isInRoom({ room_uuid: existing.room_uuid, user, role_name: 'Admin' }, transaction),
-                RPS.isInRoom({ room_uuid: existing.room_uuid, user, role_name: 'Moderator' }, transaction),
+                RPS.isInRoom({ room_uuid: roomFile.room_uuid, user, role_name: 'Admin' }, transaction),
+                RPS.isInRoom({ room_uuid: roomFile.room_uuid, user, role_name: 'Moderator' }, transaction),
             ]);
 
             if (!isOwner && !isAdmin && !isModerator) {
                 throw new OwnershipOrLeastModRequiredError('room_file');
             }
 
-            await db.sequelize.query('CALL delete_room_file_proc(:uuid, @result)', {
-                replacements: { uuid },
-                transaction
-            });
+            await roomFile.deleteRoomFileProc(transaction);
 
             // File must be deleted after the database operation to prevent
             // an inconsistent state.

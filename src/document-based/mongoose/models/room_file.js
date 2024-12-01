@@ -1,29 +1,28 @@
 import mongoose from "mongoose";
 
-import { roomFileTypeSchema as room_file_type } from "./room_file_type.js";
 import RoomAudit from "./room_audit.js";
 import { v4 as uuidv4 } from 'uuid';
 
 const roomFileSchema = new mongoose.Schema({
-    uuid: { 
-        type: String, 
-        required: true,
-        unique: true 
-    },
+    _id: mongoose.Schema.Types.UUID,
     src: { 
-        type: String, 
+        type: mongoose.Schema.Types.String, 
         required: true 
     },
     size: { 
-        type: Number, 
+        type: mongoose.Schema.Types.Number, 
         required: true 
     },
     room: { 
-        type: mongoose.Schema.Types.ObjectId, 
+        type: mongoose.Schema.Types.UUID, 
         ref: 'Room', 
         required: true 
     },
-    room_file_type,
+    room_file_type: { 
+        type: mongoose.Schema.Types.String, 
+        ref: 'RoomFileType',
+        required: true 
+    },
 }, {
     timestamps: {
         createdAt: 'created_at',

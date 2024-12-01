@@ -1,22 +1,18 @@
 import mongoose from "mongoose";
 
 const channelAuditSchema = new mongoose.Schema({
-    uuid: { 
-        type: String, 
-        required: true,
-        unique: true 
-    },
+    _id: mongoose.Schema.Types.UUID,
     body: { 
-        type: String, 
+        type: mongoose.Schema.Types.String, 
         required: true 
     },
     channel: { 
-        type: mongoose.Schema.Types.ObjectId, 
+        type: mongoose.Schema.Types.UUID, 
         ref: 'Channel', 
         required: true 
     },
     channel_audit_type: {
-        type: String,
+        type: mongoose.Schema.Types.String,
         required: true,
     },
 }, {

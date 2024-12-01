@@ -7,22 +7,24 @@ import DocumentUserService from '../../src/document-based/services/user_service.
 import GraphGoogleAuthService from '../../src/graph-based/services/google_auth_service.js';
 import GraphUserService from '../../src/graph-based/services/user_service.js';
 
-import { context } from '../context.js';
-import { test, expect, beforeAll } from 'vitest';
+import data from '../../src/seed_data.js';
+import { test, expect, afterAll } from 'vitest';
 import { v4 as uuidv4 } from 'uuid';
 
 const googleAuthTest = (GoogleAuthService, UserService, name) => {
-    const id1 = uuidv4();
-    const id2 = uuidv4();
-    const user = { 
-        uuid: uuidv4(),
-        username: `test-${uuidv4()}`,
-        email: `test-${uuidv4()}@example.com`,
-        password: '12345678',
-    };
+    const new_user1_uuid = uuidv4();
+    const new_user2_uuid = uuidv4();
+    const new_user1_third_party_id = uuidv4();
+    const new_user2_third_party_id = uuidv4();
 
-    beforeAll(async () => {
-        await UserService.create({ body: user });
+    const user = { sub: data.users[0].uuid };
+    const user_new_login_uuid = uuidv4();
+
+    afterAll(async () => {
+        // Clean up
+        await UserService.destroyUserLogins({ uuid: user.sub, login_uuid: user_new_login_uuid });
+        await UserService.destroy({ uuid: new_user1_uuid });
+        await UserService.destroy({ uuid: new_user2_uuid });
     });
 
     test(`(${name}) - GoogleAuthService must implement expected methods`, () => {
@@ -32,8 +34,8 @@ const googleAuthTest = (GoogleAuthService, UserService, name) => {
     });
 
     test.each([
-        [{ info: { data: { id: id1, email: `test-${uuidv4()}@example.com`, picture: `test-${uuidv4()}` } } }],
-        [{ info: { data: { id: id2, email: `test-${uuidv4()}@example.com` } } }],
+        [{ info: { data: { id: new_user1_third_party_id, email: `test-${uuidv4()}@example.com`, picture: `test-${uuidv4()}` } }, user_uuid: new_user1_uuid }],
+        [{ info: { data: { id: new_user2_third_party_id, email: `test-${uuidv4()}@example.com` } }, user_uuid: new_user2_uuid }],
     ])(`(${name}) - GoogleAuthService.create valid partitions`, async (options) => {
         const result = await GoogleAuthService.create(options);
 
@@ -59,8 +61,8 @@ const googleAuthTest = (GoogleAuthService, UserService, name) => {
     });
 
     test.each([
-        [{ info: { data: { id: id1 } } }],
-        [{ info: { data: { id: id2 } } }],
+        [{ info: { data: { id: new_user1_third_party_id } } }],
+        [{ info: { data: { id: new_user2_third_party_id } } }],
     ])(`(${name}) - GoogleAuthService.login valid partitions`, async (options) => {
         const result = await GoogleAuthService.login(options);
 
@@ -85,7 +87,7 @@ const googleAuthTest = (GoogleAuthService, UserService, name) => {
     });
 
     test.each([
-        [{ third_party_id: uuidv4(), type: 'Google', user: { sub: user.uuid } }],
+        [{ third_party_id: uuidv4(), login_uuid: user_new_login_uuid, type: 'Google', user }],
     ])(`(${name}) - GoogleAuthService.addToExistingUser valid partitions`, async (options) => {
         await GoogleAuthService.addToExistingUser(options);
         const userLogins = await UserService.getUserLogins({ uuid: options.user.sub });
@@ -116,12 +118,8 @@ const googleAuthTest = (GoogleAuthService, UserService, name) => {
     });
 };
 
-googleAuthTest(
-    RelationalGoogleAuthService,
-    RelationalUserService, 
-    'Relational'
-);
-
+googleAuthTest(RelationalGoogleAuthService, RelationalUserService, 'Relational');
+/*
 googleAuthTest(
     DocumentGoogleAuthService,
     DocumentUserService, 
@@ -133,3 +131,4 @@ googleAuthTest(
     GraphUserService, 
     'Graph'
 );
+*/

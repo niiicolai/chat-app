@@ -14,15 +14,26 @@ const {
     S3_CDN_URL
 } = process.env;
 
+if (!S3_ENDPOINT_URL || !S3_ACCESS_KEY_ID ||
+    !S3_SECRET_ACCESS_KEY || !S3_BUCKET_NAME ||
+    !S3_REGION || !S3_ENDPOINT_PROTOCOL || !S3_CDN_URL) {
+    console.error(`
+        ${!S3_ENDPOINT_URL ? 'S3_ENDPOINT_URL is not defined in the .env file.' : ''}
+        ${!S3_ACCESS_KEY_ID ? 'S3_ACCESS_KEY_ID is not defined in the .env file.' : ''}
+        ${!S3_SECRET_ACCESS_KEY ? 'S3_SECRET_ACCESS_KEY is not defined in the .env file.' : ''}
+        ${!S3_BUCKET_NAME ? 'S3_BUCKET_NAME is not defined in the .env file.' : ''}
+        ${!S3_REGION ? 'S3_REGION is not defined in the .env file.' : ''}
+        ${!S3_ENDPOINT_PROTOCOL ? 'S3_ENDPOINT_PROTOCOL is not defined in the .env file.' : ''}
+        ${!S3_CDN_URL ? 'S3_CDN_URL is not defined in the .env file.' : ''}
+        File uploads are currently not configured correct.
+        Please add the required variables to the .env file.
+    `);
+}
+
 /**
  * @class StorageService
  * @description The storage service.
- * @param {string} prefix - A prefix added to the key.
- * @param {string} endpoint - The S3 endpoint.
- * @param {string} region - The S3 region.
- * @param {string} bucketName - The S3 bucket name.
- * @param {Object} credentials - The S3 credentials.
- * @param {string} cdnURL - The full S3 CDN URL.
+ * @exports StorageService
  */
 export default class StorageService {
 
@@ -85,7 +96,7 @@ export default class StorageService {
         const filename = `${originalname}-${key}-${timestamp}.${mimetype.split('/')[1]}`;
 
         const { Bucket, prefix } = this;
-        
+
         return this.upload({ Bucket, Key: `${prefix}/${filename}`, Body: buffer, ACL });
     }
 

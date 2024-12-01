@@ -1,5 +1,5 @@
 import TypeServiceValidator from '../../shared/validators/type_service_validator.js';
-import ControllerError from '../../shared/errors/controller_error.js';
+import EntityNotFoundError from '../../shared/errors/entity_not_found_error.js';
 import RoomFileType from '../mongoose/models/room_file_type.js';
 import dto from '../dto/type_dto.js';
 
@@ -7,8 +7,8 @@ class Service {
     async findOne(options = { name: null }) {
         TypeServiceValidator.findOne(options);
 
-        const result = await RoomFileType.findOne({ name: options.name });
-        if (!result) throw new ControllerError(404, 'room_file_type not found');
+        const result = await RoomFileType.findOne({ _id: options.name });
+        if (!result) throw new EntityNotFoundError('room_file_type');
 
         return dto(result._doc);
     }

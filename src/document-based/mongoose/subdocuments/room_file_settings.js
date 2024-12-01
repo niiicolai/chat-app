@@ -1,21 +1,17 @@
 import mongoose from "mongoose";
 
 export default new mongoose.Schema({
-    uuid: { 
-        type: String, 
-        required: true,
-        unique: true 
-    },
+    _id: mongoose.Schema.Types.UUID,
     file_days_to_live: { 
-        type: Number, 
+        type: mongoose.Schema.Types.Number, 
         required: true 
     },
     total_files_bytes_allowed: { 
-        type: Number, 
+        type: mongoose.Schema.Types.Number, 
         required: true 
     },
     single_file_bytes_allowed: { 
-        type: Number, 
+        type: mongoose.Schema.Types.Number, 
         required: true 
     },
 }, {

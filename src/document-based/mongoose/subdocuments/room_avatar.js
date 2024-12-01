@@ -1,14 +1,11 @@
 import mongoose from "mongoose";
 
 export default new mongoose.Schema({
-    uuid: { 
-        type: String, 
-        required: true,
-        index: true 
-    },
-    expires_at: { 
-        type: Date, 
-        required: true 
+    _id: mongoose.Schema.Types.UUID,
+    room_file: { 
+        type: mongoose.Schema.Types.UUID, 
+        ref: 'RoomFile', 
+        required: false 
     },
 }, {
     timestamps: {

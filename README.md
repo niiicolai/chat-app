@@ -69,11 +69,14 @@ docker-compose -f compose-hub-image.yml up
 |                        | Seeding                             | [x]     |
 |                        | Constraints                         | [x]     |
 |                        | Indexes                             | [x]     |
-|                        | Custom Functions                    | [ ]     |
+|                        | Transactions                        | [x]     |
+|                        | Granular User Permissions           | [x]     |
 | **Neo4j**              | Schemas                             | [x]     |
 |                        | OGM                                 | [x]     |
 |                        | Seeding                             | [x]     |
-|                        | Constraints                         | [ ]     |
+|                        | Constraints                         | [x]     |
+|                        | Indexes                             | [x]     |
+|                        | Transactions                        | [x]     |
 | **Docker**             | Dockerfile                          | [x]     |
 |                        | Docker Compose                      | [x]     |
 | **CI/CD**              | GitHub Actions                      | [x]     |

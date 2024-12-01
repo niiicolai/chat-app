@@ -1,6 +1,8 @@
 import RelationalChannelTypeService from '../../src/relational-based/services/channel_type_service.js';
 import DocumentChannelTypeService from '../../src/document-based/services/channel_type_service.js';
 import GraphChannelTypeService from '../../src/graph-based/services/channel_type_service.js';
+
+import data from '../../src/seed_data.js';
 import { test, expect } from 'vitest';
 
 const channelAuditTypeServiceTest = (ChannelTypeService, name) => {
@@ -11,8 +13,7 @@ const channelAuditTypeServiceTest = (ChannelTypeService, name) => {
     });
 
     test.each([
-        ['Text'],
-        ['Call'],
+        data.channel_types.map(ct => ct.name),
     ])(`(${name}) - ChannelTypeService.findOne valid partitions`, async (name) => {
         const result = await ChannelTypeService.findOne({ name });
 

@@ -37,20 +37,16 @@ class UserPasswordResetService {
             const user = await db.UserView.findOne({ where: { user_email: email }, transaction });
             if (!user) return;
 
-            const replacements = {
-                uuid: v4uuid(),
-                user_uuid: user.user_uuid,
-                expires_at: new Date(),
-            };
+            const uuid = v4uuid();
+            const expires_at = new Date();
+            expires_at.setHours(expires_at.getHours() + 1);
 
-            replacements.expires_at.setHours(replacements.expires_at.getHours() + 1);
+            await user.createUserPasswordResetProc({
+                uuid,
+                expires_at,
+            }, transaction);
 
-            await db.sequelize.query('CALL create_user_password_reset_proc(:uuid, :user_uuid, :expires_at, @result)', {
-                replacements,
-                transaction,
-            });
-
-            const confirmUrl = `${WEBSITE_HOST}/api/v1/mysql/user_password_reset/${replacements.uuid}/reset_password`;
+            const confirmUrl = `${WEBSITE_HOST}/api/v1/mysql/user_password_reset/${uuid}/reset_password`;
             const mail = new UserCreatePasswordResetMailer({ confirmUrl, username: user.user_username, to: user.user_email });
             await mail.send();
         });
@@ -83,23 +79,10 @@ class UserPasswordResetService {
             });
             if (!userPasswordReset) throw new EntityNotFoundError('user_password_reset');
 
-            await db.sequelize.query('CALL delete_user_password_reset_proc(:uuid, @result)', {
-                replacements: { uuid },
-                transaction,
-            });
-
-            const replacements = {
-                uuid: user.user_uuid,
-                username: user.user_username,
-                email: user.user_email,
+            await userPasswordReset.deleteUserPasswordResetProc(transaction);
+            await user.editUserProc({
                 password: await PwdService.hash(body.password),
-                user_avatar_src: user.user_avatar_src || null,
-            };
-
-            await db.sequelize.query('CALL edit_user_proc(:uuid, :username, :email, :password, :user_avatar_src, @result)', {
-                replacements,
-                transaction,
-            });
+            }, transaction);
 
             const mail = new UserConfirmPasswordResetMailer({ username: user.user_username, to: user.user_email });
             await mail.send();

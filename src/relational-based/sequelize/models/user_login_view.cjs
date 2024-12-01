@@ -11,6 +11,36 @@ module.exports = (sequelize, DataTypes) => {
          */
         static associate(models) {
         }
+
+        /**
+         * @function deleteUserLoginProc
+         * @description Delete a user login using a stored procedure.
+         * @param {Object} replacements
+         * @param {string} replacements.uuid
+         * @param {Object} transaction optional
+         * @returns {Promise<void>}
+         * @static
+         */
+        static async deleteUserLoginProc(replacements, transaction) {
+            if (!replacements) throw new Error('deleteUserLoginProc: No replacements provided');
+            if (!replacements.uuid) throw new Error('deleteUserLoginProc: No uuid provided');
+
+            await sequelize.query('CALL delete_user_login_proc(:uuid, @result)', {
+                replacements,
+                ...(transaction && { transaction }),
+            });
+        }
+
+        /**
+         * @function deleteUserLoginProc
+         * @description Delete a user login using a stored procedure.
+         * @param {Object} transaction optional
+         * @returns {Promise<void>}
+         * @instance
+         */
+        async deleteUserLoginProc(transaction) {
+            await UserLoginView.deleteUserLoginProc({ uuid: this.user_login_uuid }, transaction);
+        }
     }
     UserLoginView.init({
         user_login_uuid: {

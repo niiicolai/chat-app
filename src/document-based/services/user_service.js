@@ -2,6 +2,7 @@ import UserServiceValidator from '../../shared/validators/user_service_validator
 import UserEmailVerificationService from './user_email_verification_service.js';
 import UserAvatarUploader from '../../shared/uploaders/user_avatar_uploader.js';
 import ControllerError from '../../shared/errors/controller_error.js';
+import EntityNotFoundError from '../../shared/errors/entity_not_found_error.js';
 import JwtService from '../../shared/services/jwt_service.js';
 import UserStatusState from '../mongoose/models/user_status_state.js';
 import UserLoginType from '../mongoose/models/user_login_type.js';
@@ -28,7 +29,7 @@ class UserService {
         UserServiceValidator.findOne(options);
 
         const user = await User.findOne({ _id: options.uuid })
-        if (!user) throw new ControllerError(404, 'User not found');
+        if (!user) throw new EntityNotFoundError('user');
 
         return dto(user);
     }

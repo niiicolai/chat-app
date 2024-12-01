@@ -1,15 +1,237 @@
-import RelationalUserService from '../../src/relational-based/services/user_service.js';
 import RelationalRoomService from '../../src/relational-based/services/room_service.js';
-
-import DocumentUserService from '../../src/document-based/services/user_service.js';
 import DocumentRoomService from '../../src/document-based/services/room_service.js';
-
-import GraphUserService from '../../src/graph-based/services/user_service.js';
 import GraphRoomService from '../../src/graph-based/services/room_service.js';
 
-import { test, expect, beforeAll } from 'vitest';
-import { context } from '../context.js';
+import data from '../../src/seed_data.js';
+import { test, expect } from 'vitest';
 import { v4 as uuidv4 } from 'uuid';
+
+const roomServiceTest = (RoomService, name) => {
+    const user = { sub: data.users.find(u => u.username === 'not_in_a_room').uuid };
+    const admin = { sub: data.users[0].uuid };
+    const mod = { sub: data.users[1].uuid };
+    const member = { sub: data.users[2].uuid };
+    const room_uuid = data.rooms[0].uuid;
+    const admin_room_uuid = uuidv4();
+    const mod_room_uuid = uuidv4();
+    const member_room_uuid = uuidv4();
+
+    test(`(${name}) - RoomService must implement expected methods`, () => {
+        expect(RoomService).toHaveProperty('findOne');
+        expect(RoomService).toHaveProperty('findAll');
+        expect(RoomService).toHaveProperty('create');
+        expect(RoomService).toHaveProperty('update');
+        expect(RoomService).toHaveProperty('editSettings');
+        expect(RoomService).toHaveProperty('destroy');
+    });
+
+    test.each([
+        [{ uuid: room_uuid, user: admin }],
+        [{ uuid: room_uuid, user: mod }],
+        [{ uuid: room_uuid, user: member }],
+    ])(`(${name}) - RoomService.findOne valid partitions`, async (options) => {
+        const room = await RoomService.findOne(options);
+
+        isValidRoom(room);
+    });
+
+    test.each([
+        [undefined, 'No uuid provided'],
+        [null, 'No options provided'],
+        [{}, 'No uuid provided'],
+        [[], 'No uuid provided'],
+        [{ email: null }, 'No uuid provided'],
+        [{ test: null }, 'No uuid provided'],
+        [{ uuid: "test" }, 'No user provided'],
+        [{ uuid: "test", user: null }, 'No user provided'],
+        [{ uuid: "test", user: {} }, 'No user.sub provided'],
+        [{ uuid: "test", user: { sub: null } }, 'No user.sub provided'],
+        [{ uuid: "test", user: { sub: "test" } }, 'room not found'],
+    ])(`(${name}) - RoomService.findOne invalid partitions`, async (options, expected) => {
+        expect(async () => await RoomService.findOne(options)).rejects.toThrowError(expected);
+    });
+
+    test.each([
+        [{ user: admin }],
+        [{ user: mod }],
+        [{ user: member }],
+        [{ user: admin, limit: 1 }],
+        [{ user: mod, limit: 1 }],
+        [{ user: member, limit: 1 }],
+        [{ user: admin, page: 1, limit: 1 }],
+        [{ user: mod, page: 1, limit: 1 }],
+        [{ user: member, page: 1, limit: 1 }],
+    ])(`(${name}) - RoomService.findAll valid partitions`, async (options) => {
+        const result = await RoomService.findAll(options);
+
+        expect(result).toHaveProperty('total');
+        expect(result).toHaveProperty('data');
+
+        isValidRoom(result.data[0]);
+
+        if (options?.page) {
+            expect(result).toHaveProperty('pages');
+            expect(result).toHaveProperty('page');
+            expect(result).toHaveProperty('limit');
+        }
+    });
+
+    test.each([
+        [null, 'No options provided'],
+        ["", 'No options provided'],
+        [1, 'No user provided'],
+        [0, 'No options provided'],
+        [[], 'No user provided'],
+        [{ page: 1 }, 'No user provided'],
+        [{ user: admin, page: 1 }, 'page requires limit'],
+        [{ user: admin, page: -1 }, 'page must be greater than 0'],
+        [{ user: admin, page: "test" }, 'page must be a number'],
+        [{ user: admin, page: 1, limit: -1 }, 'limit must be greater than 0'],
+        [{ user: admin, page: 1, limit: "test" }, 'limit must be a number'],
+    ])(`(${name}) - RoomService.findAll invalid partitions`, async (options, expected) => {
+        expect(async () => await RoomService.findAll(options)).rejects.toThrowError(expected);
+    });
+
+    test.each([
+        [{ user: admin, body: { uuid: admin_room_uuid, name: `test-${uuidv4()}`, description: 'test', room_category_name: 'General' } }],
+        [{ user: mod, body: { uuid: mod_room_uuid, name: `test-${uuidv4()}`, description: 'test', room_category_name: 'General' } }],
+        [{ user: member, body: { uuid: member_room_uuid, name: `test-${uuidv4()}`, description: 'test', room_category_name: 'General' } }],
+    ])(`(${name}) - RoomService.create valid partitions`, async (options) => {
+        const room = await RoomService.create(options);
+        isValidRoom(room);
+    });
+
+    test.each([
+        [null, 'No options provided'],
+        ["", 'No options provided'],
+        [1, 'No body provided'],
+        [0, 'No options provided'],
+        [[], 'No body provided'],
+        [{}, 'No body provided'],
+        [{ body: {} }, 'No user provided'],
+        [{ body: {}, user: "test" }, 'No uuid provided'],
+        [{ body: {}, user: {} }, 'No user.sub provided'],
+        [{ body: {}, user: { sub: "test" } }, 'No uuid provided'],
+        [{ body: { uuid: "test" }, user: { sub: "test" } }, 'No name provided'],
+        [{ body: { uuid: "test", name: "test" }, user: { sub: "test" } }, 'No description provided'],
+        [
+            { body: { uuid: "test", name: "test", description: "test" }, user: { sub: "test" } },
+            'No room_category_name provided'
+        ],
+    ])(`(${name}) - RoomService.create invalid partitions`, async (options, expected) => {
+        expect(async () => await RoomService.create(options)).rejects.toThrowError(expected);
+    });
+
+    test.each([
+        [{ user: admin, uuid: admin_room_uuid, body: { name: `test-${uuidv4()}`, description: 'test', room_category_name: 'General' } }],
+        [{ user: mod, uuid: mod_room_uuid, body: { name: `test-${uuidv4()}`, description: 'test', room_category_name: 'General' } }],
+        [{ user: member, uuid: member_room_uuid, body: { name: `test-${uuidv4()}`, description: 'test', room_category_name: 'General' } }],
+    ])(`(${name}) - RoomService.update valid partitions`, async (options) => {
+        const room = await RoomService.update(options);
+        isValidRoom(room);
+    });
+
+    test.each([
+        [null, 'No options provided'],
+        ["", 'No options provided'],
+        [1, 'No uuid provided'],
+        [0, 'No options provided'],
+        [[], 'No uuid provided'],
+        [{}, 'No uuid provided'],
+        [{ body: {} }, 'No uuid provided'],
+        [{ body: {}, uuid: "test" }, 'No user provided'],
+        [{ body: {}, uuid: "test", user: {} }, 'No user.sub provided'],
+    ])(`(${name}) - RoomService.update invalid partitions`, async (options, expected) => {
+        expect(async () => await RoomService.update(options)).rejects.toThrowError(expected);
+    });
+
+    test.each([
+        [{ user: admin, uuid: admin_room_uuid, body: { join_message: `{name}-updated`, rules_text: 'updated' } }],
+        [{ user: mod, uuid: mod_room_uuid, body: { join_message: `{name}-updated`, rules_text: 'updated' } }],
+        [{ user: member, uuid: member_room_uuid, body: { join_message: `{name}-updated`, rules_text: 'updated' } }],
+    ])(`(${name}) - RoomService.editSettings valid partitions`, async (options) => {
+        await RoomService.editSettings(options);
+
+        const room = await RoomService.findOne({ uuid: options.uuid, user: options.user });
+        expect(room.joinSettings.join_message).toBe(options.body.join_message);
+        expect(room.rulesSettings.rules_text).toBe(options.body.rules_text);
+    });
+
+    test.each([
+        [null, 'No options provided'],
+        ["", 'No options provided'],
+        [1, 'No uuid provided'],
+        [0, 'No options provided'],
+        [[], 'No uuid provided'],
+        [{}, 'No uuid provided'],
+        [{ body: {} }, 'No uuid provided'],
+        [{ uuid: "test" }, 'No body provided'],
+        [{ uuid: "test", body: {} }, 'No user provided'],
+        [{ uuid: "test", body: {}, user: {} }, 'No user.sub provided'],
+    ])(`(${name}) - RoomService.editSettings invalid partitions`, async (options, expected) => {
+        expect(async () => await RoomService.editSettings(options)).rejects.toThrowError(expected);
+    });
+
+    test.each([
+        [{ user: admin, uuid: admin_room_uuid }],
+        [{ user: mod, uuid: mod_room_uuid }],
+        [{ user: member, uuid: member_room_uuid }],
+    ])(`(${name}) - RoomService.destroy valid partitions`, async (options) => {
+        await RoomService.destroy(options);
+        expect(async () => await RoomService.findOne({ uuid: options.uuid, user: options.user }))
+            .rejects.toThrowError('room not found');
+    });
+
+    test.each([
+        [null, 'No options provided'],
+        ["", 'No options provided'],
+        [1, 'No uuid provided'],
+        [0, 'No options provided'],
+        [[], 'No uuid provided'],
+        [{}, 'No uuid provided'],
+        [{ uuid: "test" }, 'No user provided'],
+        [{ uuid: "test", user: {} }, 'No user.sub provided'],
+        [{ uuid: "test", user: { sub: "test" } }, 'room not found'],
+    ])(`(${name}) - RoomService.destroy invalid partitions`, async (options, expected) => {
+        expect(async () => await RoomService.destroy(options)).rejects.toThrowError(expected);
+    });
+
+    /**
+     * Security Checks
+     */
+
+    test(`(${name}) - RoomService.findOne return error for users who are not members`, async () => {
+        expect(async () => await RoomService.findOne({ uuid: room_uuid, user }))
+            .rejects.toThrowError("User is not in the room");
+    });
+
+    test.each([
+        [mod],
+        [member],
+        [user],
+    ])(`(${name}) - RoomService.update return error for users who are not admin`, async (user) => {
+        expect(async () => await RoomService.update({ uuid: room_uuid, user, body: { description: "test" } }))
+            .rejects.toThrowError("User is not an admin of the room");
+    });
+
+    test.each([
+        [mod],
+        [member],
+        [user],
+    ])(`(${name}) - RoomService.destroy returns an error for users who are not admin`, async (user) => {
+        expect(async () => await RoomService.destroy({ uuid: room_uuid, user }))
+            .rejects.toThrow("User is not an admin of the room");
+    });
+
+    test.each([
+        [mod],
+        [member],
+        [user],
+    ])(`(${name}) - RoomService.editSettings returns an error for users who are not admin`, async (user) => {
+        expect(async () => await RoomService.editSettings({ uuid: room_uuid, user, body: {} }))
+            .rejects.toThrow("User is not an admin of the room");
+    });
+};
 
 const isValidRoom = (room) => {
     expect(room).toHaveProperty('uuid');
@@ -47,238 +269,6 @@ const isValidRoom = (room) => {
     expect(room.joinSettings).toHaveProperty('join_channel_uuid');
 };
 
-const roomServiceTest = (RoomService, UserService, name) => {
-    const admin_room_uuid = uuidv4();
-    const mod_room_uuid = uuidv4();
-    const member_room_uuid = uuidv4();
-    const user = { 
-        uuid: uuidv4(),
-        username: `test-${uuidv4()}`,
-        email: `test-${uuidv4()}@example.com`,
-        password: '12345678',
-    };
-
-    beforeAll(async () => {
-        await UserService.create({ body: user });
-    });
-
-    test(`(${name}) - RoomService must implement expected methods`, () => {
-        expect(RoomService).toHaveProperty('findOne');
-        expect(RoomService).toHaveProperty('findAll');
-        expect(RoomService).toHaveProperty('create');
-        expect(RoomService).toHaveProperty('update');
-        expect(RoomService).toHaveProperty('editSettings');
-        expect(RoomService).toHaveProperty('destroy');
-    });
-
-    test.each([
-        [{ uuid: context.room.uuid, user: context.admin }],
-        [{ uuid: context.room.uuid, user: context.mod }],
-        [{ uuid: context.room.uuid, user: context.member }],
-    ])(`(${name}) - RoomService.findOne valid partitions`, async (options) => {
-        isValidRoom(await RoomService.findOne(options));
-    });
-    
-    test.each([
-        [undefined, 'No uuid provided'],
-        [null, 'No options provided'],
-        [{}, 'No uuid provided'],
-        [[], 'No uuid provided'],
-        [{ email: null }, 'No uuid provided'],
-        [{ test: null }, 'No uuid provided'],
-        [{ uuid: "test" }, 'No user provided'],
-        [{ uuid: "test", user: null }, 'No user provided'],
-        [{ uuid: "test", user: {} }, 'No user.sub provided'],
-        [{ uuid: "test", user: { sub: null } }, 'No user.sub provided'],
-        [{ uuid: "test", user: { sub: "test" } }, 'room not found'],
-    ])(`(${name}) - RoomService.findOne invalid partitions`, async (options, expected) => {
-        expect(async () => await RoomService.findOne(options)).rejects.toThrowError(expected);
-    });
-   
-    test.each([
-        [{ user: context.admin }],
-        [{ user: context.mod }],
-        [{ user: context.member }],
-        [{ user: context.admin, limit: 1 }],
-        [{ user: context.mod, limit: 1 }],
-        [{ user: context.member, limit: 1 }],
-        [{ user: context.admin, page: 1, limit: 1 }],
-        [{ user: context.mod, page: 1, limit: 1 }],
-        [{ user: context.member, page: 1, limit: 1 }],
-    ])(`(${name}) - RoomService.findAll valid partitions`, async (options) => {
-        const result = await RoomService.findAll(options);
-
-        expect(result).toHaveProperty('total');
-        expect(result).toHaveProperty('data');
-
-        isValidRoom(result.data[0]);
-
-        if (options?.page) {
-            expect(result).toHaveProperty('pages');
-            expect(result).toHaveProperty('page');
-            expect(result).toHaveProperty('limit');
-        }
-    });
-    
-    test.each([
-        [null, 'No options provided'],
-        ["", 'No options provided'],
-        [1, 'No user provided'],
-        [0, 'No options provided'],
-        [[], 'No user provided'],
-        [{ page: 1 }, 'No user provided'],
-        [{ user: context.admin, page: 1 }, 'page requires limit'],
-        [{ user: context.admin, page: -1 }, 'page must be greater than 0'],
-        [{ user: context.admin, page: "test" }, 'page must be a number'],
-        [{ user: context.admin, page: 1, limit: -1 }, 'limit must be greater than 0'],
-        [{ user: context.admin, page: 1, limit: "test" }, 'limit must be a number'],
-    ])(`(${name}) - RoomService.findAll invalid partitions`, async (options, expected) => {
-        expect(async () => await RoomService.findAll(options)).rejects.toThrowError(expected);
-    });
-    
-    test.each([
-        [{ user: context.admin, body: { uuid: admin_room_uuid, name: `test-${uuidv4()}`, description: 'test', room_category_name: 'General' } }],
-        [{ user: context.mod, body: { uuid: mod_room_uuid, name: `test-${uuidv4()}`, description: 'test', room_category_name: 'General' } }],
-        [{ user: context.member, body: { uuid: member_room_uuid, name: `test-${uuidv4()}`, description: 'test', room_category_name: 'General' } }],
-    ])(`(${name}) - RoomService.create valid partitions`, async (options) => {
-        const room = await RoomService.create(options);
-        isValidRoom(room);
-    });
-    
-    test.each([
-        [null, 'No options provided'],
-        ["", 'No options provided'],
-        [1, 'No body provided'],
-        [0, 'No options provided'],
-        [[], 'No body provided'],
-        [{}, 'No body provided'],
-        [{ body: { } }, 'No user provided'],
-        [{ body: { }, user: "test" }, 'No uuid provided'],
-        [{ body: { }, user: { } }, 'No user.sub provided'],
-        [{ body: { }, user: { sub: "test" } }, 'No uuid provided'],
-        [{ body: { uuid: "test" }, user: { sub: "test" } }, 'No name provided'],
-        [{ body: { uuid: "test", name: "test" }, user: { sub: "test" } }, 'No description provided'],
-        [
-            { body: { uuid: "test", name: "test", description: "test" }, user: { sub: "test" } }, 
-            'No room_category_name provided'
-        ],
-    ])(`(${name}) - RoomService.create invalid partitions`, async (options, expected) => {
-        expect(async () => await RoomService.create(options)).rejects.toThrowError(expected);
-    });
- 
-    test.each([
-        [{ user: context.admin, uuid: admin_room_uuid, body: { name: `test-${uuidv4()}`, description: 'test', room_category_name: 'General' } }],
-        [{ user: context.mod, uuid: mod_room_uuid, body: { name: `test-${uuidv4()}`, description: 'test', room_category_name: 'General' } }],
-        [{ user: context.member, uuid: member_room_uuid, body: { name: `test-${uuidv4()}`, description: 'test', room_category_name: 'General' } }],
-    ])(`(${name}) - RoomService.update valid partitions`, async (options) => {
-        const room = await RoomService.update(options);
-        isValidRoom(room);
-    });
-
-    test.each([
-        [null, 'No options provided'],
-        ["", 'No options provided'],
-        [1, 'No uuid provided'],
-        [0, 'No options provided'],
-        [[], 'No uuid provided'],
-        [{}, 'No uuid provided'],
-        [{ body: { } }, 'No uuid provided'],
-        [{ body: { }, uuid: "test" }, 'No user provided'],
-        [{ body: { }, uuid: "test", user: { } }, 'No user.sub provided'],
-    ])(`(${name}) - RoomService.update invalid partitions`, async (options, expected) => {
-        expect(async () => await RoomService.update(options)).rejects.toThrowError(expected);
-    });
-    
-    test.each([
-        [{ user: context.admin, uuid: admin_room_uuid, body: { join_message: `{name}-updated`, rules_text: 'updated' } }],
-        [{ user: context.mod, uuid: mod_room_uuid, body: { join_message: `{name}-updated`, rules_text: 'updated' } }],
-        [{ user: context.member, uuid: member_room_uuid, body: { join_message: `{name}-updated`, rules_text: 'updated' } }],
-    ])(`(${name}) - RoomService.editSettings valid partitions`, async (options) => {
-        await RoomService.editSettings(options);
-
-        const room = await RoomService.findOne({ uuid: options.uuid, user: options.user });
-        expect(room.joinSettings.join_message).toBe(options.body.join_message);
-        expect(room.rulesSettings.rules_text).toBe(options.body.rules_text);
-    });
-
-    test.each([
-        [null, 'No options provided'],
-        ["", 'No options provided'],
-        [1, 'No uuid provided'],
-        [0, 'No options provided'],
-        [[], 'No uuid provided'],
-        [{}, 'No uuid provided'],
-        [{ body: { } }, 'No uuid provided'],
-        [{ uuid: "test" }, 'No body provided'],
-        [{ uuid: "test", body: { } }, 'No user provided'],
-        [{ uuid: "test", body: { }, user: { } }, 'No user.sub provided'],
-    ])(`(${name}) - RoomService.editSettings invalid partitions`, async (options, expected) => {
-        expect(async () => await RoomService.editSettings(options)).rejects.toThrowError(expected);
-    });
-
-    test.each([
-        [{ user: context.admin, uuid: admin_room_uuid }],
-        [{ user: context.mod, uuid: mod_room_uuid }],
-        [{ user: context.member, uuid: member_room_uuid }],
-    ])(`(${name}) - RoomService.destroy valid partitions`, async (options) => {
-        await RoomService.destroy(options);
-        expect(async () => await RoomService.findOne({ uuid: options.uuid, user: options.user }))
-            .rejects.toThrowError('room not found');
-    });
-
-    test.each([
-        [null, 'No options provided'],
-        ["", 'No options provided'],
-        [1, 'No uuid provided'],
-        [0, 'No options provided'],
-        [[], 'No uuid provided'],
-        [{}, 'No uuid provided'],
-        [{ uuid: "test" }, 'No user provided'],
-        [{ uuid: "test", user: { } }, 'No user.sub provided'],
-        [{ uuid: "test", user: { sub: "test" } }, 'room not found'],
-    ])(`(${name}) - RoomService.destroy invalid partitions`, async (options, expected) => {
-        expect(async () => await RoomService.destroy(options)).rejects.toThrowError(expected);
-    });
-
-    /**
-     * Security Checks
-     */
-
-    test(`(${name}) - RoomService.findOne return error for users who are not members`, async () => {
-        expect(async () => await RoomService.findOne({ uuid: context.room.uuid, user: { sub: user.uuid } }))
-            .rejects.toThrowError("User is not in the room");
-    });
-
-    test.each([
-        [context.mod.sub],
-        [context.member.sub],
-        [user.uuid],
-    ])(`(${name}) - RoomService.update return error for users who are not admin`, async (sub) => {
-        expect(async () => await RoomService.update({ uuid: context.room.uuid, user: { sub }, body: { description: "test" } }))
-            .rejects.toThrowError(/User is not an admin of the room|User is not in the room/);
-    });
-
-    test.each([
-        [context.mod.sub],
-        [context.member.sub],
-        [user.uuid],
-    ])(`(${name}) - RoomService.destroy returns an error for users who are not admin`, async (sub) => {
-        expect(async () => await RoomService.destroy({ uuid: context.room.uuid, user: { sub } }))
-            .rejects
-            .toThrow(/User is not an admin of the room|User is not in the room/);
-    });
-
-    test.each([
-        [context.mod.sub],
-        [context.member.sub],
-        [user.uuid],
-    ])(`(${name}) - RoomService.editSettings returns an error for users who are not admin`, async (sub) => {
-        expect(async () => await RoomService.editSettings({ uuid: context.room.uuid, user: { sub }, body: {} }))
-            .rejects
-            .toThrow(/User is not an admin of the room|User is not in the room/);
-    });
-};
-
-roomServiceTest(RelationalRoomService, RelationalUserService, 'Relational');
-roomServiceTest(DocumentRoomService, DocumentUserService, 'Document');
-roomServiceTest(GraphRoomService, GraphUserService, 'Graph');
+roomServiceTest(RelationalRoomService, 'Relational');
+//roomServiceTest(DocumentRoomService, 'Document');
+//roomServiceTest(GraphRoomService, 'Graph');

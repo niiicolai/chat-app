@@ -3,7 +3,9 @@ import data from '../../../seed_data.js';
 
 export default class RoomCategorySeeder {
     async up() {
-        await RoomCategory.insertMany(data.room_categories);
+        await RoomCategory.insertMany(data.room_categories.map((type) => {
+            return { _id: type.name }
+        }));
     }
 
     async down() {

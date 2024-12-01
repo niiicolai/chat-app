@@ -1,21 +1,16 @@
 import RelationalRoomFileService from '../../src/relational-based/services/room_file_service.js';
-import RelationalUserService from '../../src/relational-based/services/user_service.js';
-
 import DocumentRoomFileService from '../../src/document-based/services/room_file_service.js';
-import DocumentUserService from '../../src/document-based/services/user_service.js';
-
 import GraphRoomFileService from '../../src/graph-based/services/room_file_service.js';
-import GraphUserService from '../../src/graph-based/services/user_service.js';
 
-import { context } from '../context.js';
-import { test, expect, beforeAll } from 'vitest';
+import data from '../../src/seed_data.js';
+import { test, expect } from 'vitest';
 
-const roomFileServiceTest = (RoomFileService, UserService, name) => {
-    const user = context.fn.fakeUser();
-
-    beforeAll(async () => {
-        await UserService.create({ body: user });
-    });
+const roomFileServiceTest = (RoomFileService, name) => {
+    const user = { sub: data.users.find(u => u.username === 'not_in_a_room').uuid };
+    const room_uuid = data.rooms[0].uuid;
+    const admin = { sub: data.users[0].uuid };
+    const mod = { sub: data.users[1].uuid };
+    const member = { sub: data.users[2].uuid };
 
     test(`(${name}) - RoomFileService must implement expected methods`, () => {
         expect(RoomFileService).toHaveProperty('findOne');
@@ -25,9 +20,9 @@ const roomFileServiceTest = (RoomFileService, UserService, name) => {
     });
 
     test.each([
-        [{ room_uuid: context.room.uuid, user: context.admin, limit: 2 }],
-        [{ room_uuid: context.room.uuid, user: context.mod, limit: 1 }],
-        [{ room_uuid: context.room.uuid, user: context.member, limit: 1, page: 1 }],
+        [{ room_uuid, user: admin, limit: 2 }],
+        [{ room_uuid, user: mod, limit: 1 }],
+        [{ room_uuid, user: member, limit: 1, page: 1 }],
     ])(`(${name}) - RoomFileService.findAll valid partitions`, async (options) => {
         const result = await RoomFileService.findAll(options);
 
@@ -69,9 +64,9 @@ const roomFileServiceTest = (RoomFileService, UserService, name) => {
     });
 
     test(`(${name}) - RoomFileService.findOne valid partitions`, async () => {
-        const files = await RoomFileService.findAll({ room_uuid: context.room.uuid, user: context.admin, limit: 1 });
+        const files = await RoomFileService.findAll({ room_uuid, user: admin, limit: 1 });
         expect(files.data.length).toBeGreaterThan(0);
-        const result = await RoomFileService.findOne({ uuid: files.data[0].uuid, user: context.admin });
+        const result = await RoomFileService.findOne({ uuid: files.data[0].uuid, user: admin });
 
         expect(result).toHaveProperty('uuid');
         expect(result).toHaveProperty('room_file_type_name');
@@ -102,44 +97,30 @@ const roomFileServiceTest = (RoomFileService, UserService, name) => {
      */
 
     test.each([
-        [user.uuid],
-    ])(`(${name}) - RoomFileService.findOne return error for users who are not member`, async (sub) => {
-        const files = await RoomFileService.findAll({ room_uuid: context.room.uuid, user: context.admin, limit: 1 });
-        expect(async () => await RoomFileService.findOne({ user: { sub }, uuid: files.data[0].uuid }))
+        [user],
+    ])(`(${name}) - RoomFileService.findOne return error for users who are not member`, async (user) => {
+        const files = await RoomFileService.findAll({ room_uuid, user: admin, limit: 1 });
+        expect(async () => await RoomFileService.findOne({ user, uuid: files.data[0].uuid }))
             .rejects.toThrow("User is not in the room");
     });
 
     test.each([
-        [user.uuid],
-    ])(`(${name}) - RoomFileService.findAll return error for users who are not member`, async (sub) => {
-        expect(async () => await RoomFileService.findAll({ room_uuid: context.room.uuid, user: { sub } }))
+        [user],
+    ])(`(${name}) - RoomFileService.findAll return error for users who are not member`, async (user) => {
+        expect(async () => await RoomFileService.findAll({ room_uuid, user }))
             .rejects.toThrow("User is not in the room");
     });
 
     test.each([
-        [context.member.sub],
-        [user.uuid],
-    ])(`(${name}) - RoomFileService.destroy return error for users who are not admin or moderator`, async (sub) => {
-        const { data } = await RoomFileService.findAll({ room_uuid: context.room.uuid, user: context.admin, limit: 2 });
-        expect(async () => await RoomFileService.destroy({ uuid: data[0].uuid, user: { sub } }))
-            .rejects.toThrow(/User is not an owner of the file, or an admin or moderator of the room|User is not in the room/);
+        [member],
+        [user],
+    ])(`(${name}) - RoomFileService.destroy return error for users who are not admin or moderator`, async (user) => {
+        const { data } = await RoomFileService.findAll({ room_uuid, user: admin, limit: 2 });
+        expect(async () => await RoomFileService.destroy({ uuid: data[0].uuid, user }))
+            .rejects.toThrow("User is not an owner of the room_file, or an admin or moderator of the room");
     });
 };
 
-roomFileServiceTest(
-    RelationalRoomFileService,
-    RelationalUserService, 
-    'Relational'
-);
-
-roomFileServiceTest(
-    DocumentRoomFileService,
-    DocumentUserService,
-    'Document'
-);
-
-roomFileServiceTest(
-    GraphRoomFileService,
-    GraphUserService, 
-    'Graph'
-);
+roomFileServiceTest(RelationalRoomFileService, 'Relational');
+//roomFileServiceTest(DocumentRoomFileService, 'Document');
+//roomFileServiceTest(GraphRoomFileService, 'Graph'

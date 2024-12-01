@@ -15,6 +15,46 @@ module.exports = (sequelize, DataTypes) => {
                 targetKey: 'room_uuid',
             });
         }
+
+        /**
+         * @function editRoomUserProcStatic
+         * @description Edit a room user using a stored procedure.
+         * @param {Object} replacements
+         * @param {string} replacements.user_uuid
+         * @param {string} replacements.room_uuid
+         * @param {string} replacements.role_name
+         * @param {Object} transaction optional
+         * @returns {Promise<void>}
+         * @static
+         */
+        static async editRoomUserProcStatic(replacements, transaction) {
+            if (!replacements) throw new Error('editRoomUserProcStatic: No replacements provided');
+            if (!replacements.user_uuid) throw new Error('editRoomUserProcStatic: No user_uuid provided');
+            if (!replacements.room_uuid) throw new Error('editRoomUserProcStatic: No room_uuid provided');
+            if (!replacements.role_name) throw new Error('editRoomUserProcStatic: No role_name provided');
+
+            await sequelize.query('CALL edit_room_user_role_proc(:user_uuid, :room_uuid, :role_name, @result)', {
+                replacements,
+                ...(transaction && { transaction }),
+            });
+        }        
+
+        /**
+         * @function editRoomUserProc
+         * @description Edit a room user using a stored procedure.
+         * @param {Object} replacements
+         * @param {string} replacements.role_name
+         * @param {Object} transaction optional
+         * @returns {Promise<void>}
+         * @instance
+         */
+        async editRoomUserProc(replacements, transaction) {
+            if (!replacements.role_name) replacements.role_name = this.room_user_role_name;
+            replacements.user_uuid = this.user_uuid;
+            replacements.room_uuid = this.room_uuid;
+
+            await RoomUserView.editRoomUserProcStatic(replacements, transaction);
+        }
     }
     RoomUserView.init({
         room_user_uuid: {

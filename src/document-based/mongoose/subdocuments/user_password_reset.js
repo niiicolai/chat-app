@@ -1,13 +1,9 @@
 import mongoose from "mongoose";
 
 export default new mongoose.Schema({
-    uuid: { 
-        type: String, 
-        required: true,
-        unique: true 
-    },
-    max_users: { 
-        type: Number, 
+    _id: mongoose.Schema.Types.UUID,
+    expires_at: { 
+        type: mongoose.Schema.Types.Date, 
         required: true 
     },
 }, {

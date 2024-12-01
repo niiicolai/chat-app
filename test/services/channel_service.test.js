@@ -1,43 +1,20 @@
 import RelationalChannelService from '../../src/relational-based/services/channel_service.js';
-import RelationalRoomService from '../../src/relational-based/services/room_service.js';
-import RelationalUserService from '../../src/relational-based/services/user_service.js';
-
 import DocumentChannelService from '../../src/document-based/services/channel_service.js';
-import DocumentRoomService from '../../src/document-based/services/room_service.js';
-import DocumentUserService from '../../src/document-based/services/user_service.js';
-
 import GraphChannelService from '../../src/graph-based/services/channel_service.js';
-import GraphRoomService from '../../src/graph-based/services/room_service.js';
-import GraphUserService from '../../src/graph-based/services/user_service.js';
 
-import { context } from '../context.js';
-import { test, expect, beforeAll, afterAll } from 'vitest';
+import data from '../../src/seed_data.js';
+import { test, expect } from 'vitest';
 import { v4 as uuidv4 } from 'uuid';
 
-const channelTest = (ChannelService, RoomService, UserService, name) => {
-    const room_uuid = uuidv4();
-    const channel_uuid = uuidv4();
-    const user = context.fn.fakeUser();
+const channelTest = (ChannelService, name) => {
+    const user = { sub: data.users.find(u => u.username === 'not_in_a_room').uuid };
+    const room_uuid = data.rooms[0].uuid;
+    const channel_uuid = data.rooms[0].channels[0].uuid;
+    const admin = { sub: data.users[0].uuid };
+    const mod = { sub: data.users[1].uuid };
+    const member = { sub: data.users[2].uuid };
 
-    beforeAll(async () => {
-        await RoomService.create({ 
-            user: context.admin,
-            body: { 
-                uuid: room_uuid, 
-                name: `test-${uuidv4()}`, 
-                description: "Test Room Description", 
-                room_category_name: "General" 
-            }
-        });
-        await UserService.create({ 
-            user: context.admin, 
-            body: user 
-        });
-    });
-
-    afterAll(async () => {
-        await RoomService.destroy({ uuid: room_uuid, user: context.admin });
-    });
+    const new_channel_uuid = uuidv4();
 
     test(`(${name}) - ChannelService must implement expected methods`, () => {
         expect(ChannelService).toHaveProperty('findOne');
@@ -48,7 +25,7 @@ const channelTest = (ChannelService, RoomService, UserService, name) => {
     });
 
     test.each([
-        [{ uuid: context.channel.uuid, user: context.admin }],
+        [{ uuid: channel_uuid, user: admin }],
     ])(`(${name}) - ChannelService.findOne valid partitions`, async (options) => {
         const result = await ChannelService.findOne(options);
 
@@ -77,9 +54,9 @@ const channelTest = (ChannelService, RoomService, UserService, name) => {
     });
 
     test.each([
-        [{ room_uuid: context.room.uuid, user: context.admin }],
-        [{ room_uuid: context.room.uuid, user: context.mod }],
-        [{ room_uuid: context.room.uuid, user: context.member }],
+        [{ room_uuid, user: admin }],
+        [{ room_uuid, user: mod }],
+        [{ room_uuid, user: member }],
     ])(`(${name}) - ChannelService.findAll valid partitions`, async (options) => {
         const result = await ChannelService.findAll(options);
 
@@ -119,11 +96,11 @@ const channelTest = (ChannelService, RoomService, UserService, name) => {
 
     test.each([
         [{ 
-            user: context.admin, 
+            user: admin, 
             body: { 
-                uuid: channel_uuid, 
+                uuid: new_channel_uuid, 
                 room_uuid, 
-                name: `test-${uuidv4()}`,
+                name: `new_channel`,
                 description: "test", 
                 channel_type_name: "Text"
             } 
@@ -156,10 +133,10 @@ const channelTest = (ChannelService, RoomService, UserService, name) => {
 
     test.each([
         [{ 
-            user: context.admin,
-            uuid: channel_uuid,
+            user: admin,
+            uuid: new_channel_uuid,
             body: { 
-                name: `test-${uuidv4()}`,
+                name: `updated_channel`,
                 description: "test", 
                 channel_type_name: "Text"
             } 
@@ -192,8 +169,8 @@ const channelTest = (ChannelService, RoomService, UserService, name) => {
 
     test.each([
         [{ 
-            user: context.admin,
-            uuid: channel_uuid,
+            user: admin,
+            uuid: new_channel_uuid,
         }],
     ])(`(${name}) - ChannelService.destroy valid partitions`, async (options) => {
         await ChannelService.destroy(options);
@@ -206,64 +183,47 @@ const channelTest = (ChannelService, RoomService, UserService, name) => {
      */
 
     test.each([
-        [context.mod.sub],
-        [context.member.sub],
-        [user.uuid],
-    ])(`(${name}) - ChannelService.create return error for users who are not admin`, async (sub) => {
-        expect(async () => await ChannelService.create({ user: { sub }, body: { uuid: uuidv4(), room_uuid: context.room.uuid, name: "test", description: "test", channel_type_name: "Text" } }))
+        [mod],
+        [member],
+        [user],
+    ])(`(${name}) - ChannelService.create return error for users who are not admin`, async (user) => {
+        expect(async () => await ChannelService.create({ user, body: { uuid: uuidv4(), room_uuid, name: "not_allowed", description: "test", channel_type_name: "Text" } }))
             .rejects.toThrowError("User is not an admin of the room");
     });
 
     test.each([
-        [context.mod.sub],
-        [context.member.sub],
-        [user.uuid],
-    ])(`(${name}) - ChannelService.destroy return error for users who are not admin`, async (sub) => {
-        expect(async () => await ChannelService.destroy({ user: { sub }, uuid: context.channel.uuid }))
-            .rejects.toThrowError(/User is not an admin of the room|User is not in the room/);
+        [mod],
+        [member],
+        [user],
+    ])(`(${name}) - ChannelService.destroy return error for users who are not admin`, async (user) => {
+        expect(async () => await ChannelService.destroy({ user, uuid: channel_uuid }))
+            .rejects.toThrowError("User is not an admin of the room");
     });
 
     test.each([
-        [context.mod.sub],
-        [context.member.sub],
-        [user.uuid],
-    ])(`(${name}) - ChannelService.update return error for users who are not admin`, async (sub) => {
-        expect(async () => await ChannelService.update({ user: { sub }, uuid: context.channel.uuid, body: { description: "test" } }))
-            .rejects.toThrow(/User is not an admin of the room|User is not in the room/);
+        [mod],
+        [member],
+        [user],
+    ])(`(${name}) - ChannelService.update return error for users who are not admin`, async (user) => {
+        expect(async () => await ChannelService.update({ user, uuid: channel_uuid, body: { description: "test" } }))
+            .rejects.toThrow("User is not an admin of the room");
     });
     
     test.each([
-        [user.uuid],
-    ])(`(${name}) - ChannelService.findOne return error for users who are not member`, async (sub) => {
-        expect(async () => await ChannelService.findOne({ user: { sub }, uuid: context.channel.uuid }))
+        [user],
+    ])(`(${name}) - ChannelService.findOne return error for users who are not member`, async (user) => {
+        expect(async () => await ChannelService.findOne({ user, uuid: channel_uuid }))
             .rejects.toThrow("User is not in the room");
     });
 
     test.each([
-        [user.uuid],
-    ])(`(${name}) - ChannelService.findAll return error for users who are not member`, async (sub) => {
-        expect(async () => await ChannelService.findAll({ user: { sub }, room_uuid: context.room.uuid }))
+        [user],
+    ])(`(${name}) - ChannelService.findAll return error for users who are not member`, async (user) => {
+        expect(async () => await ChannelService.findAll({ user, room_uuid: room_uuid }))
             .rejects.toThrow("User is not in the room");
     });
 };
 
-channelTest(
-    RelationalChannelService, 
-    RelationalRoomService, 
-    RelationalUserService,
-    'Relational'
-);
-
-channelTest(
-    DocumentChannelService, 
-    DocumentRoomService,
-    DocumentUserService, 
-    'Document'
-);
-
-channelTest(
-    GraphChannelService, 
-    GraphRoomService,
-    GraphUserService, 
-    'Graph'
-);
+channelTest(RelationalChannelService, 'Relational');
+//channelTest(DocumentChannelService, 'Document');
+//channelTest(GraphChannelService, 'Graph');

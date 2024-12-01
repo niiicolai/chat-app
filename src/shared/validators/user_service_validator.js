@@ -56,5 +56,10 @@ export default class UserServiceValidator {
         if (!options.body) throw new ControllerError(400, 'No body provided');
         if (!options.body.uuid) throw new ControllerError(400, 'No uuid provided');
         if (!options.body.user_login_type_name) throw new ControllerError(400, 'No user login type provided');
+        if (options.body.user_login_type_name === 'Password' && !options.body.password) {
+            throw new ControllerError(400, 'No password provided');
+        } else if (options.body.user_login_type_name !== 'Password' && !options.body.third_party_id) {
+            throw new ControllerError(400, 'No third_party_id provided');
+        }
     }
 };

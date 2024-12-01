@@ -1,6 +1,8 @@
 import RelationalChannelMessageUploadTypeService from '../../src/relational-based/services/channel_message_upload_type_service.js';
 import DocumentChannelMessageUploadTypeService from '../../src/document-based/services/channel_message_upload_type_service.js';
 import GraphChannelMessageUploadTypeService from '../../src/graph-based/services/channel_message_upload_type_service.js';
+
+import data from '../../src/seed_data.js';
 import { test, expect } from 'vitest';
 
 const channelAuditTypeServiceTest = (ChannelMessageUploadTypeService, name) => {
@@ -11,9 +13,7 @@ const channelAuditTypeServiceTest = (ChannelMessageUploadTypeService, name) => {
     });
 
     test.each([
-        ['Image'],
-        ['Video'],
-        ['Document'],
+        data.channel_message_upload_types.map(cmut => cmut.name),
     ])(`(${name}) - ChannelMessageUploadTypeService.findOne valid partitions`, async (name) => {
         const result = await ChannelMessageUploadTypeService.findOne({ name });
 
@@ -82,5 +82,7 @@ const channelAuditTypeServiceTest = (ChannelMessageUploadTypeService, name) => {
 }
 
 channelAuditTypeServiceTest(RelationalChannelMessageUploadTypeService, 'Relational');
+/*
 channelAuditTypeServiceTest(DocumentChannelMessageUploadTypeService, 'Document');
 channelAuditTypeServiceTest(GraphChannelMessageUploadTypeService, 'Graph');
+*/

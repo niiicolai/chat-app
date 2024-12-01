@@ -101,67 +101,48 @@ class ChannelService {
      * @param {Object} options.user.sub
      * @returns {Promise<Object>}
      */
-    async create(options={ body: null, file: null, user: null }) {
+    async create(options = { body: null, file: null, user: null }) {
         ChannelServiceValidator.create(options);
 
         const { body, file, user } = options;
         const { uuid, name, description, channel_type_name, room_uuid } = body;
 
         await db.sequelize.transaction(async (transaction) => {
-            const room = await db.RoomView.findByPk(room_uuid, { transaction });
-            if (!room) throw new EntityNotFoundError('room');
-
-            const uuidInUse = await db.ChannelView.findByPk(uuid, { transaction });
-            if (uuidInUse) throw new DuplicateEntryError('channel', 'uuid', uuid);
-
-            const validType = await db.ChannelType.findOne({ where: { channel_type_name }, transaction });
-            if (!validType) throw new EntityNotFoundError('channel_type');
-
-            const nameAndTypeInUse = await db.ChannelView.findOne({ 
-                where: { channel_name: name, room_uuid, channel_type_name },
-                transaction 
+            await Promise.all([
+                db.RoomView.findByPk(room_uuid, { transaction }),
+                db.ChannelView.findByPk(uuid, { transaction }),
+                db.ChannelTypeView.findOne({ where: { channel_type_name }, transaction }),
+                db.ChannelView.findOne({ where: { channel_name: name, room_uuid, channel_type_name }, transaction }),
+                RPS.isInRoom({ room_uuid, user, role_name: 'Admin' }, transaction),
+                RPS.channelCountExceedsLimit({ room_uuid, add_count: 1 }, transaction),
+                ...[file && file.size > 0 && [
+                    RPS.fileExceedsTotalFilesLimit({ room_uuid, bytes: file.size }, transaction),
+                    RPS.fileExceedsSingleFileSize({ room_uuid, bytes: file.size }, transaction)
+                ]]
+            ]).then(([room, uuidInUse, validType, nameAndTypeInUse, inRoom, channelCountExceedsLimit, exceedTotalFile, exceedSingleFile]) => {
+                if (!room) throw new EntityNotFoundError('room');
+                if (uuidInUse) throw new DuplicateEntryError('channel', 'uuid', uuid);
+                if (!validType) throw new EntityNotFoundError('channel_type');
+                if (nameAndTypeInUse) throw new DuplicateEntryError('channel', 'name and type', `${name} and ${channel_type_name}`);
+                if (!inRoom) throw new AdminPermissionRequiredError();
+                if (channelCountExceedsLimit) throw new ExceedsRoomChannelCountError();
+                if (exceedTotalFile) throw new ExceedsRoomTotalFilesLimitError();
+                if (exceedSingleFile) throw new ExceedsSingleFileSizeError();
             });
-            if (nameAndTypeInUse) throw new DuplicateEntryError(
-                'channel', 'name and type', `${name} and ${channel_type_name}`);
 
-            const [inRoom, channelCountExceedsLimit] = await Promise.all([
-                RPS.isInRoom({ room_uuid, user, role_name: 'Admin' }),
-                RPS.channelCountExceedsLimit({ room_uuid, add_count: 1 })
-            ]);
-
-            if (!inRoom) throw new AdminPermissionRequiredError();
-            if (channelCountExceedsLimit) throw new ExceedsRoomChannelCountError();
-            
-            const replacements = {
+            await db.ChannelView.createChannelProcStatic({
                 uuid,
                 name,
                 description,
                 channel_type_name,
-                bytes: null,
-                upload_src: null,
-                room_uuid
-            };
-            
-            if (file && file.size > 0) {
-                const [totalFilesExceedsLimit, singleFileSizeExceedsLimit] = await Promise.all([
-                    RPS.fileExceedsTotalFilesLimit({ room_uuid, bytes: file.size }),
-                    RPS.fileExceedsSingleFileSize({ room_uuid, bytes: file.size })
-                ]);
-
-                if (totalFilesExceedsLimit) throw new ExceedsRoomTotalFilesLimitError();
-                if (singleFileSizeExceedsLimit) throw new ExceedsSingleFileSizeError();
-
-                replacements.src = await storage.uploadFile(file, uuid);
-                replacements.bytes = file.size;
-            }
-
-            await db.sequelize.query('CALL create_channel_proc(:uuid, :name, :description, :channel_type_name, :bytes, :upload_src, :room_uuid, @result)', {
-                replacements,
-                transaction
-            });
+                room_uuid,
+                bytes: file && file.size > 0 ? file.size : null,
+                upload_src: file && file.size > 0 ? await storage.uploadFile(file, uuid) : null
+            }, transaction);
         });
 
-        return await db.ChannelView.findByPk(uuid)
+        return await db.ChannelView
+            .findByPk(uuid)
             .then((channel) => dto(channel));
     }
 
@@ -178,69 +159,60 @@ class ChannelService {
      * @param {string} options.user.sub
      * @returns {Promise<Object>}
      */
-    async update(options={ uuid: null, body: null, file: null, user: null }) {
+    async update(options = { uuid: null, body: null, file: null, user: null }) {
         ChannelServiceValidator.update(options);
 
         const { uuid, body, file, user } = options;
         const { name, description } = body;
 
         await db.sequelize.transaction(async (transaction) => {
-
             const channel = await db.ChannelView.findByPk(uuid, { transaction });
             if (!channel) throw new EntityNotFoundError('channel');
 
-            const isAdmin = await RPS.isInRoomByChannel({ channel_uuid: uuid, user, role_name: 'Admin' });
+            const isAdmin = await RPS.isInRoomByChannel({ channel_uuid: uuid, user, role_name: 'Admin' }, transaction);
             if (!isAdmin) throw new AdminPermissionRequiredError();
 
             if (name && name !== channel.channel_name) {
-                const nameInUse = await db.ChannelView.findOne({ 
+                const nameInUse = await db.ChannelView.findOne({
                     where: { channel_name: name, room_uuid: channel.room_uuid, channel_type_name: channel.channel_type_name },
-                    transaction 
+                    transaction
                 });
-                if (nameInUse) throw new DuplicateEntryError('channel', 'name', name);
+                if (nameInUse) {
+                    throw new DuplicateEntryError(
+                        'channel', 'name and channel_type_name', `${name} and ${channel.channel_type_name}`);
+                }
             }
-
-            const replacements = {
-                uuid,
-                name: name || channel.channel_name,
-                description: description || channel.channel_description,
-                channel_type_name: channel.channel_type_name,
-                bytes: channel.room_file_size,
-                src: channel.room_file_src,
-                room_uuid: channel.room_uuid
-            };
 
             if (file && file.size > 0) {
-                const [totalFilesExceedsLimit, singleFileSizeExceedsLimit] = await Promise.all([
-                    RPS.fileExceedsTotalFilesLimit({ room_uuid: channel.room_uuid, bytes: file.size }),
-                    RPS.fileExceedsSingleFileSize({ room_uuid: channel.room_uuid, bytes: file.size })
-                ]);
-
-                if (totalFilesExceedsLimit) throw new ExceedsRoomTotalFilesLimitError();
-                if (singleFileSizeExceedsLimit) throw new ExceedsSingleFileSizeError();
-
-                replacements.src = await storage.uploadFile(file, uuid);
-                replacements.bytes = file.size;
+                await Promise.all([
+                    RPS.fileExceedsTotalFilesLimit({ room_uuid: channel.room_uuid, bytes: file.size }, transaction),
+                    RPS.fileExceedsSingleFileSize({ room_uuid: channel.room_uuid, bytes: file.size }, transaction)
+                ]).then(([totalFilesExceedsLimit, singleFileSizeExceedsLimit]) => {
+                    if (totalFilesExceedsLimit) throw new ExceedsRoomTotalFilesLimitError();
+                    if (singleFileSizeExceedsLimit) throw new ExceedsSingleFileSizeError();
+                });
             }
 
-            await db.sequelize.query('CALL edit_channel_proc(:uuid, :name, :description, :channel_type_name, :bytes, :src, :room_uuid, @result)', {
-                replacements,
-                transaction
-            });
-                
+            await channel.editChannelProc({
+                ...(name && { name }),
+                ...(description && { description }),
+                ...(file && file.size > 0 && {
+                    bytes: file.size,
+                    src: await storage.uploadFile(file, uuid)
+                }),
+            }, transaction);
+
             // Old room file must be deleted last to prevent deleting a file
             // on the object storage and then failing to update the database.
             // This would result in an inconsistent state.
             if (file && file.size > 0 && channel.room_file_uuid) {
-                await db.sequelize.query('CALL delete_room_file_proc(:uuid, @result)', {
-                    replacements: { uuid: channel.room_file_uuid },
-                    transaction
-                });
+                await db.RoomFileView.deleteRoomFileProcStatic({ uuid: channel.room_file_uuid }, transaction);
                 await storage.deleteFile(storage.parseKey(channel.room_file_src));
             }
         });
 
-        return await db.ChannelView.findByPk(uuid)
+        return await db.ChannelView
+            .findByPk(uuid)
             .then((channel) => dto(channel));
     }
 
@@ -253,7 +225,7 @@ class ChannelService {
      * @param {string} options.user.sub
      * @returns {Promise<void>}
      */
-    async destroy(options={ uuid: null, user: null }) {
+    async destroy(options = { uuid: null, user: null }) {
         ChannelServiceValidator.destroy(options);
 
         const { uuid, user } = options;
@@ -262,19 +234,17 @@ class ChannelService {
             const channel = await db.ChannelView.findByPk(uuid, { transaction });
             if (!channel) throw new EntityNotFoundError('channel');
 
-            const isAdmin = await RPS.isInRoomByChannel({ channel_uuid: uuid, user, role_name: 'Admin' });
+            const isAdmin = await RPS.isInRoomByChannel({ channel_uuid: uuid, user, role_name: 'Admin' }, transaction);
             if (!isAdmin) throw new AdminPermissionRequiredError();
 
-            await db.sequelize.query('CALL delete_channel_proc(:uuid, @result)', {
-                replacements: { uuid },
-                transaction
-            });
+            await channel.deleteChannelProc(transaction);
 
             // Old room file must be deleted last to prevent deleting a file
             // on the object storage and then failing to update the database.
             // This would result in an inconsistent state.
             if (channel.room_file_uuid) {
-                await storage.deleteFile(storage.parseKey(channel.room_file_src));
+                const key = storage.parseKey(channel.room_file_src);
+                await storage.deleteFile(key);
             }
         });
     }

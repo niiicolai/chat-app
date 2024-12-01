@@ -3,7 +3,9 @@ import data from '../../../seed_data.js';
 
 export default class ChannelWebhookMessageTypeSeeder {
     async up() {
-        await ChannelWebhookMessageType.insertMany(data.channel_webhook_message_types);
+        await ChannelWebhookMessageType.insertMany(data.channel_webhook_message_types.map((type) => {
+            return { _id: type.name }
+        }));
     }
 
     async down() {

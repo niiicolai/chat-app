@@ -1,11 +1,7 @@
 import mongoose from "mongoose";
 
-export const channelMessageTypeSchema = new mongoose.Schema({
-    name: { 
-        type: String, 
-        required: true,
-        index: true
-    },
+const channelMessageTypeSchema = new mongoose.Schema({
+    _id: mongoose.Schema.Types.String,
 }, {
     timestamps: {
         createdAt: 'created_at',

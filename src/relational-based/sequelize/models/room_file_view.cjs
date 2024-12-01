@@ -11,6 +11,40 @@ module.exports = (sequelize, DataTypes) => {
          */
         static associate(models) {
         }
+
+        /**
+         * @function deleteRoomFileProcStatic
+         * @description Delete a room file using a stored procedure.
+         * @param {Object} replacements
+         * @param {string} replacements.uuid
+         * @returns {Promise<void>}
+         * @static
+         */
+        static async deleteRoomFileProcStatic(replacements, transaction) {
+            if (!replacements) throw new Error('deleteRoomFileProcStatic: No replacements provided');
+            if (!replacements.uuid) throw new Error('deleteRoomFileProcStatic: No uuid provided');
+
+            await sequelize.query('CALL delete_room_file_proc(:uuid, @result)', {
+                replacements,
+                ...(transaction && { transaction }),
+            });
+        }
+
+        /**
+         * @function deleteRoomFileProc
+         * @description Delete a room file using a stored procedure.
+         * @param {Object} replacements
+         * @param {string} replacements.uuid
+         * @param {string} replacements.src
+         * @param {number} replacements.size
+         * @param {string} replacements.room_uuid
+         * @param {Object} transaction optional
+         * @returns {Promise<void>}
+         * @instance
+         */
+        async deleteRoomFileProc(transaction) {
+            await RoomFileView.deleteRoomFileProcStatic({ uuid: this.room_file_uuid }, transaction);
+        }
     }
     RoomFileView.init({
         room_file_uuid: {

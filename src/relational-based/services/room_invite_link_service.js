@@ -31,7 +31,7 @@ class RoomInviteLinkService {
         RoomInviteLinkServiceValidator.findOne(options);
 
         const entity = await db.RoomInviteLinkView.findByPk(options.uuid);
-        if (!entity) throw new EntityNotFoundError('room_audit');
+        if (!entity) throw new EntityNotFoundError('room_invite_link');
 
         const isInRoom = await RPS.isInRoom({ room_uuid: entity.room_uuid, user: options.user, role_name: null });
         if (!isInRoom) throw new RoomMemberRequiredError();
@@ -96,25 +96,24 @@ class RoomInviteLinkService {
 
         const { body, user } = options;
 
-        const isAdmin = await RPS.isInRoom({ room_uuid: body.room_uuid, user, role_name: 'Admin' });
-        if (!isAdmin) throw new AdminPermissionRequiredError();
-
-        const uuidInUse = await db.RoomInviteLinkView.findByPk(body.uuid);
-        if (uuidInUse) throw new DuplicateEntryError('room_invite_link', 'uuid', body.uuid);
-
-        const replacements = {
-            uuid: body.uuid,
-            room_uuid: body.room_uuid,
-            expires_at: body.expires_at 
-                ? new Date(body.expires_at).toISOString().slice(0, 19).replace('T', ' ') // YYYY-MM-DD HH:MM:SS
-                : null
-        }
-
-        await db.sequelize.query('CALL create_room_invite_link_proc(:uuid, :room_uuid, :expires_at, @result)', {
-            replacements
+        await Promise.all([
+            RPS.isInRoom({ room_uuid: body.room_uuid, user, role_name: 'Admin' }),
+            db.RoomInviteLinkView.findByPk(body.uuid)
+        ]).then(([isAdmin, uuidInUse]) => {
+            if (!isAdmin) throw new AdminPermissionRequiredError();
+            if (uuidInUse) throw new DuplicateEntryError('room_invite_link', 'uuid', body.uuid);
         });
 
-        return await db.sequelize.RoomInviteLinkView.findByPk(body.uuid)
+        await db.RoomInviteLinkView.createRoomInviteLinkProcStatic({
+            uuid: body.uuid,
+            room_uuid: body.room_uuid,
+            expires_at: body.expires_at
+                ? new Date(body.expires_at).toISOString().slice(0, 19).replace('T', ' ') // YYYY-MM-DD HH:MM:SS
+                : null
+        });
+
+        return await db.RoomInviteLinkView
+            .findByPk(body.uuid)
             .then(entity => dto(entity));
     }
 
@@ -140,18 +139,14 @@ class RoomInviteLinkService {
         const isAdmin = await RPS.isInRoom({ room_uuid: roomInviteLink.room_uuid, user, role_name: 'Admin' });
         if (!isAdmin) throw new AdminPermissionRequiredError();
 
-        const replacements = {
-            uuid,
+        await roomInviteLink.editRoomInviteLinkProc({
             expires_at: body.expires_at
                 ? new Date(body.expires_at).toISOString().slice(0, 19).replace('T', ' ') // YYYY-MM-DD HH:MM:SS
-                : roomInviteLink.expires_at
-        }
-
-        await db.sequelize.query('CALL edit_room_invite_link_proc(:uuid, :expires_at, @result)', {
-            replacements
+                : (roomInviteLink.expires_at || null)
         });
 
-        return await db.sequelize.RoomInviteLinkView.findByPk(uuid)
+        return await db.RoomInviteLinkView
+            .findByPk(uuid)
             .then(entity => dto(entity));
     }
 
@@ -175,9 +170,7 @@ class RoomInviteLinkService {
         const isAdmin = await RPS.isInRoom({ room_uuid: roomInviteLink.room_uuid, user, role_name: 'Admin' });
         if (!isAdmin) throw new AdminPermissionRequiredError();
 
-        await db.sequelize.query('CALL delete_room_invite_link_proc(:uuid, @result)', {
-            replacements: { uuid }
-        });
+        await roomInviteLink.deleteRoomInviteLinkProc();
     }
 
     /**
@@ -193,35 +186,32 @@ class RoomInviteLinkService {
         RoomInviteLinkServiceValidator.join(options);
 
         const { uuid, user } = options;
-        
+
         await db.sequelize.transaction(async (transaction) => {
-            const roomInviteLink = await db.RoomInviteLinkView.findOne({ where: { room_invite_link_uuid: uuid }, transaction });
+            const roomInviteLink = await db.RoomInviteLinkView.findOne(
+                { where: { room_invite_link_uuid: uuid }, transaction }
+            );
             if (!roomInviteLink) throw new EntityNotFoundError('room_invite_link');
 
             if (roomInviteLink.expires_at && new Date(roomInviteLink.expires_at) < new Date()) {
                 throw new EntityExpiredError('room_invite_link');
             }
 
-            const [isInRoom, isUserEmailVerified, roomUserCountExceedsLimit] = await Promise.all([
+            await Promise.all([
                 RPS.isInRoom({ room_uuid: roomInviteLink.room_uuid, user, role_name: null }, transaction),
                 RPS.isVerified({ user }, transaction),
                 RPS.roomUserCountExceedsLimit({ room_uuid: roomInviteLink.room_uuid, add_count: 1 }, transaction)
-            ]);
+            ]).then(([isInRoom, isUserEmailVerified, roomUserCountExceedsLimit]) => {
+                if (isInRoom) throw new DuplicateRoomUserError();
+                if (!isUserEmailVerified) throw new VerifiedEmailRequiredError('join a room');
+                if (roomUserCountExceedsLimit) throw new ExceedsRoomUserCountError();
+            });
 
-            if (isInRoom) throw new DuplicateRoomUserError();
-            if (!isUserEmailVerified) throw new VerifiedEmailRequiredError('join a room');
-            if (roomUserCountExceedsLimit) throw new ExceedsRoomUserCountError();
-
-            const replacements = {
-                user_uuid: user.uuid,
+            await db.RoomView.joinRoomProcStatic({
+                user_uuid: user.sub,
                 room_uuid: roomInviteLink.room_uuid,
                 role_name: 'Member'
-            }
-
-            await db.sequelize.query('CALL join_room_proc(:user_uuid, :room_uuid, :role_name, @result)', {
-                replacements,
-                transaction
-            });
+            }, transaction);
         });
     }
 }

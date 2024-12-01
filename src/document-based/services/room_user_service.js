@@ -1,4 +1,6 @@
 import RoomUserServiceValidator from '../../shared/validators/room_user_service_validator.js';
+import EntityNotFoundError from '../../shared/errors/entity_not_found_error.js';
+import RoomMemberRequiredError from '../../shared/errors/room_member_required_error.js';
 import ControllerError from '../../shared/errors/controller_error.js';
 import RoomPermissionService from './room_permission_service.js';
 import RoomUserRole from '../mongoose/models/room_user_role.js';
@@ -19,16 +21,16 @@ class Service {
     async findOne(options = { uuid: null, user: null }) {
         RoomUserServiceValidator.findOne(options);
 
-        const room = await Room.where({ room_users: { $elemMatch: { uuid: options.uuid } } })
+        const room = await Room
+            .where({ room_users: { $elemMatch: { _id: options.uuid } } })
             .findOne()
             .populate('room_users.user');
-        const roomUser = room?.room_users?.find(u => u.uuid === options.uuid);
 
-        if (!room) throw new ControllerError(404, 'room_user not found');
-        if (!(await RoomPermissionService.isInRoom({ room_uuid: room.uuid, user: options.user, role_name: null }))) {
-            throw new ControllerError(403, 'User is not in the room');
-        }
-        if (!roomUser) throw new ControllerError(404, 'room_user not found');
+        const roomUser = room?.room_users?.find(u => u._id === options.uuid);
+        if (!roomUser) throw new EntityNotFoundError('room_user');
+
+        const isInRoom = await RoomPermissionService.isInRoom({ room_uuid: room.uuid, user: options.user, role_name: null });
+        if (!isInRoom) throw new RoomMemberRequiredError();
 
         return dto({ ...roomUser._doc, room });
     }

@@ -68,10 +68,10 @@ class UserEmailVerificationService {
             if (!userEmailVerification) throw new EntityNotFoundError('user_email_verification');
             if (userEmailVerification.user_email_verified) throw new UserEmailAlreadyVerifiedError();
 
-            await db.sequelize.query('CALL set_user_email_verification_proc(:user_uuid, :user_is_verified, @result)', {
-                replacements: { user_uuid: userEmailVerification.user_uuid, user_is_verified: true },
-                transaction
-            });
+            await db.UserView.setUserEmailVerificationProcStatic({
+                user_uuid: userEmailVerification.user_uuid,
+                is_verified: true
+            }, transaction);
         });
     }
 }

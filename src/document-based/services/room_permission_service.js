@@ -11,7 +11,7 @@ class RoomPermissionService {
 
         const { user } = options;
         const { sub: user_uuid } = user;
-        const exists = await User.findOne({ uuid: user_uuid }).populate('user_email_verification');
+        const exists = await User.findOne({ _id: user_uuid }).populate('user_email_verification');
         
         return exists && exists.user_email_verification.is_verified;
     }
@@ -22,8 +22,8 @@ class RoomPermissionService {
         const { room_uuid, user } = options;
         const { sub: user_uuid } = user;
 
-        const savedRoom = await Room.findOne({ uuid: room_uuid }).populate('room_users.user room_users.room_user_role');
-        const roomUser = savedRoom?.room_users?.find(u => u.user.uuid === user_uuid);
+        const savedRoom = await Room.findOne({ _id: room_uuid }).populate('room_users.user room_users.room_user_role');
+        const roomUser = savedRoom?.room_users?.find(u => u.user._id === user_uuid);
         
         if (!roomUser) return false;
 
@@ -40,11 +40,11 @@ class RoomPermissionService {
         const { channel_uuid, user } = options;
         const { sub: user_uuid } = user;
         
-        const ch = await Channel.findOne({ uuid: channel_uuid }).populate('room');
+        const ch = await Channel.findOne({ _id: channel_uuid }).populate('room');
         if (!ch) return false;
 
-        const room = await Room.findOne({ uuid: ch.room.uuid }).populate('room_users.user room_users.room_user_role');
-        const roomUser = room?.room_users?.find(u => u.user.uuid === user_uuid);
+        const room = await Room.findOne({ _id: ch.room._id }).populate('room_users.user room_users.room_user_role');
+        const roomUser = room?.room_users?.find(u => u.user._id === user_uuid);
 
         if(!roomUser) return false;
 

@@ -1,19 +1,17 @@
 import mongoose from "mongoose";
 
-import { roomUserRoleSchema as room_user_role } from "./room_user_role.js";
-
 export default new mongoose.Schema({
-    uuid: { 
-        type: String, 
-        required: true,
-        index: true 
-    },
+    _id: mongoose.Schema.Types.UUID,
     user: { 
-        type: mongoose.Schema.Types.ObjectId, 
+        type: mongoose.Schema.Types.UUID, 
         ref: 'User', 
         required: true 
     },
-    room_user_role,
+    room_user_role: { 
+        type: mongoose.Schema.Types.String, 
+        ref: 'RoomUserRole',
+        required: true 
+    },
 }, {
     timestamps: {
         createdAt: 'created_at',

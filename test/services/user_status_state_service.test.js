@@ -1,6 +1,8 @@
 import RelationalUserStatusStateService from '../../src/relational-based/services/user_status_state_service.js';
 import DocumentUserStatusStateService from '../../src/document-based/services/user_status_state_service.js';
 import GraphUserStatusStateService from '../../src/graph-based/services/user_status_state_service.js';
+
+import data from '../../src/seed_data.js';
 import { test, expect } from 'vitest';
 
 const userStatusStateServiceTest = (UserStatusStateService, name) => {
@@ -11,10 +13,7 @@ const userStatusStateServiceTest = (UserStatusStateService, name) => {
     });
 
     test.each([
-        ['Online'],
-        ['Away'],
-        ['Do Not Disturb'],
-        ['Offline'],
+        data.user_status_states.map(uss => uss.name),
     ])(`(${name}) - UserStatusStateService.findOne valid partitions`, async (name) => {
         const result = await UserStatusStateService.findOne({ name });
 

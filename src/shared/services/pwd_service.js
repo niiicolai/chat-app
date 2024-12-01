@@ -2,6 +2,11 @@ import bcrypt from 'bcrypt';
 
 const SALT_ROUNDS = 10;
 
+/**
+ * @class PwdService
+ * @description Service for handling passwords.
+ * @exports PwdService
+ */
 export default class PwdService {
 
     /**

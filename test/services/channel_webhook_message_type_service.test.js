@@ -1,6 +1,8 @@
 import RelationalChannelWebhookMessageTypeService from '../../src/relational-based/services/channel_webhook_message_type_service.js';
 import DocumentChannelWebhookMessageTypeService from '../../src/document-based/services/channel_webhook_message_type_service.js';
 import GraphChannelWebhookMessageTypeService from '../../src/graph-based/services/channel_webhook_message_type_service.js';
+
+import data from '../../src/seed_data.js';
 import { test, expect } from 'vitest';
 
 const channelWebhookMessageTypeServiceTest = (ChannelWebhookMessageTypeService, name) => {
@@ -11,8 +13,7 @@ const channelWebhookMessageTypeServiceTest = (ChannelWebhookMessageTypeService, 
     });
 
     test.each([
-        ['Custom'],
-        ['GitHub'],
+        data.channel_webhook_message_types.map(cwmt => cwmt.name),
     ])(`(${name}) - ChannelWebhookMessageTypeService.findOne valid partitions`, async (name) => {
         const result = await ChannelWebhookMessageTypeService.findOne({ name });
 

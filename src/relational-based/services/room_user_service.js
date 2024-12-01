@@ -75,8 +75,8 @@ class RoomUserService {
     }
 
     /**
-     * @function create
-     * @description Create a room user for a room.
+     * @function update
+     * @description Update a room user by UUID.
      * @param {Object} options
      * @param {string} options.uuid
      * @param {string} options.user
@@ -105,21 +105,14 @@ class RoomUserService {
             if (!isAdmin) throw new AdminPermissionRequiredError();
 
             const isValidRole = await db.RoomUserRoleView.findOne({
-                where: { name: room_user_role_name },
+                where: { room_user_role_name },
                 transaction
             });
             if (!isValidRole) throw new EntityNotFoundError('room_user_role');
 
-            const replacements = {
-                user_uuid: roomUser.user_uuid,
-                room_uuid: roomUser.room_uuid,
-                role_name: room_user_role_name
-            };
-
-            await db.sequelize.query('CALL edit_room_user_role_proc(:user_uuid, :room_uuid, :role_name, @result)', {
-                replacements,
-                transaction
-            });
+            await roomUser.editRoomUserProc({
+                ...(room_user_role_name && { role_name: room_user_role_name }),
+            }, transaction);
         });
     }
 
@@ -149,10 +142,10 @@ class RoomUserService {
             );
             if (!isAdmin) throw new AdminPermissionRequiredError();
 
-            await db.sequelize.query('CALL leave_room_proc(:user_uuid, :room_uuid, @result)', {
-                replacements: { user_uuid: roomUser.user_uuid, room_uuid: roomUser.room_uuid },
-                transaction
-            });
+            await db.RoomView.leaveRoomProcStatic({
+                user_uuid: roomUser.user_uuid,
+                room_uuid: roomUser.room_uuid,
+            }, transaction);
         });
     }
 

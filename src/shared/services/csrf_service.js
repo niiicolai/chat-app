@@ -12,6 +12,7 @@ const token = Tokens();
 /**
  * @class CsrfService
  * @description Service for handling CSRF tokens.
+ * @exports CsrfService
  */
 export default class CsrfService {
 

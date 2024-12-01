@@ -3,7 +3,9 @@ import data from '../../../seed_data.js';
 
 export default class ChannelTypeSeeder {
     async up() {
-        await ChannelType.insertMany(data.channel_types);
+        await ChannelType.insertMany(data.channel_types.map((type) => {
+            return { _id: type.name }
+        }));
     }
 
     async down() {

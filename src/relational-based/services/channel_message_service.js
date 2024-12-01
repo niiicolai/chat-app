@@ -116,36 +116,29 @@ class ChannelMessageService {
             const isInRoom = await RPS.isInRoomByChannel({ channel_uuid, user, role_name: null }, transaction);
             if (!isInRoom) throw new RoomMemberRequiredError();
 
-            const replacements = {
+            if (file && file.size > 0) {
+                await Promise.all([
+                    RPS.fileExceedsTotalFilesLimit({ room_uuid: channel.room_uuid, bytes: file.size }, transaction),
+                    RPS.fileExceedsSingleFileSize({ room_uuid: channel.room_uuid, bytes: file.size }, transaction),
+                ]).then(([exceedsTotalFilesLimit, exceedsSingleFileSize]) => {
+                    if (exceedsTotalFilesLimit) throw new ExceedsRoomTotalFilesLimitError();
+                    if (exceedsSingleFileSize) throw new ExceedsSingleFileSizeError();
+                });
+            }
+
+            await db.ChannelMessageView.createChannelMessageProcStatic({
                 uuid,
                 msg,
-                channel_message_type_name: "User",
                 channel_uuid,
                 user_uuid: user.sub,
                 room_uuid: channel.room_uuid,
-                upload_type: null,
-                upload_src: null,
-                bytes: null,
-            };
-
-            if (file && file.size > 0) {
-                const [exceedsTotalFilesLimit, exceedsSingleFileSize] = await Promise.all([
-                    RPS.fileExceedsTotalFilesLimit({ room_uuid: channel.room_uuid, bytes: file.size }, transaction),
-                    RPS.fileExceedsSingleFileSize({ room_uuid: channel.room_uuid, bytes: file.size }, transaction),
-                ]);
-
-                if (exceedsTotalFilesLimit) throw new ExceedsRoomTotalFilesLimitError();
-                if (exceedsSingleFileSize) throw new ExceedsSingleFileSizeError();
-
-                replacements.upload_type = getUploadType(file);
-                replacements.upload_src = await storage.uploadFile(file, uuid);
-                replacements.bytes = file.size;
-            }
-
-            await db.sequelize.query('CALL create_channel_message_proc(:uuid, :msg, :channel_message_type_name, :channel_uuid, :user_uuid, :upload_type, :upload_src, :bytes, :room_uuid, @result)', {
-                replacements,
-                transaction,
-            });
+                channel_message_type_name: "User",
+                ...(file && file.size > 0 && {
+                    upload_type: getUploadType(file),
+                    upload_src: await storage.uploadFile(file, uuid),
+                    bytes: file.size,
+                })
+            }, transaction);
         });
 
         return await db.ChannelMessageView.findByPk(uuid)
@@ -178,16 +171,11 @@ class ChannelMessageService {
             if (!channelMessage) throw new EntityNotFoundError('channel_message');
 
             await ChannelMessageService.handleWritePermission(channelMessage, user, transaction);
-
-            if (msg) {
-                await db.sequelize.query('CALL edit_channel_message_proc(:uuid, :msg, @result)', {
-                    replacements: { uuid, msg },
-                    transaction,
-                });
-            }
+            await channelMessage.editChannelMessageProc({ msg }, transaction);
         });
 
-        return await db.ChannelMessageView.findByPk(uuid)
+        return await db.ChannelMessageView
+            .findByPk(uuid)
             .then((channelMessage) => dto(channelMessage))
             .then((channelMessage) => {
                 BroadcastChannelService.update(channelMessage);
@@ -214,11 +202,7 @@ class ChannelMessageService {
             if (!channelMessage) throw new EntityNotFoundError('channel_message');
 
             await ChannelMessageService.handleWritePermission(channelMessage, user, transaction);
-
-            await db.sequelize.query('CALL delete_channel_message_proc(:uuid, @result)', {
-                replacements: { uuid },
-                transaction,
-            });
+            await channelMessage.deleteChannelMessageProc(transaction);
 
             if (channelMessage.upload_src) {
                 const key = storage.parseKey(channelMessage.upload_src);

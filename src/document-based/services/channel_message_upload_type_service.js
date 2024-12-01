@@ -1,5 +1,5 @@
 import TypeServiceValidator from '../../shared/validators/type_service_validator.js';
-import ControllerError from '../../shared/errors/controller_error.js';
+import EntityNotFoundError from '../../shared/errors/entity_not_found_error.js';
 import ChannelMessageUploadType from '../mongoose/models/channel_message_upload_type.js';
 import dto from '../dto/type_dto.js';
 
@@ -7,8 +7,8 @@ class Service {
     async findOne(options = { name: null }) {
         TypeServiceValidator.findOne(options);
 
-        const result = await ChannelMessageUploadType.findOne({ name: options.name });
-        if (!result) throw new ControllerError(404, 'channel_message_upload_type not found');
+        const result = await ChannelMessageUploadType.findOne({ _id: options.name });
+        if (!result) throw new EntityNotFoundError('channel_message_upload_type');
 
         return dto(result._doc);
     }

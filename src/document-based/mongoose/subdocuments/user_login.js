@@ -1,22 +1,20 @@
 import mongoose from "mongoose";
 
-import { userLoginTypeSchema as user_login_type } from "./user_login_type.js";
-
 export default new mongoose.Schema({
-    uuid: { 
-        type: String, 
-        required: true,
-        unique: true 
-    },
+    _id: mongoose.Schema.Types.UUID,
     password: { 
-        type: String, 
+        type: mongoose.Schema.Types.String, 
         required: false 
     },
     third_party_id: { 
-        type: String, 
+        type: mongoose.Schema.Types.String, 
         required: false 
     },
-    user_login_type,
+    user_login_type: {
+        type: mongoose.Schema.Types.String, 
+        ref: 'UserLoginType',
+        required: true 
+    },
 }, {
     timestamps: {
         createdAt: 'created_at',

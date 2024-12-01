@@ -4,7 +4,7 @@ import StorageService from '../../shared/services/storage_service.js';
 import RoomPermissionService from './room_permission_service.js';
 import dto from '../dto/channel_webhook_dto.js';
 import chatMessageDto from '../dto/channel_message_dto.js';
-import ChannelWebhook from '../mongoose/models/channel_webhook.js';
+import ChannelWebhook from '../mongoose/subdocuments/channel_webhook.js';
 import Channel from '../mongoose/models/channel.js';
 import Room from '../mongoose/models/room.js';
 import RoomFileType from '../mongoose/models/room_file_type.js';
