@@ -26,9 +26,10 @@ class UserPasswordResetService {
      * @param {Object} options
      * @param {Object} options.body
      * @param {string} options.body.email
+     * @param {String} resetPasswordUuid - optional (mainly used for testing)
      * @returns {Promise<void>}
      */
-    async create(options = { body: null }) {
+    async create(options = { body: null }, resetPasswordUuid = null) {
         Validator.create(options);
 
         const { email } = options.body;
@@ -37,7 +38,7 @@ class UserPasswordResetService {
             const user = await db.UserView.findOne({ where: { user_email: email }, transaction });
             if (!user) return;
 
-            const uuid = v4uuid();
+            const uuid = resetPasswordUuid || v4uuid();
             const expires_at = new Date();
             expires_at.setHours(expires_at.getHours() + 1);
 
@@ -67,20 +68,41 @@ class UserPasswordResetService {
         const { uuid, body } = options;
 
         await db.sequelize.transaction(async (transaction) => {
+            const userPasswordReset = await db.UserPasswordResetView.findOne({ 
+                where: { user_password_reset_uuid: uuid }, 
+                transaction 
+            });
+            if (!userPasswordReset) throw new err.EntityNotFoundError('user_password_reset');
+            if (userPasswordReset.expires_at < new Date()) throw new err.EntityExpiredError('user_password_reset');
+
             const user = await db.UserView.findOne({
                 where: { user_uuid: userPasswordReset.user_uuid },
                 transaction,
             });
             if (!user) throw new err.EntityNotFoundError('user');
 
-            const userPasswordReset = await db.UserPasswordResetView.findOne({ 
-                where: { user_password_reset_uuid: uuid }, 
-                transaction 
-            });
-            if (!userPasswordReset) throw new err.EntityNotFoundError('user_password_reset');
-
             await userPasswordReset.deleteUserPasswordResetProc(transaction);
-            await user.editUserProc({ password: await PwdService.hash(body.password) }, transaction);
+
+            /**
+             * Create new password login if it doesn't exist
+             * or update the existing password login
+             */
+            const userLogin = await db.UserLoginView.findOne({
+                where: { user_uuid: user.user_uuid, user_login_type_name: 'Password' },
+                transaction
+            });
+            if (!userLogin) {
+                await db.UserView.createUserLoginProcStatic({
+                    login_uuid: v4uuid(),
+                    user_login_type_name: 'Password',
+                    user_login_password: await PwdService.hash(body.password),
+                    user_uuid: user.user_uuid,
+                }, transaction);
+            } else {
+                await userLogin.editUserLoginProc({ 
+                    user_login_password: await PwdService.hash(body.password) 
+                }, transaction);
+            }
 
             const mail = new ConfirmResetMailer({ username: user.user_username, to: user.user_email });
             await mail.send();

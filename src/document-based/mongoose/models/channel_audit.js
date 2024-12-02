@@ -19,7 +19,8 @@ const channelAuditSchema = new mongoose.Schema({
     timestamps: {
         createdAt: 'created_at',
         updatedAt: 'updated_at'
-    }
+    },
+    autoCreate: false
 });
 
 export default mongoose.model("ChannelAudit", channelAuditSchema);

@@ -40,6 +40,7 @@ const roomSchema = new mongoose.Schema({
         createdAt: 'created_at',
         updatedAt: 'updated_at',
     },
+    autoCreate: false
 });
 
 roomSchema.post('save', async (doc) => {

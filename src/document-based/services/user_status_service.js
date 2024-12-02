@@ -1,11 +1,14 @@
-import ControllerError from '../../shared/errors/controller_error.js';
-import EntityNotFoundError from '../../shared/errors/entity_not_found_error.js';
+import Validator from '../../shared/validators/user_status_service_validator.js';
+import err from '../../shared/errors/index.js';
 import dto from '../dto/user_status_dto.js';
 import User from '../mongoose/models/user.js';
-import UserStatusState from '../mongoose/models/user_status_state.js';
-import UserStatusServiceValidator from '../../shared/validators/user_status_service_validator.js';
 
-class Service {
+/**
+ * @class UserStatusService
+ * @description Service class for user statuses.
+ * @exports UserStatusService
+ */
+class UserStatusService {
 
     /**
      * @function findOne
@@ -15,12 +18,13 @@ class Service {
      * @returns {Object}
      */
     async findOne(options = { user_uuid: null }) {
-        UserStatusServiceValidator.findOne(options);
+        Validator.findOne(options);
 
-        const user = await User.findOne({ _id: options.user_uuid });
+        const { user_uuid: _id } = options;
+        const user = await User.findOne({ _id });
         const userStatus = user?.user_status;
-
-        if (!userStatus) throw new EntityNotFoundError('user_status');
+        
+        if (!userStatus) throw new err.EntityNotFoundError('user_status');
 
         return dto({ ...userStatus._doc, user: user._doc });
     }
@@ -36,25 +40,26 @@ class Service {
      * @returns {Object}
      */
     async update(options={ body: null, user_uuid: null }) {
-        UserStatusServiceValidator.update(options);
+        Validator.update(options);
 
-        const user = await User.findOne({ _id: options.user_uuid });
+        const { body, user_uuid: _id } = options;
+        const { message, user_status_state } = body;
+
+        const user = await User.findOne({ _id });
         const userStatus = user?.user_status;
 
-        if (!user) throw new ControllerError(404, 'User not found');
-        if (!userStatus) throw new ControllerError(404, 'User status not found');
-
-        const { message, user_status_state } = options.body;
+        if (!user) throw new err.EntityNotFoundError('user');
+        if (!userStatus) throw new err.EntityNotFoundError('user_status');
 
         if (message) userStatus.message = message;
         if (user_status_state) userStatus.user_status_state = user_status_state;
 
         await user.save();
 
-        return dto({ ...userStatus._doc, user });
+        return dto({ ...userStatus._doc, user: user._doc });
     }
 }
 
-const service = new Service();
+const service = new UserStatusService();
 
 export default service;

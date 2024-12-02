@@ -16,6 +16,12 @@ const userStatusServiceTest = (UserStatusService, name) => {
     const member = { sub: data.users[2].uuid };
 
 
+    /**
+     * Fake entities
+     */
+    const fakeId = '1635e897-b84b-4b98-b8cf-5471ff349022';
+
+
 
     /**
      * Expected methods
@@ -53,7 +59,7 @@ const userStatusServiceTest = (UserStatusService, name) => {
         [null, 'No options provided'],
         [{}, 'No user_uuid provided'],
         [[], 'No user_uuid provided'],
-        [{ user_uuid: 'test' }, 'user_status not found'],
+        [{ user_uuid: fakeId }, 'user_status not found'],
     ])(`(${name}) - UserStatusService.findOne invalid partitions`, async (options, expected) => {
         expect(async () => await UserStatusService.findOne(options)).rejects.toThrowError(expected);
     });
@@ -89,13 +95,12 @@ const userStatusServiceTest = (UserStatusService, name) => {
         [[], 'No user_uuid provided'],
         [{ user_uuid: undefined }, 'No user_uuid provided'],
         [{ user_uuid: null }, 'No user_uuid provided'],
-        [{ user_uuid: 'test' }, 'user_status not found'],
+        [{ user_uuid: fakeId }, 'user_status not found'],
     ])(`(${name}) - UserStatusService.update invalid partitions`, async (options, expected) => {
         expect(async () => await UserStatusService.findOne(options)).rejects.toThrowError(expected);
     });
 };
 
 userStatusServiceTest(RelationalUserStatusService, 'Relational');
-//userStatusServiceTest(DocumentUserStatusService, 'Document');
+userStatusServiceTest(DocumentUserStatusService, 'Document');
 //userStatusServiceTest(GraphUserStatusService, 'Graph');
-

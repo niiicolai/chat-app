@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from 'uuid';
 
 export default {
     users: [
@@ -102,6 +103,32 @@ export default {
             }],
             user_password_resets: [{
                 uuid: "dd1db481-0b0a-4b2c-b0e1-0b5d569e6f9b",
+                expires_at: new Date()
+            }]
+        },
+        {
+            uuid: "dd1da481-0b0a-4b2c-b0e1-0b5d569e6f9b",
+            username: "pass_reset_user",
+            email: "pass_reset_user@example.com",
+            avatar_src: "https://ghostchat.fra1.cdn.digitaloceanspaces.com/static/mobile-park-character-animating.png",
+            user_status: {
+                uuid: "dd1da481-0b0a-4b2c-b0e1-0b5d569e6f9b",
+                last_seen_at: "2021-09-01T00:00:00.000Z",
+                message: "I'm back!",
+                total_online_hours: 0,
+                user_status_state: "Offline"
+            },
+            user_email_verification: {
+                uuid: "dd1da481-0b0a-4b2c-b0e1-0b5d569e6f9b",
+                is_verified: true
+            },
+            user_logins: [{
+                uuid: "dd1da481-0b0a-4b2c-b0e1-0b5d569e6f9b",
+                user_login_type: "Password",
+                password: '$2b$10$sB6/ocJJK9HodVv7qEozKO826Ik5gmZH/1GU/xReM1ijIjlA7hvTa'
+            }],
+            user_password_resets: [{
+                uuid: "dd1da481-0b0a-4b2c-b0e1-0b5d569e6f9b",
                 expires_at: new Date()
             }]
         },

@@ -1,19 +1,32 @@
 import RelationalUserPasswordResetService from '../../src/relational-based/services/user_password_reset_service.js';
+import RelationalUserService from '../../src/relational-based/services/user_service.js';
+
 import DocumentUserPasswordResetService from '../../src/document-based/services/user_password_reset_service.js';
+import DocumentUserService from '../../src/document-based/services/user_service.js';
+
 import GraphUserPasswordResetService from '../../src/graph-based/services/user_password_reset_service.js';
+import GraphUserService from '../../src/graph-based/services/user_service.js';
 
 import data from '../../src/seed_data.js';
 import { test, expect } from 'vitest';
+import { v4 as v4uuid } from 'uuid';
 
-const userPasswordResetServiceTest = (UserPasswordResetService, name) => {
+const userPasswordResetServiceTest = (UserPasswordResetService, UserService, name) => {
 
     /**
      * Exisiting entities
      */
 
-    const admin = { ...data.users[0] };
-    const mod = { ...data.users[1] };
-    const member = { ...data.users[2] };
+    const user = { ...data.users.find(u => u.username === 'pass_reset_user') };
+
+
+
+    /**
+     * New entities
+     */
+    
+    const userResetUuid = v4uuid();
+    const userRandomPass = v4uuid();
 
 
 
@@ -33,12 +46,10 @@ const userPasswordResetServiceTest = (UserPasswordResetService, name) => {
      */
 
     test.each([
-        [{ body: { email: `test@example.com` } }],
-        [{ body: { email: admin.email } }],
-        [{ body: { email: mod.email } }],
-        [{ body: { email: member.email } }],
-    ])(`(${name}) - UserPasswordResetService.create valid partitions`, async (options) => {
-        await UserPasswordResetService.create(options);
+        [{ body: { email: `test@example.com` } }, v4uuid()],
+        [{ body: { email: user.email } }, userResetUuid],
+    ])(`(${name}) - UserPasswordResetService.create valid partitions`, async (options, resetUuid) => {
+        await UserPasswordResetService.create(options, resetUuid);
     });
 
     test.each([
@@ -59,6 +70,15 @@ const userPasswordResetServiceTest = (UserPasswordResetService, name) => {
      */
 
     test.each([
+        [{ uuid: userResetUuid, body: { password: userRandomPass } }, user.email],
+    ])(`(${name}) - UserPasswordResetService.resetPassword valid partitions`, async (options, email) => {
+        await UserPasswordResetService.resetPassword(options);
+        // Verify the password is working
+        const { token } = await UserService.login({ body: { email, password: options.body.password } });
+        expect(token).toBeDefined();
+    });
+
+    test.each([
         [ undefined, 'No uuid provided' ],
         [ null, 'No options provided' ],
         [ {}, 'No uuid provided' ],
@@ -72,8 +92,6 @@ const userPasswordResetServiceTest = (UserPasswordResetService, name) => {
     });
 };
 
-userPasswordResetServiceTest(RelationalUserPasswordResetService, 'Relational');
-/*
-userPasswordResetServiceTest(DocumentUserPasswordResetService, 'Document');
-userPasswordResetServiceTest(GraphUserPasswordResetService, 'Graph');
-*/
+userPasswordResetServiceTest(RelationalUserPasswordResetService, RelationalUserService, 'Relational');
+userPasswordResetServiceTest(DocumentUserPasswordResetService, DocumentUserService, 'Document');
+//userPasswordResetServiceTest(GraphUserPasswordResetService, GraphUserService, 'Graph');

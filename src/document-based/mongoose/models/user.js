@@ -30,7 +30,7 @@ const userSchema = new mongoose.Schema({
         createdAt: 'created_at',
         updatedAt: 'updated_at'
     },
-    _id: false
+    autoCreate: false
 });
 
 export default mongoose.model("User", userSchema);

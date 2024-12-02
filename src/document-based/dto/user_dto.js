@@ -1,8 +1,9 @@
 import userStatusDto from './user_status_dto.js';
+import { stringify } from "uuid";
 
 export default (entity = {}) => {
     const dto = {
-        uuid: entity.uuid,
+        uuid: !(entity._id instanceof Buffer) ? entity._id : stringify(entity._id),
         username: entity.username,
         email: entity.email,
         email_verified: entity.user_email_verification?.is_verified,

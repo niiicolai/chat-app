@@ -6,7 +6,8 @@ const roomAuditTypeSchema = new mongoose.Schema({
     timestamps: {
         createdAt: 'created_at',
         updatedAt: 'updated_at'
-    }
+    },
+    autoCreate: false
 });
 
 const roomAuditTypeModel = mongoose.model("RoomAuditType", roomAuditTypeSchema);

@@ -6,7 +6,8 @@ const channelMessageUploadTypeSchema = new mongoose.Schema({
     timestamps: {
         createdAt: 'created_at',
         updatedAt: 'updated_at'
-    }
+    },
+    autoCreate: false
 });
 
 const ChannelMessageUploadType = mongoose.model("ChannelMessageUploadType", channelMessageUploadTypeSchema);

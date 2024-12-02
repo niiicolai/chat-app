@@ -22,12 +22,13 @@ const roomFileSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.String, 
         ref: 'RoomFileType',
         required: true 
-    },
+    }
 }, {
     timestamps: {
         createdAt: 'created_at',
         updatedAt: 'updated_at'
-    }
+    },
+    autoCreate: false
 });
 
 roomFileSchema.post('save', async (doc) => {

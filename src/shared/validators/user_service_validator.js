@@ -62,4 +62,9 @@ export default class UserServiceValidator {
             throw new ControllerError(400, 'No third_party_id provided');
         }
     }
+
+    static getUserEmailVerification(options = { uuid: null }) {
+        if (!options) throw new ControllerError(500, 'No options provided');
+        if (!options.uuid) throw new ControllerError(400, 'No UUID provided');
+    }
 };

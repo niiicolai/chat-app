@@ -14,10 +14,17 @@ export default class UserSeeder {
                 },
                 user_status: { 
                     _id: user.user_status.uuid, 
-                    ...user.user_status 
+                    user_status_state: user.user_status.user_status_state,
+                    last_seen_at: user.user_status.last_seen_at,
+                    message: user.user_status.message,
+                    total_online_hours: user.user_status.total_online_hours,
                 },
                 user_logins: user.user_logins.map((user_login) => {
-                    return { _id: user_login.uuid, ...user_login }
+                    return { 
+                        _id: user_login.uuid, 
+                        user_login_type: user_login.user_login_type,
+                        ...(user_login.password && { password: user_login.password }), 
+                    }
                 }),
                 user_password_resets: user.user_password_resets.map((user_password_reset) => {
                     return { _id: user_password_reset.uuid, ...user_password_reset }

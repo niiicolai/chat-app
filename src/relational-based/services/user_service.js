@@ -53,9 +53,10 @@ class UserService {
      * @param {String} options.body.username
      * @param {String} options.body.password
      * @param {Object} options.file optional
+     * @param {Boolean} disableVerifyInTest optional
      * @returns {Promise<Object>}
      */
-    async create(options = { body: null, file: null }) {
+    async create(options = { body: null, file: null }, disableVerifyInTest = false) {
         Validator.create(options);
 
         const { file } = options;
@@ -78,7 +79,7 @@ class UserService {
                 user_uuid: uuid,
             }, transaction);
             
-            if (process.env.NODE_ENV === 'test') {
+            if (process.env.NODE_ENV === 'test' && !disableVerifyInTest) {
                 /**
                  * Set the email as verified if the environment is test,
                  * to avoid having to confirm the email verification
@@ -357,6 +358,24 @@ class UserService {
         return await db.UserLoginView
             .findByPk(body.uuid)
             .then(entity => userLoginDto(entity));
+    }
+
+    /**
+     * @function getUserEmailVerification
+     * @description Get a user email verification. (mainly for testing)
+     * @param {Object} options
+     * @param {String} options.uuid
+     * @returns {Promise<Object>}
+     */    
+    async getUserEmailVerification(options = { uuid: null }) {
+        Validator.getUserEmailVerification(options);
+
+        return await db.UserEmailVerificationView
+            .findOne({ where: { user_uuid: options.uuid }})
+            .then(entity => {
+                if (!entity) throw new err.EntityNotFoundError('user_email_verification');
+                return { uuid: entity.user_email_verification_uuid, is_verified: (entity.user_email_verified === 1) };
+            });
     }
 }
 

@@ -1,21 +1,27 @@
-import UserServiceValidator from '../../shared/validators/user_service_validator.js';
+import Validator from '../../shared/validators/user_service_validator.js';
 import UserEmailVerificationService from './user_email_verification_service.js';
 import UserAvatarUploader from '../../shared/uploaders/user_avatar_uploader.js';
-import ControllerError from '../../shared/errors/controller_error.js';
-import EntityNotFoundError from '../../shared/errors/entity_not_found_error.js';
 import JwtService from '../../shared/services/jwt_service.js';
-import UserStatusState from '../mongoose/models/user_status_state.js';
-import UserLoginType from '../mongoose/models/user_login_type.js';
+import PwdService from '../../shared/services/pwd_service.js';
+import err from '../../shared/errors/index.js';
 import User from '../mongoose/models/user.js';
 import dto from '../dto/user_dto.js';
 import userLoginDto from '../dto/user_login_dto.js';
-import bcrypt from 'bcrypt';
-import { v4 as uuidv4 } from 'uuid';
 import mongoose from '../mongoose/index.js';
+import { v4 as uuidv4 } from 'uuid';
 
-const SALT_ROUNDS = 10;
+/**
+ * @constant uploader
+ * @description User avatar uploader instance
+ * @type {UserAvatarUploader}
+ */
 const uploader = new UserAvatarUploader();
 
+/**
+ * @class UserService
+ * @description Service class for users.
+ * @exports UserService
+ */
 class UserService {
 
     /**
@@ -26,12 +32,13 @@ class UserService {
      * @returns {Object}
      */
     async findOne(options = { uuid: null }) {
-        UserServiceValidator.findOne(options);
+        Validator.findOne(options);
 
-        const user = await User.findOne({ _id: options.uuid })
-        if (!user) throw new EntityNotFoundError('user');
+        const { uuid: _id } = options;
+        const user = await User.findOne({ _id })
+        if (!user) throw new err.EntityNotFoundError('user');
 
-        return dto(user);
+        return dto(user._doc);
     }
 
     /**
@@ -44,71 +51,60 @@ class UserService {
      * @param {String} options.body.username
      * @param {String} options.body.password
      * @param {Object} options.file
+     * @param {Boolean} disableVerifyInTest
      * @returns {Object}
      */
-    async create(options = { body: null, file: null }) {
-        UserServiceValidator.create(options);
-
-        if (await User.findOne({ email: options.body.email }))
-            throw new ControllerError(400, 'Email already exists');
-        if (await User.findOne({ username: options.body.username }))
-            throw new ControllerError(400, 'Username already exists');
-        if (await User.findOne({ _id: options.body.uuid }))
-            throw new ControllerError(400, 'UUID already exists');
-
-        options.body.password = bcrypt.hashSync(options.body.password, SALT_ROUNDS);
-
-        const [user_status_state, user_login_type] = await Promise.all([
-            UserStatusState.findOne({ name: "Offline" }),
-            UserLoginType.findOne({ name: "Password" })
-        ]);
-
-        if (!user_status_state) throw new ControllerError(500, 'User status state not found');
-        if (!user_login_type) throw new ControllerError(500, 'User login type not found');
+    async create(options = { body: null, file: null }, disableVerifyInTest = false) {
+        Validator.create(options);
 
         const { body, file } = options;
-        const { uuid, email, username, password } = body;
+        const { uuid, email, username } = body;
 
         const session = await mongoose.startSession();
         session.startTransaction();
         try {
             const avatar_src = (file && file.size > 0) ? await uploader.create(file, uuid) : null;
-            const user_email_verification = {
-                uuid: uuidv4(),
-                is_verified: (process.env.NODE_ENV === 'test')
-            };
-            const user_status = {
-                uuid: uuidv4(),
-                last_seen_at: new Date(),
-                message: "No msg yet.",
-                total_online_hours: 0,
-                user_status_state
-            };
-            const user_logins = [{
-                uuid: uuidv4(),
-                user_login_type,
-                password
-            }];
-            const newUser = new User({
+            const savedUser = await new User({
                 _id: uuid,
                 username,
                 email,
                 avatar_src,
-                user_email_verification,
-                user_status,
-                user_logins,
+                user_email_verification: {
+                    _id: uuidv4(),
+                    is_verified: (process.env.NODE_ENV === 'test' && !disableVerifyInTest) ? true : false
+                },
+                user_status: {
+                    _id: uuidv4(),
+                    last_seen_at: new Date(),
+                    message: "No msg yet.",
+                    total_online_hours: 0,
+                    user_status_state: "Offline"
+                },
+                user_logins: [{
+                    _id: uuidv4(),
+                    user_login_type: "Password",
+                    password: await PwdService.hash(options.body.password)
+                }],
                 user_password_resets: []
-            });
-
-            const savedUser = await newUser.save({ session });
+            }).save({ session });
 
             if (process.env.NODE_ENV !== 'test') {
                 await UserEmailVerificationService.resend({ user_uuid: uuid });
             }
 
-            return { user: dto(savedUser), token: JwtService.sign(uuid) };
+            return { user: dto(savedUser._doc), token: JwtService.sign(uuid) };
         } catch (error) {
             await session.abortTransaction();
+            if (error?.errorResponse?.code === 11000) {
+                if (error.keyPattern?.email) {
+                    throw new err.DuplicateEntryError('user', 'user_email', email);
+                } else if (error.keyPattern?.username) {
+                    throw new err.DuplicateEntryError('user', 'user_username', username);
+                } else if (error.keyPattern?._id) {
+                    throw new err.DuplicateEntryError('user', 'PRIMARY', uuid);
+                }
+            }
+            
             throw error;
         } finally {
             if (session.inTransaction()) {
@@ -131,33 +127,59 @@ class UserService {
      * @returns {Object}
      */
     async update(options = { body: null, file: null, user: null }) {
-        UserServiceValidator.update(options);
+        Validator.update(options);
 
         const { body, file, user } = options;
+        const { username, email, password } = body;
         const { sub: uuid } = user;
 
-        const savedUser = await User.findOne({ _id: uuid });
-        if (!savedUser) throw new ControllerError(404, 'User not found');
+        const session = await mongoose.startSession();
+        session.startTransaction();
+        try {
+            const savedUser = await User.findOne({ _id: uuid }).session(session);
+            if (!savedUser) throw new err.EntityNotFoundError('user');
 
-        if (body.username) savedUser.username = body.username;
-        if (body.email) savedUser.email = body.email;
-        if (file && file.size > 0)
-            savedUser.avatar_src = await uploader.createOrUpdate(savedUser.avatar_src, file, uuid);
-
-        if (body.password) {
-            const user_login_type = await UserLoginType.findOne({ name: "Password" });
-            let userPasswordLogin = savedUser.user_logins.find(l => l.user_login_type.name === "Password");
-            if (!userPasswordLogin) {
-                userPasswordLogin = { uuid: uuidv4(), user_login_type }
-                savedUser.user_logins.push(userPasswordLogin);
+            if (username) savedUser.username = username;
+            if (email) savedUser.email = email;
+            if (file && file.size > 0) {
+                savedUser.avatar_src = await uploader.createOrUpdate(savedUser.avatar_src, file, uuid);
             }
 
-            userPasswordLogin.password = bcrypt.hashSync(body.password, SALT_ROUNDS);
+            if (password) {
+                let userPasswordLogin = savedUser.user_logins.find(l => l.user_login_type === "Password");
+                if (!userPasswordLogin) {
+                    userPasswordLogin = { uuid: uuidv4(), user_login_type: "Password" };
+                    savedUser.user_logins.push(userPasswordLogin);
+                }
+
+                userPasswordLogin.password = await PwdService.hash(password);
+            }
+
+            await savedUser.save({ session });
+
+            return dto(savedUser);
+
+        } catch (error) {
+            await session.abortTransaction();
+            if (error?.errorResponse?.code === 11000) {
+                if (error.keyPattern?.email) {
+                    throw new err.DuplicateEntryError('user', 'user_email', email);
+                } else if (error.keyPattern?.username) {
+                    throw new err.DuplicateEntryError('user', 'user_username', username);
+                } else if (error.keyPattern?._id) {
+                    throw new err.DuplicateEntryError('user', 'PRIMARY', uuid);
+                }
+            }
+
+            console.error(error);
+            
+            throw error;
+        } finally {
+            if (session.inTransaction()) {
+                await session.commitTransaction();
+            }
+            session.endSession();
         }
-
-        await savedUser.save();
-
-        return dto(savedUser);
     }
 
     /**
@@ -170,18 +192,19 @@ class UserService {
      * @returns {Object}
      */
     async login(options = { body: null }) {
-        UserServiceValidator.login(options);
+        Validator.login(options);
 
         const { email, password } = options.body;
+
         const user = await User.findOne({ email });
-        const userLogin = user?.user_logins?.find(l => l.user_login_type.name === "Password");
+        const userLogin = user?.user_logins?.find(l => l.user_login_type === "Password");
 
-        if (!user || !userLogin) throw new ControllerError(400, 'Invalid email or password');
-        if (!await bcrypt.compare(password, userLogin.password)) {
-            throw new ControllerError(400, 'Invalid email or password');
-        }
+        if (!user || !userLogin) throw new err.InvalidCredentialsError();
 
-        return { user: dto(user), token: JwtService.sign(user.uuid) };
+        const isPasswordValid = await PwdService.compare(password, userLogin.password);
+        if (!isPasswordValid) throw new err.InvalidCredentialsError();
+
+        return { user: dto(user._doc), token: JwtService.sign(user._id) };
     }
 
     /**
@@ -192,19 +215,20 @@ class UserService {
      * @returns {void}
      */
     async destroy(options = { uuid: null }) {
-        UserServiceValidator.destroy(options);
+        Validator.destroy(options);
 
         const session = await mongoose.startSession();
         try {
             session.startTransaction();
 
             const user = await User.findOne({ _id: options.uuid }).session(session);
-            if (!user) throw new ControllerError(400, 'User not found');
+            if (!user) throw new err.EntityNotFoundError('user');
 
-            await UserService.findOneAndDelete({ _id: options.uuid }, session);
+            await User.deleteOne({ _id: options.uuid }).session(session);
 
             if (user.avatar_src) {
-                await uploader.destroy(uploader.parseKey(user.avatar_src));
+                const key = uploader.parseKey(user.avatar_src);
+                await uploader.destroy(key);
             }
 
             await session.commitTransaction();
@@ -224,11 +248,11 @@ class UserService {
      * @returns {void}
      */
     async destroyAvatar(options = { uuid: null }) {
-        UserServiceValidator.destroyAvatar(options);
+        Validator.destroyAvatar(options);
 
         const { uuid } = options;
         const savedUser = await User.findOne({ _id: uuid });
-        if (!savedUser) throw new ControllerError(400, 'User not found');
+        if (!savedUser) throw new err.EntityNotFoundError('user');
 
         if (savedUser.avatar_src) {
             await Promise.all([
@@ -246,10 +270,10 @@ class UserService {
      * @returns {Array}
      */
     async getUserLogins(options = { uuid: null }) {
-        UserServiceValidator.getUserLogins(options);
+        Validator.getUserLogins(options);
 
         const user = await User.findOne({ _id: options.uuid });
-        if (!user) throw new ControllerError(404, 'User not found');
+        if (!user) throw new err.EntityNotFoundError('user');
 
         return user.user_logins.map(userLoginDto);
     }
@@ -263,47 +287,63 @@ class UserService {
      * @returns {void}
      */
     async destroyUserLogins(options = { uuid: null, login_uuid: null }) {
-        UserServiceValidator.destroyUserLogins(options);
+        Validator.destroyUserLogins(options);
 
         const { uuid, login_uuid } = options;
         const user = await User.findOne({ _id: uuid });
-        const userLogin = user?.user_logins?.find(l => l.uuid === login_uuid);
+        const userLogin = user?.user_logins?.find(l => l._id === login_uuid);
 
-        if (!user) throw new ControllerError(404, 'User not found');
-        if (user.user_logins.length === 1) throw new ControllerError(400, 'You cannot delete your last login');
-        if (!userLogin) throw new ControllerError(404, 'User login not found');
-        if (userLogin.user_login_type.name === 'Password') throw new ControllerError(400, 'Cannot delete password login');
+        if (!user) throw new err.EntityNotFoundError('user');
+        if (!userLogin) throw new err.EntityNotFoundError('user_login');
+        if (user.user_logins.length === 1) throw new err.ControllerError(400, 'You cannot delete your last login');
+        if (userLogin.user_login_type.name === 'Password') throw new err.ControllerError(400, 'Cannot delete password login');
 
-        user.user_logins = user.user_logins.filter(l => l.uuid !== login_uuid);
+        user.user_logins = user.user_logins.filter(l => l._id !== login_uuid);
 
         await user.save();
     }
 
     async createUserLogin(options = { uuid: null, body: null }) {
-        UserServiceValidator.createUserLogin(options);
+        Validator.createUserLogin(options);
 
         const { uuid, body } = options;
+        const { user_login_type_name } = body;
+
         const user = await User.findOne({ _id: uuid });
-        if (!user) throw new ControllerError(404, 'User not found');
+        if (!user) throw new err.EntityNotFoundError('user');
 
-        const user_login_type = await UserLoginType.findOne({ name: body.user_login_type_name });
-        if (!user_login_type) throw new ControllerError(404, 'User login type not found');
-
-        if (user_login_type.name === 'Password') {
-            if (!body.password) throw new ControllerError(400, 'No password provided');
-            body.password = bcrypt.hashSync(body.password, SALT_ROUNDS);
+        if (user_login_type_name === 'Password') {
+            if (!body.password) throw new err.ControllerError(400, 'No password provided');
+            body.password = await PwdService.hash(body.password);
         }
 
-        if (user_login_type.name === 'Google') {
-            if (!body.third_party_id) throw new ControllerError(400, 'No third_party_id provided');
+        if (user_login_type_name === 'Google') {
+            if (!body.third_party_id) throw new err.ControllerError(400, 'No third_party_id provided');
         }
 
-        const userLogin = { user_login_type, ...body };
-        user.user_logins.push(userLogin);
+        user.user_logins.push({ user_login_type: body.user_login_type_name, ...body, _id: body.uuid });
 
         await user.save();
 
-        return userLoginDto(userLogin);
+        const userLogin = user.user_logins.find(l => l._id === body.uuid);
+
+        return userLoginDto(userLogin._doc);
+    }
+
+    /**
+     * @function getUserEmailVerification
+     * @description Get a user email verification. (mainly for testing)
+     * @param {Object} options
+     * @param {String} options.uuid
+     * @returns {Promise<Object>}
+     */    
+    async getUserEmailVerification(options = { uuid: null }) {
+        Validator.getUserEmailVerification(options);
+
+        const user = await User.findOne({ _id: options.uuid });
+        if (!user) throw new err.EntityNotFoundError('user');
+
+        return { uuid: user.user_email_verification._id, is_verified: user.user_email_verification.is_verified };
     }
 }
 

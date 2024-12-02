@@ -32,7 +32,7 @@ class UserService {
         })
     }
 
-    async create(options = { body: null, file: null }) {
+    async create(options = { body: null, file: null }, disableVerifyInTest = false) {
         UserServiceValidator.create(options);
 
         const [mailUsed, usernameUsed, uuidUsed, userLoginType, userStatusState] = await Promise
@@ -79,7 +79,7 @@ class UserService {
                 }),
                 neodeInstance.model('UserEmailVerification').create({
                     uuid: uuidv4(),
-                    is_verified: (process.env.NODE_ENV === 'test'),
+                    is_verified: (process.env.NODE_ENV === 'test' && !disableVerifyInTest) ? true : false
                 }),
                 
             ]);
