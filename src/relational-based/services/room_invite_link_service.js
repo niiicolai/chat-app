@@ -1,12 +1,5 @@
-import RoomInviteLinkServiceValidator from '../../shared/validators/room_invite_link_service_validator.js';
-import AdminPermissionRequiredError from '../../shared/errors/admin_permission_required_error.js';
-import VerifiedEmailRequiredError from '../../shared/errors/verified_email_required_error.js';
-import ExceedsRoomUserCountError from '../../shared/errors/exceeds_room_user_count_error.js';
-import RoomMemberRequiredError from '../../shared/errors/room_member_required_error.js';
-import DuplicateRoomUserError from '../../shared/errors/duplicate_room_user_error.js';
-import EntityNotFoundError from '../../shared/errors/entity_not_found_error.js';
-import EntityExpiredError from '../../shared/errors/entity_expired_error.js';
-import DuplicateEntryError from '../../shared/errors/duplicate_entry_error.js';
+import Validator from '../../shared/validators/room_invite_link_service_validator.js';
+import err from '../../shared/errors/index.js';
 import RPS from './room_permission_service.js';
 import db from '../sequelize/models/index.cjs';
 import dto from '../dto/room_invite_link_dto.js';
@@ -28,13 +21,14 @@ class RoomInviteLinkService {
      * @returns {Promise<Object>}
      */
     async findOne(options = { uuid: null, user: null }) {
-        RoomInviteLinkServiceValidator.findOne(options);
+        Validator.findOne(options);
 
-        const entity = await db.RoomInviteLinkView.findByPk(options.uuid);
-        if (!entity) throw new EntityNotFoundError('room_invite_link');
+        const { uuid, user } = options;
+        const entity = await db.RoomInviteLinkView.findByPk(uuid);
+        if (!entity) throw new err.EntityNotFoundError('room_invite_link');
 
-        const isInRoom = await RPS.isInRoom({ room_uuid: entity.room_uuid, user: options.user, role_name: null });
-        if (!isInRoom) throw new RoomMemberRequiredError();
+        const isInRoom = await RPS.isInRoom({ room_uuid: entity.room_uuid, user });
+        if (!isInRoom) throw new err.RoomMemberRequiredError();
 
         return dto(entity);
     }
@@ -51,15 +45,15 @@ class RoomInviteLinkService {
      * @returns {Promise<Object>}
      */
     async findAll(options = { room_uuid: null, user: null, page: null, limit: null }) {
-        options = RoomInviteLinkServiceValidator.findAll(options);
+        options = Validator.findAll(options);
 
         const { room_uuid, user, page, limit, offset } = options;
 
         const room = await db.RoomView.findOne({ uuid: room_uuid });
-        if (!room) throw new EntityNotFoundError('room');
+        if (!room) throw new err.EntityNotFoundError('room');
 
-        const isInRoom = await RPS.isInRoom({ room_uuid, user, role_name: null });
-        if (!isInRoom) throw new RoomMemberRequiredError();
+        const isInRoom = await RPS.isInRoom({ room_uuid, user });
+        if (!isInRoom) throw new err.RoomMemberRequiredError();
 
         const [total, data] = await Promise.all([
             db.RoomInviteLinkView.count({ room_uuid }),
@@ -92,24 +86,31 @@ class RoomInviteLinkService {
      * @returns {Promise<Object>}
      */
     async create(options = { body: null, user: null }) {
-        RoomInviteLinkServiceValidator.create(options);
+        Validator.create(options);
 
         const { body, user } = options;
+        const { room_uuid, expires_at } = body;
 
-        await Promise.all([
-            RPS.isInRoom({ room_uuid: body.room_uuid, user, role_name: 'Admin' }),
-            db.RoomInviteLinkView.findByPk(body.uuid)
-        ]).then(([isAdmin, uuidInUse]) => {
-            if (!isAdmin) throw new AdminPermissionRequiredError();
-            if (uuidInUse) throw new DuplicateEntryError('room_invite_link', 'uuid', body.uuid);
-        });
+        const room = await db.RoomView.findByPk(room_uuid);
+        if (!room) throw new err.EntityNotFoundError('room');
+
+        const isAdmin = await RPS.isInRoom({ room_uuid, user, role_name: 'Admin' });
+        if (!isAdmin) throw new err.AdminPermissionRequiredError();
 
         await db.RoomInviteLinkView.createRoomInviteLinkProcStatic({
             uuid: body.uuid,
-            room_uuid: body.room_uuid,
-            expires_at: body.expires_at
-                ? new Date(body.expires_at).toISOString().slice(0, 19).replace('T', ' ') // YYYY-MM-DD HH:MM:SS
+            room_uuid,
+            expires_at: expires_at
+                ? new Date(expires_at).toISOString().slice(0, 19).replace('T', ' ') // YYYY-MM-DD HH:MM:SS
                 : null
+        }).catch((error) => {
+            if (error.name === 'SequelizeUniqueConstraintError') {
+                throw new err.DuplicateEntryError('user_login', error.errors[0].path, error.errors[0].value);
+            } else if (error.name === 'SequelizeForeignKeyConstraintError') {
+                throw new err.EntityNotFoundError(error.fields[0]);
+            }
+
+            throw error;
         });
 
         return await db.RoomInviteLinkView
@@ -129,15 +130,15 @@ class RoomInviteLinkService {
      * @returns {Promise<Object>}
      */
     async update(options = { uuid: null, body: null, user: null }) {
-        RoomInviteLinkServiceValidator.update(options);
+        Validator.update(options);
 
         const { uuid, body, user } = options;
 
         const roomInviteLink = await db.RoomInviteLinkView.findByPk(uuid);
-        if (!roomInviteLink) throw new EntityNotFoundError('room_invite_link');
+        if (!roomInviteLink) throw new err.EntityNotFoundError('room_invite_link');
 
         const isAdmin = await RPS.isInRoom({ room_uuid: roomInviteLink.room_uuid, user, role_name: 'Admin' });
-        if (!isAdmin) throw new AdminPermissionRequiredError();
+        if (!isAdmin) throw new err.AdminPermissionRequiredError();
 
         await roomInviteLink.editRoomInviteLinkProc({
             expires_at: body.expires_at
@@ -160,15 +161,15 @@ class RoomInviteLinkService {
      * @returns {Promise<void>}
      */
     async destroy(options = { uuid: null, user: null }) {
-        RoomInviteLinkServiceValidator.destroy(options);
+        Validator.destroy(options);
 
         const { uuid, user } = options;
 
         const roomInviteLink = await db.RoomInviteLinkView.findByPk(uuid);
-        if (!roomInviteLink) throw new EntityNotFoundError('room_invite_link');
+        if (!roomInviteLink) throw new err.EntityNotFoundError('room_invite_link');
 
         const isAdmin = await RPS.isInRoom({ room_uuid: roomInviteLink.room_uuid, user, role_name: 'Admin' });
-        if (!isAdmin) throw new AdminPermissionRequiredError();
+        if (!isAdmin) throw new err.AdminPermissionRequiredError();
 
         await roomInviteLink.deleteRoomInviteLinkProc();
     }
@@ -183,7 +184,7 @@ class RoomInviteLinkService {
      * @returns {Promise<void>}
      */
     async join(options = { uuid: null, user: null }) {
-        RoomInviteLinkServiceValidator.join(options);
+        Validator.join(options);
 
         const { uuid, user } = options;
 
@@ -191,10 +192,10 @@ class RoomInviteLinkService {
             const roomInviteLink = await db.RoomInviteLinkView.findOne(
                 { where: { room_invite_link_uuid: uuid }, transaction }
             );
-            if (!roomInviteLink) throw new EntityNotFoundError('room_invite_link');
+            if (!roomInviteLink) throw new err.EntityNotFoundError('room_invite_link');
 
             if (roomInviteLink.expires_at && new Date(roomInviteLink.expires_at) < new Date()) {
-                throw new EntityExpiredError('room_invite_link');
+                throw new err.EntityExpiredError('room_invite_link');
             }
 
             await Promise.all([
@@ -202,9 +203,9 @@ class RoomInviteLinkService {
                 RPS.isVerified({ user }, transaction),
                 RPS.roomUserCountExceedsLimit({ room_uuid: roomInviteLink.room_uuid, add_count: 1 }, transaction)
             ]).then(([isInRoom, isUserEmailVerified, roomUserCountExceedsLimit]) => {
-                if (isInRoom) throw new DuplicateRoomUserError();
-                if (!isUserEmailVerified) throw new VerifiedEmailRequiredError('join a room');
-                if (roomUserCountExceedsLimit) throw new ExceedsRoomUserCountError();
+                if (isInRoom) throw new err.DuplicateRoomUserError();
+                if (!isUserEmailVerified) throw new err.VerifiedEmailRequiredError('join a room');
+                if (roomUserCountExceedsLimit) throw new err.ExceedsRoomUserCountError();
             });
 
             await db.RoomView.joinRoomProcStatic({

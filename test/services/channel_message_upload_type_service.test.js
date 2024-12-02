@@ -7,10 +7,20 @@ import { test, expect } from 'vitest';
 
 const channelAuditTypeServiceTest = (ChannelMessageUploadTypeService, name) => {
 
+    /**
+     * Expected methods
+     */
+
     test(`(${name}) - ChannelMessageUploadTypeService must implement expected methods`, () => {
         expect(ChannelMessageUploadTypeService).toHaveProperty('findOne');
         expect(ChannelMessageUploadTypeService).toHaveProperty('findAll');
     });
+
+
+
+    /**
+     * ChannelMessageUploadTypeService.findOne
+     */
 
     test.each([
         data.channel_message_upload_types.map(cmut => cmut.name),
@@ -37,6 +47,12 @@ const channelAuditTypeServiceTest = (ChannelMessageUploadTypeService, name) => {
     ])(`(${name}) - ChannelMessageUploadTypeService.findOne invalid partitions`, async (options, expected) => {
         expect(async () => await ChannelMessageUploadTypeService.findOne(options)).rejects.toThrowError(expected);
     });
+
+
+
+    /**
+     * ChannelMessageUploadTypeService.findAll
+     */
 
     test.each([
         [undefined],

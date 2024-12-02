@@ -11,12 +11,23 @@ import data from '../../src/seed_data.js';
 import { test, expect } from 'vitest';
 
 const roomPermissionServiceTest = (RoomPermissionService, RoomService, name) => {
+
+    /**
+     * Exisiting entities
+     */
+
     const user = { sub: data.users.find(u => u.username === 'not_in_a_room').uuid };
     const admin = { sub: data.users[0].uuid };
     const mod = { sub: data.users[1].uuid };
     const member = { sub: data.users[2].uuid };
     const room_uuid = data.rooms[0].uuid;
     const channel_uuid = data.rooms[0].channels[0].uuid;
+
+
+
+    /**
+     * Expected Methods
+     */
 
     test(`(${name}) - RoomPermissionService must implement expected methods`, () => {
         expect(RoomPermissionService).toHaveProperty('isVerified');
@@ -27,6 +38,12 @@ const roomPermissionServiceTest = (RoomPermissionService, RoomService, name) => 
         expect(RoomPermissionService).toHaveProperty('roomUserCountExceedsLimit');
         expect(RoomPermissionService).toHaveProperty('channelCountExceedsLimit');
     });
+
+
+
+    /**
+     * RoomPermissionService.isInRoom
+     */
 
     test.each([
         [{ user: admin, role_name: 'Admin' }, true],
@@ -62,6 +79,12 @@ const roomPermissionServiceTest = (RoomPermissionService, RoomService, name) => 
         expect(async () => await RoomPermissionService.isInRoom(options)).rejects.toThrowError(expected);
     });
 
+
+
+    /**
+     * RoomPermissionService.isInRoomByChannel
+     */
+
     test.each([
         [{ user: admin, role_name: 'Admin' }, true],
         [{ user: admin, role_name: 'Moderator' }, false],
@@ -96,6 +119,12 @@ const roomPermissionServiceTest = (RoomPermissionService, RoomService, name) => 
         expect(async () => await RoomPermissionService.isInRoomByChannel(options)).rejects.toThrowError(expected);
     });
 
+
+
+    /**
+     * RoomPermissionService.fileExceedsTotalFilesLimit
+     */
+
     test(`(${name}) - RoomPermissionService.fileExceedsTotalFilesLimit valid partitions`, async () => {
         const room = await RoomService.findOne({ uuid: room_uuid, user: admin });
         const { total_files_bytes_allowed } = room.fileSettings;
@@ -119,6 +148,12 @@ const roomPermissionServiceTest = (RoomPermissionService, RoomService, name) => 
     ])(`(${name}) - RoomPermissionService.fileExceedsTotalFilesLimit invalid partitions`, async (options, expected) => {
         expect(async () => await RoomPermissionService.fileExceedsTotalFilesLimit(options)).rejects.toThrowError(expected);
     });
+
+
+
+    /**
+     * RoomPermissionService.fileExceedsSingleFileSize
+     */
 
     test(`(${name}) - RoomPermissionService.fileExceedsSingleFileSize valid partitions`, async () => {
         const room = await RoomService.findOne({ uuid: room_uuid, user: admin });
@@ -144,6 +179,12 @@ const roomPermissionServiceTest = (RoomPermissionService, RoomService, name) => 
         expect(async () => await RoomPermissionService.fileExceedsSingleFileSize(options)).rejects.toThrowError(expected);
     });
 
+
+
+    /**
+     * RoomPermissionService.roomUserCountExceedsLimit
+     */
+
     test(`(${name}) - RoomPermissionService.roomUserCountExceedsLimit valid partitions`, async () => {
         const room = await RoomService.findOne({ uuid: room_uuid, user: admin });
         const { max_users } = room.userSettings;
@@ -167,6 +208,12 @@ const roomPermissionServiceTest = (RoomPermissionService, RoomService, name) => 
     ])(`(${name}) - RoomPermissionService.roomUserCountExceedsLimit invalid partitions`, async (options, expected) => {
         expect(async () => await RoomPermissionService.roomUserCountExceedsLimit(options)).rejects.toThrowError(expected);
     });
+
+
+
+    /**
+     * RoomPermissionService.channelCountExceedsLimit
+     */
 
     test(`(${name}) - RoomPermissionService.channelCountExceedsLimit valid partitions`, async () => {
         const room = await RoomService.findOne({ uuid: room_uuid, user: admin });
@@ -194,5 +241,5 @@ const roomPermissionServiceTest = (RoomPermissionService, RoomService, name) => 
 };
 
 roomPermissionServiceTest(RelationalRoomPermissionService, RelationalRoomService, 'Relational');
-// roomPermissionServiceTest(DocumentRoomPermissionService, DocumentRoomService, 'Document');
+roomPermissionServiceTest(DocumentRoomPermissionService, DocumentRoomService, 'Document');
 // roomPermissionServiceTest(GraphRoomPermissionService, GraphRoomService, 'Graph');

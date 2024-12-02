@@ -23,10 +23,7 @@ module.exports = (sequelize, DataTypes) => {
          * @param {string} replacements.uuid
          * @param {string} replacements.username
          * @param {string} replacements.email
-         * @param {string} replacements.login_type
-         * @param {string} replacements.password optional
          * @param {string} replacements.avatar optional
-         * @param {string} replacements.third_party_id optional
          * @param {Object} transaction optional
          * @returns {Promise<void>}
          * @static
@@ -36,19 +33,9 @@ module.exports = (sequelize, DataTypes) => {
             if (!replacements.uuid) throw new Error('createUserProcStatic: No uuid provided');
             if (!replacements.username) throw new Error('createUserProcStatic: No username provided');
             if (!replacements.email) throw new Error('createUserProcStatic: No email provided');
-            if (!replacements.login_type) throw new Error('createUserProcStatic: No login_type provided');
-
-            if (replacements.login_type === 'Password') {
-                if (!replacements.password) throw new Error('createUserProcStatic: No password provided');
-            } else replacements.password = null;
-
-            if (replacements.login_type !== 'Password') {
-                if (!replacements.third_party_id) throw new Error('createUserProcStatic: No third_party_id provided');
-            } else replacements.third_party_id = null;
-
             if (!replacements.avatar) replacements.avatar = null;
 
-            await sequelize.query('CALL create_user_proc(:uuid, :username, :email, :password, :avatar, :login_type, :third_party_id, @result)', {
+            await sequelize.query('CALL create_user_proc(:uuid, :username, :email, :avatar)', {
                 replacements,
                 ...(transaction && { transaction }),
             });
@@ -61,7 +48,6 @@ module.exports = (sequelize, DataTypes) => {
          * @param {string} replacements.uuid
          * @param {string} replacements.username
          * @param {string} replacements.email
-         * @param {string} replacements.password
          * @param {string} replacements.avatar optional
          * @param {Object} transaction optional
          * @returns {Promise<void>}
@@ -72,10 +58,9 @@ module.exports = (sequelize, DataTypes) => {
             if (!replacements.uuid) throw new Error('editUserProcStatic: No uuid provided');
             if (!replacements.username) throw new Error('editUserProcStatic: No username provided');
             if (!replacements.email) throw new Error('editUserProcStatic: No email provided');
-            if (!replacements.password) replacements.password = null;
             if (!replacements.avatar) replacements.avatar = null;
 
-            await sequelize.query('CALL edit_user_proc(:uuid, :username, :email, :password, :avatar, @result)', {
+            await sequelize.query('CALL edit_user_proc(:uuid, :username, :email, :avatar)', {
                 replacements,
                 ...(transaction && { transaction }),
             });
@@ -94,7 +79,7 @@ module.exports = (sequelize, DataTypes) => {
             if (!replacements) throw new Error('deleteUserProcStatic: No replacements provided');
             if (!replacements.uuid) throw new Error('deleteUserProcStatic: No uuid provided');
 
-            await sequelize.query('CALL delete_user_proc(:uuid, @result)', {
+            await sequelize.query('CALL delete_user_proc(:uuid)', {
                 replacements,
                 transaction
             });
@@ -146,7 +131,7 @@ module.exports = (sequelize, DataTypes) => {
                 if (!replacements.third_party_id) throw new Error('createUserLoginProcStatic: No third_party_id provided');
             } else replacements.third_party_id = null;
             
-            await sequelize.query('CALL create_user_login_proc(:login_uuid, :user_uuid, :user_login_type_name, :third_party_id, :user_login_password, @result)', {
+            await sequelize.query('CALL create_user_login_proc(:login_uuid, :user_uuid, :user_login_type_name, :third_party_id, :user_login_password)', {
                 replacements,
                 ...(transaction && { transaction }),
             });
@@ -167,7 +152,7 @@ module.exports = (sequelize, DataTypes) => {
             if (!replacements.user_uuid) throw new Error('setUserEmailVerificationProcStatic: No uuid provided');
             if (typeof replacements.is_verified !== 'boolean') throw new Error('setUserEmailVerificationProcStatic: No is_verified provided');
 
-            await sequelize.query('CALL set_user_email_verification_proc(:user_uuid, :is_verified, @result)', {
+            await sequelize.query('CALL set_user_email_verification_proc(:user_uuid, :is_verified)', {
                 replacements,
                 ...(transaction && { transaction }),
             });
@@ -200,10 +185,8 @@ module.exports = (sequelize, DataTypes) => {
          * @function editUserProc
          * @description Edit a user using a stored procedure.
          * @param {Object} replacements
-         * @param {string} replacements.uuid
-         * @param {string} replacements.username
-         * @param {string} replacements.email
-         * @param {string} replacements.password
+         * @param {string} replacements.username optional
+         * @param {string} replacements.email optional
          * @param {string} replacements.avatar optional
          * @param {Object} transaction optional
          * @returns {Promise<void>}

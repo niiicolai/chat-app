@@ -1,5 +1,5 @@
-import UserStatusServiceValidator from '../../shared/validators/user_status_service_validator.js';
-import EntityNotFoundError from '../../shared/errors/entity_not_found_error.js';
+import Validator from '../../shared/validators/user_status_service_validator.js';
+import err from '../../shared/errors/index.js';
 import db from '../sequelize/models/index.cjs';
 import dto from '../dto/user_status_dto.js';
 
@@ -18,12 +18,12 @@ class UserStatusService {
      * @returns {Promise<Object>}
      */
     async findOne(options = { user_uuid: null }) {
-        UserStatusServiceValidator.findOne(options);
+        Validator.findOne(options);
 
         const { user_uuid } = options;
-
         const entity = await db.UserStatusView.findOne({ where: { user_uuid } });
-        if (!entity) throw new EntityNotFoundError('user_status');
+        
+        if (!entity) throw new err.EntityNotFoundError('user_status');
 
         return dto(entity);
     }
@@ -39,7 +39,7 @@ class UserStatusService {
      * @returns {Promise<Object>}
      */
     async update(options={ body: null, user_uuid: null }) {
-        UserStatusServiceValidator.update(options);
+        Validator.update(options);
 
         const { body, user_uuid } = options;
         const { user_status_state, message } = body;
@@ -50,10 +50,7 @@ class UserStatusService {
                     where: { user_uuid }, 
                     transaction 
                 });
-                
-                if (!userStatus) {
-                    throw new EntityNotFoundError('user_status');
-                }
+                if (!userStatus) throw new err.EntityNotFoundError('user_status');
 
                 await userStatus.updateUserStatusProc({ 
                     ...(user_status_state && { user_status_state }),

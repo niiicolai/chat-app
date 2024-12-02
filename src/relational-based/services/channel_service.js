@@ -1,22 +1,9 @@
-import AdminPermissionRequiredError from '../../shared/errors/admin_permission_required_error.js';
-import ExceedsRoomChannelCountError from '../../shared/errors/exceeds_room_channel_count_error.js';
-import ExceedsRoomTotalFilesLimitError from '../../shared/errors/exceeds_room_total_files_limit_error.js';
-import ExceedsSingleFileSizeError from '../../shared/errors/exceeds_single_file_size_error.js';
-import ChannelServiceValidator from '../../shared/validators/channel_service_validator.js';
-import EntityNotFoundError from '../../shared/errors/entity_not_found_error.js';
-import RoomMemberRequiredError from '../../shared/errors/room_member_required_error.js';
-import DuplicateEntryError from '../../shared/errors/duplicate_entry_error.js';
-import StorageService from '../../shared/services/storage_service.js';
+import Validator from '../../shared/validators/channel_service_validator.js';
+import err from '../../shared/errors/index.js';
+import RFS from './room_file_service.js';
 import RPS from './room_permission_service.js';
 import db from '../sequelize/models/index.cjs';
 import dto from '../dto/channel_dto.js';
-
-/**
- * @constant storage
- * @description Storage service instance for channel avatars.
- * @type {StorageService}
- */
-const storage = new StorageService('channel_avatar');
 
 /**
  * @class ChannelService
@@ -35,13 +22,15 @@ class ChannelService {
      * @returns {Promise<Object>}
      */
     async findOne(options = { uuid: null, user: null }) {
-        ChannelServiceValidator.findOne(options);
+        Validator.findOne(options);
 
-        const entity = await db.ChannelView.findByPk(options.uuid);
-        if (!entity) throw new EntityNotFoundError('channel');
+        const { uuid: channel_uuid, user } = options;
+        const entity = await db.ChannelView.findByPk(channel_uuid);
 
-        const isInRoom = await RPS.isInRoomByChannel({ channel_uuid: options.uuid, user: options.user, role_name: null });
-        if (!isInRoom) throw new RoomMemberRequiredError();
+        if (!entity) throw new err.EntityNotFoundError('channel');
+
+        const isInRoom = await RPS.isInRoomByChannel({ channel_uuid, user });
+        if (!isInRoom) throw new err.RoomMemberRequiredError();
 
         return dto(entity);
     }
@@ -58,15 +47,15 @@ class ChannelService {
      * @returns {Promise<Object>}
      */
     async findAll(options = { room_uuid: null, user: null, page: null, limit: null }) {
-        options = ChannelServiceValidator.findAll(options);
+        options = Validator.findAll(options);
 
         const { room_uuid, user, page, limit, offset } = options;
 
         const room = await db.RoomView.findOne({ uuid: room_uuid });
-        if (!room) throw new EntityNotFoundError('room');
+        if (!room) throw new err.EntityNotFoundError('room');
 
-        const isInRoom = await RPS.isInRoom({ room_uuid, user, role_name: null });
-        if (!isInRoom) throw new RoomMemberRequiredError();
+        const isInRoom = await RPS.isInRoom({ room_uuid, user });
+        if (!isInRoom) throw new err.RoomMemberRequiredError();
 
         const [total, data] = await Promise.all([
             db.ChannelView.count({ room_uuid }),
@@ -78,8 +67,8 @@ class ChannelService {
         ]);
 
         return {
-            data: data.map(entity => dto(entity)),
             total,
+            data: data.map(entity => dto(entity)),
             ...(limit && { limit }),
             ...(page && { page }),
             ...(page && { pages: Math.ceil(total / limit) })
@@ -102,48 +91,38 @@ class ChannelService {
      * @returns {Promise<Object>}
      */
     async create(options = { body: null, file: null, user: null }) {
-        ChannelServiceValidator.create(options);
+        Validator.create(options);
 
         const { body, file, user } = options;
-        const { uuid, name, description, channel_type_name, room_uuid } = body;
+        const { room_uuid } = body;
 
         await db.sequelize.transaction(async (transaction) => {
-            await Promise.all([
-                db.RoomView.findByPk(room_uuid, { transaction }),
-                db.ChannelView.findByPk(uuid, { transaction }),
-                db.ChannelTypeView.findOne({ where: { channel_type_name }, transaction }),
-                db.ChannelView.findOne({ where: { channel_name: name, room_uuid, channel_type_name }, transaction }),
+            const [inRoom, countExceedsLimit] = await Promise.all([
                 RPS.isInRoom({ room_uuid, user, role_name: 'Admin' }, transaction),
-                RPS.channelCountExceedsLimit({ room_uuid, add_count: 1 }, transaction),
-                ...[file && file.size > 0 && [
-                    RPS.fileExceedsTotalFilesLimit({ room_uuid, bytes: file.size }, transaction),
-                    RPS.fileExceedsSingleFileSize({ room_uuid, bytes: file.size }, transaction)
-                ]]
-            ]).then(([room, uuidInUse, validType, nameAndTypeInUse, inRoom, channelCountExceedsLimit, exceedTotalFile, exceedSingleFile]) => {
-                if (!room) throw new EntityNotFoundError('room');
-                if (uuidInUse) throw new DuplicateEntryError('channel', 'uuid', uuid);
-                if (!validType) throw new EntityNotFoundError('channel_type');
-                if (nameAndTypeInUse) throw new DuplicateEntryError('channel', 'name and type', `${name} and ${channel_type_name}`);
-                if (!inRoom) throw new AdminPermissionRequiredError();
-                if (channelCountExceedsLimit) throw new ExceedsRoomChannelCountError();
-                if (exceedTotalFile) throw new ExceedsRoomTotalFilesLimitError();
-                if (exceedSingleFile) throw new ExceedsSingleFileSizeError();
-            });
+                RPS.channelCountExceedsLimit({ room_uuid, add_count: 1 }, transaction)
+            ]);
 
-            await db.ChannelView.createChannelProcStatic({
-                uuid,
-                name,
-                description,
-                channel_type_name,
-                room_uuid,
-                bytes: file && file.size > 0 ? file.size : null,
-                upload_src: file && file.size > 0 ? await storage.uploadFile(file, uuid) : null
-            }, transaction);
+            if (!inRoom) throw new err.AdminPermissionRequiredError();
+            if (countExceedsLimit) throw new err.ExceedsRoomChannelCountError();
+
+            const room_file_body = { room_uuid, room_file_type_name: 'ChannelAvatar' };
+            const room_file_uuid = (file && file.size > 0)
+                ? (await RFS.create({ file, user, body: room_file_body }, transaction)).uuid
+                : null;
+
+            await db.ChannelView.createChannelProcStatic({ ...body, room_file_uuid }, transaction);
+            
+        }).catch((error) => {
+            if (error.name === 'SequelizeUniqueConstraintError') {
+                throw new err.DuplicateEntryError('channel', error.errors[0].path, error.errors[0].value);
+            } else if (error.name === 'SequelizeForeignKeyConstraintError') {
+                throw new err.EntityNotFoundError(error.fields[0]);
+            }
+
+            throw error;
         });
-
-        return await db.ChannelView
-            .findByPk(uuid)
-            .then((channel) => dto(channel));
+        
+        return await db.ChannelView.findByPk(body.uuid).then((channel) => dto(channel));
     }
 
     /**
@@ -160,55 +139,44 @@ class ChannelService {
      * @returns {Promise<Object>}
      */
     async update(options = { uuid: null, body: null, file: null, user: null }) {
-        ChannelServiceValidator.update(options);
+        Validator.update(options);
 
         const { uuid, body, file, user } = options;
         const { name, description } = body;
 
         await db.sequelize.transaction(async (transaction) => {
-            const channel = await db.ChannelView.findByPk(uuid, { transaction });
-            if (!channel) throw new EntityNotFoundError('channel');
+            const [channel, isAdmin] = await Promise.all([
+                db.ChannelView.findByPk(uuid, { transaction }),
+                RPS.isInRoomByChannel({ channel_uuid: uuid, user, role_name: 'Admin' }, transaction)
+            ]);
 
-            const isAdmin = await RPS.isInRoomByChannel({ channel_uuid: uuid, user, role_name: 'Admin' }, transaction);
-            if (!isAdmin) throw new AdminPermissionRequiredError();
+            if (!channel) throw new err.EntityNotFoundError('channel');
+            if (!isAdmin) throw new err.AdminPermissionRequiredError();
 
-            if (name && name !== channel.channel_name) {
-                const nameInUse = await db.ChannelView.findOne({
-                    where: { channel_name: name, room_uuid: channel.room_uuid, channel_type_name: channel.channel_type_name },
-                    transaction
-                });
-                if (nameInUse) {
-                    throw new DuplicateEntryError(
-                        'channel', 'name and channel_type_name', `${name} and ${channel.channel_type_name}`);
-                }
-            }
-
-            if (file && file.size > 0) {
-                await Promise.all([
-                    RPS.fileExceedsTotalFilesLimit({ room_uuid: channel.room_uuid, bytes: file.size }, transaction),
-                    RPS.fileExceedsSingleFileSize({ room_uuid: channel.room_uuid, bytes: file.size }, transaction)
-                ]).then(([totalFilesExceedsLimit, singleFileSizeExceedsLimit]) => {
-                    if (totalFilesExceedsLimit) throw new ExceedsRoomTotalFilesLimitError();
-                    if (singleFileSizeExceedsLimit) throw new ExceedsSingleFileSizeError();
-                });
-            }
+            const room_uuid = channel.room_uuid;
+            const room_file_body = { room_uuid, room_file_type_name: 'ChannelAvatar' };
+            const room_file_uuid = (file && file.size > 0)
+                ? (await RFS.create({ file, user, body: room_file_body }, transaction)).uuid
+                : null;
 
             await channel.editChannelProc({
                 ...(name && { name }),
                 ...(description && { description }),
-                ...(file && file.size > 0 && {
-                    bytes: file.size,
-                    src: await storage.uploadFile(file, uuid)
-                }),
+                ...(room_file_uuid && { room_file_uuid }),
             }, transaction);
 
-            // Old room file must be deleted last to prevent deleting a file
-            // on the object storage and then failing to update the database.
-            // This would result in an inconsistent state.
             if (file && file.size > 0 && channel.room_file_uuid) {
-                await db.RoomFileView.deleteRoomFileProcStatic({ uuid: channel.room_file_uuid }, transaction);
-                await storage.deleteFile(storage.parseKey(channel.room_file_src));
+                await RFS.remove(channel.room_file_uuid, channel.room_file_src, transaction);
             }
+
+        }).catch((error) => {
+            if (error.name === 'SequelizeUniqueConstraintError') {
+                throw new err.DuplicateEntryError('channel', error.errors[0].path, error.errors[0].value);
+            } else if (error.name === 'SequelizeForeignKeyConstraintError') {
+                throw new err.EntityNotFoundError(error.fields[0]);
+            }
+
+            throw error;
         });
 
         return await db.ChannelView
@@ -226,25 +194,23 @@ class ChannelService {
      * @returns {Promise<void>}
      */
     async destroy(options = { uuid: null, user: null }) {
-        ChannelServiceValidator.destroy(options);
+        Validator.destroy(options);
 
-        const { uuid, user } = options;
+        const { uuid: channel_uuid, user } = options;
 
         await db.sequelize.transaction(async (transaction) => {
-            const channel = await db.ChannelView.findByPk(uuid, { transaction });
-            if (!channel) throw new EntityNotFoundError('channel');
+            const [channel, isAdmin] = await Promise.all([
+                db.ChannelView.findByPk(channel_uuid, { transaction }),
+                RPS.isInRoomByChannel({ channel_uuid, user, role_name: 'Admin' }, transaction)
+            ]);
 
-            const isAdmin = await RPS.isInRoomByChannel({ channel_uuid: uuid, user, role_name: 'Admin' }, transaction);
-            if (!isAdmin) throw new AdminPermissionRequiredError();
+            if (!channel) throw new err.EntityNotFoundError('channel');
+            if (!isAdmin) throw new err.AdminPermissionRequiredError();
 
             await channel.deleteChannelProc(transaction);
 
-            // Old room file must be deleted last to prevent deleting a file
-            // on the object storage and then failing to update the database.
-            // This would result in an inconsistent state.
             if (channel.room_file_uuid) {
-                const key = storage.parseKey(channel.room_file_src);
-                await storage.deleteFile(key);
+                await RFS.remove(channel.room_file_uuid, channel.room_file_src, transaction);
             }
         });
     }

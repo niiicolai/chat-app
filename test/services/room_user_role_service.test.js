@@ -7,10 +7,20 @@ import { test, expect } from 'vitest';
 
 const roomUserRoleServiceTest = (RoomUserRoleService, name) => {
 
+    /**
+     * Expected methods
+     */
+
     test(`(${name}) - RoomUserRoleService must implement expected methods`, () => {
         expect(RoomUserRoleService).toHaveProperty('findOne');
         expect(RoomUserRoleService).toHaveProperty('findAll');
     });
+
+
+
+    /**
+     * RoomUserRoleService.findOne
+     */
 
     test.each([
         data.room_user_roles.map(rc => rc.name),
@@ -37,6 +47,12 @@ const roomUserRoleServiceTest = (RoomUserRoleService, name) => {
     ])(`(${name}) - RoomUserRoleService.findOne invalid partitions`, async (options, expected) => {
         expect(async () => await RoomUserRoleService.findOne(options)).rejects.toThrowError(expected);
     });
+
+
+
+    /**
+     * RoomUserRoleService.findAll
+     */
 
     test.each([
         [undefined],

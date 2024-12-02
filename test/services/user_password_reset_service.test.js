@@ -6,14 +6,31 @@ import data from '../../src/seed_data.js';
 import { test, expect } from 'vitest';
 
 const userPasswordResetServiceTest = (UserPasswordResetService, name) => {
+
+    /**
+     * Exisiting entities
+     */
+
     const admin = { ...data.users[0] };
     const mod = { ...data.users[1] };
     const member = { ...data.users[2] };
+
+
+
+    /**
+     * Expected methods
+     */
 
     test(`(${name}) - UserPasswordResetService must implement expected methods`, () => {
         expect(UserPasswordResetService).toHaveProperty('create');
         expect(UserPasswordResetService).toHaveProperty('resetPassword');
     });
+
+
+
+    /**
+     * UserPasswordResetService.create
+     */
 
     test.each([
         [{ body: { email: `test@example.com` } }],
@@ -34,6 +51,12 @@ const userPasswordResetServiceTest = (UserPasswordResetService, name) => {
     ])(`(${name}) - UserPasswordResetService.create invalid partitions`, async (options, expected) => {
         expect(async () => await UserPasswordResetService.create(options)).rejects.toThrowError(expected);
     });
+
+
+
+    /**
+     * UserPasswordResetService.resetPassword
+     */
 
     test.each([
         [ undefined, 'No uuid provided' ],

@@ -7,10 +7,20 @@ import { test, expect } from 'vitest';
 
 const channelWebhookMessageTypeServiceTest = (ChannelWebhookMessageTypeService, name) => {
 
+    /**
+     * Expected methods
+     */
+
     test(`(${name}) - ChannelWebhookMessageTypeService must implement expected methods`, () => {
         expect(ChannelWebhookMessageTypeService).toHaveProperty('findOne');
         expect(ChannelWebhookMessageTypeService).toHaveProperty('findAll');
     });
+
+
+
+    /**
+     * ChannelWebhookMessageTypeService.findOne
+     */
 
     test.each([
         data.channel_webhook_message_types.map(cwmt => cwmt.name),
@@ -37,6 +47,12 @@ const channelWebhookMessageTypeServiceTest = (ChannelWebhookMessageTypeService, 
     ])(`(${name}) - ChannelWebhookMessageTypeService.findOne invalid partitions`, async (options, expected) => {
         expect(async () => await ChannelWebhookMessageTypeService.findOne(options)).rejects.toThrowError(expected);
     });
+
+
+
+    /**
+     * ChannelWebhookMessageTypeService.findAll
+     */
 
     test.each([
         [undefined],

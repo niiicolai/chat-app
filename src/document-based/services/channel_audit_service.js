@@ -5,7 +5,6 @@ import RPS from './room_permission_service.js';
 import ChannelAudit from '../mongoose/models/channel_audit.js';
 import Channel from '../mongoose/models/channel.js';
 import dto from '../dto/channel_audit_dto.js';
-import { stringify } from "uuid";
 
 /**
  * @class ChannelAuditService

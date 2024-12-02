@@ -1,5 +1,5 @@
 import TypeServiceValidator from '../../shared/validators/type_service_validator.js';
-import EntityNotFoundError from '../../shared/errors/entity_not_found_error.js';
+import err from '../../shared/errors/index.js';
 import db from '../sequelize/models/index.cjs';
 import dto from '../dto/type_dto.js';
 
@@ -29,7 +29,7 @@ class ChannelTypeService {
         TypeServiceValidator.findOne(options);
 
         const type = await db.ChannelTypeView.findByPk(options.name);
-        if (!type) throw new EntityNotFoundError('channel_type');
+        if (!type) throw new err.EntityNotFoundError('channel_type');
 
         return _dto(type);
     }

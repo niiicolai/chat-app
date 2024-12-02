@@ -1,7 +1,6 @@
-import UserEmailVerificationServiceValidator from '../../shared/validators/user_email_verification_service_validator.js';
-import UserEmailVerificationMailer from '../../shared/mailers/user_email_verification_mailer.js';
-import UserEmailAlreadyVerifiedError from '../../shared/errors/user_email_already_verified_error.js';
-import EntityNotFoundError from '../../shared/errors/entity_not_found_error.js';
+import Validator from '../../shared/validators/user_email_verification_service_validator.js';
+import Mailer from '../../shared/mailers/user_email_verification_mailer.js';
+import err from '../../shared/errors/index.js';
 import db from '../sequelize/models/index.cjs';
 
 const WEBSITE_HOST = process.env.WEBSITE_HOST;
@@ -27,27 +26,32 @@ class UserEmailVerificationService {
      * @returns {Promise<void>}
      */
     async resend(options = { user_uuid: null }, transaction) {
-        UserEmailVerificationServiceValidator.resend(options);
+        Validator.resend(options);
 
-        const steps = async (t) => {
-            const user = await db.UserView.findOne({ where: { user_uuid: options.user_uuid }, transaction: t });
-            if (!user) throw new EntityNotFoundError('user');
+        const { user_uuid } = options;
+
+        const steps = async (t = null) => {
+            const user = await db.UserView.findOne({ 
+                where: { user_uuid }, 
+                ...(t && { transaction: t }) 
+            });
+            if (!user) throw new err.EntityNotFoundError('user');
 
             const userEmailVerification = await db.UserEmailVerificationView.findOne({ 
-                where: { user_uuid: options.user_uuid }, 
-                transaction: t 
+                where: { user_uuid }, 
+                ...(t && { transaction: t })
             });
 
-            if (!userEmailVerification) throw new EntityNotFoundError('user_email_verification');
-            if (userEmailVerification.user_email_verified) throw new UserEmailAlreadyVerifiedError();
+            if (!userEmailVerification) throw new err.EntityNotFoundError('user_email_verification');
+            if (userEmailVerification.user_email_verified) throw new err.UserEmailAlreadyVerifiedError();
 
             const confirmUrl = `${WEBSITE_HOST}/api/v1/mysql/user_email_verification/${userEmailVerification.user_email_verification_uuid}/confirm`;
-            const mail = new UserEmailVerificationMailer({ confirmUrl, username: user.user_username, to: user.user_email });
+            const mail = new Mailer({ confirmUrl, username: user.user_username, to: user.user_email });
             await mail.send();
         }
 
         if (transaction) await steps(transaction);
-        else await db.sequelize.transaction(steps);
+        else await steps();
     }
 
     /**
@@ -58,15 +62,17 @@ class UserEmailVerificationService {
      * @returns {Promise<void>}
      */
     async confirm(options = { uuid: null }) {
-        UserEmailVerificationServiceValidator.confirm(options);
+        Validator.confirm(options);
+
+        const { uuid: user_email_verification_uuid } = options;
 
         await db.sequelize.transaction(async (transaction) => {
             const userEmailVerification = await db.UserEmailVerificationView.findOne({
-                where: { user_email_verification_uuid: options.uuid },
+                where: { user_email_verification_uuid },
                 transaction
             });
-            if (!userEmailVerification) throw new EntityNotFoundError('user_email_verification');
-            if (userEmailVerification.user_email_verified) throw new UserEmailAlreadyVerifiedError();
+            if (!userEmailVerification) throw new err.EntityNotFoundError('user_email_verification');
+            if (userEmailVerification.user_email_verified) throw new err.UserEmailAlreadyVerifiedError();
 
             await db.UserView.setUserEmailVerificationProcStatic({
                 user_uuid: userEmailVerification.user_uuid,

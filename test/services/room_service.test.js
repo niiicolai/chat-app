@@ -7,14 +7,25 @@ import { test, expect } from 'vitest';
 import { v4 as uuidv4 } from 'uuid';
 
 const roomServiceTest = (RoomService, name) => {
+
+    /**
+     * Exisiting entities
+     */
+
     const user = { sub: data.users.find(u => u.username === 'not_in_a_room').uuid };
     const admin = { sub: data.users[0].uuid };
     const mod = { sub: data.users[1].uuid };
     const member = { sub: data.users[2].uuid };
     const room_uuid = data.rooms[0].uuid;
+    const room_name = data.rooms[1].name;
     const admin_room_uuid = uuidv4();
     const mod_room_uuid = uuidv4();
     const member_room_uuid = uuidv4();
+
+
+    /**
+     * Expected Methods
+     */
 
     test(`(${name}) - RoomService must implement expected methods`, () => {
         expect(RoomService).toHaveProperty('findOne');
@@ -22,8 +33,14 @@ const roomServiceTest = (RoomService, name) => {
         expect(RoomService).toHaveProperty('create');
         expect(RoomService).toHaveProperty('update');
         expect(RoomService).toHaveProperty('editSettings');
+        expect(RoomService).toHaveProperty('leave');
         expect(RoomService).toHaveProperty('destroy');
     });
+
+
+    /**
+     * RoomService.findOne
+     */
 
     test.each([
         [{ uuid: room_uuid, user: admin }],
@@ -50,6 +67,12 @@ const roomServiceTest = (RoomService, name) => {
     ])(`(${name}) - RoomService.findOne invalid partitions`, async (options, expected) => {
         expect(async () => await RoomService.findOne(options)).rejects.toThrowError(expected);
     });
+
+
+
+    /**
+     * RoomService.findAll
+     */
 
     test.each([
         [{ user: admin }],
@@ -92,6 +115,12 @@ const roomServiceTest = (RoomService, name) => {
         expect(async () => await RoomService.findAll(options)).rejects.toThrowError(expected);
     });
 
+
+
+    /**
+     * RoomService.create
+     */
+
     test.each([
         [{ user: admin, body: { uuid: admin_room_uuid, name: `test-${uuidv4()}`, description: 'test', room_category_name: 'General' } }],
         [{ user: mod, body: { uuid: mod_room_uuid, name: `test-${uuidv4()}`, description: 'test', room_category_name: 'General' } }],
@@ -118,9 +147,31 @@ const roomServiceTest = (RoomService, name) => {
             { body: { uuid: "test", name: "test", description: "test" }, user: { sub: "test" } },
             'No room_category_name provided'
         ],
+        [
+            { body: { uuid: "test", name: "test", description: "test", room_category_name: "test" }, user: { sub: "test" } },
+            'You must verify your email before you can create a room'
+        ],
+        [
+            { body: { uuid: "test", name: "test", description: "test", room_category_name: "test" }, user: admin },
+            'room_category_name not found'
+        ],
+        [
+            { body: { uuid: "test", name: room_name, description: "test", room_category_name: "General" }, user: admin },
+            `room with room_name ${room_name} already exists`
+        ],
+        [
+            { body: { uuid: room_uuid, name: "test", description: "test", room_category_name: "General" }, user: admin },
+            `room with PRIMARY ${room_uuid} already exists`
+        ],
     ])(`(${name}) - RoomService.create invalid partitions`, async (options, expected) => {
         expect(async () => await RoomService.create(options)).rejects.toThrowError(expected);
     });
+
+
+
+    /**
+     * RoomService.update
+     */
 
     test.each([
         [{ user: admin, uuid: admin_room_uuid, body: { name: `test-${uuidv4()}`, description: 'test', room_category_name: 'General' } }],
@@ -141,9 +192,18 @@ const roomServiceTest = (RoomService, name) => {
         [{ body: {} }, 'No uuid provided'],
         [{ body: {}, uuid: "test" }, 'No user provided'],
         [{ body: {}, uuid: "test", user: {} }, 'No user.sub provided'],
+        [{ body: {}, uuid: "test", user: { sub: "test" } }, 'room not found'],
+        [{ body: { name: room_name }, uuid: room_uuid, user: admin }, `room with room_name ${room_name} already exists`],
+        [{ body: { room_category_name: "test" }, uuid: room_uuid, user: admin }, `room_category_name not found`],
     ])(`(${name}) - RoomService.update invalid partitions`, async (options, expected) => {
         expect(async () => await RoomService.update(options)).rejects.toThrowError(expected);
     });
+
+
+
+    /**
+     * RoomService.editSettings
+     */
 
     test.each([
         [{ user: admin, uuid: admin_room_uuid, body: { join_message: `{name}-updated`, rules_text: 'updated' } }],
@@ -168,9 +228,18 @@ const roomServiceTest = (RoomService, name) => {
         [{ uuid: "test" }, 'No body provided'],
         [{ uuid: "test", body: {} }, 'No user provided'],
         [{ uuid: "test", body: {}, user: {} }, 'No user.sub provided'],
+        [{ uuid: "test", body: {}, user: { sub: "test" } }, 'room not found'],
+        [{ uuid: room_uuid, body: { join_channel_uuid: "test" }, user: admin }, 'join_channel_uuid not found'],
+        [{ uuid: room_uuid, body: { join_message: "test" }, user: admin }, 'Join message must include {name}'],
     ])(`(${name}) - RoomService.editSettings invalid partitions`, async (options, expected) => {
         expect(async () => await RoomService.editSettings(options)).rejects.toThrowError(expected);
     });
+
+
+
+    /**
+     * RoomService.destroy
+     */
 
     test.each([
         [{ user: admin, uuid: admin_room_uuid }],
@@ -195,6 +264,8 @@ const roomServiceTest = (RoomService, name) => {
     ])(`(${name}) - RoomService.destroy invalid partitions`, async (options, expected) => {
         expect(async () => await RoomService.destroy(options)).rejects.toThrowError(expected);
     });
+
+
 
     /**
      * Security Checks

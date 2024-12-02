@@ -6,15 +6,32 @@ import data from '../../src/seed_data.js';
 import { test, expect } from 'vitest';
 
 const channelAuditServiceTest = (ChannelAuditService, name) => {
+
+    /**
+     * Existing users, rooms and channels
+     */
+
     const user = { sub: data.users.find(u => u.username === 'not_in_a_room').uuid };
     const channel_uuid = data.rooms[0].channels[0].uuid;
     const admin = { sub: data.users[0].uuid };
     const fakeUuid = 'c4986be6-5ac5-414c-a7eb-eacd7f4dc54e';
 
+
+
+    /**
+     * Expected methods
+     */
+
     test(`(${name}) - ChannelAuditService must implement expected methods`, () => {
         expect(ChannelAuditService).toHaveProperty('findOne');
         expect(ChannelAuditService).toHaveProperty('findAll');
     });
+
+
+
+    /**
+     * ChannelAuditService.findAll
+     */
 
     test.each([
         [{ channel_uuid, user: admin, limit: 2 }],
@@ -57,6 +74,12 @@ const channelAuditServiceTest = (ChannelAuditService, name) => {
     ])(`(${name}) - ChannelAuditService.findAll invalid partitions`, async (options, expected) => {
         expect(async () => await ChannelAuditService.findAll(options)).rejects.toThrowError(expected);
     });
+
+
+
+    /**
+     * ChannelAuditService.findOne
+     */
     
     test(`(${name}) - ChannelAuditService.findOne valid partitions`, async () => {
         const audits = await ChannelAuditService.findAll({ channel_uuid, user: admin, limit: 1 });
@@ -86,6 +109,8 @@ const channelAuditServiceTest = (ChannelAuditService, name) => {
         expect(async () => await ChannelAuditService.findOne(options)).rejects.toThrowError(expected);
     });
 
+
+    
     /**
      * Security Checks
      */

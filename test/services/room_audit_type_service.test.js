@@ -7,10 +7,20 @@ import { test, expect } from 'vitest';
 
 const roomAuditTypeServiceTest = (RoomAuditTypeService, name) => {
 
+    /**
+     * Expected methods
+     */
+
     test(`(${name}) - RoomAuditTypeService must implement expected methods`, () => {
         expect(RoomAuditTypeService).toHaveProperty('findOne');
         expect(RoomAuditTypeService).toHaveProperty('findAll');
     });
+
+
+
+    /**
+     * RoomAuditTypeService.findOne
+     */
 
     test.each([
         data.room_audit_types.map(rat => rat.name),
@@ -37,6 +47,12 @@ const roomAuditTypeServiceTest = (RoomAuditTypeService, name) => {
     ])(`(${name}) - RoomAuditTypeService.findOne invalid partitions`, async (options, expected) => {
         expect(async () => await RoomAuditTypeService.findOne(options)).rejects.toThrowError(expected);
     });
+
+
+
+    /**
+     * RoomAuditTypeService.findAll
+     */
 
     test.each([
         [undefined],

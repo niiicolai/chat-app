@@ -24,9 +24,8 @@ module.exports = (sequelize, DataTypes) => {
          * @param {string} replacements.name
          * @param {string} replacements.description
          * @param {string} replacements.channel_type_name
-         * @param {number} replacements.bytes
-         * @param {string} replacements.upload_src - optional
          * @param {string} replacements.room_uuid
+         * @param {string} replacements.room_file_uuid - optional
          * @param {Object} transaction - optional
          * @static
          */
@@ -37,10 +36,9 @@ module.exports = (sequelize, DataTypes) => {
             if (!replacements.description) throw new Error('description is required');
             if (!replacements.channel_type_name) throw new Error('channel_type_name is required');
             if (!replacements.room_uuid) throw new Error('room_uuid is required');
-            if (!replacements.bytes) replacements.bytes = null;
-            if (!replacements.upload_src) replacements.upload_src = null;
-
-            await sequelize.query('CALL create_channel_proc(:uuid, :name, :description, :channel_type_name, :bytes, :upload_src, :room_uuid, @result)', {
+            if (!replacements.room_file_uuid) replacements.room_file_uuid = null;
+ 
+            await sequelize.query('CALL create_channel_proc(:uuid, :name, :description, :channel_type_name, :room_uuid, :room_file_uuid, @result)', {
                 replacements,
                 ...(transaction && { transaction })
             });
@@ -54,9 +52,8 @@ module.exports = (sequelize, DataTypes) => {
          * @param {string} replacements.name
          * @param {string} replacements.description
          * @param {string} replacements.channel_type_name
-         * @param {number} replacements.bytes - optional
-         * @param {string} replacements.src - optional
          * @param {string} replacements.room_uuid
+         * @param {string} replacements.room_file_uuid - optional
          * @param {Object} transaction - optional
          * @returns {Promise<void>}
          * @static
@@ -68,10 +65,9 @@ module.exports = (sequelize, DataTypes) => {
             if (!replacements.description) throw new Error('description is required');
             if (!replacements.channel_type_name) throw new Error('channel_type_name is required');
             if (!replacements.room_uuid) throw new Error('room_uuid is required');
-            if (!replacements.bytes) replacements.bytes = null;
-            if (!replacements.src) replacements.src = null;
+            if (!replacements.room_file_uuid) replacements.room_file_uuid = null;
 
-            await sequelize.query('CALL edit_channel_proc(:uuid, :name, :description, :channel_type_name, :bytes, :src, :room_uuid, @result)', {
+            await sequelize.query('CALL edit_channel_proc(:uuid, :name, :description, :channel_type_name, :room_uuid, :room_file_uuid, @result)', {
                 replacements,
                 ...(transaction && { transaction })
             });
@@ -104,8 +100,7 @@ module.exports = (sequelize, DataTypes) => {
          * @param {string} replacements.description - optional
          * @param {string} replacements.channel_type_name - optional
          * @param {string} replacements.room_uuid - optional
-         * @param {number} replacements.bytes - optional
-         * @param {string} replacements.src - optional
+         * @param {string} replacements.room_file_uuid - optional
          * @param {Object} transaction - optional
          * @returns {Promise<void>}
          * @instance
@@ -116,8 +111,7 @@ module.exports = (sequelize, DataTypes) => {
             if (!replacements.description) replacements.description = this.channel_description;
             if (!replacements.channel_type_name) replacements.channel_type_name = this.channel_type_name;
             if (!replacements.room_uuid) replacements.room_uuid = this.room_uuid;
-            if (!replacements.bytes) replacements.bytes = this.room_file_size || null;
-            if (!replacements.src) replacements.src = this.room_file_src || null;
+            if (!replacements.room_file_uuid) replacements.room_file_uuid = this.room_file_uuid || null;
 
             replacements.uuid = this.channel_uuid;
 

@@ -12,20 +12,43 @@ import { test, expect, afterAll } from 'vitest';
 import { v4 as uuidv4 } from 'uuid';
 
 const googleAuthTest = (GoogleAuthService, UserService, name) => {
+
+    /**
+     * New users
+     */
+
     const new_user1_uuid = uuidv4();
     const new_user2_uuid = uuidv4();
     const new_user1_third_party_id = uuidv4();
     const new_user2_third_party_id = uuidv4();
 
-    const user = { sub: data.users[0].uuid };
+
+
+    /**
+     * Existing user
+     */
+
+    const user = { sub: data.users[0].uuid, email: data.users[0].email };
     const user_new_login_uuid = uuidv4();
+    const user_new_login_third_party_id = uuidv4();
+
+
+
+    /**
+     * Clean up
+     */
 
     afterAll(async () => {
-        // Clean up
         await UserService.destroyUserLogins({ uuid: user.sub, login_uuid: user_new_login_uuid });
         await UserService.destroy({ uuid: new_user1_uuid });
         await UserService.destroy({ uuid: new_user2_uuid });
     });
+
+
+
+    /**
+     * Expected methods
+     */
 
     test(`(${name}) - GoogleAuthService must implement expected methods`, () => {
         expect(GoogleAuthService).toHaveProperty('create');
@@ -33,61 +56,14 @@ const googleAuthTest = (GoogleAuthService, UserService, name) => {
         expect(GoogleAuthService).toHaveProperty('addToExistingUser');
     });
 
-    test.each([
-        [{ info: { data: { id: new_user1_third_party_id, email: `test-${uuidv4()}@example.com`, picture: `test-${uuidv4()}` } }, user_uuid: new_user1_uuid }],
-        [{ info: { data: { id: new_user2_third_party_id, email: `test-${uuidv4()}@example.com` } }, user_uuid: new_user2_uuid }],
-    ])(`(${name}) - GoogleAuthService.create valid partitions`, async (options) => {
-        const result = await GoogleAuthService.create(options);
 
-        expect(result).toHaveProperty('token');
-        expect(result).toHaveProperty('user');
-        expect(result.user).toHaveProperty('username');
-        expect(result.user).toHaveProperty('email');
-        expect(result.user).not.toHaveProperty('password');
-    });
+
+    /**
+     * GoogleAuthService.addToExistingUser
+     */
 
     test.each([
-        [null, 'No options provided'],
-        ["", 'No options provided'],
-        [1, 'The response from Google is empty'],
-        [0, 'No options provided'],
-        [[], 'The response from Google is empty'],
-        [{}, 'The response from Google is empty'],
-        [{ info: { } }, 'No data in the response from Google'],
-        [{ info: { data: { } } }, 'No id in the response from Google'],
-        [{ info: { data: { id: "test" } } }, 'No email in the response from Google'],
-    ])(`(${name}) - GoogleAuthService.create invalid partitions`, async (options, expected) => {
-        expect(async () => await GoogleAuthService.create(options)).rejects.toThrowError(expected);
-    });
-
-    test.each([
-        [{ info: { data: { id: new_user1_third_party_id } } }],
-        [{ info: { data: { id: new_user2_third_party_id } } }],
-    ])(`(${name}) - GoogleAuthService.login valid partitions`, async (options) => {
-        const result = await GoogleAuthService.login(options);
-
-        expect(result).toHaveProperty('token');
-        expect(result).toHaveProperty('user');
-        expect(result.user).toHaveProperty('username');
-        expect(result.user).toHaveProperty('email');
-        expect(result.user).not.toHaveProperty('password');
-    });
-
-    test.each([
-        [null, 'No options provided'],
-        ["", 'No options provided'],
-        [1, 'The response from Google is empty'],
-        [0, 'No options provided'],
-        [[], 'The response from Google is empty'],
-        [{}, 'The response from Google is empty'],
-        [{ info: { } }, 'No data in the response from Google'],
-        [{ info: { data: { } } }, 'No id in the response from Google'],
-    ])(`(${name}) - GoogleAuthService.login invalid partitions`, async (options, expected) => {
-        expect(async () => await GoogleAuthService.login(options)).rejects.toThrowError(expected);
-    });
-
-    test.each([
-        [{ third_party_id: uuidv4(), login_uuid: user_new_login_uuid, type: 'Google', user }],
+        [{ third_party_id: user_new_login_third_party_id, login_uuid: user_new_login_uuid, type: 'Google', user }],
     ])(`(${name}) - GoogleAuthService.addToExistingUser valid partitions`, async (options) => {
         await GoogleAuthService.addToExistingUser(options);
         const userLogins = await UserService.getUserLogins({ uuid: options.user.sub });
@@ -113,8 +89,78 @@ const googleAuthTest = (GoogleAuthService, UserService, name) => {
         [{ third_party_id: "test", type: "Google" }, 'No user provided'],
         [{ third_party_id: "test", type: "Google", user: {} }, 'No user.sub provided'],
         [{ third_party_id: "test", type: "Other", user: { sub: "test" } }, 'Only Google are currently supported'],
+        [{ third_party_id: "test", type: "Google", user: { sub: "test" } }, 'user not found'],
+        [{ third_party_id: user_new_login_third_party_id, type: "Google", user }, 'User already has a Google account linked'],
     ])(`(${name}) - GoogleAuthService.addToExistingUser invalid partitions`, async (options, expected) => {
         expect(async () => await GoogleAuthService.addToExistingUser(options)).rejects.toThrowError(expected);
+    });
+
+
+
+    /**
+     * GoogleAuthService.create
+     */
+
+    test.each([
+        [{ info: { data: { id: new_user1_third_party_id, email: `test-${uuidv4()}@example.com`, picture: `test-${uuidv4()}` } }, user_uuid: new_user1_uuid }],
+        [{ info: { data: { id: new_user2_third_party_id, email: `test-${uuidv4()}@example.com` } }, user_uuid: new_user2_uuid }],
+    ])(`(${name}) - GoogleAuthService.create valid partitions`, async (options) => {
+        const result = await GoogleAuthService.create(options);
+
+        expect(result).toHaveProperty('token');
+        expect(result).toHaveProperty('user');
+        expect(result.user).toHaveProperty('username');
+        expect(result.user).toHaveProperty('email');
+        expect(result.user).not.toHaveProperty('password');
+    });
+
+    test.each([
+        [null, 'No options provided'],
+        ["", 'No options provided'],
+        [1, 'The response from Google is empty'],
+        [0, 'No options provided'],
+        [[], 'The response from Google is empty'],
+        [{}, 'The response from Google is empty'],
+        [{ info: { } }, 'No data in the response from Google'],
+        [{ info: { data: { } } }, 'No id in the response from Google'],
+        [{ info: { data: { id: "test" } } }, 'No email in the response from Google'],
+        [{ info: { data: { id: "test", email: user.email } } }, `user with email ${user.email} already exists`],
+        [{ info: { data: { id: user_new_login_third_party_id, email: "test4@test.test" } } }, `user with third_party_id ${user_new_login_third_party_id} already exists`],
+    ])(`(${name}) - GoogleAuthService.create invalid partitions`, async (options, expected) => {
+        expect(async () => await GoogleAuthService.create(options)).rejects.toThrowError(expected);
+    });
+
+
+
+    /**
+     * GoogleAuthService.login
+     */
+
+    test.each([
+        [{ info: { data: { id: new_user1_third_party_id } } }],
+        [{ info: { data: { id: new_user2_third_party_id } } }],
+    ])(`(${name}) - GoogleAuthService.login valid partitions`, async (options) => {
+        const result = await GoogleAuthService.login(options);
+
+        expect(result).toHaveProperty('token');
+        expect(result).toHaveProperty('user');
+        expect(result.user).toHaveProperty('username');
+        expect(result.user).toHaveProperty('email');
+        expect(result.user).not.toHaveProperty('password');
+    });
+
+    test.each([
+        [null, 'No options provided'],
+        ["", 'No options provided'],
+        [1, 'The response from Google is empty'],
+        [0, 'No options provided'],
+        [[], 'The response from Google is empty'],
+        [{}, 'The response from Google is empty'],
+        [{ info: { } }, 'No data in the response from Google'],
+        [{ info: { data: { } } }, 'No id in the response from Google'],
+        [{ info: { data: { id: "test" } } }, 'user_login not found'],
+    ])(`(${name}) - GoogleAuthService.login invalid partitions`, async (options, expected) => {
+        expect(async () => await GoogleAuthService.login(options)).rejects.toThrowError(expected);
     });
 };
 

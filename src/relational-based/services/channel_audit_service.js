@@ -1,6 +1,5 @@
 import ChannelAuditServiceValidator from '../../shared/validators/channel_audit_service_validator.js';
-import RoomMemberRequiredError from '../../shared/errors/room_member_required_error.js';
-import EntityNotFoundError from '../../shared/errors/entity_not_found_error.js';
+import err from '../../shared/errors/index.js';
 import db from '../sequelize/models/index.cjs';
 import RPS from './room_permission_service.js';
 import dto from '../dto/channel_audit_dto.js';
@@ -24,11 +23,13 @@ class ChannelAuditService {
     async findOne(options = { uuid: null, user: null }) {
         ChannelAuditServiceValidator.findOne(options);
 
-        const entity = await db.ChannelAuditView.findByPk(options.uuid);
-        if (!entity) throw new EntityNotFoundError('channel_audit');
+        const { uuid, user } = options;
+        const entity = await db.ChannelAuditView.findByPk(uuid);
 
-        const isInRoom = await RPS.isInRoomByChannel({ channel_uuid: entity.channel_uuid, user: options.user, role_name: null });
-        if (!isInRoom) throw new RoomMemberRequiredError();
+        if (!entity) throw new err.EntityNotFoundError('channel_audit');
+
+        const isInRoom = await RPS.isInRoomByChannel({ channel_uuid: entity.channel_uuid, user });
+        if (!isInRoom) throw new err.RoomMemberRequiredError();
 
         return dto(entity);
     }
@@ -50,10 +51,10 @@ class ChannelAuditService {
         const { channel_uuid, user, page, limit, offset } = options;
 
         const channel = await db.ChannelView.findOne({ uuid: channel_uuid });
-        if (!channel) throw new EntityNotFoundError('channel');
+        if (!channel) throw new err.EntityNotFoundError('channel');
 
-        const isInRoom = await RPS.isInRoomByChannel({ channel_uuid, user, role_name: null });
-        if (!isInRoom) throw new RoomMemberRequiredError();
+        const isInRoom = await RPS.isInRoomByChannel({ channel_uuid, user });
+        if (!isInRoom) throw new err.RoomMemberRequiredError();
 
         const [total, data] = await Promise.all([
             db.ChannelAuditView.count({ channel_uuid }),

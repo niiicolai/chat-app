@@ -25,13 +25,44 @@ module.exports = (sequelize, DataTypes) => {
             if (!replacements) throw new Error('deleteUserLoginProc: No replacements provided');
             if (!replacements.uuid) throw new Error('deleteUserLoginProc: No uuid provided');
 
-            await sequelize.query('CALL delete_user_login_proc(:uuid, @result)', {
+            await sequelize.query('CALL delete_user_login_proc(:uuid)', {
                 replacements,
                 ...(transaction && { transaction }),
             });
         }
 
         /**
+         * @function editUserLoginProcStatic
+         * @description Edit a user login using a stored procedure.
+         * @param {Object} replacements
+         * @param {string} replacements.user_login_uuid
+         * @param {string} replacements.user_login_type_name
+         * @param {string} replacements.user_login_password optional
+         * @param {string} replacements.third_party_id optional
+         * @param {Object} transaction optional
+         * @returns {Promise<void>}
+         * @static
+         */
+        static async editUserLoginProcStatic(replacements, transaction) {
+            if (!replacements) throw new Error('editUserLoginProcStatic: No replacements provided');
+            if (!replacements.user_login_uuid) throw new Error('editUserLoginProcStatic: No user_login_uuid provided');
+            if (!replacements.user_login_type_name) throw new Error('editUserLoginProcStatic: No user_login_type_name provided');
+            
+            if (replacements.user_login_type_name === 'Password') {
+                if (!replacements.user_login_password) throw new Error('createUserLoginProcStatic: No user_login_password provided');
+            } else replacements.user_login_password = null;
+
+            if (replacements.user_login_type_name !== 'Password') {
+                if (!replacements.third_party_id) throw new Error('createUserLoginProcStatic: No third_party_id provided');
+            } else replacements.third_party_id = null;
+
+            await sequelize.query('CALL edit_user_login_proc(:user_login_uuid, :user_login_type_name, :user_login_password, :third_party_id)', {
+                replacements,
+                ...(transaction && { transaction }),
+            });
+        }
+
+        /** 
          * @function deleteUserLoginProc
          * @description Delete a user login using a stored procedure.
          * @param {Object} transaction optional
@@ -40,6 +71,23 @@ module.exports = (sequelize, DataTypes) => {
          */
         async deleteUserLoginProc(transaction) {
             await UserLoginView.deleteUserLoginProc({ uuid: this.user_login_uuid }, transaction);
+        }
+
+        /**
+         * @function editUserLoginProc
+         * @description Edit a user login using a stored procedure.
+         * @param {Object} replacements
+         * @param {string} replacements.user_login_password optional
+         * @param {string} replacements.third_party_id optional
+         * @param {Object} transaction optional
+         * @returns {Promise<void>}
+         * @instance
+         */
+        async editUserLoginProc(replacements, transaction) {
+            await UserLoginView.editUserLoginProcStatic({ 
+                user_login_uuid: this.user_login_uuid, 
+                user_login_type_name: this.user_login_type_name,
+            ...replacements }, transaction);
         }
     }
     UserLoginView.init({

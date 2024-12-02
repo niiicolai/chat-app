@@ -7,10 +7,20 @@ import { test, expect } from 'vitest';
 
 const userStatusStateServiceTest = (UserStatusStateService, name) => {
 
+    /**
+     * Expected methods
+     */
+
     test(`(${name}) - UserStatusStateService must implement expected methods`, () => {
         expect(UserStatusStateService).toHaveProperty('findOne');
         expect(UserStatusStateService).toHaveProperty('findAll');
     });
+
+
+
+    /**
+     * UserStatusStateService.findOne
+     */
 
     test.each([
         data.user_status_states.map(uss => uss.name),
@@ -37,6 +47,12 @@ const userStatusStateServiceTest = (UserStatusStateService, name) => {
     ])(`(${name}) - UserStatusStateService.findOne invalid partitions`, async (options, expected) => {
         expect(async () => await UserStatusStateService.findOne(options)).rejects.toThrowError(expected);
     });
+
+
+
+    /**
+     * UserStatusStateService.findAll
+     */
 
     test.each([
         [undefined],

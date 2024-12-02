@@ -6,14 +6,31 @@ import data from '../../src/seed_data.js';
 import { test, expect } from 'vitest';
 
 const userStatusServiceTest = (UserStatusService, name) => {
+
+    /**
+     * Exisiting entities
+     */
+
     const admin = { sub: data.users[0].uuid };
     const mod = { sub: data.users[1].uuid };
     const member = { sub: data.users[2].uuid };
+
+
+
+    /**
+     * Expected methods
+     */
 
     test(`(${name}) - UserStatusService must implement expected methods`, () => {
         expect(UserStatusService).toHaveProperty('findOne');
         expect(UserStatusService).toHaveProperty('update');
     });
+
+
+
+    /**
+     * UserStatusService.findOne
+     */
 
     test.each([
         [{ user_uuid: admin.sub }],
@@ -40,6 +57,12 @@ const userStatusServiceTest = (UserStatusService, name) => {
     ])(`(${name}) - UserStatusService.findOne invalid partitions`, async (options, expected) => {
         expect(async () => await UserStatusService.findOne(options)).rejects.toThrowError(expected);
     });
+
+
+
+    /**
+     * UserStatusService.update
+     */
 
     test.each([
         [{ body: { message: 'new msg', user_status_state: 'Away' }, user_uuid: admin.sub }],

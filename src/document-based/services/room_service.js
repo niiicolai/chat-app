@@ -39,7 +39,7 @@ class Service {
     async findOne(options = { uuid: null, user: null }) {
         RoomServiceValidator.findOne(options);
 
-        const room = await populate(Room.findOne({ uuid: options.uuid }));
+        const room = await populate(Room.findOne({ _id: options.uuid }));
 
         if (!room) throw new ControllerError(404, 'room not found');
         if (!(await RoomPermissionService.isInRoom({ room_uuid: options.uuid, user: options.user, role_name: null }))) {
@@ -53,7 +53,7 @@ class Service {
         options = RoomServiceValidator.findAll(options);
 
         const { user, page, limit, offset } = options;
-        const savedUser = await User.findOne({ uuid: user.sub });
+        const savedUser = await User.findOne({ _id: user.sub });
 
         if (!savedUser) throw new ControllerError(404, 'User not found');
 

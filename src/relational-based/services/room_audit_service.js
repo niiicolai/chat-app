@@ -1,6 +1,5 @@
-import RoomAuditServiceValidator from '../../shared/validators/room_audit_service_validator.js';
-import RoomMemberRequiredError from '../../shared/errors/room_member_required_error.js';
-import EntityNotFoundError from '../../shared/errors/entity_not_found_error.js';
+import Validator from '../../shared/validators/room_audit_service_validator.js';
+import err from '../../shared/errors/index.js';
 import RPS from './room_permission_service.js';
 import db from '../sequelize/models/index.cjs';
 import dto from '../dto/room_audit_dto.js';
@@ -22,13 +21,14 @@ class RoomAuditService {
      * @returns {Promise<Object>}
      */
     async findOne(options = { uuid: null, user: null }) {
-        RoomAuditServiceValidator.findOne(options);
+        Validator.findOne(options);
 
-        const entity = await db.RoomAuditView.findByPk(options.uuid);
-        if (!entity) throw new EntityNotFoundError('room_audit');
+        const { uuid, user } = options;
+        const entity = await db.RoomAuditView.findByPk(uuid);
+        if (!entity) throw new err.EntityNotFoundError('room_audit');
 
-        const isInRoom = await RPS.isInRoom({ room_uuid: entity.room_uuid, user: options.user, role_name: null });
-        if (!isInRoom) throw new RoomMemberRequiredError();
+        const isInRoom = await RPS.isInRoom({ room_uuid: entity.room_uuid, user });
+        if (!isInRoom) throw new err.RoomMemberRequiredError();
 
         return dto(entity);
     }
@@ -45,15 +45,15 @@ class RoomAuditService {
      * @returns {Promise<Object>}
      */
     async findAll(options = { room_uuid: null, user: null, page: null, limit: null }) {
-        options = RoomAuditServiceValidator.findAll(options);
+        options = Validator.findAll(options);
 
         const { room_uuid, user, page, limit, offset } = options;
 
         const room = await db.RoomView.findOne({ uuid: room_uuid });
-        if (!room) throw new EntityNotFoundError('room');
+        if (!room) throw new err.EntityNotFoundError('room');
 
-        const isInRoom = await RPS.isInRoom({ room_uuid, user, role_name: null });
-        if (!isInRoom) throw new RoomMemberRequiredError();
+        const isInRoom = await RPS.isInRoom({ room_uuid, user });
+        if (!isInRoom) throw new err.RoomMemberRequiredError();
 
         const [total, data] = await Promise.all([
             db.RoomAuditView.count({ room_uuid }),

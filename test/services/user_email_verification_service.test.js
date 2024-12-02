@@ -6,14 +6,31 @@ import data from '../../src/seed_data.js';
 import { test, expect } from 'vitest';
 
 const userEmailVerificationServiceTest = (UserEmailVerificationService, name) => {
+
+    /**
+     * Exisiting entities
+     */
+
     const admin = { sub: data.users[0].uuid };
     const mod = { sub: data.users[1].uuid };
     const member = { sub: data.users[2].uuid };
+
+
+
+    /**
+     * Expected methods
+     */
 
     test(`(${name}) - UserEmailVerificationService must implement expected methods`, () => {
         expect(UserEmailVerificationService).toHaveProperty('resend');
         expect(UserEmailVerificationService).toHaveProperty('confirm');
     });
+
+
+
+    /**
+     * UserEmailVerificationService.resend
+     */
 
     test.each([
         [ undefined, 'No user_uuid provided' ],
@@ -29,6 +46,11 @@ const userEmailVerificationServiceTest = (UserEmailVerificationService, name) =>
         expect(async () => await UserEmailVerificationService.resend(options)).rejects.toThrowError(expected);
     });
 
+
+
+    /**
+     * UserEmailVerificationService.confirm
+     */
 
     test.each([
         [ undefined, 'No uuid provided' ],

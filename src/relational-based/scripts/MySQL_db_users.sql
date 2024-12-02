@@ -43,6 +43,9 @@ GRANT EXECUTE ON PROCEDURE `chat`.`delete_user_password_reset_proc` TO 'chat_use
 GRANT EXECUTE ON PROCEDURE `chat`.`update_user_status_proc` TO 'chat_user'@'%';
 GRANT EXECUTE ON PROCEDURE `chat`.`create_user_login_proc` TO 'chat_user'@'%';
 GRANT EXECUTE ON PROCEDURE `chat`.`delete_user_login_proc` TO 'chat_user'@'%';
+GRANT EXECUTE ON PROCEDURE `chat`.`create_room_file_proc` TO 'chat_user'@'%';
+GRANT EXECUTE ON PROCEDURE `chat`.`edit_room_avatar_proc` TO 'chat_user'@'%';
+GRANT EXECUTE ON PROCEDURE `chat`.`edit_user_login_proc` TO 'chat_user'@'%';
 
 -- Grant SELECT privilege on views only
 GRANT SELECT ON `chat`.`user_view` TO 'chat_user'@'%';

@@ -7,14 +7,33 @@ import { test, expect } from 'vitest';
 import { v4 as uuidv4 } from 'uuid';
 
 const channelTest = (ChannelService, name) => {
+
+    /**
+     * Existing users, rooms and channels
+     */
+
     const user = { sub: data.users.find(u => u.username === 'not_in_a_room').uuid };
-    const room_uuid = data.rooms[0].uuid;
-    const channel_uuid = data.rooms[0].channels[0].uuid;
+    const room_uuid = data.rooms[1].uuid;
+    const channel_uuid = data.rooms[1].channels[1].uuid;
+    const channel_name = data.rooms[1].channels[1].name;
+    const channel_type = data.rooms[1].channels[1].channel_type_name;
     const admin = { sub: data.users[0].uuid };
     const mod = { sub: data.users[1].uuid };
     const member = { sub: data.users[2].uuid };
 
+
+
+    /**
+     * New channel uuid
+     */
+
     const new_channel_uuid = uuidv4();
+
+
+
+    /**
+     * Expected methods
+     */
 
     test(`(${name}) - ChannelService must implement expected methods`, () => {
         expect(ChannelService).toHaveProperty('findOne');
@@ -23,6 +42,12 @@ const channelTest = (ChannelService, name) => {
         expect(ChannelService).toHaveProperty('update');
         expect(ChannelService).toHaveProperty('destroy');
     });
+
+
+
+    /**
+     * ChannelService.findOne
+     */
 
     test.each([
         [{ uuid: channel_uuid, user: admin }],
@@ -52,6 +77,12 @@ const channelTest = (ChannelService, name) => {
     ])(`(${name}) - ChannelService.findOne invalid partitions`, async (options, expected) => {
         expect(async () => await ChannelService.findOne(options)).rejects.toThrowError(expected);
     });
+
+
+
+    /**
+     * ChannelService.findAll
+     */
 
     test.each([
         [{ room_uuid, user: admin }],
@@ -94,6 +125,12 @@ const channelTest = (ChannelService, name) => {
         expect(async () => await ChannelService.findAll(options)).rejects.toThrowError(expected);
     });
 
+
+
+    /**
+     * ChannelService.create
+     */
+
     test.each([
         [{ 
             user: admin, 
@@ -127,9 +164,22 @@ const channelTest = (ChannelService, name) => {
         [{ body: { } }, 'No user provided'],
         [{ body: { }, user: { } }, 'No user.sub provided'],
         [{ body: { }, user: { sub: "test" } }, 'No uuid provided'],
+        [{ body: { uuid: "test" }, user: { sub: "test" } }, 'No name provided'],
+        [{ body: { uuid: "test", name: "test" }, user: { sub: "test" } }, 'No description provided'],
+        [{ body: { uuid: "test", name: "test", description: "test" }, user: { sub: "test" } }, 'No channel_type_name provided'],
+        [{ body: { uuid: "test", name: "test", description: "test", channel_type_name: "test" }, user: { sub: "test" } }, 'No room_uuid provided'],
+        [{ body: { uuid: "test", name: "test", description: "test", channel_type_name: "test", room_uuid }, user: admin }, 'channel_type_name not found'],
+        [{ body: { uuid: channel_uuid, name: "test", description: "test", channel_type_name: "Text", room_uuid }, user: admin }, `channel with PRIMARY ${channel_uuid} already exists`],
+        [{ body: { uuid: "test", name: channel_name, description: "test", channel_type_name: channel_type, room_uuid }, user: admin }, `channel with name_type_room_uuid ${channel_name}-${channel_type}-${room_uuid} already exists`],
     ])(`(${name}) - ChannelService.create invalid partitions`, async (options, expected) => {
         expect(async () => await ChannelService.create(options)).rejects.toThrowError(expected);
     });
+
+
+
+    /**
+     * ChannelService.update
+     */
 
     test.each([
         [{ 
@@ -167,6 +217,12 @@ const channelTest = (ChannelService, name) => {
         expect(async () => await ChannelService.update(options)).rejects.toThrowError(expected);
     });
 
+
+
+    /**
+     * ChannelService.destroy
+     */
+
     test.each([
         [{ 
             user: admin,
@@ -177,6 +233,22 @@ const channelTest = (ChannelService, name) => {
         expect(async () => await ChannelService.findOne(options))
             .rejects.toThrowError('channel not found');
     });
+
+    test.each([
+        [null, 'No options provided'],
+        ["", 'No options provided'],
+        [1, 'No uuid provided'],
+        [0, 'No options provided'],
+        [[], 'No uuid provided'],
+        [{}, 'No uuid provided'],
+        [{ uuid: { } }, 'No user provided'],
+        [{ uuid: "test", user: { } }, 'No user.sub provided'],
+        [{ uuid: "test", user: { sub: "test" } }, 'channel not found'],
+    ])(`(${name}) - ChannelService.destroy invalid partitions`, async (options, expected) => {
+        expect(async () => await ChannelService.destroy(options)).rejects.toThrowError(expected);
+    });
+
+    
 
     /**
      * Security Checks

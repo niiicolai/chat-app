@@ -6,14 +6,31 @@ import data from '../../src/seed_data.js';
 import { test, expect } from 'vitest';
 
 const roomAuditServiceTest = (RoomAuditService, name) => {
+
+    /**
+     * Exisiting entities
+     */
+
     const user = { sub: data.users.find(u => u.username === 'not_in_a_room').uuid };
     const room_uuid = data.rooms[0].uuid;
     const admin = { sub: data.users[0].uuid };
+
+
+
+    /**
+     * Expected Methods
+     */
 
     test(`(${name}) - RoomAuditService must implement expected methods`, () => {
         expect(RoomAuditService).toHaveProperty('findOne');
         expect(RoomAuditService).toHaveProperty('findAll');
     });
+
+
+
+    /**
+     * RoomAuditService.findAll
+     */
 
     test.each([
         [{ room_uuid, user: admin, limit: 2 }],
@@ -56,6 +73,12 @@ const roomAuditServiceTest = (RoomAuditService, name) => {
     ])(`(${name}) - RoomAuditService.findAll invalid partitions`, async (options, expected) => {
         expect(async () => await RoomAuditService.findAll(options)).rejects.toThrowError(expected);
     });
+
+
+
+    /**
+     * RoomAuditService.findOne
+     */
     
     test(`(${name}) - RoomAuditService.findOne valid partitions`, async () => {
         const audits = await RoomAuditService.findAll({ room_uuid, user: admin, limit: 1 });
@@ -83,6 +106,8 @@ const roomAuditServiceTest = (RoomAuditService, name) => {
     ])(`(${name}) - RoomAuditService.findOne invalid partitions`, async (options, expected) => {
         expect(async () => await RoomAuditService.findOne(options)).rejects.toThrowError(expected);
     });
+
+    
 
     /**
      * Security Checks

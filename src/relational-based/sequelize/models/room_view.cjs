@@ -26,24 +26,19 @@ module.exports = (sequelize, DataTypes) => {
          * @param {string} replacements.description
          * @param {string} replacements.room_category_name
          * @param {string} replacements.room_user_role
-         * @param {string} replacements.src - optional
-         * @param {number} replacements.bytes - optional
+         * @param {string} replacements.room_file_uuid - optional
          * @param {Object} transaction optional
          * @returns {Promise<void>}
          * @static
          */
         static async createRoomProcStatic(replacements, transaction) {
             if (!replacements) throw new Error('createRoomProcStatic: No replacements provided');
-            if (!replacements.user_uuid) throw new Error('createRoomProcStatic: No user_uuid provided');
             if (!replacements.uuid) throw new Error('createRoomProcStatic: No uuid provided');
             if (!replacements.name) throw new Error('createRoomProcStatic: No name provided');
             if (!replacements.description) throw new Error('createRoomProcStatic: No description provided');
             if (!replacements.room_category_name) throw new Error('createRoomProcStatic: No room_category_name provided');
-            if (!replacements.room_user_role) throw new Error('createRoomProcStatic: No room_user_role provided');
-            if (!replacements.src) replacements.src = null;
-            if (!replacements.bytes) replacements.bytes = null;
 
-            await sequelize.query('CALL create_room_proc(:user_uuid, :uuid, :name, :description, :room_category_name, :room_user_role, :src, :bytes, @result)', {
+            await sequelize.query('CALL create_room_proc(:uuid, :name, :description, :room_category_name)', {
                 replacements,
                 ...(transaction && { transaction }),
             });
@@ -57,8 +52,7 @@ module.exports = (sequelize, DataTypes) => {
          * @param {string} replacements.name
          * @param {string} replacements.description
          * @param {string} replacements.room_category_name
-         * @param {string} replacements.src - optional
-         * @param {number} replacements.bytes - optional
+         * @param {string} replacements.room_file_uuid - optional
          * @param {Object} transaction optional
          * @returns {Promise<void>}
          * @static
@@ -69,10 +63,29 @@ module.exports = (sequelize, DataTypes) => {
             if (!replacements.name) throw new Error('editRoomProcStatic: No name provided');
             if (!replacements.description) throw new Error('editRoomProcStatic: No description provided');
             if (!replacements.room_category_name) throw new Error('editRoomProcStatic: No room_category_name provided');
-            if (!replacements.src) replacements.src = null;
-            if (!replacements.bytes) replacements.bytes = null;
 
-            await sequelize.query('CALL edit_room_proc(:uuid, :name, :description, :room_category_name, :src, :bytes, @result)', {
+            await sequelize.query('CALL edit_room_proc(:uuid, :name, :description, :room_category_name)', {
+                replacements,
+                ...(transaction && { transaction }),
+            });
+        }
+
+        /**
+         * @function editRoomAvatarProcStatic
+         * @description Edit a room avatar using a stored procedure.
+         * @param {Object} replacements
+         * @param {string} replacements.room_uuid
+         * @param {string} replacements.room_file_uuid - optional
+         * @param {Object} transaction optional
+         * @returns {Promise<void>}
+         * @static
+         */
+        static async editRoomAvatarProcStatic(replacements, transaction) {
+            if (!replacements) throw new Error('editRoomAvatarProcStatic: No replacements provided');
+            if (!replacements.room_uuid) throw new Error('editRoomAvatarProcStatic: No room_uuid provided');
+            if (!replacements.room_file_uuid) replacements.room_file_uuid = null;
+
+            await sequelize.query('CALL edit_room_avatar_proc(:room_uuid, :room_file_uuid)', {
                 replacements,
                 ...(transaction && { transaction }),
             });
@@ -283,6 +296,20 @@ module.exports = (sequelize, DataTypes) => {
             });
 
             return (result === 1);
+        }
+
+        /**
+         * @function editRoomAvatarProc
+         * @description Edit a room avatar using a stored procedure.
+         * @param {Object} replacements
+         * @param {string} replacements.room_file_uuid - optional
+         * @param {Object} transaction optional
+         * @returns {Promise<void>}
+         */
+        async editRoomAvatarProc(replacements, transaction) {
+            if (!replacements) throw new Error('editRoomAvatarProc: No replacements provided');
+            replacements.room_uuid = this.room_uuid;
+            await RoomView.editRoomAvatarProcStatic(replacements, transaction);
         }
 
         /**

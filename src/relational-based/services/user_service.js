@@ -1,11 +1,9 @@
-import UserServiceValidator from '../../shared/validators/user_service_validator.js';
+import Validator from '../../shared/validators/user_service_validator.js';
 import UserEmailVerificationService from './user_email_verification_service.js';
 import UserAvatarUploader from '../../shared/uploaders/user_avatar_uploader.js';
-import EntityNotFoundError from '../../shared/errors/entity_not_found_error.js';
-import DuplicateEntryError from '../../shared/errors/duplicate_entry_error.js';
-import ControllerError from '../../shared/errors/controller_error.js';
 import JwtService from '../../shared/services/jwt_service.js';
 import PwdService from '../../shared/services/pwd_service.js';
+import err from '../../shared/errors/index.js';
 import db from '../sequelize/models/index.cjs';
 import dto from '../dto/user_dto.js';
 import userLoginDto from '../dto/user_login_dto.js';
@@ -35,10 +33,12 @@ class UserService {
      * @returns {Promise<Object>}
      */
     async findOne(options = { uuid: null }) {
-        UserServiceValidator.findOne(options);
+        Validator.findOne(options);
 
-        const entity = await db.UserView.findByPk(options.uuid);
-        if (!entity) throw new EntityNotFoundError('user');
+        const { uuid } = options;
+        const entity = await db.UserView.findByPk(uuid);
+
+        if (!entity) throw new err.EntityNotFoundError('user');
 
         return dto(entity);
     }
@@ -56,29 +56,26 @@ class UserService {
      * @returns {Promise<Object>}
      */
     async create(options = { body: null, file: null }) {
-        UserServiceValidator.create(options);
+        Validator.create(options);
 
         const { file } = options;
         const { uuid, email, username, password } = options.body;
 
         await db.sequelize.transaction(async (transaction) => {
-            await Promise.all([
-                db.UserView.findOne({ where: { user_uuid: uuid }, transaction }),
-                db.UserView.findOne({ where: { user_email: email }, transaction }),
-                db.UserView.findOne({ where: { user_username: username }, transaction })
-            ]).then(([uuidInUse, emailInUse, usernameInUse]) => {
-                if (uuidInUse) throw new DuplicateEntryError('user', 'uuid', uuid);
-                if (emailInUse) throw new DuplicateEntryError('user', 'email', email);
-                if (usernameInUse) throw new DuplicateEntryError('user', 'username', username);
-            });
-
+            const avatar = (file && file.size > 0) ? await uploader.create(file, uuid) : null
+            
             await db.UserView.createUserProcStatic({
                 uuid,
                 username,
                 email,
-                password: await PwdService.hash(password),
-                avatar: (file && file.size > 0) ? await uploader.create(file, uuid) : null,
-                login_type: 'Password',
+                avatar,
+            }, transaction);
+
+            await db.UserView.createUserLoginProcStatic({
+                login_uuid: uuidV4(),
+                user_login_type_name: 'Password',
+                user_login_password: await PwdService.hash(password),
+                user_uuid: uuid,
             }, transaction);
             
             if (process.env.NODE_ENV === 'test') {
@@ -94,6 +91,14 @@ class UserService {
             } else {
                 await UserEmailVerificationService.resend({ user_uuid: uuid }, transaction);
             }
+        }).catch((error) => {
+            if (error.name === 'SequelizeUniqueConstraintError') {
+                throw new err.DuplicateEntryError('user', error.errors[0].path, error.errors[0].value);
+            } else if (error.name === 'SequelizeForeignKeyConstraintError') {
+                throw new err.EntityNotFoundError(error.fields[0]);
+            }
+            console.error(error);
+            throw error;
         });
 
         return await db.UserView
@@ -116,7 +121,7 @@ class UserService {
      * @returns {Promise<Object>}
      */
     async update(options = { body: null, file: null, user: null }) {
-        UserServiceValidator.update(options);
+        Validator.update(options);
 
         const { body, file, user } = options;
         
@@ -125,30 +130,46 @@ class UserService {
                 where: { user_uuid: user.sub }, 
                 transaction 
             });
-            if (!savedUser) throw new EntityNotFoundError('user');
-
-            if (body.username && body.username !== savedUser.user_username &&
-                await db.UserView.findOne({ where: { user_username: body.username }, transaction })) {
-                throw new DuplicateEntryError('user', 'username', body.username);
-            }
-
-            if (body.email && body.email !== savedUser.user_email &&
-                await db.UserView.findOne({ where: { user_email: body.email }, transaction })) {
-                throw new DuplicateEntryError('user', 'email', body.email);
-            }
+            if (!savedUser) throw new err.EntityNotFoundError('user');
 
             await savedUser.editUserProc({
                 ...(body.username && { username: body.username }),
                 ...(body.email && { email: body.email }),
-                ...(body.password && { password: await PwdService.hash(body.password) }),
                 ...(file && file.size > 0 && { avatar: await uploader.create(file, user.sub) })
             }, transaction);
+
+            if (body.password) {
+                const userLogin = await db.UserLoginView.findOne({
+                    where: { user_uuid: user.sub, user_login_type_name: 'Password' },
+                    transaction
+                });
+                if (!userLogin) {
+                    await db.UserView.createUserLoginProcStatic({
+                        login_uuid: uuidV4(),
+                        user_login_type_name: 'Password',
+                        user_login_password: await PwdService.hash(body.password),
+                        user_uuid: user.sub,
+                    }, transaction);
+                } else {
+                    await userLogin.editUserLoginProc({ 
+                        user_login_password: await PwdService.hash(body.password) 
+                    }, transaction);
+                }
+            }
 
             // Old file must be deleted last to prevent database update failures
             // to delete the file if the database update fails.
             if (file && file.size > 0 && savedUser.user_avatar_src) {
                 await uploader.destroy(savedUser.user_avatar_src);
             }
+        }).catch((error) => {
+            if (error.name === 'SequelizeUniqueConstraintError') {
+                throw new err.DuplicateEntryError('user', error.errors[0].path, error.errors[0].value);
+            } else if (error.name === 'SequelizeForeignKeyConstraintError') {
+                throw new err.EntityNotFoundError(error.fields[0]);
+            }
+            console.error(error);
+            throw error;
         });
 
         return await db.UserView
@@ -166,21 +187,21 @@ class UserService {
      * @returns {Promise<Object>}
      */
     async login(options = { body: null }) {
-        UserServiceValidator.login(options);
+        Validator.login(options);
 
         const { email: user_email, password } = options.body;
 
         const savedUser = await db.UserView.findOne({ where: { user_email }});
-        if (!savedUser) throw new ControllerError(404, 'Invalid email or password');
+        if (!savedUser) throw new err.InvalidCredentialsError();
 
         const userLogin = await db.UserLoginView.findOne({ where: { 
             user_uuid: savedUser.user_uuid,
             user_login_type_name: 'Password'
         }});
-        if (!userLogin) throw new ControllerError(404, 'Invalid email or password');
+        if (!userLogin) throw new err.InvalidCredentialsError();
 
         if (!await PwdService.compare(password, userLogin.dataValues.user_login_password)) {
-            throw new ControllerError(400, 'Invalid email or password');
+            throw new err.ControllerError(400, 'Invalid email or password');
         }
 
         return {
@@ -197,14 +218,14 @@ class UserService {
      * @returns {Promise<void>}
      */
     async destroy(options = { uuid: null }) {
-        UserServiceValidator.destroy(options);
+        Validator.destroy(options);
 
         await db.sequelize.transaction(async (transaction) => {
             const savedUser = await db.UserView.findOne({
                 where: { user_uuid: options.uuid },
                 transaction
             });
-            if (!savedUser) throw new EntityNotFoundError('user');
+            if (!savedUser) throw new err.EntityNotFoundError('user');
 
             await savedUser.deleteUserProc(transaction);
 
@@ -222,14 +243,14 @@ class UserService {
      * @returns {Promise<void>}
      */
     async destroyAvatar(options = { uuid: null }) {
-        UserServiceValidator.destroyAvatar(options);
+        Validator.destroyAvatar(options);
 
         await db.sequelize.transaction(async (transaction) => {
             const savedUser = await db.UserView.findOne({
                 where: { user_uuid: options.uuid },
                 transaction
             });
-            if (!savedUser) throw new EntityNotFoundError('user');
+            if (!savedUser) throw new err.EntityNotFoundError('user');
             if (savedUser.user_avatar_src) {
                 await savedUser.deleteUserAvatarProc(transaction);
                 await uploader.destroy(savedUser.user_avatar_src);
@@ -245,10 +266,10 @@ class UserService {
      * @returns {Promise<Array>}
      */
     async getUserLogins(options = { uuid: null }) {
-        UserServiceValidator.getUserLogins(options);
+        Validator.getUserLogins(options);
 
         const user = await db.UserView.findOne({ where: { user_uuid: options.uuid }});
-        if (!user) throw new EntityNotFoundError('user');
+        if (!user) throw new err.EntityNotFoundError('user');
 
         return await db.UserLoginView
             .findAll({ where: { user_uuid: options.uuid }})
@@ -264,7 +285,7 @@ class UserService {
      * @returns {Promise<void>}
      */
     async destroyUserLogins(options = { uuid: null, login_uuid: null }) {
-        UserServiceValidator.destroyUserLogins(options);
+        Validator.destroyUserLogins(options);
 
         const { uuid, login_uuid } = options;
 
@@ -274,10 +295,10 @@ class UserService {
                 transaction
             });
 
-            if (!userLogin) throw new EntityNotFoundError('user_login');
+            if (!userLogin) throw new err.EntityNotFoundError('user_login');
 
             if (userLogin.user_login_type_name === 'Password') {
-                throw new ControllerError(400, 'Cannot delete password login');
+                throw new err.ControllerError(400, 'Cannot delete password login');
             }
 
             const userLoginCount = await db.UserLoginView.count({ 
@@ -285,7 +306,7 @@ class UserService {
                 transaction
             });
             if (userLoginCount === 1) {
-                throw new ControllerError(400, 'Cannot delete last login');
+                throw new err.ControllerError(400, 'Cannot delete last login');
             }
 
             await userLogin.deleteUserLoginProc(transaction);
@@ -304,7 +325,7 @@ class UserService {
      * @returns {Promise<Object>}
      */
     async createUserLogin(options = { uuid: null, body: null }) {
-        UserServiceValidator.createUserLogin(options);
+        Validator.createUserLogin(options);
 
         const { uuid, body } = options;
 
@@ -313,13 +334,13 @@ class UserService {
                 where: { user_uuid: uuid },
                 transaction
             });
-            if (!user) throw new EntityNotFoundError('user');
+            if (!user) throw new err.EntityNotFoundError('user');
 
             const loginType = await db.UserLoginTypeView.findOne({
                 where: { user_login_type_name: body.user_login_type_name },
                 transaction
             });
-            if (!loginType) throw new EntityNotFoundError('user_login_type');
+            if (!loginType) throw new err.EntityNotFoundError('user_login_type');
 
             if (body.password) {
                 body.password = await PwdService.hash(body.password);

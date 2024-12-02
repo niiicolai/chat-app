@@ -1,18 +1,24 @@
 import ChannelMessageServiceValidator from '../../shared/validators/channel_message_service_validator.js';
+import VerifiedEmailRequiredError from '../../shared/errors/verified_email_required_error.js';
+import ExceedsRoomTotalFilesLimitError from '../../shared/errors/exceeds_room_total_files_limit_error.js';
+import ExceedsSingleFileSizeError from '../../shared/errors/exceeds_single_file_size_error.js';
+import AdminPermissionRequiredError from '../../shared/errors/admin_permission_required_error.js';
+import RoomMemberRequiredError from '../../shared/errors/room_member_required_error.js';
+import EntityNotFoundError from '../../shared/errors/entity_not_found_error.js';
+import RoomLeastOneAdminRequiredError from '../../shared/errors/room_least_one_admin_required_error.js';
+import DuplicateEntryError from '../../shared/errors/duplicate_entry_error.js';
 import ControllerError from '../../shared/errors/controller_error.js';
 import StorageService from '../../shared/services/storage_service.js';
-import RoomPermissionService from './room_permission_service.js';
+import RPS from './room_permission_service.js';
 import dto from '../dto/channel_message_dto.js';
 import ChannelMessage from '../mongoose/models/channel_message.js';
 import ChannelMessageType from '../mongoose/models/channel_message_type.js';
-import ChannelMessageUpload from '../mongoose/subdocuments/channel_message_upload.js';
 import ChannelMessageUploadType from '../mongoose/models/channel_message_upload_type.js';
-import ChannelWebhookMessage from '../mongoose/subdocuments/channel_webhook_message.js';
 import Channel from '../mongoose/models/channel.js';
 import RoomFile from '../mongoose/models/room_file.js';
 import RoomFileType from '../mongoose/models/room_file_type.js';
 import User from '../mongoose/models/user.js';
-import mongoose from 'mongoose';
+import mongoose from '../mongoose/index.js';
 import { v4 as uuidv4 } from 'uuid';
 import { getUploadType } from '../../shared/utils/file_utils.js';
 import { broadcastChannel } from '../../../websocket_server.js';
@@ -34,21 +40,22 @@ class Service {
         ChannelMessageServiceValidator.findOne(options);
 
         const { user, uuid } = options;
-        const channelMessage = await ChannelMessage.findOne({ uuid })
+        const channelMessage = await ChannelMessage.findOne({ _id: uuid })
             .populate('channel user')
             .populate('channel_message_upload.room_file')
             .populate('channel.channel_webhook')
             .populate('channel.channel_webhook.room_file')
-        
-        if (!channelMessage) throw new ControllerError(404, 'channel_message not found');
-        if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid: channelMessage.channel.uuid, user, role_name: null }))) {
-            throw new ControllerError(403, 'User is not in the room');
-        }
+
+        if (!channelMessage) throw new EntityNotFoundError('channel_message');
+
+        await RPS.isInRoomByChannel({ channel_uuid: channelMessage.channel._id, user, role_name: null }).then((isInRoom) => {
+            if (!isInRoom) throw new RoomMemberRequiredError();
+        });
 
         return dto({
             ...channelMessage._doc,
-            room: { uuid: channelMessage.channel.room.uuid },
-            channel: { uuid: channelMessage.channel.uuid },
+            room: { uuid: channelMessage.channel.room._id },
+            channel: { uuid: channelMessage.channel._id },
             ...(channelMessage.user && { user: channelMessage.user._doc }),
             ...(channelMessage.channel_message_upload && {
                 channel_message_upload: {
@@ -76,28 +83,30 @@ class Service {
         options = ChannelMessageServiceValidator.findAll(options);
         const { channel_uuid, user, page, limit, offset } = options;
 
-        if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid, user, role_name: null }))) {
-            throw new ControllerError(403, 'User is not in the room');
-        }
+        await RPS.isInRoomByChannel({ channel_uuid, user, role_name: null }).then((isInRoom) => {
+            if (!isInRoom) throw new RoomMemberRequiredError();
+        });
 
-        const channel = await Channel.findOne({ uuid: channel_uuid })
+        const channel = await Channel.findOne({ _id: channel_uuid })
             .populate('room')
             .populate('channel_webhook')
             .populate('channel_webhook.room_file');
-        if (!channel) throw new ControllerError(404, 'Channel not found');
+        if (!channel) throw new EntityNotFoundError('channel');
 
         const params = { channel: channel._id };
-        const total = await Channel.find(params).countDocuments();
-        const channelMessages = await ChannelMessage.find(params)
-            .populate('channel user')
-            .populate('channel_message_upload.room_file')
-            .sort({ created_at: -1 })
-            .limit(limit || 0)
-            .skip((page && limit) ? offset : 0);
+        const [total, channelMessages] = await Promise.all([
+            ChannelMessage.find(params).countDocuments(),
+            ChannelMessage.find(params)
+                .populate('channel user')
+                .populate('channel_message_upload.room_file')
+                .sort({ created_at: -1 })
+                .limit(limit || 0)
+                .skip((page && limit) ? offset : 0),
+        ]);
 
         return {
             total,
-            data: await Promise.all(channelMessages.map(async (channelMessage) => {
+            data: channelMessages.map((channelMessage) => {
                 return dto({
                     ...channelMessage._doc,
                     room: { uuid: channel.room.uuid },
@@ -109,7 +118,7 @@ class Service {
                         }
                     }),
                 });
-            })),
+            }),
             ...(limit && { limit }),
             ...(page && limit && { page, pages: Math.ceil(total / limit) }),
         };
@@ -122,77 +131,71 @@ class Service {
         const { uuid, body: msg, channel_uuid } = body;
         const { sub: user_uuid } = user;
 
-        const [channel, savedUser, channel_message_type] = await Promise.all([
-            Channel.findOne({ uuid: channel_uuid }).populate('room'),
-            User.findOne({ uuid: user_uuid }),
-            ChannelMessageType.findOne({ name: 'User' }),
-        ]);
+        const session = await mongoose.startSession();
+        session.startTransaction();
+        try {
+            const {channel, room_uuid} = await Promise.all([
+                Channel.findOne({ _id: channel_uuid }).session(session).populate('room'),
+                User.findOne({ _id: user_uuid }).session(session),
+                ChannelMessageType.findOne({ _id: 'User' }).session(session),
+                RPS.isInRoomByChannel({ channel_uuid, user, role_name: null }, session),
+            ]).then(([channel, savedUser, channel_message_type, isInRoom]) => {
+                if (!channel) throw new EntityNotFoundError('channel');
+                if (!savedUser) throw new EntityNotFoundError('user');
+                if (!channel_message_type) throw new EntityNotFoundError('channel_message_type');
+                if (!isInRoom) throw new RoomMemberRequiredError();
 
-        if (!channel) throw new ControllerError(404, 'Channel not found');
-        if (!savedUser) throw new ControllerError(404, 'User not found');
-        if (!channel_message_type) throw new ControllerError(500, 'Channel message type not found');
-        if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid, user, role_name: null }))) {
-            throw new ControllerError(403, 'User is not in the room');
-        }
-        
-        const channelMessage = new ChannelMessage({
-            uuid,
-            body: msg,
-            channel_message_type,
-            channel: channel._id,
-            user: savedUser._id,
-        });
+                return {channel, room_uuid: channel.room._id};
+            });
 
-        let room_file = null;
-        if (file && file.size > 0) {
-            const size = file.size;
+            const channelMessage = new ChannelMessage({
+                uuid,
+                body: msg,
+                channel_message_type: "User",
+                channel: channel_uuid,
+                user: user_uuid,
+            });
 
-            const chUploadTypeName = getUploadType(file);
-            const [room_file_type, channel_message_upload_type] = await Promise.all([
-                RoomFileType.findOne({ name: 'ChannelMessageUpload' }),
-                ChannelMessageUploadType.findOne({ name: chUploadTypeName }),
-            ]);
+            let room_file = null;
+            if (file && file.size > 0) {
+                await Promise.all([
+                    RPS.fileExceedsTotalFilesLimit({ room_uuid, bytes: file.size }, session),
+                    RPS.fileExceedsSingleFileSize({ room_uuid, bytes: file.size }, session),
+                ]).then(([exceedsTotalFilesLimit, exceedsSingleFileSize]) => {
+                    if (exceedsTotalFilesLimit) throw new ExceedsRoomTotalFilesLimitError();
+                    if (exceedsSingleFileSize) throw new ExceedsSingleFileSizeError();
+                });
 
-            if (!room_file_type) throw new ControllerError(500, 'Room file type not found');
-            if (!channel_message_upload_type) throw new ControllerError(500, 'Channel message upload type not found');
+                const src = await storage.uploadFile(file, uuid);
+                room_file = await new RoomFile({
+                    uuid: uuidv4(),
+                    room_file_type: "ChannelMessageUpload",
+                    src,
+                    size: size,
+                    room: room_uuid,
+                }).save({ session });
 
-            if ((await RoomPermissionService.fileExceedsTotalFilesLimit({ room_uuid: channel.room.uuid, bytes: size }))) {
-                throw new ControllerError(400, 'The room does not have enough space for this file');
+                channelMessage.channel_message_upload = {
+                    uuid: uuidv4(),
+                    channel_message_upload_type: getUploadType(file),
+                    room_file: room_file._id,
+                };
             }
-            if ((await RoomPermissionService.fileExceedsSingleFileSize({ room_uuid: channel.room.uuid, bytes: size }))) {
-                throw new ControllerError(400, 'File exceeds single file size limit');
-            }
 
-            const src = await storage.uploadFile(file, uuid);
-            room_file = await new RoomFile({
-                uuid: uuidv4(),
-                room_file_type,
-                src,
-                size: size,
-                room: channel.room._id,
-            }).save();
+            await channelMessage.save({ session });
 
-            channelMessage.channel_message_upload = {
-                uuid: uuidv4(),
-                channel_message_upload_type,
-                room_file: room_file._id,
-            };
-        }
-
-        await channelMessage.save();
-
-        const result = dto({
-            ...channelMessage._doc,
-            room: { uuid: channel.room.uuid },
-            channel: { uuid: channel.uuid },
-            user: savedUser._doc,
-            ...(channelMessage.channel_message_upload && {
-                channel_message_upload: {
-                    ...channelMessage.channel_message_upload._doc,
-                    ...(room_file && { room_file }),
-                }
-            }),
-        });
+            const result = dto({
+                ...channelMessage._doc,
+                room: { uuid: channel.room.uuid },
+                channel: { uuid: channel.uuid },
+                user: savedUser._doc,
+                ...(channelMessage.channel_message_upload && {
+                    channel_message_upload: {
+                        ...channelMessage.channel_message_upload._doc,
+                        ...(room_file && { room_file }),
+                    }
+                }),
+            });
 
         /**
           * Broadcast the channel message to all users

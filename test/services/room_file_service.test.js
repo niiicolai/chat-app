@@ -6,11 +6,22 @@ import data from '../../src/seed_data.js';
 import { test, expect } from 'vitest';
 
 const roomFileServiceTest = (RoomFileService, name) => {
+
+    /**
+     * Exisiting entities
+     */
+
     const user = { sub: data.users.find(u => u.username === 'not_in_a_room').uuid };
     const room_uuid = data.rooms[0].uuid;
     const admin = { sub: data.users[0].uuid };
     const mod = { sub: data.users[1].uuid };
     const member = { sub: data.users[2].uuid };
+
+
+
+    /**
+     * Expected Methods
+     */
 
     test(`(${name}) - RoomFileService must implement expected methods`, () => {
         expect(RoomFileService).toHaveProperty('findOne');
@@ -18,6 +29,12 @@ const roomFileServiceTest = (RoomFileService, name) => {
         expect(RoomFileService).toHaveProperty('destroy');
         expect(RoomFileService).toHaveProperty('isOwner');
     });
+
+
+
+    /**
+     * RoomFileService.findAll
+     */
 
     test.each([
         [{ room_uuid, user: admin, limit: 2 }],
@@ -63,6 +80,12 @@ const roomFileServiceTest = (RoomFileService, name) => {
         expect(async () => await RoomFileService.findAll(options)).rejects.toThrowError(expected);
     });
 
+
+
+    /**
+     * RoomFileService.findOne
+     */
+
     test(`(${name}) - RoomFileService.findOne valid partitions`, async () => {
         const files = await RoomFileService.findAll({ room_uuid, user: admin, limit: 1 });
         expect(files.data.length).toBeGreaterThan(0);
@@ -91,6 +114,9 @@ const roomFileServiceTest = (RoomFileService, name) => {
     ])(`(${name}) - RoomFileService.findOne invalid partitions`, async (options, expected) => {
         expect(async () => await RoomFileService.findOne(options)).rejects.toThrowError(expected);
     });
+
+
+    
 
     /**
      * Security Checks

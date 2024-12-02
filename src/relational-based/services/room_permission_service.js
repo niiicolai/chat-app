@@ -1,4 +1,4 @@
-import RoomPermissionServiceValidator from '../../shared/validators/room_permission_service_validator.js';
+import Validator from '../../shared/validators/room_permission_service_validator.js';
 import db from '../sequelize/models/index.cjs';
 
 /**
@@ -18,10 +18,11 @@ class RoomPermissionService {
      * @returns {Promise<boolean>}
      */
     async isVerified(options = { user: null }, transaction = null) {
-        RoomPermissionServiceValidator.isVerified(options);
+        Validator.isVerified(options);
         
+        const { sub: user_uuid } = options.user;
         const userEmailVerification = await db.UserEmailVerificationView.findOne({
-            where: { user_uuid: options.user.sub },
+            where: { user_uuid },
             ...(transaction && { transaction }),
         });
         
@@ -40,17 +41,17 @@ class RoomPermissionService {
      * @returns {Promise<boolean>}
      */
     async isInRoom(options = { room_uuid: null, user: null, role_name: null }, transaction = null) {
-        RoomPermissionServiceValidator.isInRoom(options);
+        Validator.isInRoom(options);
 
-        const { room_uuid, user } = options;
-
+        const { room_uuid, user, role_name } = options;
         const roomUser = await db.RoomUserView.findOne({
             where: { room_uuid, user_uuid: user.sub },
             ...(transaction && { transaction }),
         });
+
         if (!roomUser) return false;
 
-        return options.role_name ? roomUser.room_user_role_name === options.role_name : true;
+        return !role_name || roomUser.room_user_role_name === role_name;
     }
 
     /**
@@ -65,23 +66,15 @@ class RoomPermissionService {
      * @returns {Promise<boolean>}
      */
     async isInRoomByChannel(options = { channel_uuid: null, user: null, role_name: null }, transaction = null) {
-        RoomPermissionServiceValidator.isInRoomByChannel(options);
+        Validator.isInRoomByChannel(options);
 
-        const { channel_uuid, user } = options;
+        const { channel_uuid, user, role_name } = options;
+        const channel = await db.ChannelView.findByPk(channel_uuid, { transaction });
 
-        const channel = await db.ChannelView.findOne({ 
-            where: { channel_uuid }, 
-            ...(transaction && { transaction }) 
-        });
         if (!channel) return false;
 
-        const roomUser = await db.RoomUserView.findOne({ 
-            where: { room_uuid: channel.room_uuid, user_uuid: user.sub },
-            ...(transaction && { transaction }) 
-        });
-        if (!roomUser) return false;
-
-        return options.role_name ? roomUser.room_user_role_name === options.role_name : true;
+        const room_uuid = channel.room_uuid;
+        return await this.isInRoom({ room_uuid, user, role_name }, transaction);   
     }
 
     /**
@@ -94,7 +87,7 @@ class RoomPermissionService {
      * @returns {Promise<boolean>}
      */
     async fileExceedsTotalFilesLimit(options = { room_uuid: null, bytes: null }, transaction = null) {
-        RoomPermissionServiceValidator.fileExceedsTotalFilesLimit(options);
+        Validator.fileExceedsTotalFilesLimit(options);
         const { room_uuid, bytes } = options;
         return await db.RoomView.checkUploadExceedsTotalProcStatic({ bytes, room_uuid }, transaction);
     }
@@ -109,7 +102,7 @@ class RoomPermissionService {
      * @returns {Promise<boolean>}
      */
     async fileExceedsSingleFileSize(options = { room_uuid: null, bytes: null }, transaction = null) {
-        RoomPermissionServiceValidator.fileExceedsSingleFileSize(options);
+        Validator.fileExceedsSingleFileSize(options);
         const { room_uuid, bytes } = options;
         return await db.RoomView.checkUploadExceedsSingleProcStatic({ bytes, room_uuid }, transaction);
     }
@@ -124,7 +117,7 @@ class RoomPermissionService {
      * @returns {Promise<boolean>}
      */
     async roomUserCountExceedsLimit(options = { room_uuid: null, add_count: null }, transaction = null) {
-        RoomPermissionServiceValidator.roomUserCountExceedsLimit(options);
+        Validator.roomUserCountExceedsLimit(options);
         const { room_uuid, add_count } = options;
         return await db.RoomView.checkUsersExceedsTotalProcStatic({ room_uuid, add_count }, transaction);
     }
@@ -139,7 +132,7 @@ class RoomPermissionService {
      * @returns {Promise<boolean>}
      */
     async channelCountExceedsLimit(options = { room_uuid: null, add_count: null }, transaction = null) {
-        RoomPermissionServiceValidator.channelCountExceedsLimit(options);
+        Validator.channelCountExceedsLimit(options);
         const { room_uuid, add_count } = options;
         return await db.RoomView.checkChannelsExceedsTotalProcStatic({ room_uuid, add_count }, transaction);
     }

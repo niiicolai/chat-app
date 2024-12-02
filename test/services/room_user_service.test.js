@@ -11,6 +11,11 @@ import data from '../../src/seed_data.js';
 import { test, expect } from 'vitest';
 
 const roomUserServiceTest = (RoomUserService, RoomInviteLinkService, name) => {
+
+    /**
+     * Exisiting entities
+     */
+
     const user = { sub: data.users.find(u => u.username === 'not_in_a_room').uuid };
     const admin = { sub: data.users[0].uuid };
     const mod = { sub: data.users[1].uuid };
@@ -18,9 +23,25 @@ const roomUserServiceTest = (RoomUserService, RoomInviteLinkService, name) => {
     const room_uuid = data.rooms[0].uuid;
     const room_invite_link_uuid = data.rooms[0].room_invite_link.uuid;
 
+
+    
+    /**
+     * Expected methods
+     */
+
     test(`(${name}) - RoomUserService must implement expected methods`, () => {
         expect(RoomUserService).toHaveProperty('findAuthenticatedUser');
+        expect(RoomUserService).toHaveProperty('findOne');
+        expect(RoomUserService).toHaveProperty('findAll');
+        expect(RoomUserService).toHaveProperty('update');
+        expect(RoomUserService).toHaveProperty('destroy');
     });
+
+    
+
+    /**
+     * RoomUserService.findAuthenticatedUser
+     */
 
     test.each([
         [{ room_uuid, user: admin }],
@@ -48,6 +69,12 @@ const roomUserServiceTest = (RoomUserService, RoomInviteLinkService, name) => {
         expect(async () => await RoomUserService.findAuthenticatedUser(options)).rejects.toThrow(expected);
     });
 
+
+
+    /**
+     * RoomUserService.findOne
+     */
+
     test.each([
         [{ room_uuid, user: admin }],
         [{ room_uuid, user: mod }],
@@ -74,6 +101,12 @@ const roomUserServiceTest = (RoomUserService, RoomInviteLinkService, name) => {
     ])(`(${name}) - RoomUserService.findAuthenticatedUser invalid partitions`, async (options, expected) => {
         expect(async () => await RoomUserService.findOne(options)).rejects.toThrow(expected);
     });
+
+
+
+    /**
+     * RoomUserService.findAll
+     */
 
     test.each([
         [{ room_uuid, user: admin }],
@@ -121,6 +154,12 @@ const roomUserServiceTest = (RoomUserService, RoomInviteLinkService, name) => {
         expect(async () => await RoomUserService.findAll(options)).rejects.toThrowError(expected);
     });
 
+
+
+    /**
+     * RoomUserService.update
+     */
+
     test.each([
         [{
             room_uuid,
@@ -159,6 +198,12 @@ const roomUserServiceTest = (RoomUserService, RoomInviteLinkService, name) => {
         expect(async () => await RoomUserService.update(options)).rejects.toThrowError(expected);
     });
 
+
+
+    /**
+     * RoomUserService.destroy
+     */
+
     test.each([
         [{
             user,
@@ -188,6 +233,8 @@ const roomUserServiceTest = (RoomUserService, RoomInviteLinkService, name) => {
     ])(`(${name}) - RoomUserService.destroy invalid partitions`, async (options, expected) => {
         expect(async () => await RoomUserService.destroy(options)).rejects.toThrowError(expected);
     });
+
+
 
     /**
      * Security Checks

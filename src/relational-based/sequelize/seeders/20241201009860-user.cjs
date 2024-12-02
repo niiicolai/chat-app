@@ -38,7 +38,7 @@ module.exports = {
 
       // ensure the users are verified
       await Promise.all(data.users.map(user => {
-        return queryInterface.sequelize.query('CALL set_user_email_verification_proc(:user_uuid, :user_is_verified, @result)', {
+        return queryInterface.sequelize.query('CALL set_user_email_verification_proc(:user_uuid, :user_is_verified)', {
           replacements: {
             user_uuid: user.uuid,
             user_is_verified: true,

@@ -117,8 +117,8 @@ CREATE TABLE User (
     avatar_src TEXT DEFAULT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT user_username_unique UNIQUE (username),
-    CONSTRAINT user_email_unique UNIQUE (email)
+    CONSTRAINT user_username UNIQUE (username),
+    CONSTRAINT user_email UNIQUE (email)
 );
 
 DROP TABLE IF EXISTS UserLogin;
@@ -131,7 +131,9 @@ CREATE TABLE UserLogin (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_uuid) REFERENCES User(uuid),
-    FOREIGN KEY (user_login_type_name) REFERENCES UserLoginType(name)
+    FOREIGN KEY (user_login_type_name) REFERENCES UserLoginType(name),
+    CONSTRAINT user_login_unique UNIQUE (user_uuid, user_login_type_name),
+    CONSTRAINT user_login_third_party_id_unique UNIQUE (third_party_id)
 );
 
 -- Rooms can have members and channels for communication.
@@ -144,7 +146,7 @@ CREATE TABLE Room (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (room_category_name) REFERENCES RoomCategory(name),
-    CONSTRAINT room_name_unique UNIQUE (name)
+    CONSTRAINT room_name UNIQUE (name)
 );
 
 
@@ -242,7 +244,7 @@ CREATE TABLE Channel (
     FOREIGN KEY (room_uuid) REFERENCES Room(uuid),
     FOREIGN KEY (channel_type_name) REFERENCES ChannelType(name),
     FOREIGN KEY (room_file_uuid) REFERENCES RoomFile(uuid),
-    UNIQUE KEY unique_channel (name, channel_type_name, room_uuid)
+    UNIQUE KEY name_type_room_uuid (name, channel_type_name, room_uuid)
 );
 
 
@@ -656,35 +658,10 @@ CREATE PROCEDURE create_user_proc(
     IN user_uuid_input VARCHAR(36),
     IN user_name_input VARCHAR(255),
     IN user_email_input VARCHAR(255),
-    IN user_password_input VARCHAR(255),
-    IN user_avatar_src_input TEXT,
-    IN user_login_type_name_input VARCHAR(255),
-    IN user_login_third_party_id_input VARCHAR(255),
-    OUT result BOOLEAN
+    IN user_avatar_src_input TEXT
 )
 BEGIN
-    DECLARE exit_code VARCHAR(5);
-    DECLARE exit_message TEXT;
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION
-    BEGIN
-        GET DIAGNOSTICS CONDITION 1
-            exit_code = RETURNED_SQLSTATE, 
-            exit_message = MESSAGE_TEXT;
-        ROLLBACK;
-        SELECT CONCAT('Error Code: ', exit_code, ' Error Message: ', exit_message) AS error_output;
-        SET result = FALSE;
-    END;
-
-    START TRANSACTION;
-        INSERT INTO User (uuid, username, email, avatar_src) VALUES (user_uuid_input, user_name_input, user_email_input, user_avatar_src_input);
-        if user_login_type_name_input = "Password" then
-            INSERT INTO UserLogin (uuid, user_uuid, user_login_type_name, password) VALUES (UUID(), user_uuid_input, user_login_type_name_input, user_password_input);
-        end if;
-        if user_login_type_name_input = "Google" then
-            INSERT INTO UserLogin (uuid, user_uuid, user_login_type_name, third_party_id) VALUES (UUID(), user_uuid_input, user_login_type_name_input, user_login_third_party_id_input);
-        end if;
-    COMMIT;
-    SET result = TRUE;
+    INSERT INTO User (uuid, username, email, avatar_src) VALUES (user_uuid_input, user_name_input, user_email_input, user_avatar_src_input);
 END //
 DELIMITER ;
 
@@ -752,23 +729,10 @@ CREATE PROCEDURE edit_user_proc(
     IN user_uuid_input VARCHAR(36),
     IN user_name_input VARCHAR(255),
     IN user_email_input VARCHAR(255),
-    IN user_password_input VARCHAR(255),
-    IN user_avatar_src_input TEXT,
-    OUT result BOOLEAN
+    IN user_avatar_src_input TEXT
 )
 BEGIN
-    -- Update the user
     UPDATE User SET username = user_name_input, email = user_email_input, avatar_src = user_avatar_src_input WHERE uuid = user_uuid_input;
-
-    -- if the password is not null, find the user login and update the password
-    if user_password_input is not null then
-        if exists (select 1 from UserLogin where user_uuid = user_uuid_input and user_login_type_name = "Password") then
-            UPDATE UserLogin SET password = user_password_input WHERE user_uuid = user_uuid_input AND user_login_type_name = "Password";
-        else
-            INSERT INTO UserLogin (uuid, user_uuid, user_login_type_name, password) VALUES (UUID(), user_uuid_input, "Password", user_password_input);
-        end if;
-    end if;
-    SET result = TRUE;
 END //
 DELIMITER ;
 
@@ -777,13 +741,10 @@ DELIMITER ;
 DROP PROCEDURE IF EXISTS delete_user_proc;
 DELIMITER //
 CREATE PROCEDURE delete_user_proc(
-    IN user_uuid_input VARCHAR(36),
-    OUT result BOOLEAN
+    IN user_uuid_input VARCHAR(36)
 )
 BEGIN
-    -- Delete the user
     DELETE FROM User WHERE uuid = user_uuid_input;
-    SET result = TRUE;
 END //
 DELIMITER ;
 
@@ -808,13 +769,29 @@ DELIMITER ;
 DROP PROCEDURE IF EXISTS delete_user_login_proc;
 DELIMITER //
 CREATE PROCEDURE delete_user_login_proc(
-    IN user_login_uuid_input VARCHAR(36),
-    OUT result BOOLEAN
+    IN user_login_uuid_input VARCHAR(36)
 )
 BEGIN
-    -- Delete the user login
     DELETE FROM UserLogin WHERE uuid = user_login_uuid_input;
-    SET result = TRUE;
+END //
+DELIMITER ;
+
+-- Edit a user login
+DROP PROCEDURE IF EXISTS edit_user_login_proc;
+DELIMITER //
+CREATE PROCEDURE edit_user_login_proc(
+    IN user_login_uuid_input VARCHAR(36),
+    IN user_login_type_name_input VARCHAR(255),
+    IN user_login_password_input VARCHAR(255),
+    IN user_login_third_party_id_input VARCHAR(255)
+)
+BEGIN
+    IF user_login_type_name_input = "Password" THEN
+        UPDATE UserLogin SET password = user_login_password_input WHERE uuid = user_login_uuid_input;
+    END IF;
+    IF user_login_type_name_input = "Google" THEN
+        UPDATE UserLogin SET third_party_id = user_login_third_party_id_input WHERE uuid = user_login_uuid_input;
+    END IF;
 END //
 DELIMITER ;
 
@@ -827,31 +804,15 @@ CREATE PROCEDURE create_user_login_proc(
     IN user_uuid_input VARCHAR(36),
     IN user_login_type_name_input VARCHAR(255),
     IN user_login_third_party_id_input VARCHAR(255),
-    IN user_login_password_input VARCHAR(255),
-    OUT result BOOLEAN
+    IN user_login_password_input VARCHAR(255)
 )
 BEGIN
-    DECLARE exit_code VARCHAR(5);
-    DECLARE exit_message TEXT;
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION
-    BEGIN
-        GET DIAGNOSTICS CONDITION 1
-            exit_code = RETURNED_SQLSTATE, 
-            exit_message = MESSAGE_TEXT;
-        ROLLBACK;
-        SELECT CONCAT('Error Code: ', exit_code, ' Error Message: ', exit_message) AS error_output;
-        SET result = FALSE;
-    END;
-
-    START TRANSACTION;
-        if user_login_type_name_input = "Password" then
-            INSERT INTO UserLogin (uuid, user_uuid, user_login_type_name, password) VALUES (user_login_uuid_input, user_uuid_input, user_login_type_name_input, user_login_password_input);
-        end if;
-        if user_login_type_name_input = "Google" then
-            INSERT INTO UserLogin (uuid, user_uuid, user_login_type_name, third_party_id) VALUES (user_login_uuid_input, user_uuid_input, user_login_type_name_input, user_login_third_party_id_input);
-        end if;
-    COMMIT;
-    SET result = TRUE;
+    if user_login_type_name_input = "Password" then
+        INSERT INTO UserLogin (uuid, user_uuid, user_login_type_name, password) VALUES (user_login_uuid_input, user_uuid_input, user_login_type_name_input, user_login_password_input);
+    end if;
+    if user_login_type_name_input = "Google" then
+        INSERT INTO UserLogin (uuid, user_uuid, user_login_type_name, third_party_id) VALUES (user_login_uuid_input, user_uuid_input, user_login_type_name_input, user_login_third_party_id_input);
+    end if;
 END //
 DELIMITER ;
 
@@ -861,55 +822,14 @@ DELIMITER ;
 DROP PROCEDURE IF EXISTS create_room_proc;
 DELIMITER //
 CREATE PROCEDURE create_room_proc(
-    IN user_uuid_input VARCHAR(36),
     IN room_uuid_input VARCHAR(36),
     IN room_name_input VARCHAR(255),
     IN room_description_input TEXT,
-    IN room_category_name_input VARCHAR(255),
-    IN room_user_role_name_input VARCHAR(255),
-    IN room_avatar_src_input TEXT,
-    IN room_avatar_size_input BIGINT,
-    OUT result BOOLEAN
+    IN room_category_name_input VARCHAR(255)
 )
 BEGIN
-    DECLARE room_file_uuid VARCHAR(36);
-    DECLARE exit_code VARCHAR(5);
-    DECLARE exit_message TEXT;
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION
-    BEGIN
-        GET DIAGNOSTICS CONDITION 1
-            exit_code = RETURNED_SQLSTATE, 
-            exit_message = MESSAGE_TEXT;
-        ROLLBACK;
-        -- Print the error message and code
-        SELECT CONCAT('Error Code: ', exit_code, ' Error Message: ', exit_message) AS error_output;
-        
-        SET result = FALSE;
-    END;
-
-    START TRANSACTION;
-
-        -- Insert the room
-        INSERT INTO Room (uuid, name, description, room_category_name) 
+    INSERT INTO Room (uuid, name, description, room_category_name) 
         VALUES (room_uuid_input, room_name_input, room_description_input, room_category_name_input);
-        
-        -- Check if the room avatar is not null and insert it into the RoomAvatar table
-        IF room_avatar_src_input IS NOT NULL THEN
-            SET room_file_uuid = UUID();
-
-            -- Create a room file
-            INSERT INTO RoomFile (uuid, src, size, room_uuid, room_file_type_name)
-            VALUES (room_file_uuid, room_avatar_src_input, room_avatar_size_input, room_uuid_input, 'RoomAvatar');
-
-            -- Update room avatar
-            UPDATE RoomAvatar SET room_file_uuid = room_file_uuid WHERE room_uuid = room_uuid_input;
-        END IF;
-
-        -- Insert the user into the room
-        INSERT INTO RoomUser (uuid, room_uuid, user_uuid, room_user_role_name) 
-        VALUES (UUID(), room_uuid_input, user_uuid_input, room_user_role_name_input);
-    COMMIT;
-    SET result = TRUE;
 END //
 DELIMITER ;
 
@@ -921,51 +841,23 @@ CREATE PROCEDURE edit_room_proc(
     IN room_uuid_input VARCHAR(36),
     IN room_name_input VARCHAR(255),
     IN room_description_input TEXT,
-    IN room_category_name_input VARCHAR(255),
-    IN room_avatar_src_input TEXT,
-    IN room_avatar_size_input BIGINT,
-    OUT result BOOLEAN
+    IN room_category_name_input VARCHAR(255)
 )
 BEGIN
-    DECLARE room_file_uuid VARCHAR(36);
-    DECLARE existing_avatar_uuid VARCHAR(36);
-    DECLARE existing_room_file_uuid VARCHAR(36);
-    DECLARE exit_code VARCHAR(5);
-    DECLARE exit_message TEXT;
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION
-    BEGIN
-        GET DIAGNOSTICS CONDITION 1
-            exit_code = RETURNED_SQLSTATE, 
-            exit_message = MESSAGE_TEXT;
-        ROLLBACK;
-        SELECT CONCAT('Error Code: ', exit_code, ' Error Message: ', exit_message) AS error_output;
-        SET result = FALSE;
-    END;
-    START TRANSACTION;
-        UPDATE Room 
-            SET name = room_name_input, description = room_description_input, room_category_name = room_category_name_input
-            WHERE uuid = room_uuid_input;
+    UPDATE Room SET name = room_name_input, description = room_description_input, room_category_name = room_category_name_input WHERE uuid = room_uuid_input;
+END //
+DELIMITER ;
 
-        SELECT r.uuid, r.room_file_uuid into existing_avatar_uuid, existing_room_file_uuid
-            FROM RoomAvatar as r
-            WHERE room_uuid = room_uuid_input LIMIT 1;
 
-        IF room_avatar_src_input IS NOT NULL THEN
-            IF existing_room_file_uuid IS NOT NULL THEN
-                UPDATE RoomFile SET src = room_avatar_src_input, size = room_avatar_size_input
-                WHERE uuid = existing_room_file_uuid;
-            ELSE
-                SET room_file_uuid = UUID();
-                INSERT INTO RoomFile (uuid, src, size, room_uuid, room_file_type_name)
-                VALUES (room_file_uuid, room_avatar_src_input, room_avatar_size_input, room_uuid_input, 'RoomAvatar');
-                UPDATE RoomAvatar SET room_file_uuid = room_file_uuid WHERE uuid = existing_avatar_uuid;
-            END IF;
-        ELSE
-            UPDATE RoomAvatar SET room_file_uuid = NULL WHERE uuid = existing_avatar_uuid;
-        END IF;
 
-    COMMIT;
-    SET result = TRUE;
+DROP PROCEDURE IF EXISTS edit_room_avatar_proc;
+DELIMITER //
+CREATE PROCEDURE edit_room_avatar_proc(
+    IN room_uuid_input VARCHAR(36),
+    IN room_file_uuid_input VARCHAR(36)
+)
+BEGIN
+    UPDATE RoomAvatar SET room_file_uuid = room_file_uuid_input WHERE room_uuid = room_uuid_input;
 END //
 DELIMITER ;
 
@@ -1192,47 +1084,18 @@ CREATE PROCEDURE create_channel_proc(
     IN channel_name_input VARCHAR(255),
     IN channel_description_input TEXT,
     IN channel_type_name_input VARCHAR(255),
-    IN channel_avatar_size_input BIGINT,
-    IN channel_avatar_src_input TEXT,
     IN room_uuid_input VARCHAR(36),
+    in room_file_uuid_input VARCHAR(36),
     OUT result BOOLEAN
 )
 BEGIN
-    DECLARE room_file_uuid VARCHAR(36);
-    DECLARE exit_code VARCHAR(5);
-    DECLARE exit_message TEXT;
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION
-    BEGIN
-        GET DIAGNOSTICS CONDITION 1
-            exit_code = RETURNED_SQLSTATE, 
-            exit_message = MESSAGE_TEXT;
-        ROLLBACK;
-        -- Print the error message and code
-        SELECT CONCAT('Error Code: ', exit_code, ' Error Message: ', exit_message) AS error_output;
-        
-        SET result = FALSE;
-    END;
-
-    START TRANSACTION;
-        
-        
-        -- Check if the channel avatar is not null and insert it into the RoomFile table
-        IF channel_avatar_src_input IS NOT NULL THEN
-            SET room_file_uuid = UUID();
-
-            -- Create a room file
-            INSERT INTO RoomFile (uuid, src, size, room_uuid, room_file_type_name)
-            VALUES (room_file_uuid, channel_avatar_src_input, channel_avatar_size_input, room_uuid_input, 'ChannelAvatar');
-
-            -- Insert the channel
-            INSERT INTO Channel (uuid, name, description, channel_type_name, room_uuid, room_file_uuid) 
-            VALUES (channel_uuid_input, channel_name_input, channel_description_input, channel_type_name_input, room_uuid_input, room_file_uuid);
-        ELSE
-            -- Insert the channel
-            INSERT INTO Channel (uuid, name, description, channel_type_name, room_uuid) 
-            VALUES (channel_uuid_input, channel_name_input, channel_description_input, channel_type_name_input, room_uuid_input);
-        END IF;
-    COMMIT;
+    INSERT INTO Channel (uuid, name, description, channel_type_name, room_uuid, room_file_uuid) 
+        VALUES (channel_uuid_input, 
+                channel_name_input, 
+                channel_description_input, 
+                channel_type_name_input, 
+                room_uuid_input, 
+                room_file_uuid_input);
     SET result = TRUE;
 END //
 DELIMITER ;
@@ -1247,45 +1110,18 @@ CREATE PROCEDURE edit_channel_proc(
     IN channel_name_input VARCHAR(255),
     IN channel_description_input TEXT,
     IN channel_type_name_input VARCHAR(255),
-    IN channel_avatar_size_input BIGINT,
-    IN channel_avatar_src_input TEXT,
     IN room_uuid_input VARCHAR(36),
+    in room_file_uuid_input VARCHAR(36),
     OUT result BOOLEAN
 )
 BEGIN
-    DECLARE room_file_uuid VARCHAR(36);
-    DECLARE exit_code VARCHAR(5);
-    DECLARE exit_message TEXT;
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION
-    BEGIN
-        GET DIAGNOSTICS CONDITION 1
-            exit_code = RETURNED_SQLSTATE, 
-            exit_message = MESSAGE_TEXT;
-        ROLLBACK;
-        -- Print the error message and code
-        SELECT CONCAT('Error Code: ', exit_code, ' Error Message: ', exit_message) AS error_output;
-        
-        SET result = FALSE;
-    END;
-
-    START TRANSACTION;
-        -- Check if the channel avatar is not null and insert it into the RoomFile table
-        IF channel_avatar_src_input IS NOT NULL THEN
-            SET room_file_uuid = UUID();
-
-            -- Create a room file
-            INSERT INTO RoomFile (uuid, src, size, room_uuid, room_file_type_name)
-            VALUES (room_file_uuid, channel_avatar_src_input, channel_avatar_size_input, room_uuid_input, 'ChannelAvatar');
-
-            -- Update the channel
-            UPDATE Channel SET name = channel_name_input, description = channel_description_input, channel_type_name = channel_type_name_input, room_file_uuid = room_file_uuid
+    -- Update the channel
+    UPDATE Channel SET name = channel_name_input, 
+                       description = channel_description_input, 
+                       channel_type_name = channel_type_name_input, 
+                       room_file_uuid = room_file_uuid_input,
+                       room_uuid = room_uuid_input
             WHERE uuid = channel_uuid_input;
-        ELSE
-            -- Update the channel
-            UPDATE Channel SET name = channel_name_input, description = channel_description_input, channel_type_name = channel_type_name_input
-            WHERE uuid = channel_uuid_input;
-        END IF;
-    COMMIT;
     SET result = TRUE;
 END //
 DELIMITER ;
@@ -1325,6 +1161,25 @@ BEGIN
 END //
 DELIMITER ;
 
+
+-- Create a new channel for a room
+DROP PROCEDURE IF EXISTS create_room_file_proc;
+DELIMITER //
+CREATE PROCEDURE create_room_file_proc(
+    IN room_file_uuid_input VARCHAR(36),
+    IN room_file_src_input TEXT,
+    IN room_file_size_input BIGINT,
+    IN room_uuid_input VARCHAR(36),
+    IN room_file_type_name_input VARCHAR(255),
+    OUT result BOOLEAN
+)
+BEGIN
+    -- Insert the room file
+    INSERT INTO RoomFile (uuid, src, size, room_uuid, room_file_type_name) 
+        VALUES (room_file_uuid_input, room_file_src_input, room_file_size_input, room_uuid_input, room_file_type_name_input);
+    SET result = TRUE;
+END //
+DELIMITER ;
 
 
 -- Create a new channel message with an optional upload
@@ -1581,12 +1436,10 @@ DROP PROCEDURE IF EXISTS set_user_email_verification_proc;
 DELIMITER //
 CREATE PROCEDURE set_user_email_verification_proc(
     IN user_uuid_input VARCHAR(36),
-    IN user_is_verified_input BOOLEAN,
-    OUT result BOOLEAN
+    IN user_is_verified_input BOOLEAN
 )
 BEGIN
     UPDATE UserEmailVerification SET is_verified = user_is_verified_input WHERE user_uuid = user_uuid_input;
-    SET result = TRUE;
 END //
 DELIMITER ;
 

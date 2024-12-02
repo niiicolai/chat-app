@@ -1,7 +1,5 @@
-import RoomUserServiceValidator from '../../shared/validators/room_user_service_validator.js';
-import EntityNotFoundError from '../../shared/errors/entity_not_found_error.js';
-import RoomMemberRequiredError from '../../shared/errors/room_member_required_error.js';
-import AdminPermissionRequiredError from '../../shared/errors/admin_permission_required_error.js';
+import Validator from '../../shared/validators/room_user_service_validator.js';
+import err from '../../shared/errors/index.js';
 import RPS from './room_permission_service.js';
 import db from '../sequelize/models/index.cjs';
 import dto from '../dto/room_user_dto.js';
@@ -23,13 +21,15 @@ class RoomUserService {
      * @returns {Promise<Object>}
      */
     async findOne(options = { uuid: null, user: null }) {
-        RoomUserServiceValidator.findOne(options);
+        Validator.findOne(options);
 
-        const entity = await db.RoomUserView.findByPk(options.uuid);
-        if (!entity) throw new EntityNotFoundError('room_user');
+        const { uuid, user } = options;
+        const entity = await db.RoomUserView.findByPk(uuid);
 
-        const isInRoom = await RPS.isInRoom({ room_uuid: entity.room_uuid, user: options.user, role_name: null });
-        if (!isInRoom) throw new RoomMemberRequiredError();
+        if (!entity) throw new err.EntityNotFoundError('room_user');
+
+        const isInRoom = await RPS.isInRoom({ room_uuid: entity.room_uuid, user });
+        if (!isInRoom) throw new err.RoomMemberRequiredError();
 
         return dto(entity);
     }
@@ -46,15 +46,15 @@ class RoomUserService {
      * @returns {Promise<Object>}
      */
     async findAll(options = { room_uuid: null, user: null, page: null, limit: null }) {
-        RoomUserServiceValidator.findAll(options);
+        Validator.findAll(options);
 
         const { room_uuid, user, page, limit, offset } = options;
 
         const room = await db.RoomView.findOne({ uuid: room_uuid });
-        if (!room) throw new EntityNotFoundError('room');
+        if (!room) throw new err.EntityNotFoundError('room');
 
-        const isInRoom = await RPS.isInRoom({ room_uuid, user, role_name: null });
-        if (!isInRoom) throw new RoomMemberRequiredError();
+        const isInRoom = await RPS.isInRoom({ room_uuid, user });
+        if (!isInRoom) throw new err.RoomMemberRequiredError();
 
         const [total, data] = await Promise.all([
             db.RoomUserView.count({ room_uuid }),
@@ -66,8 +66,8 @@ class RoomUserService {
         ]);
 
         return {
-            data: data.map(entity => dto(entity)),
             total,
+            data: data.map(entity => dto(entity)),
             ...(limit && { limit }),
             ...(page && { page }),
             ...(page && { pages: Math.ceil(total / limit) })
@@ -86,7 +86,7 @@ class RoomUserService {
      * @returns {Promise<Object>}
      */
     async update(options = { uuid: null, body: null, user: null }) {
-        RoomUserServiceValidator.update(options);
+        Validator.update(options);
 
         const { uuid, body, user } = options;
         const { room_user_role_name } = body;
@@ -96,23 +96,25 @@ class RoomUserService {
                 where: { room_user_uuid: uuid },
                 transaction
             });
-            if (!roomUser) throw new EntityNotFoundError('room_user');
+            if (!roomUser) throw new err.EntityNotFoundError('room_user');
 
-            const isAdmin = await RPS.isInRoom(
-                { room_uuid: roomUser.room_uuid, user, role_name: 'Admin' },
-                transaction
-            );
-            if (!isAdmin) throw new AdminPermissionRequiredError();
-
-            const isValidRole = await db.RoomUserRoleView.findOne({
-                where: { room_user_role_name },
-                transaction
-            });
-            if (!isValidRole) throw new EntityNotFoundError('room_user_role');
+            const room_uuid = roomUser.room_uuid;
+            const isAdmin = await RPS.isInRoom({ room_uuid, user, role_name: 'Admin' }, transaction);
+            if (!isAdmin) throw new err.AdminPermissionRequiredError();
 
             await roomUser.editRoomUserProc({
                 ...(room_user_role_name && { role_name: room_user_role_name }),
             }, transaction);
+            
+        }).catch((error) => {
+            if (error.name === 'SequelizeUniqueConstraintError') {
+                throw new err.DuplicateEntryError('room', error.errors[0].path, error.errors[0].value);
+            } else if (error.name === 'SequelizeForeignKeyConstraintError') {
+                throw new err.EntityNotFoundError(error.fields[0]);
+            }
+            console.error(error);
+
+            throw error;
         });
     }
 
@@ -126,7 +128,7 @@ class RoomUserService {
      * @returns {Promise<void>}
      */
     async destroy(options = { uuid: null, user: null }) {
-        RoomUserServiceValidator.destroy(options);
+        Validator.destroy(options);
 
         const { uuid, user } = options;
         await db.sequelize.transaction(async (transaction) => {
@@ -134,18 +136,17 @@ class RoomUserService {
                 where: { room_user_uuid: uuid },
                 transaction
             });
-            if (!roomUser) throw new EntityNotFoundError('room_user');
+            if (!roomUser) throw new err.EntityNotFoundError('room_user');
 
-            const isAdmin = await RPS.isInRoom(
-                { room_uuid: roomUser.room_uuid, user, role_name: 'Admin' },
-                transaction
-            );
-            if (!isAdmin) throw new AdminPermissionRequiredError();
+            const room_uuid = roomUser.room_uuid;
+            const isAdmin = await RPS.isInRoom({ room_uuid, user, role_name: 'Admin' }, transaction);
+            if (!isAdmin) throw new err.AdminPermissionRequiredError();
 
-            await db.RoomView.leaveRoomProcStatic({
-                user_uuid: roomUser.user_uuid,
-                room_uuid: roomUser.room_uuid,
-            }, transaction);
+            await db.RoomView.leaveRoomProcStatic({ user_uuid: roomUser.user_uuid, room_uuid }, transaction);
+
+        }).catch((error) => {
+            console.error(error);
+            throw error;
         });
     }
 
@@ -159,16 +160,13 @@ class RoomUserService {
      * @returns {Promise<Object>}
      */
     async findAuthenticatedUser(options = { room_uuid: null, user: null }) {
-        RoomUserServiceValidator.findAuthenticatedUser(options);
+        Validator.findAuthenticatedUser(options);
 
         const { room_uuid, user } = options;
+        const { sub: user_uuid } = user;
         
-        const entity = await db.RoomUserView.findOne({ where: { 
-            user_uuid: user.sub,
-            room_uuid, 
-        }});
-
-        if (!entity) throw new RoomMemberRequiredError();
+        const entity = await db.RoomUserView.findOne({ where: { user_uuid, room_uuid }});
+        if (!entity) throw new err.RoomMemberRequiredError();
 
         return dto(entity);
     }

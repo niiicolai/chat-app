@@ -7,6 +7,7 @@ import roomAvatarDto from './room_avatar_dto.js';
 import roomFileDto from './room_file_dto.js';
 
 export default (entity = {}) => {
+
     const dto = {
         uuid: entity.room_uuid,
         name: entity.room_name,

@@ -6,99 +6,145 @@ import RoomFile from '../mongoose/models/room_file.js';
 
 class RoomPermissionService {
 
-    async isVerified(options = { user: null }) {
+    /**
+     * @function isVerified
+     * @description Check if user's email is verified
+     * @param {Object} options
+     * @param {Object} options.user
+     * @param {String} options.user.sub
+     * @param {Object} transaction optional
+     * @returns {Boolean}
+     */
+    async isVerified(options = { user: null }, transaction = null) {
         RoomPermissionServiceValidator.isVerified(options);
-
-        const { user } = options;
-        const { sub: user_uuid } = user;
-        const exists = await User.findOne({ _id: user_uuid }).populate('user_email_verification');
-        
-        return exists && exists.user_email_verification.is_verified;
+        return await User
+            .findOne({ _id: options.user.sub })
+            .populate('user_email_verification')
+            .session(transaction)
+            .then(user => user.user_email_verification.is_verified === true);
     }
 
-    async isInRoom(options = { room_uuid: null, user: null, role_name: null }) {
+    /**
+     * @function isInRoom
+     * @description Check if user is in room
+     * @param {Object} options
+     * @param {String} options.room_uuid
+     * @param {Object} options.user
+     * @param {String} options.user.sub
+     * @param {String} options.role_name
+     * @param {Object} transaction optional
+     * @returns {Boolean}
+     */
+    async isInRoom(options = { room_uuid: null, user: null, role_name: null }, transaction = null) {
         RoomPermissionServiceValidator.isInRoom(options);
-
-        const { room_uuid, user } = options;
-        const { sub: user_uuid } = user;
-
-        const savedRoom = await Room.findOne({ _id: room_uuid }).populate('room_users.user room_users.room_user_role');
-        const roomUser = savedRoom?.room_users?.find(u => u.user._id === user_uuid);
-        
-        if (!roomUser) return false;
-
-        if (options.role_name && roomUser.room_user_role.name !== options.role_name) {
-            return false;
-        }
-
-        return true;
+        return await Room.findOne({ _id: options.room_uuid })
+            .populate('room_users.user room_users.room_user_role')
+            .session(transaction)
+            .then(room => {
+                const roomUser = room.room_users.find(u => u.user._id === options.user.sub);
+                if (!roomUser) return false;
+                return !options.role_name || roomUser.room_user_role._id === options.role_name;
+            });
     }
 
-    async isInRoomByChannel(options = { channel_uuid: null, user: null, role_name: null }) {
+    /**
+     * @function isInRoomByChannel
+     * @description Check if user is in room by channel
+     * @param {Object} options
+     * @param {String} options.channel_uuid
+     * @param {Object} options.user
+     * @param {String} options.user.sub
+     * @param {String} options.role_name
+     * @param {Object} transaction optional
+     * @returns {Boolean}
+     */
+    async isInRoomByChannel(options = { channel_uuid: null, user: null, role_name: null }, transaction = null) {
         RoomPermissionServiceValidator.isInRoomByChannel(options);
-
-        const { channel_uuid, user } = options;
-        const { sub: user_uuid } = user;
-        
-        const ch = await Channel.findOne({ _id: channel_uuid }).populate('room');
-        if (!ch) return false;
-
-        const room = await Room.findOne({ _id: ch.room._id }).populate('room_users.user room_users.room_user_role');
-        const roomUser = room?.room_users?.find(u => u.user._id === user_uuid);
-
-        if(!roomUser) return false;
-
-        if (options.role_name && roomUser.room_user_role.name !== options.role_name) {
-            return false;
-        }
-
-        return true;
+        return await Channel.findOne({ _id: options.channel_uuid })
+            .populate('room')
+            .session(transaction)
+            .then(channel => this.isInRoom({ 
+                room_uuid: channel.room._id, 
+                user: options.user, 
+                role_name: options.role_name 
+            }, transaction));
     }
 
-    async fileExceedsTotalFilesLimit(options = { room_uuid: null, bytes: null }) {
+    /**
+     * @function fileExceedsTotalFilesLimit
+     * @description Check if file exceeds total files limit
+     * @param {Object} options
+     * @param {String} options.room_uuid
+     * @param {Number} options.bytes
+     * @param {Object} transaction optional
+     * @returns {Boolean}
+     */
+    async fileExceedsTotalFilesLimit(options = { room_uuid: null, bytes: null }, transaction = null) {
         RoomPermissionServiceValidator.fileExceedsTotalFilesLimit(options);
-
-        const { room_uuid, bytes } = options;
-       
-        const room = await Room.findOne({ uuid: room_uuid });
-        if (!room) return false;
-
-        const { total_files_bytes_allowed } = room.room_file_settings;
-        const roomFiles = await RoomFile.find({ room: room._id });
-        const totalBytes = roomFiles.reduce((acc, file) => acc + file.size, 0);
-
-        return (totalBytes + bytes) > total_files_bytes_allowed;
+        return await Room
+            .findOne({ _id: options.room_uuid })
+            .session(transaction)
+            .then(room => room.room_file_settings.total_files_bytes_allowed)
+            .then(total_files_bytes_allowed => RoomFile
+                .find({ room: options.room_uuid })
+                .session(transaction)
+                .then(roomFiles => roomFiles.reduce((acc, file) => acc + file.size, 0))
+                .then(totalBytes => (totalBytes + options.bytes) > total_files_bytes_allowed));
     }
 
-    async fileExceedsSingleFileSize(options = { room_uuid: null, bytes: null }) {
+    /**
+     * @function fileExceedsSingleFileSize
+     * @description Check if file exceeds single file size
+     * @param {Object} options
+     * @param {String} options.room_uuid
+     * @param {Number} options.bytes
+     * @param {Object} transaction optional
+     * @returns {Boolean}
+     */
+    async fileExceedsSingleFileSize(options = { room_uuid: null, bytes: null }, transaction = null) {
         RoomPermissionServiceValidator.fileExceedsSingleFileSize(options);
-
-        const { room_uuid, bytes } = options;
-        const room = await Room.findOne({ uuid: room_uuid });
-        if (!room) return false;
-
-        return bytes > room.room_file_settings.single_file_bytes_allowed;
+        return await Room
+            .findOne({ _id: options.room_uuid })
+            .session(transaction)
+            .then(room => options.bytes > room.room_file_settings.single_file_bytes_allowed);
     }
 
-    async roomUserCountExceedsLimit(options = { room_uuid: null, add_count: null }) {
+    /**
+     * @function roomUserCountExceedsLimit
+     * @description Check if room user count exceeds limit
+     * @param {Object} options
+     * @param {String} options.room_uuid
+     * @param {Number} options.add_count
+     * @param {Object} transaction optional
+     * @returns {Boolean}
+     */
+    async roomUserCountExceedsLimit(options = { room_uuid: null, add_count: null }, transaction = null) {
         RoomPermissionServiceValidator.roomUserCountExceedsLimit(options);
-
-        const { room_uuid, add_count } = options;
-        const room = await Room.findOne({ uuid: room_uuid });
-        if (!room) return false;
-
-        return (room.room_users.length + add_count) > room.room_user_settings.max_users;
+        return await Room
+            .findOne({ _id: options.room_uuid })
+            .session(transaction)
+            .then(room => (room.room_users.length + options.add_count) > room.room_user_settings.max_users);
     }
 
-    async channelCountExceedsLimit(options = { room_uuid: null, add_count: null }) {
+    /**
+     * @function channelCountExceedsLimit
+     * @description Check if channel count exceeds limit
+     * @param {Object} options
+     * @param {String} options.room_uuid
+     * @param {Number} options.add_count
+     * @param {Object} transaction optional
+     * @returns {Boolean}
+     */
+    async channelCountExceedsLimit(options = { room_uuid: null, add_count: null }, transaction = null) {
         RoomPermissionServiceValidator.channelCountExceedsLimit(options);
-
-        const { room_uuid, add_count } = options;
-        const room = await Room.findOne({ uuid: room_uuid });
-        if (!room) return false;
-
-        const roomChannels = await Channel.countDocuments({ room: room._id });
-        return (roomChannels + add_count) > room.room_channel_settings.max_channels;
+        return await Room
+            .findOne({ _id: options.room_uuid })
+            .session(transaction)
+            .then(room => room.room_channel_settings.max_channels)
+            .then(max_channels => Channel
+                .countDocuments({ room: options.room_uuid })
+                .session(transaction)
+                .then(roomChannels => (roomChannels + options.add_count) > max_channels));
     }
 }
 

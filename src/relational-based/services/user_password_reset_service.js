@@ -1,8 +1,8 @@
-import UserPasswordResetServiceValidator from '../../shared/validators/user_password_reset_service_validator.js';
-import UserCreatePasswordResetMailer from '../../shared/mailers/user_create_password_reset_mailer.js';
-import UserConfirmPasswordResetMailer from '../../shared/mailers/user_confirm_password_reset_mailer.js';
-import EntityNotFoundError from '../../shared/errors/entity_not_found_error.js';
+import Validator from '../../shared/validators/user_password_reset_service_validator.js';
+import CreateResetMailer from '../../shared/mailers/user_create_password_reset_mailer.js';
+import ConfirmResetMailer from '../../shared/mailers/user_confirm_password_reset_mailer.js';
 import PwdService from '../../shared/services/pwd_service.js';
+import err from '../../shared/errors/index.js';
 import db from '../sequelize/models/index.cjs';
 import { v4 as v4uuid } from 'uuid';
 
@@ -29,7 +29,7 @@ class UserPasswordResetService {
      * @returns {Promise<void>}
      */
     async create(options = { body: null }) {
-        UserPasswordResetServiceValidator.create(options);
+        Validator.create(options);
 
         const { email } = options.body;
 
@@ -47,7 +47,7 @@ class UserPasswordResetService {
             }, transaction);
 
             const confirmUrl = `${WEBSITE_HOST}/api/v1/mysql/user_password_reset/${uuid}/reset_password`;
-            const mail = new UserCreatePasswordResetMailer({ confirmUrl, username: user.user_username, to: user.user_email });
+            const mail = new CreateResetMailer({ confirmUrl, username: user.user_username, to: user.user_email });
             await mail.send();
         });
     }
@@ -62,7 +62,7 @@ class UserPasswordResetService {
      * @returns {Promise<void>}
      */
     async resetPassword(options = { uuid: null, body: null }) {
-        UserPasswordResetServiceValidator.resetPassword(options);
+        Validator.resetPassword(options);
         
         const { uuid, body } = options;
 
@@ -71,20 +71,18 @@ class UserPasswordResetService {
                 where: { user_uuid: userPasswordReset.user_uuid },
                 transaction,
             });
-            if (!user) throw new EntityNotFoundError('user');
+            if (!user) throw new err.EntityNotFoundError('user');
 
             const userPasswordReset = await db.UserPasswordResetView.findOne({ 
                 where: { user_password_reset_uuid: uuid }, 
                 transaction 
             });
-            if (!userPasswordReset) throw new EntityNotFoundError('user_password_reset');
+            if (!userPasswordReset) throw new err.EntityNotFoundError('user_password_reset');
 
             await userPasswordReset.deleteUserPasswordResetProc(transaction);
-            await user.editUserProc({
-                password: await PwdService.hash(body.password),
-            }, transaction);
+            await user.editUserProc({ password: await PwdService.hash(body.password) }, transaction);
 
-            const mail = new UserConfirmPasswordResetMailer({ username: user.user_username, to: user.user_email });
+            const mail = new ConfirmResetMailer({ username: user.user_username, to: user.user_email });
             await mail.send();
         });
     }
