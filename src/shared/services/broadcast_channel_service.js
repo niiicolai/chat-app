@@ -52,7 +52,7 @@ export default class BroadcastChannelService {
      * @description Broadcast a deleted chat message to a channel.
      * @returns {String}
      */
-    static destroy(channel_uuid , channel_message_uuid) {
+    static destroy(channel_uuid, channel_message_uuid) {
         if (!channel_uuid) throw new Error('Channel UUID is required.');
         if (!channel_message_uuid) throw new Error('Channel message UUID is required.');
 

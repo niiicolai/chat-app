@@ -6,7 +6,6 @@ import dto from '../dto/channel_dto.js';
 import Channel from '../mongoose/models/channel.js';
 import ChannelType from '../mongoose/models/channel_type.js';
 import Room from '../mongoose/models/room.js';
-import RoomFileType from '../mongoose/models/room_file_type.js';
 import RoomFile from '../mongoose/models/room_file.js';
 import ChannelMessage from '../mongoose/models/channel_message.js';
 import mongoose from '../mongoose/index.js';
@@ -33,7 +32,7 @@ class ChannelService {
      * @param {String} options.uuid
      * @param {Object} options.user
      * @param {String} options.user.sub
-     * @returns {Object}
+     * @returns {Promise<Object>}
      */
     async findOne(options = { uuid: null, user: null }) {
         Validator.findOne(options);
@@ -57,7 +56,7 @@ class ChannelService {
      * @param {String} options.user.sub
      * @param {Number} options.page
      * @param {Number} options.limit
-     * @returns {Object}
+     * @returns {Promise<Object>}
      */
     async findAll(options = { room_uuid: null, user: null, page: null, limit: null }) {
         options = Validator.findAll(options);
@@ -102,7 +101,7 @@ class ChannelService {
      * @param {Object} options.file
      * @param {Object} options.user
      * @param {String} options.user.sub
-     * @returns {Object}
+     * @returns {Promise<Object>}
      */
     async create(options = { body: null, file: null, user: null }) {
         Validator.create(options);
@@ -184,7 +183,7 @@ class ChannelService {
      * @param {Object} options.file
      * @param {Object} options.user
      * @param {String} options.user.sub
-     * @returns {Object}
+     * @returns {Promise<Object>}
      */
     async update(options = { uuid: null, body: null, file: null, user: null }) {
         Validator.update(options);
@@ -254,7 +253,7 @@ class ChannelService {
      * @param {String} options.uuid
      * @param {Object} options.user
      * @param {String} options.user.sub
-     * @returns {void}
+     * @returns {Promise<void>}
      */
     async destroy(options = { uuid: null, user: null }) {
         Validator.destroy(options);
