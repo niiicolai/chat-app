@@ -29,6 +29,14 @@ const channelWebhookTest = (ChannelWebhookService, name) => {
 
 
     /**
+     * Fake entities
+     */
+
+    const fakeId = '1635e897-b84b-4b98-b8cf-5471ff349022';
+
+
+
+    /**
      * Expected methods
      */
 
@@ -97,9 +105,9 @@ const channelWebhookTest = (ChannelWebhookService, name) => {
         [0, 'No options provided'],
         [[], 'No uuid provided'],
         [{}, 'No uuid provided'],
-        [{ uuid: "test" }, 'No user provided'],
-        [{ uuid: "test", user: {} }, 'No user.sub provided'],
-        [{ uuid: "test", user: { sub: "test" } }, 'No body provided'],
+        [{ uuid: fakeId }, 'No user provided'],
+        [{ uuid: fakeId, user: {} }, 'No user.sub provided'],
+        [{ uuid: fakeId, user: { sub: fakeId } }, 'No body provided'],
     ])(`(${name}) - ChannelWebhookService.update invalid partitions`, async (options, expected) => {
         expect(async () => await ChannelWebhookService.update(options)).rejects.toThrowError(expected);
     });
@@ -115,7 +123,7 @@ const channelWebhookTest = (ChannelWebhookService, name) => {
     ])(`(${name}) - ChannelWebhookService.message valid partitions`, async (options) => {
         await ChannelWebhookService.message(options);
     });
-
+    
     test.each([
         [null, 'No options provided'],
         ["", 'No options provided'],
@@ -123,7 +131,7 @@ const channelWebhookTest = (ChannelWebhookService, name) => {
         [0, 'No options provided'],
         [[], 'No uuid provided'],
         [{}, 'No uuid provided'],
-        [{ uuid: "test" }, 'No body provided'],
+        [{ uuid: fakeId }, 'No body provided'],
     ])(`(${name}) - ChannelWebhookService.message invalid partitions`, async (options, expected) => {
         expect(async () => await ChannelWebhookService.message(options))
             .rejects.toThrowError(expected);
@@ -198,13 +206,13 @@ const channelWebhookTest = (ChannelWebhookService, name) => {
         [[], 'No uuid provided'],
         [{}, 'No uuid provided'],
         [{ uuid: { } }, 'No user provided'],
-        [{ uuid: "test", user: { } }, 'No user.sub provided'],
-        [{ uuid: "test", user: { sub: "test" } }, 'channel_webhook not found'],
+        [{ uuid: fakeId, user: { } }, 'No user.sub provided'],
+        [{ uuid: fakeId, user: { sub: fakeId } }, 'channel_webhook not found'],
     ])(`(${name}) - ChannelWebhookService.destroy invalid partitions`, async (options, expected) => {
         expect(async () => await ChannelWebhookService.destroy(options)).rejects.toThrowError(expected);
     });
 };
 
 channelWebhookTest(RelationalChannelWebhookService, 'Relational');
-// channelWebhookTest(DocumentChannelWebhookService, 'Document');
+channelWebhookTest(DocumentChannelWebhookService, 'Document');
 // channelWebhookTest(GraphChannelWebhookService, 'Graph');

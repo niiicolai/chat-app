@@ -28,6 +28,14 @@ const roomInviteLinkServiceTest = (RoomInviteLinkService, RoomUserService, name)
 
 
     /**
+     * Fake entities
+     */
+
+    const fakeId = '1635e897-b84b-4b98-b8cf-5471ff349022';
+
+
+
+    /**
      * New room invite link uuid
      */
     const new_room_invite_link_uuid = uuidv4();
@@ -79,11 +87,11 @@ const roomInviteLinkServiceTest = (RoomInviteLinkService, RoomUserService, name)
         [{ body: {} }, 'No user provided'],
         [{ body: {}, user: "test" }, 'No uuid provided'],
         [{ body: {}, user: {} }, 'No user.sub provided'],
-        [{ body: {}, user: { sub: "test" } }, 'No uuid provided'],
-        [{ body: { uuid: 'test' }, user: { sub: "test" } }, 'No room_uuid provided'],
-        [{ body: { room_uuid: 'test' }, user: { sub: "test" } }, 'No uuid provided'],
-        [{ body: { room_uuid: 'test', uuid: 'test' }, user: { sub: "test" } }, 'room not found'],
-        [{ body: { room_uuid, uuid: new_room_invite_link_uuid }, user: admin }, `user_login with PRIMARY ${new_room_invite_link_uuid} already exists`],
+        [{ body: {}, user: { sub: fakeId } }, 'No uuid provided'],
+        [{ body: { uuid: fakeId }, user: { sub: fakeId } }, 'No room_uuid provided'],
+        [{ body: { room_uuid: fakeId }, user: { sub: fakeId } }, 'No uuid provided'],
+        [{ body: { room_uuid: fakeId, uuid: fakeId }, user: { sub: fakeId } }, 'room not found'],
+        [{ body: { room_uuid, uuid: new_room_invite_link_uuid }, user: admin }, `room_invite_link with PRIMARY ${new_room_invite_link_uuid} already exists`],
         [{ body: { room_uuid, uuid: uuidv4(), expires_at: "test" }, user: admin }, `Invalid time value`],
         [{ body: { room_uuid, uuid: uuidv4(), expires_at: "2000-01-01" }, user: admin }, `The expiration date cannot be in the past`],
     ])(`(${name}) - RoomInviteLinkService.create invalid partitions`, async (options, expected) => {
@@ -119,12 +127,12 @@ const roomInviteLinkServiceTest = (RoomInviteLinkService, RoomUserService, name)
         [0, 'No options provided'],
         [[], 'No uuid provided'],
         [{}, 'No uuid provided'],
-        [{ uuid: "test" }, 'No user provided'],
-        [{ uuid: "test", body: {} }, 'No user provided'],
-        [{ body: {}, user: "test" }, 'No uuid provided'],
-        [{ uuid: "test", body: {}, user: {} }, 'No user.sub provided'],
-        [{ body: {}, user: { sub: "test" } }, 'No uuid provided'],
-        [{ body: { }, uuid: 'test', user: { sub: "test" } }, 'room_invite_link not found'],
+        [{ uuid: fakeId }, 'No user provided'],
+        [{ uuid: fakeId, body: {} }, 'No user provided'],
+        [{ body: {}, user: fakeId }, 'No uuid provided'],
+        [{ uuid: fakeId, body: {}, user: {} }, 'No user.sub provided'],
+        [{ body: {}, user: { sub: fakeId } }, 'No uuid provided'],
+        [{ body: { }, uuid: fakeId, user: { sub: fakeId } }, 'room_invite_link not found'],
         [{ body: { expires_at: "2000-01-01" }, uuid: new_room_invite_link_uuid, user: admin }, 'The expiration date cannot be in the past'],
     ])(`(${name}) - RoomInviteLinkService.update invalid partitions`, async (options, expected) => {
         expect(async () => await RoomInviteLinkService.update(options)).rejects.toThrowError(expected);
@@ -161,9 +169,9 @@ const roomInviteLinkServiceTest = (RoomInviteLinkService, RoomUserService, name)
         [0, 'No options provided'],
         [[], 'No uuid provided'],
         [{}, 'No uuid provided'],
-        [{ uuid: "test" }, 'No user provided'],
-        [{ uuid: "test", user: {} }, 'No user.sub provided'],
-        [{ uuid: "test", user: { sub: "test" } }, 'room_invite_link not found'],
+        [{ uuid: fakeId }, 'No user provided'],
+        [{ uuid: fakeId, user: {} }, 'No user.sub provided'],
+        [{ uuid: fakeId, user: { sub: fakeId } }, 'room_invite_link not found'],
     ])(`(${name}) - RoomInviteLinkService.findOne invalid partitions`, async (options, expected) => {
         expect(async () => await RoomInviteLinkService.findOne(options)).rejects.toThrowError(expected);
     });
@@ -209,13 +217,13 @@ const roomInviteLinkServiceTest = (RoomInviteLinkService, RoomUserService, name)
         [1, 'No room_uuid provided'],
         [0, 'No options provided'],
         [[], 'No room_uuid provided'],
-        [{ room_uuid: "test" }, 'No user provided'],
-        [{ room_uuid: "test", user: admin }, 'User is not in the room'],
-        [{ room_uuid: "test", user: admin, page: 1 }, 'page requires limit'],
-        [{ room_uuid: "test", user: admin, page: -1 }, 'page must be greater than 0'],
-        [{ room_uuid: "test", user: admin, page: "test" }, 'page must be a number'],
-        [{ room_uuid: "test", user: admin, page: 1, limit: -1 }, 'limit must be greater than 0'],
-        [{ room_uuid: "test", user: admin, page: 1, limit: "test" }, 'limit must be a number'],
+        [{ room_uuid: fakeId }, 'No user provided'],
+        [{ room_uuid: fakeId, user: admin }, 'User is not in the room'],
+        [{ room_uuid: fakeId, user: admin, page: 1 }, 'page requires limit'],
+        [{ room_uuid: fakeId, user: admin, page: -1 }, 'page must be greater than 0'],
+        [{ room_uuid: fakeId, user: admin, page: "test" }, 'page must be a number'],
+        [{ room_uuid: fakeId, user: admin, page: 1, limit: -1 }, 'limit must be greater than 0'],
+        [{ room_uuid: fakeId, user: admin, page: 1, limit: "test" }, 'limit must be a number'],
     ])(`(${name}) - RoomInviteLinkService.findAll invalid partitions`, async (options, expected) => {
         expect(async () => await RoomInviteLinkService.findAll(options)).rejects.toThrowError(expected);
     });
@@ -278,7 +286,8 @@ const roomInviteLinkServiceTest = (RoomInviteLinkService, RoomUserService, name)
     ])(`(${name}) - RoomInviteLinkService.join valid partitions`, async (options) => {
         await RoomInviteLinkService.join(options);
 
-        const { data } = await RoomUserService.findAll({ user: options.user, room_uuid });
+        const { data } = await RoomUserService.findAll({ user: admin, room_uuid });
+        console.log(data);
         const roomUser = data.find(roomUser => roomUser.user_uuid === options.user.sub);
         expect(roomUser.user_uuid).toBe(options.user.sub);
         expect(roomUser.room_uuid).toBe(room_uuid);
@@ -292,8 +301,8 @@ const roomInviteLinkServiceTest = (RoomInviteLinkService, RoomUserService, name)
         [1, 'No uuid provided'],
         [0, 'No options provided'],
         [[], 'No uuid provided'],
-        [{ uuid: "test" }, 'No user provided'],
-        [{ uuid: "test", user: {} }, 'No user.sub provided'],
+        [{ uuid: fakeId }, 'No user provided'],
+        [{ uuid: fakeId, user: {} }, 'No user.sub provided'],
     ])(`(${name}) - RoomInviteLinkService.join invalid partitions`, async (options, expected) => {
         expect(async () => await RoomInviteLinkService.join(options)).rejects.toThrowError(expected);
     });
@@ -318,14 +327,14 @@ const roomInviteLinkServiceTest = (RoomInviteLinkService, RoomUserService, name)
         [1, 'No uuid provided'],
         [0, 'No options provided'],
         [[], 'No uuid provided'],
-        [{ uuid: "test" }, 'No user provided'],
-        [{ uuid: "test", user: {} }, 'No user.sub provided'],
-        [{ uuid: "test", user: { sub: "test" } }, 'room_invite_link not found'],
+        [{ uuid: fakeId }, 'No user provided'],
+        [{ uuid: fakeId, user: {} }, 'No user.sub provided'],
+        [{ uuid: fakeId, user: { sub: fakeId } }, 'room_invite_link not found'],
     ])(`(${name}) - RoomInviteLinkService.destroy invalid partitions`, async (options, expected) => {
         expect(async () => await RoomInviteLinkService.destroy(options)).rejects.toThrowError(expected);
     });
 };
 
 roomInviteLinkServiceTest(RelationalRoomInviteLinkService, RelationalRoomUserService, 'Relational');
-// roomInviteLinkServiceTest(DocumentRoomInviteLinkService, DocumentRoomUserService, 'Document');
+roomInviteLinkServiceTest(DocumentRoomInviteLinkService, DocumentRoomUserService, 'Document');
 // roomInviteLinkServiceTest(GraphRoomInviteLinkService, GraphRoomUserService, 'Graph');

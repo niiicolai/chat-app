@@ -78,6 +78,17 @@ export default class RoomSeeder {
                 })
             }), { session });
 
+            await RoomAudit.insertMany(data.rooms.flatMap((room) => {
+                return room.room_audits.map((audit) => {
+                    return {
+                        _id: audit.uuid,
+                        body: audit.body,
+                        room: room.uuid,
+                        room_audit_type: audit.room_audit_type_name,
+                    }
+                })
+            }), { session });
+
             await session.commitTransaction();
         } catch (error) {
             await session.abortTransaction();

@@ -1,20 +1,41 @@
-import TypeServiceValidator from '../../shared/validators/type_service_validator.js';
-import EntityNotFoundError from '../../shared/errors/entity_not_found_error.js';
+import Validator from '../../shared/validators/type_service_validator.js';
+import err from '../../shared/errors/index.js';
 import RoomFileType from '../mongoose/models/room_file_type.js';
 import dto from '../dto/type_dto.js';
 
-class Service {
+/**
+ * @class RoomFileTypeService
+ * @description Service class for room file types.
+ * @exports RoomFileTypeService
+ */
+class RoomFileTypeService {
+
+    /**
+     * @function findOne
+     * @description Find a room file type by name
+     * @param {Object} options
+     * @param {String} options.name
+     * @returns {Promise<Object>}
+     */
     async findOne(options = { name: null }) {
-        TypeServiceValidator.findOne(options);
+        Validator.findOne(options);
 
         const result = await RoomFileType.findOne({ _id: options.name });
-        if (!result) throw new EntityNotFoundError('room_file_type');
+        if (!result) throw new err.EntityNotFoundError('room_file_type');
 
         return dto(result._doc);
     }
 
+    /**
+     * @function findAll
+     * @description Find all room file types
+     * @param {Object} options
+     * @param {Number} options.page optional
+     * @param {Number} options.limit optional
+     * @returns {Promise<Object>}
+     */
     async findAll(options = { page: null, limit: null }) {
-        options = TypeServiceValidator.findAll(options);
+        options = Validator.findAll(options);
 
         const { page, limit, offset } = options;
         const [total, data] = await Promise.all([
@@ -34,6 +55,6 @@ class Service {
     }
 }
 
-const service = new Service();
+const service = new RoomFileTypeService();
 
 export default service;

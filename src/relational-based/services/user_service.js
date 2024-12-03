@@ -61,10 +61,10 @@ class UserService {
 
         const { file } = options;
         const { uuid, email, username, password } = options.body;
+        const avatar = (file && file.size > 0) ? await uploader.create(file, uuid) : null
+        const user_login_password = await PwdService.hash(password);
 
         await db.sequelize.transaction(async (transaction) => {
-            const avatar = (file && file.size > 0) ? await uploader.create(file, uuid) : null
-            
             await db.UserView.createUserProcStatic({
                 uuid,
                 username,
@@ -75,7 +75,7 @@ class UserService {
             await db.UserView.createUserLoginProcStatic({
                 login_uuid: uuidV4(),
                 user_login_type_name: 'Password',
-                user_login_password: await PwdService.hash(password),
+                user_login_password,
                 user_uuid: uuid,
             }, transaction);
             
@@ -93,6 +93,9 @@ class UserService {
                 await UserEmailVerificationService.resend({ user_uuid: uuid }, transaction);
             }
         }).catch((error) => {
+            // If an error occurs, delete the new avatar file if it exists.
+            if (avatar) uploader.destroy(avatar);
+
             if (error.name === 'SequelizeUniqueConstraintError') {
                 throw new err.DuplicateEntryError('user', error.errors[0].path, error.errors[0].value);
             } else if (error.name === 'SequelizeForeignKeyConstraintError') {
@@ -125,10 +128,14 @@ class UserService {
         Validator.update(options);
 
         const { body, file, user } = options;
-        
+        const avatar = (file && file.size > 0) ? await uploader.create(file, user.sub) : null;
+        const user_login_password = body.password ? await PwdService.hash(body.password) : null;
+        const user_login_type_name = 'Password';
+        const user_uuid = user.sub;
+
         await db.sequelize.transaction(async (transaction) => {
             const savedUser = await db.UserView.findOne({ 
-                where: { user_uuid: user.sub }, 
+                where: { user_uuid }, 
                 transaction 
             });
             if (!savedUser) throw new err.EntityNotFoundError('user');
@@ -136,25 +143,23 @@ class UserService {
             await savedUser.editUserProc({
                 ...(body.username && { username: body.username }),
                 ...(body.email && { email: body.email }),
-                ...(file && file.size > 0 && { avatar: await uploader.create(file, user.sub) })
+                ...(avatar && { avatar })
             }, transaction);
 
             if (body.password) {
                 const userLogin = await db.UserLoginView.findOne({
-                    where: { user_uuid: user.sub, user_login_type_name: 'Password' },
+                    where: { user_uuid, user_login_type_name },
                     transaction
                 });
                 if (!userLogin) {
                     await db.UserView.createUserLoginProcStatic({
                         login_uuid: uuidV4(),
-                        user_login_type_name: 'Password',
-                        user_login_password: await PwdService.hash(body.password),
-                        user_uuid: user.sub,
+                        user_login_type_name,
+                        user_login_password,
+                        user_uuid,
                     }, transaction);
                 } else {
-                    await userLogin.editUserLoginProc({ 
-                        user_login_password: await PwdService.hash(body.password) 
-                    }, transaction);
+                    await userLogin.editUserLoginProc({ user_login_password }, transaction);
                 }
             }
 
@@ -164,6 +169,9 @@ class UserService {
                 await uploader.destroy(savedUser.user_avatar_src);
             }
         }).catch((error) => {
+            // If an error occurs, delete the new avatar file if it exists.
+            if (avatar) uploader.destroy(avatar);
+
             if (error.name === 'SequelizeUniqueConstraintError') {
                 throw new err.DuplicateEntryError('user', error.errors[0].path, error.errors[0].value);
             } else if (error.name === 'SequelizeForeignKeyConstraintError') {
@@ -231,6 +239,7 @@ class UserService {
             await savedUser.deleteUserProc(transaction);
 
             if (savedUser.user_avatar_src) {
+                // Delete the user's avatar if it exists.
                 await uploader.destroy(savedUser.user_avatar_src);
             }
         });

@@ -35,6 +35,14 @@ const googleAuthTest = (GoogleAuthService, UserService, name) => {
 
 
     /**
+     * Fake entities
+     */
+
+    const fakeId = '1635e897-b84b-4b98-b8cf-5471ff349022';
+
+
+
+    /**
      * Clean up
      */
 
@@ -88,8 +96,8 @@ const googleAuthTest = (GoogleAuthService, UserService, name) => {
         [{ third_party_id: "test" }, 'No type provided'],
         [{ third_party_id: "test", type: "Google" }, 'No user provided'],
         [{ third_party_id: "test", type: "Google", user: {} }, 'No user.sub provided'],
-        [{ third_party_id: "test", type: "Other", user: { sub: "test" } }, 'Only Google are currently supported'],
-        [{ third_party_id: "test", type: "Google", user: { sub: "test" } }, 'user not found'],
+        [{ third_party_id: "test", type: "Other", user: { sub: fakeId } }, 'Only Google are currently supported'],
+        [{ third_party_id: "test", type: "Google", user: { sub: fakeId } }, 'user not found'],
         [{ third_party_id: user_new_login_third_party_id, type: "Google", user }, 'User already has a Google account linked'],
     ])(`(${name}) - GoogleAuthService.addToExistingUser invalid partitions`, async (options, expected) => {
         expect(async () => await GoogleAuthService.addToExistingUser(options)).rejects.toThrowError(expected);
@@ -165,16 +173,5 @@ const googleAuthTest = (GoogleAuthService, UserService, name) => {
 };
 
 googleAuthTest(RelationalGoogleAuthService, RelationalUserService, 'Relational');
-/*
-googleAuthTest(
-    DocumentGoogleAuthService,
-    DocumentUserService, 
-    'Document'
-);
-
-googleAuthTest(
-    GraphGoogleAuthService,
-    GraphUserService, 
-    'Graph'
-);
-*/
+googleAuthTest(DocumentGoogleAuthService, DocumentUserService, 'Document');
+// googleAuthTest(GraphGoogleAuthService, GraphUserService, 'Graph');

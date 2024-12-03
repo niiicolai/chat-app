@@ -81,54 +81,54 @@ export default {
             }]
         },
         {
-            uuid: "dd1db481-0b0a-4b2c-b0e1-0b5d569e6f9b",
+            uuid: "b2dfbca9-89d3-417d-9535-753dd6e10006",
             username: "not_in_a_room",
             email: "not_in_a_room@example.com",
             avatar_src: "https://ghostchat.fra1.cdn.digitaloceanspaces.com/static/mobile-park-character-animating.png",
             user_status: {
-                uuid: "dd1db481-0b0a-4b2c-b0e1-0b5d569e6f9b",
+                uuid: "1ab0c5d7-5be0-449c-a033-9aa41d44d640",
                 last_seen_at: "2021-09-01T00:00:00.000Z",
                 message: "I'm back!",
                 total_online_hours: 0,
                 user_status_state: "Offline"
             },
             user_email_verification: {
-                uuid: "dd1db481-0b0a-4b2c-b0e1-0b5d569e6f9b",
+                uuid: "e7027926-9982-435f-af97-6837315b5a84",
                 is_verified: true
             },
             user_logins: [{
-                uuid: "dd1db481-0b0a-4b2c-b0e1-0b5d569e6f9b",
+                uuid: "92fd846f-0fb0-407c-9040-bee43f82d18d",
                 user_login_type: "Password",
                 password: '$2b$10$sB6/ocJJK9HodVv7qEozKO826Ik5gmZH/1GU/xReM1ijIjlA7hvTa'
             }],
             user_password_resets: [{
-                uuid: "dd1db481-0b0a-4b2c-b0e1-0b5d569e6f9b",
+                uuid: "2f62ad11-3a4a-4e40-a2e3-36be4af473bf",
                 expires_at: new Date()
             }]
         },
         {
-            uuid: "dd1da481-0b0a-4b2c-b0e1-0b5d569e6f9b",
+            uuid: "a3aa712a-628f-44c1-8b5a-3c915cd6e2f2",
             username: "pass_reset_user",
             email: "pass_reset_user@example.com",
             avatar_src: "https://ghostchat.fra1.cdn.digitaloceanspaces.com/static/mobile-park-character-animating.png",
             user_status: {
-                uuid: "dd1da481-0b0a-4b2c-b0e1-0b5d569e6f9b",
+                uuid: "5c11a8e7-bd52-4482-8d01-4bb06a29cb07",
                 last_seen_at: "2021-09-01T00:00:00.000Z",
                 message: "I'm back!",
                 total_online_hours: 0,
                 user_status_state: "Offline"
             },
             user_email_verification: {
-                uuid: "dd1da481-0b0a-4b2c-b0e1-0b5d569e6f9b",
+                uuid: "443e97d6-8d27-4828-9ea8-56e155b55642",
                 is_verified: true
             },
             user_logins: [{
-                uuid: "dd1da481-0b0a-4b2c-b0e1-0b5d569e6f9b",
+                uuid: "5fefce76-a6fc-4290-953a-14d600ad012d",
                 user_login_type: "Password",
                 password: '$2b$10$sB6/ocJJK9HodVv7qEozKO826Ik5gmZH/1GU/xReM1ijIjlA7hvTa'
             }],
             user_password_resets: [{
-                uuid: "dd1da481-0b0a-4b2c-b0e1-0b5d569e6f9b",
+                uuid: "b1004b90-74a5-491a-bedb-76d292ede901",
                 expires_at: new Date()
             }]
         },
@@ -243,10 +243,26 @@ export default {
                     channel_webhook: null,
                     channel_messages: []
                 },
+            ],
+            room_audits: [
+                {
+                    uuid: "58b00196-088a-4368-a2ef-a32e3ee54200",
+                    body: "some data here",
+                    room_audit_type_name: "ROOM_CREATED",
+                    room_uuid: "a595b5cb-7e47-4ce7-9875-cdf99184a73c",
+                }
+            ],
+            channel_audits: [
+                {
+                    uuid: "3a99fc75-9cad-49ef-996d-2e1c7c7e79c5",
+                    body: "some data here",
+                    channel_audit_type_name: "CHANNEL_CREATED",
+                    channel_uuid: "1c9437b0-4e88-4a8e-84f0-679c7714407f",
+                }
             ]
         },
         {
-            uuid: "a525b5cb-7e47-4ce7-9875-cdf99184a73c",
+            uuid: "b2ceef0b-df49-4d69-bdfb-683d967ec2d6",
             name: 'General Chat2',
             description: 'A room for general discussion2',
             room_category_name: 'General',
@@ -335,6 +351,22 @@ export default {
                     channel_webhook: null,
                     channel_messages: []
                 },
+            ],
+            room_audits: [
+                {
+                    uuid: "b0767d44-cbcf-49f7-9757-fb83da608aa7",
+                    body: "some data here",
+                    room_audit_type_name: "ROOM_CREATED",
+                    room_uuid: "b2ceef0b-df49-4d69-bdfb-683d967ec2d6",
+                }
+            ],
+            channel_audits: [
+                {
+                    uuid: "1ab9b4ec-99f3-431d-a970-96d87b483cbb",
+                    body: "some data here",
+                    channel_audit_type_name: "CHANNEL_CREATED",
+                    channel_uuid: "1c9337b0-4e88-4a8e-84f0-679c7714407f",
+                }
             ]
         },
     ],

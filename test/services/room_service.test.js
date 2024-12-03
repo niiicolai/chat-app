@@ -23,6 +23,15 @@ const roomServiceTest = (RoomService, name) => {
     const member_room_uuid = uuidv4();
 
 
+
+    /**
+     * Fake entities
+     */
+
+    const fakeId = '1635e897-b84b-4b98-b8cf-5471ff349022';
+
+
+
     /**
      * Expected Methods
      */
@@ -59,11 +68,11 @@ const roomServiceTest = (RoomService, name) => {
         [[], 'No uuid provided'],
         [{ email: null }, 'No uuid provided'],
         [{ test: null }, 'No uuid provided'],
-        [{ uuid: "test" }, 'No user provided'],
-        [{ uuid: "test", user: null }, 'No user provided'],
-        [{ uuid: "test", user: {} }, 'No user.sub provided'],
-        [{ uuid: "test", user: { sub: null } }, 'No user.sub provided'],
-        [{ uuid: "test", user: { sub: "test" } }, 'room not found'],
+        [{ uuid: fakeId }, 'No user provided'],
+        [{ uuid: fakeId, user: null }, 'No user provided'],
+        [{ uuid: fakeId, user: {} }, 'No user.sub provided'],
+        [{ uuid: fakeId, user: { sub: null } }, 'No user.sub provided'],
+        [{ uuid: fakeId, user: { sub: fakeId } }, 'room not found'],
     ])(`(${name}) - RoomService.findOne invalid partitions`, async (options, expected) => {
         expect(async () => await RoomService.findOne(options)).rejects.toThrowError(expected);
     });
@@ -140,23 +149,23 @@ const roomServiceTest = (RoomService, name) => {
         [{ body: {} }, 'No user provided'],
         [{ body: {}, user: "test" }, 'No uuid provided'],
         [{ body: {}, user: {} }, 'No user.sub provided'],
-        [{ body: {}, user: { sub: "test" } }, 'No uuid provided'],
-        [{ body: { uuid: "test" }, user: { sub: "test" } }, 'No name provided'],
-        [{ body: { uuid: "test", name: "test" }, user: { sub: "test" } }, 'No description provided'],
+        [{ body: {}, user: { sub: fakeId } }, 'No uuid provided'],
+        [{ body: { uuid: fakeId }, user: { sub: fakeId } }, 'No name provided'],
+        [{ body: { uuid: fakeId, name: "test" }, user: { sub: fakeId } }, 'No description provided'],
         [
-            { body: { uuid: "test", name: "test", description: "test" }, user: { sub: "test" } },
+            { body: { uuid: fakeId, name: "test", description: "test" }, user: { sub: fakeId } },
             'No room_category_name provided'
         ],
         [
-            { body: { uuid: "test", name: "test", description: "test", room_category_name: "test" }, user: { sub: "test" } },
+            { body: { uuid: fakeId, name: "test", description: "test", room_category_name: "test" }, user: { sub: fakeId } },
             'You must verify your email before you can create a room'
         ],
         [
-            { body: { uuid: "test", name: "test", description: "test", room_category_name: "test" }, user: admin },
+            { body: { uuid: fakeId, name: "test", description: "test", room_category_name: "test" }, user: admin },
             'room_category_name not found'
         ],
         [
-            { body: { uuid: "test", name: room_name, description: "test", room_category_name: "General" }, user: admin },
+            { body: { uuid: fakeId, name: room_name, description: "test", room_category_name: "General" }, user: admin },
             `room with room_name ${room_name} already exists`
         ],
         [
@@ -190,9 +199,9 @@ const roomServiceTest = (RoomService, name) => {
         [[], 'No uuid provided'],
         [{}, 'No uuid provided'],
         [{ body: {} }, 'No uuid provided'],
-        [{ body: {}, uuid: "test" }, 'No user provided'],
-        [{ body: {}, uuid: "test", user: {} }, 'No user.sub provided'],
-        [{ body: {}, uuid: "test", user: { sub: "test" } }, 'room not found'],
+        [{ body: {}, uuid: fakeId }, 'No user provided'],
+        [{ body: {}, uuid: fakeId, user: {} }, 'No user.sub provided'],
+        [{ body: {}, uuid: fakeId, user: { sub: fakeId } }, 'room not found'],
         [{ body: { name: room_name }, uuid: room_uuid, user: admin }, `room with room_name ${room_name} already exists`],
         [{ body: { room_category_name: "test" }, uuid: room_uuid, user: admin }, `room_category_name not found`],
     ])(`(${name}) - RoomService.update invalid partitions`, async (options, expected) => {
@@ -225,11 +234,11 @@ const roomServiceTest = (RoomService, name) => {
         [[], 'No uuid provided'],
         [{}, 'No uuid provided'],
         [{ body: {} }, 'No uuid provided'],
-        [{ uuid: "test" }, 'No body provided'],
-        [{ uuid: "test", body: {} }, 'No user provided'],
-        [{ uuid: "test", body: {}, user: {} }, 'No user.sub provided'],
-        [{ uuid: "test", body: {}, user: { sub: "test" } }, 'room not found'],
-        [{ uuid: room_uuid, body: { join_channel_uuid: "test" }, user: admin }, 'join_channel_uuid not found'],
+        [{ uuid: fakeId }, 'No body provided'],
+        [{ uuid: fakeId, body: {} }, 'No user provided'],
+        [{ uuid: fakeId, body: {}, user: {} }, 'No user.sub provided'],
+        [{ uuid: fakeId, body: {}, user: { sub: fakeId } }, 'room not found'],
+        [{ uuid: room_uuid, body: { join_channel_uuid: fakeId }, user: admin }, 'join_channel_uuid not found'],
         [{ uuid: room_uuid, body: { join_message: "test" }, user: admin }, 'Join message must include {name}'],
     ])(`(${name}) - RoomService.editSettings invalid partitions`, async (options, expected) => {
         expect(async () => await RoomService.editSettings(options)).rejects.toThrowError(expected);
@@ -258,9 +267,9 @@ const roomServiceTest = (RoomService, name) => {
         [0, 'No options provided'],
         [[], 'No uuid provided'],
         [{}, 'No uuid provided'],
-        [{ uuid: "test" }, 'No user provided'],
-        [{ uuid: "test", user: {} }, 'No user.sub provided'],
-        [{ uuid: "test", user: { sub: "test" } }, 'room not found'],
+        [{ uuid: fakeId }, 'No user provided'],
+        [{ uuid: fakeId, user: {} }, 'No user.sub provided'],
+        [{ uuid: fakeId, user: { sub: fakeId } }, 'room not found'],
     ])(`(${name}) - RoomService.destroy invalid partitions`, async (options, expected) => {
         expect(async () => await RoomService.destroy(options)).rejects.toThrowError(expected);
     });
@@ -341,5 +350,5 @@ const isValidRoom = (room) => {
 };
 
 roomServiceTest(RelationalRoomService, 'Relational');
-//roomServiceTest(DocumentRoomService, 'Document');
+roomServiceTest(DocumentRoomService, 'Document');
 //roomServiceTest(GraphRoomService, 'Graph');

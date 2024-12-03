@@ -18,6 +18,14 @@ const roomAuditServiceTest = (RoomAuditService, name) => {
 
 
     /**
+     * Fake entities
+     */
+
+    const fakeId = '1635e897-b84b-4b98-b8cf-5471ff349022';
+
+
+
+    /**
      * Expected Methods
      */
 
@@ -63,13 +71,13 @@ const roomAuditServiceTest = (RoomAuditService, name) => {
         [0, 'Invalid options provided'],
         [[], 'Invalid options provided'],
         [{ page: 1 }, 'No room_uuid provided'],
-        [{ room_uuid: "test" }, 'No user provided'],
-        [{ room_uuid: "test", user: {}, page: 1 }, 'No user.sub provided'],
-        [{ room_uuid: "test", user: { sub: "test" }, page: 1 }, 'page requires limit'],
-        [{ room_uuid: "test", user: { sub: "test" }, page: -1 }, 'page must be greater than 0'],
-        [{ room_uuid: "test", user: { sub: "test" }, page: "test" }, 'page must be a number'],
-        [{ room_uuid: "test", user: { sub: "test" }, page: 1, limit: -1 }, 'limit must be greater than 0'],
-        [{ room_uuid: "test", user: { sub: "test" }, page: 1, limit: "test" }, 'limit must be a number'],
+        [{ room_uuid: fakeId }, 'No user provided'],
+        [{ room_uuid: fakeId, user: {}, page: 1 }, 'No user.sub provided'],
+        [{ room_uuid: fakeId, user: { sub: fakeId }, page: 1 }, 'page requires limit'],
+        [{ room_uuid: fakeId, user: { sub: fakeId }, page: -1 }, 'page must be greater than 0'],
+        [{ room_uuid: fakeId, user: { sub: fakeId }, page: "test" }, 'page must be a number'],
+        [{ room_uuid: fakeId, user: { sub: fakeId }, page: 1, limit: -1 }, 'limit must be greater than 0'],
+        [{ room_uuid: fakeId, user: { sub: fakeId }, page: 1, limit: "test" }, 'limit must be a number'],
     ])(`(${name}) - RoomAuditService.findAll invalid partitions`, async (options, expected) => {
         expect(async () => await RoomAuditService.findAll(options)).rejects.toThrowError(expected);
     });
@@ -100,9 +108,9 @@ const roomAuditServiceTest = (RoomAuditService, name) => {
         [0, 'Invalid options provided'],
         [[], 'Invalid options provided'],
         [{}, 'No uuid provided'],
-        [{ uuid: "test" }, 'No user provided'],
-        [{ uuid: "test", user: { } }, 'No user.sub provided'],
-        [{ uuid: "test", user: { sub: "test" } }, 'room_audit not found'],
+        [{ uuid: fakeId }, 'No user provided'],
+        [{ uuid: fakeId, user: { } }, 'No user.sub provided'],
+        [{ uuid: fakeId, user: { sub: fakeId } }, 'room_audit not found'],
     ])(`(${name}) - RoomAuditService.findOne invalid partitions`, async (options, expected) => {
         expect(async () => await RoomAuditService.findOne(options)).rejects.toThrowError(expected);
     });
@@ -130,5 +138,5 @@ const roomAuditServiceTest = (RoomAuditService, name) => {
 };
 
 roomAuditServiceTest(RelationalRoomAuditService, 'Relational');
-//roomAuditServiceTest(DocumentRoomAuditService, 'Document');
+roomAuditServiceTest(DocumentRoomAuditService, 'Document');
 //roomAuditServiceTest(GraphRoomAuditService, 'Graph');

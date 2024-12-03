@@ -20,6 +20,14 @@ const roomFileServiceTest = (RoomFileService, name) => {
 
 
     /**
+     * Fake entities
+     */
+
+    const fakeId = '1635e897-b84b-4b98-b8cf-5471ff349022';
+
+
+
+    /**
      * Expected Methods
      */
 
@@ -69,13 +77,13 @@ const roomFileServiceTest = (RoomFileService, name) => {
         [0, 'No options provided'],
         [[], 'No room_uuid provided'],
         [{ page: 1 }, 'No room_uuid provided'],
-        [{ room_uuid: "test" }, 'No user provided'],
-        [{ room_uuid: "test", user: {}, page: 1 }, 'No user.sub provided'],
-        [{ room_uuid: "test", user: { sub: "test" }, page: 1 }, 'page requires limit'],
-        [{ room_uuid: "test", user: { sub: "test" }, page: -1 }, 'page must be greater than 0'],
-        [{ room_uuid: "test", user: { sub: "test" }, page: "test" }, 'page must be a number'],
-        [{ room_uuid: "test", user: { sub: "test" }, page: 1, limit: -1 }, 'limit must be greater than 0'],
-        [{ room_uuid: "test", user: { sub: "test" }, page: 1, limit: "test" }, 'limit must be a number'],
+        [{ room_uuid: fakeId }, 'No user provided'],
+        [{ room_uuid: fakeId, user: {}, page: 1 }, 'No user.sub provided'],
+        [{ room_uuid: fakeId, user: { sub: fakeId }, page: 1 }, 'page requires limit'],
+        [{ room_uuid: fakeId, user: { sub: fakeId }, page: -1 }, 'page must be greater than 0'],
+        [{ room_uuid: fakeId, user: { sub: fakeId }, page: "test" }, 'page must be a number'],
+        [{ room_uuid: fakeId, user: { sub: fakeId }, page: 1, limit: -1 }, 'limit must be greater than 0'],
+        [{ room_uuid: fakeId, user: { sub: fakeId }, page: 1, limit: "test" }, 'limit must be a number'],
     ])(`(${name}) - RoomFileService.findAll invalid partitions`, async (options, expected) => {
         expect(async () => await RoomFileService.findAll(options)).rejects.toThrowError(expected);
     });
@@ -108,9 +116,9 @@ const roomFileServiceTest = (RoomFileService, name) => {
         [0, 'No options provided'],
         [[], 'No uuid provided'],
         [{}, 'No uuid provided'],
-        [{ uuid: "test" }, 'No user provided'],
-        [{ uuid: "test", user: { } }, 'No user.sub provided'],
-        [{ uuid: "test", user: { sub: "test" } }, 'room_file not found'],
+        [{ uuid: fakeId }, 'No user provided'],
+        [{ uuid: fakeId, user: { } }, 'No user.sub provided'],
+        [{ uuid: fakeId, user: { sub: fakeId } }, 'room_file not found'],
     ])(`(${name}) - RoomFileService.findOne invalid partitions`, async (options, expected) => {
         expect(async () => await RoomFileService.findOne(options)).rejects.toThrowError(expected);
     });
@@ -142,11 +150,12 @@ const roomFileServiceTest = (RoomFileService, name) => {
         [user],
     ])(`(${name}) - RoomFileService.destroy return error for users who are not admin or moderator`, async (user) => {
         const { data } = await RoomFileService.findAll({ room_uuid, user: admin, limit: 2 });
+
         expect(async () => await RoomFileService.destroy({ uuid: data[0].uuid, user }))
             .rejects.toThrow("User is not an owner of the room_file, or an admin or moderator of the room");
     });
 };
 
 roomFileServiceTest(RelationalRoomFileService, 'Relational');
-//roomFileServiceTest(DocumentRoomFileService, 'Document');
+roomFileServiceTest(DocumentRoomFileService, 'Document');
 //roomFileServiceTest(GraphRoomFileService, 'Graph'

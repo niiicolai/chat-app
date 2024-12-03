@@ -95,6 +95,6 @@ const roomUserRoleServiceTest = (RoomUserRoleService, name) => {
     });
 };
 
-roomUserRoleServiceTest(RelationalRoomUserRoleService, 'RelationalRoomUserRoleService');
-roomUserRoleServiceTest(DocumentRoomUserRoleService, 'DocumentRoomUserRoleService');
-roomUserRoleServiceTest(GraphRoomUserRoleService, 'GraphRoomUserRoleService');
+roomUserRoleServiceTest(RelationalRoomUserRoleService, 'Relational');
+roomUserRoleServiceTest(DocumentRoomUserRoleService, 'Document');
+roomUserRoleServiceTest(GraphRoomUserRoleService, 'Graph');

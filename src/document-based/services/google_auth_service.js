@@ -1,13 +1,16 @@
-import GoogleAuthServiceValidator from '../../shared/validators/google_auth_service_validator.js';
+import Validator from '../../shared/validators/google_auth_service_validator.js';
 import JwtService from '../../shared/services/jwt_service.js';
-import ControllerError from '../../shared/errors/controller_error.js';
-import UserLoginType from '../mongoose/models/user_login_type.js';
-import UserStatusState from '../mongoose/models/user_status_state.js';
+import err from '../../shared/errors/index.js';
 import User from '../mongoose/models/user.js';
 import dto from '../dto/user_dto.js';
 import { v4 as uuidv4 } from 'uuid';
 
-class Service {
+/**
+ * @class GoogleAuthService
+ * @description Service class for Google auth.
+ * @exports GoogleAuthService
+ */
+class GoogleAuthService {
 
     /**
      * @function create
@@ -18,56 +21,52 @@ class Service {
      * @param {String} options.info.data.id
      * @param {String} options.info.data.email
      * @param {String} options.info.data.picture
+     * @param {String} user_uuid optional (mainly used by tests to predefine the user UUID)
      * @returns {Object}
      */
-    async create(options={ info: null }) {
-        GoogleAuthServiceValidator.create(options);
+    async create(options={ info: null, user_uuid: null }) {
+        Validator.create(options);
 
-        const { id: third_party_id, email, picture: avatar_src } = options.info.data;
+        const { user_uuid } = options;
+        const { id: third_party_id, email } = options.info.data;
 
-        if (await User.findOne({ email })) 
-            throw new ControllerError(400, 'Account already linked already exists. Please login instead!');
-        if (await User.findOne({ user_logins: { $elemMatch: { 
-            'user_login_type.name': "Google",
-            third_party_id: options.third_party_id
-        }}})) throw new ControllerError(400, 'Account already linked already exists. Please login instead!');
-        
-        const [user_status_state, user_login_type] = await Promise.all([
-            UserStatusState.findOne({ name: "Offline" }),
-            UserLoginType.findOne({ name: "Google" })
+        const [userExist, idExist] = await Promise.all([
+            User.findOne({ email }),
+            User.findOne({ user_logins: { $elemMatch: { 
+                'user_login_type': "Google",
+                third_party_id
+            }}}),
         ]);
-
-        if (!user_status_state) throw new ControllerError(500, 'User status state not found');
-        if (!user_login_type) throw new ControllerError(500, 'User login type not found');
+        if (userExist) throw new err.DuplicateEntryError('user', 'email', email);
+        if (idExist) throw new err.DuplicateEntryError('user', 'third_party_id', third_party_id);
 
         const now = new Date();
-        const uuid = uuidv4();
+        const uuid = user_uuid || uuidv4();
         const username = `user${now.getTime()}`;
         const savedUser = await new User({
-            uuid,
+            _id: uuid,
             username,
             email,
-            avatar_src,
             user_email_verification: { 
-                uuid: uuidv4(), 
+                _id: uuidv4(), 
                 is_verified: true
             },
             user_status: { 
-                uuid: uuidv4(), 
+                _id: uuidv4(), 
                 last_seen_at: new Date(), 
                 message: "No msg yet.", 
                 total_online_hours: 0, 
-                user_status_state 
+                user_status_state: "Offline" 
             },
             user_logins: [{
-                uuid: uuidv4(),
-                user_login_type,
+                _id: uuidv4(),
+                user_login_type: "Google",
                 third_party_id
             }],
             user_password_resets: []    
         }).save();
 
-        return { user: dto(savedUser), token: JwtService.sign(uuid) }
+        return { user: dto(savedUser._doc), token: JwtService.sign(uuid) }
     }
 
     /**
@@ -80,16 +79,17 @@ class Service {
      * @returns {Object}
      */
     async login(options={ info: null }) {
-        GoogleAuthServiceValidator.login(options);
+        Validator.login(options);
 
-        const user = await User.findOne({ user_logins: { $elemMatch: { 
-            'user_login_type.name': "Google",
-            third_party_id: options.info.data.id
+        const { id: third_party_id } = options.info.data;
+
+        const user = await User.findOne({ user_logins: { $elemMatch: {
+            'user_login_type': "Google",
+            third_party_id
         }}});
+        if (!user) throw new err.EntityNotFoundError('user_login');
 
-        if (!user) throw new ControllerError(400, 'User not found');
-
-        return { token: JwtService.sign(user.uuid), user: dto(user) };
+        return { token: JwtService.sign(user._id), user: dto(user._doc) };
     }
 
     /**
@@ -97,34 +97,40 @@ class Service {
      * @description Add a Google account to an existing user
      * @param {Object} options
      * @param {String} options.third_party_id
+     * @param {String} options.login_uuid optional
      * @param {String} options.type
      * @param {Object} options.user
      * @returns {void}
      */
-    async addToExistingUser(options={ third_party_id: null, type: null, user: null }) {
-        GoogleAuthServiceValidator.addToExistingUser(options);
+    async addToExistingUser(options={ third_party_id: null, type: null, user: null, login_uuid: null }) {
+        Validator.addToExistingUser(options);
 
-        const { third_party_id, type, user } = options;
-
-        if (await User.findOne({ user_logins: { $elemMatch: { 
-            'user_login_type.name': type,
-            third_party_id
-        }}})) throw new ControllerError(400, 'Account already linked already exists. Please login instead!');
+        const { third_party_id, type, user, login_uuid } = options;
+        const _id = login_uuid || uuidv4();
 
         if (type !== 'Google') {
-            throw new ControllerError(400, 'Only Google are currently supported');
+            throw new err.ControllerError(400, 'Only Google are currently supported');
         }
 
-        await User.updateOne({ uuid: user.sub }, {
+        const userExist = await User.findOne({ _id: user.sub });
+        if (!userExist) throw new err.EntityNotFoundError('user');
+
+        const userLogin = await User.findOne({ user_logins: { $elemMatch: { 
+            'user_login_type': type,
+            third_party_id
+        }}});
+        if (userLogin) throw new err.DuplicateThirdPartyLoginError("Google");
+
+        await User.updateOne({ _id: user.sub }, {
             $push: { user_logins: { 
-                uuid: uuidv4(),
-                user_login_type: await UserLoginType.findOne({ name: type }),
+                _id,
+                user_login_type: type,
                 third_party_id
             }}
         });
     }
 }
 
-const service = new Service();
+const service = new GoogleAuthService();
 
 export default service;

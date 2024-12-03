@@ -59,12 +59,12 @@ export default class ChannelSeeder {
             }), { session });
 
             await ChannelAudit.insertMany(data.rooms.flatMap((room) => {
-                return room.channels.flatMap((channel) => {
+                return room.channel_audits.flatMap((audit) => {
                     return {
-                        _id: channel.uuid,
-                        body: JSON.stringify(channel),
-                        channel_audit_type: "CHANNEL_CREATED",
-                        channel: channel.uuid,
+                        _id: audit.uuid,
+                        body: audit.body,
+                        channel_audit_type: audit.channel_audit_type_name,
+                        channel: audit.channel_uuid
                     }
                 })
             }), { session });

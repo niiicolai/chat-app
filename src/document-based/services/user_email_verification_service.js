@@ -22,7 +22,7 @@ class UserEmailVerificationService {
      * @description Resend a user email verification by user_uuid
      * @param {Object} options
      * @param {String} options.user_uuid
-     * @returns {void}
+     * @returns {Promise<void>}
      */
     async resend(options = { user_uuid: null }) {
         Validator.resend(options);
@@ -44,7 +44,7 @@ class UserEmailVerificationService {
      * @description Confirm a user email verification by user_email_verification_uuid
      * @param {Object} options
      * @param {String} options.uuid
-     * @returns {void}
+     * @returns {Promise<void>}
      */
     async confirm(options = { uuid: null }) {
         Validator.confirm(options);

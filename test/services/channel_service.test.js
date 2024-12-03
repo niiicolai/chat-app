@@ -24,6 +24,14 @@ const channelTest = (ChannelService, name) => {
 
 
     /**
+     * Fake entities
+     */
+
+    const fakeId = '1635e897-b84b-4b98-b8cf-5471ff349022';
+
+
+
+    /**
      * New channel uuid
      */
 
@@ -71,9 +79,9 @@ const channelTest = (ChannelService, name) => {
         [[], 'No uuid provided'],
         [{}, 'No uuid provided'],
         [{ uuid: '' }, 'No uuid provided'],
-        [{ uuid: "test" }, 'No user provided'],
-        [{ uuid: "test", user: { } }, 'No user.sub provided'],
-        [{ uuid: "test", user: { sub: "test" } }, 'channel not found'],
+        [{ uuid: fakeId }, 'No user provided'],
+        [{ uuid: fakeId, user: { } }, 'No user.sub provided'],
+        [{ uuid: fakeId, user: { sub: fakeId } }, 'channel not found'],
     ])(`(${name}) - ChannelService.findOne invalid partitions`, async (options, expected) => {
         expect(async () => await ChannelService.findOne(options)).rejects.toThrowError(expected);
     });
@@ -118,9 +126,9 @@ const channelTest = (ChannelService, name) => {
         [[], 'No room_uuid provided'],
         [{}, 'No room_uuid provided'],
         [{ room_uuid: '' }, 'No room_uuid provided'],
-        [{ room_uuid: 'test' }, 'No user provided'],
-        [{ room_uuid: 'test', user: {} }, 'No user.sub provided'],
-        [{ room_uuid: 'test', user: { sub: "test" } }, 'User is not in the room'],
+        [{ room_uuid: fakeId }, 'No user provided'],
+        [{ room_uuid: fakeId, user: {} }, 'No user.sub provided'],
+        [{ room_uuid: fakeId, user: { sub: fakeId } }, 'User is not in the room'],
     ])(`(${name}) - ChannelService.findAll invalid partitions`, async (options, expected) => {
         expect(async () => await ChannelService.findAll(options)).rejects.toThrowError(expected);
     });
@@ -163,14 +171,14 @@ const channelTest = (ChannelService, name) => {
         [{}, 'No body provided'],
         [{ body: { } }, 'No user provided'],
         [{ body: { }, user: { } }, 'No user.sub provided'],
-        [{ body: { }, user: { sub: "test" } }, 'No uuid provided'],
-        [{ body: { uuid: "test" }, user: { sub: "test" } }, 'No name provided'],
-        [{ body: { uuid: "test", name: "test" }, user: { sub: "test" } }, 'No description provided'],
-        [{ body: { uuid: "test", name: "test", description: "test" }, user: { sub: "test" } }, 'No channel_type_name provided'],
-        [{ body: { uuid: "test", name: "test", description: "test", channel_type_name: "test" }, user: { sub: "test" } }, 'No room_uuid provided'],
-        [{ body: { uuid: "test", name: "test", description: "test", channel_type_name: "test", room_uuid }, user: admin }, 'channel_type_name not found'],
+        [{ body: { }, user: { sub: fakeId } }, 'No uuid provided'],
+        [{ body: { uuid: fakeId }, user: { sub: fakeId } }, 'No name provided'],
+        [{ body: { uuid: fakeId, name: "test" }, user: { sub: fakeId } }, 'No description provided'],
+        [{ body: { uuid: fakeId, name: "test", description: "test" }, user: { sub: fakeId } }, 'No channel_type_name provided'],
+        [{ body: { uuid: fakeId, name: "test", description: "test", channel_type_name: "test" }, user: { sub: fakeId } }, 'No room_uuid provided'],
+        [{ body: { uuid: fakeId, name: "test", description: "test", channel_type_name: "not_a_valid_type", room_uuid }, user: admin }, 'channel_type_name not found'],
         [{ body: { uuid: channel_uuid, name: "test", description: "test", channel_type_name: "Text", room_uuid }, user: admin }, `channel with PRIMARY ${channel_uuid} already exists`],
-        [{ body: { uuid: "test", name: channel_name, description: "test", channel_type_name: channel_type, room_uuid }, user: admin }, `channel with name_type_room_uuid ${channel_name}-${channel_type}-${room_uuid} already exists`],
+        [{ body: { uuid: fakeId, name: channel_name, description: "test", channel_type_name: channel_type, room_uuid }, user: admin }, `channel with name_type_room_uuid ${channel_name}-${channel_type}-${room_uuid} already exists`],
     ])(`(${name}) - ChannelService.create invalid partitions`, async (options, expected) => {
         expect(async () => await ChannelService.create(options)).rejects.toThrowError(expected);
     });
@@ -211,8 +219,8 @@ const channelTest = (ChannelService, name) => {
         [[], 'No uuid provided'],
         [{}, 'No uuid provided'],
         [{ uuid: { } }, 'No user provided'],
-        [{ uuid: "test", user: { } }, 'No user.sub provided'],
-        [{ uuid: "test", user: { sub: "test" } }, 'No body provided'],
+        [{ uuid: fakeId, user: { } }, 'No user.sub provided'],
+        [{ uuid: fakeId, user: { sub: fakeId } }, 'No body provided'],
     ])(`(${name}) - ChannelService.update invalid partitions`, async (options, expected) => {
         expect(async () => await ChannelService.update(options)).rejects.toThrowError(expected);
     });
@@ -241,9 +249,9 @@ const channelTest = (ChannelService, name) => {
         [0, 'No options provided'],
         [[], 'No uuid provided'],
         [{}, 'No uuid provided'],
-        [{ uuid: { } }, 'No user provided'],
-        [{ uuid: "test", user: { } }, 'No user.sub provided'],
-        [{ uuid: "test", user: { sub: "test" } }, 'channel not found'],
+        [{ uuid: fakeId }, 'No user provided'],
+        [{ uuid: fakeId, user: { } }, 'No user.sub provided'],
+        [{ uuid: fakeId, user: { sub: fakeId } }, 'channel not found'],
     ])(`(${name}) - ChannelService.destroy invalid partitions`, async (options, expected) => {
         expect(async () => await ChannelService.destroy(options)).rejects.toThrowError(expected);
     });
@@ -296,6 +304,6 @@ const channelTest = (ChannelService, name) => {
     });
 };
 
-channelTest(RelationalChannelService, 'Relational');
-//channelTest(DocumentChannelService, 'Document');
+//channelTest(RelationalChannelService, 'Relational');
+channelTest(DocumentChannelService, 'Document');
 //channelTest(GraphChannelService, 'Graph');

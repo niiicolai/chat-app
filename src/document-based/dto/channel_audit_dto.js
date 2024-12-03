@@ -2,7 +2,7 @@ import { stringify } from "uuid";
 
 export default (entity = {}) => {
     return { 
-        uuid: stringify(entity._id),
+        uuid: !(entity._id instanceof Buffer) ? entity._id : stringify(entity._id),
         body: entity.body,
         channel_audit_type_name: entity.channel_audit_type, 
         channel_uuid: entity.channel?.uuid,

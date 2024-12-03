@@ -1,11 +1,16 @@
-import RoomAuditServiceValidator from '../../shared/validators/room_audit_service_validator.js';
-import ControllerError from '../../shared/errors/controller_error.js';
-import RoomPermissionService from './room_permission_service.js';
+import Validator from '../../shared/validators/room_audit_service_validator.js';
+import err from '../../shared/errors/index.js';
+import RPS from './room_permission_service.js';
 import dto from '../dto/room_audit_dto.js';
 import RoomAudit from '../mongoose/models/room_audit.js';
 import Room from '../mongoose/models/room.js';
 
-class Service {
+/**
+ * @class RoomAuditService
+ * @description Service class for room audits.
+ * @exports RoomAuditService
+ */
+class RoomAuditService {
 
     /**
      * @function findOne
@@ -17,16 +22,16 @@ class Service {
      * @returns {Object}
      */
     async findOne(options = { uuid: null, user: null }) {
-        RoomAuditServiceValidator.findOne(options);
+        Validator.findOne(options);
 
-        const roomAudit = await RoomAudit.findOne({ uuid: options.uuid }).populate('room');
-        if (!roomAudit) throw new ControllerError(404, 'room_audit not found');
+        const { uuid, user } = options;
+        const roomAudit = await RoomAudit.findOne({ _id: uuid }).populate('room');
+        if (!roomAudit) throw new err.EntityNotFoundError('room_audit');
 
-        if (!(await RoomPermissionService.isInRoom({ room_uuid: roomAudit.room.uuid, user: options.user, role_name: null }))) {
-            throw new ControllerError(403, 'User is not in the room');
-        }
+        const isInRoom = await RPS.isInRoom({ room_uuid: roomAudit.room._id, user });
+        if (!isInRoom) throw new err.RoomMemberRequiredError();
 
-        return dto(roomAudit);
+        return dto(roomAudit._doc);
     }
 
     /**
@@ -41,35 +46,37 @@ class Service {
      * @returns {Object}
      */
     async findAll(options = { room_uuid: null, user: null, page: null, limit: null }) {
-        options = RoomAuditServiceValidator.findAll(options);
+        options = Validator.findAll(options);
 
         const { room_uuid, user, page, limit, offset } = options;
 
-        if (!(await RoomPermissionService.isInRoom({ room_uuid, user, role_name: null }))) {
-            throw new ControllerError(403, 'User is not in the room');
-        }
+        const isInRoom = await RPS.isInRoom({ room_uuid, user });
+        if (!isInRoom) throw new err.RoomMemberRequiredError();
 
-        const room = await Room.findOne({ uuid: room_uuid });
-        if (!room) throw new ControllerError(404, 'Room not found');
+        const room = await Room.findOne({ _id: room_uuid });
+        if (!room) throw new err.EntityNotFoundError('room');
 
-        const params = { room: room._id };
-        const total = await RoomAudit.find(params).countDocuments();
-        const roomAudits = await RoomAudit.find(params)
-            .sort({ created_at: -1 })
-            .limit(limit || 0)
-            .skip((page && limit) ? offset : 0);
+        const params = { room: room_uuid };
+        const [total, data] = await Promise.all([
+            RoomAudit.find(params).countDocuments(),
+            RoomAudit.find(params)
+                .sort({ created_at: -1 })
+                .limit(limit || 0)
+                .skip((page && limit) ? offset : 0)
+                .then((audits) => audits.map((audit) => dto({ 
+                    ...audit._doc, room: room._doc,
+                }))),
+        ]);
 
         return {
             total,
-            data: await Promise.all(roomAudits.map(async (roomAudit) => {
-                return dto({ ...roomAudit._doc, room: { uuid: room_uuid } });
-            })),
+            data,
             ...(limit && { limit }),
             ...(page && limit && { page, pages: Math.ceil(total / limit) }),
         };
     }
 }
 
-const service = new Service();
+const service = new RoomAuditService();
 
 export default service;

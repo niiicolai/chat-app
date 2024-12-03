@@ -1,13 +1,15 @@
-import RoomUserServiceValidator from '../../shared/validators/room_user_service_validator.js';
-import EntityNotFoundError from '../../shared/errors/entity_not_found_error.js';
-import RoomMemberRequiredError from '../../shared/errors/room_member_required_error.js';
-import ControllerError from '../../shared/errors/controller_error.js';
-import RoomPermissionService from './room_permission_service.js';
-import RoomUserRole from '../mongoose/models/room_user_role.js';
+import Validator from '../../shared/validators/room_user_service_validator.js';
+import err from '../../shared/errors/index.js';
+import RPS from './room_permission_service.js';
 import Room from '../mongoose/models/room.js';
 import dto from '../dto/room_user_dto.js';
 
-class Service {
+/**
+ * @class RoomUserService
+ * @description Service class for room users.
+ * @exports RoomUserService
+ */
+class RoomUserService {
 
     /**
      * @function findOne
@@ -16,23 +18,24 @@ class Service {
      * @param {String} options.uuid
      * @param {Object} options.user
      * @param {String} options.user.sub
-     * @returns {Object}
+     * @returns {Promise<Object>}
      */
     async findOne(options = { uuid: null, user: null }) {
-        RoomUserServiceValidator.findOne(options);
+        Validator.findOne(options);
 
+        const { uuid: _id, user } = options;
         const room = await Room
-            .where({ room_users: { $elemMatch: { _id: options.uuid } } })
+            .where({ room_users: { $elemMatch: { _id } } })
             .findOne()
             .populate('room_users.user');
 
-        const roomUser = room?.room_users?.find(u => u._id === options.uuid);
-        if (!roomUser) throw new EntityNotFoundError('room_user');
+        const roomUser = room?.room_users?.find(u => u._id === _id);
+        if (!roomUser) throw new err.EntityNotFoundError('room_user');
 
-        const isInRoom = await RoomPermissionService.isInRoom({ room_uuid: room.uuid, user: options.user, role_name: null });
-        if (!isInRoom) throw new RoomMemberRequiredError();
+        const isInRoom = await RPS.isInRoom({ room_uuid: room._id, user });
+        if (!isInRoom) throw new err.RoomMemberRequiredError();
 
-        return dto({ ...roomUser._doc, room });
+        return dto({ ...roomUser._doc, room: room._doc });
     }
 
     /**
@@ -42,25 +45,25 @@ class Service {
      * @param {String} options.room_uuid
      * @param {Object} options.user
      * @param {String} options.user.sub
-     * @returns {Object}
+     * @returns {Promise<Object>}
      */
     async findAuthenticatedUser(options = { room_uuid: null, user: null }) {
-        RoomUserServiceValidator.findAuthenticatedUser(options);
+        Validator.findAuthenticatedUser(options);
 
-        const room = await Room.findOne({ uuid: options.room_uuid }).populate('room_users.user room_users.room_user_role');
-        const roomUser = room?.room_users?.find(u => u.user.uuid === options.user.sub);
+        const { room_uuid: _id, user } = options;
+        const room = await Room.findOne({ _id }).populate('room_users.user');
+        const roomUser = room?.room_users?.find(u => u.user._id === user.sub);
 
-        if (!room) throw new ControllerError(404, 'room_user not found');
-        if (!(await RoomPermissionService.isInRoom({ room_uuid: room.uuid, user: options.user, role_name: null }))) {
-            throw new ControllerError(403, 'User is not in the room');
-        }
-        if (!roomUser) throw new ControllerError(404, 'room_user not found');
+        if (!room) throw new err.EntityNotFoundError('room_user');
+        //console.log(room?.room_users.forEach(u => console.log(u.user._id, user.sub, u.user._id === user.sub)));
+        const isInRoom = await RPS.isInRoom({ room_uuid: _id, user });
+
+        if (!isInRoom) throw new err.RoomMemberRequiredError();
+        if (!roomUser) throw new err.EntityNotFoundError('room_user');
 
         return dto({
             ...roomUser._doc,
-            room: room,
-            user: options.user,
-            room_user_role: roomUser.room_user_role
+            room: room._doc,
         });
     }
 
@@ -73,30 +76,32 @@ class Service {
      * @param {String} options.user.sub
      * @param {Number} options.page
      * @param {Number} options.limit
-     * @returns {Object}
+     * @returns {Promise<Object>}
      */
     async findAll(options = { room_uuid: null, user: null, page: null, limit: null }) {
-        options = RoomUserServiceValidator.findAll(options);
-        const { room_uuid, page, limit, offset } = options;
+        options = Validator.findAll(options);
 
-        if (!(await RoomPermissionService.isInRoom({ room_uuid: options.room_uuid, user: options.user, role_name: null }))) {
-            throw new ControllerError(403, 'User is not in the room');
-        }
+        const { user, room_uuid, page, limit, offset } = options;
 
-        const params = { uuid: room_uuid };
+        const isInRoom = await RPS.isInRoom({ room_uuid, user });
+        if (!isInRoom) throw new err.RoomMemberRequiredError();
+
+        const params = { _id: room_uuid };
         const room = await Room.findOne(params)
-            .populate('room_users.user room_users.room_user_role')
+            .populate('room_users.user')
             .sort({ created_at: -1 })
             .limit(limit || 0)
             .skip((page && limit) ? offset : 0);
-        
+
+        const total = room.room_users.length;
+
         return {
-            total: room.room_users.length,
-            data: await Promise.all(room.room_users.map(async (room_user) => {
-                return dto({ ...room_user._doc, room: { uuid: room_uuid } });
-            })),
+            total,
+            data: room.room_users.map((room_user) => {
+                return dto({ ...room_user._doc, room: room._doc });
+            }),
             ...(limit && { limit }),
-            ...(page && limit && { page, pages: Math.ceil(room.room_users.length / limit) }),
+            ...(page && limit && { page, pages: Math.ceil(total / limit) }),
         };
     }
 
@@ -108,29 +113,34 @@ class Service {
      * @param {Object} options.body
      * @param {Object} options.user
      * @param {String} options.user.sub
-     * @returns {Object}
+     * @returns {Promise<Object>}
      */
     async update(options = { uuid: null, body: null, user: null }) {
-        RoomUserServiceValidator.update(options);
+        Validator.update(options);
 
-        const room = await Room.findOne({ 'room_users.uuid': options.uuid }).populate('room_users.user room_users.room_user_role');
-        const roomUser = room?.room_users?.find(u => u.uuid === options.uuid);
+        const { uuid, body, user } = options;
+        let room = await Room.findOne({ 'room_users._id': uuid }).populate('room_users.user');
+        let roomUser = room?.room_users?.find(u => u._id === uuid);
 
-        if (!room) throw new ControllerError(404, 'room_user not found');
-        if (!roomUser) throw new ControllerError(404, 'room_user not found');
-        if (!(await RoomPermissionService.isInRoom({ room_uuid: room.uuid, user: options.user, role_name: 'Admin' }))) {
-            throw new ControllerError(403, 'User is not an admin of the room');
+        if (!room) throw new err.EntityNotFoundError('room_user');
+        if (!roomUser) throw new err.EntityNotFoundError('room_user');
+
+        const isAdmin = await RPS.isInRoom({ room_uuid: room._id, user, role_name: 'Admin' });
+        if (!isAdmin) throw new err.AdminPermissionRequiredError();
+
+        try {
+            room = await Room.findOneAndUpdate(
+                { 'room_users._id': uuid }, 
+                { $set: { 'room_users.$.room_user_role': body.room_user_role_name } }
+            );
+        } catch (error) {
+            console.error(error);
+            throw error;
         }
 
-        if (options.body.room_user_role_name) {
-            const roomUserRole = await RoomUserRole.findOne({ name: options.body.room_user_role_name });
-            if (!roomUserRole) throw new ControllerError(404, 'Room user role not found');
-            roomUser.room_user_role = roomUserRole;
-        }
+        roomUser = room.room_users.find(u => u._id === uuid);
 
-        await room.save();
-
-        return dto({ ...roomUser, room });
+        return dto({ ...roomUser._doc, room: room._doc });
     }
 
     /**
@@ -140,24 +150,25 @@ class Service {
      * @param {String} options.uuid
      * @param {Object} options.user
      * @param {String} options.user.sub
-     * @returns {void}
+     * @returns {Promise<void>}
      */
     async destroy(options = { uuid: null, user: null }) {
-        RoomUserServiceValidator.destroy(options);
+        Validator.destroy(options);
 
-        const room = await Room.findOne({ 'room_users.uuid': options.uuid }).populate('room_users.user room_users.room_user_role');
-        const roomUser = room?.room_users?.find(u => u.uuid === options.uuid);
+        const { uuid, user } = options;
+        const room = await Room.findOne({ 'room_users._id': uuid }).populate('room_users.user');
+        const roomUser = room?.room_users?.find(u => u._id === uuid);
 
-        if (!room) throw new ControllerError(404, 'room_user not found');
-        if (!roomUser) throw new ControllerError(404, 'room_user not found');
-        if (!(await RoomPermissionService.isInRoom({ room_uuid: room.uuid, user: options.user, role_name: 'Admin' }))) {
-            throw new ControllerError(403, 'User is not an admin of the room');
-        }
+        if (!room) throw new err.EntityNotFoundError('room_user');
+        if (!roomUser) throw new err.EntityNotFoundError('room_user');
 
-        await Room.findOneAndUpdate({ uuid: room.uuid }, { $pull: { room_users: { uuid: options.uuid } } });
+        const isAdmin = await RPS.isInRoom({ room_uuid: room._id, user, role_name: 'Admin' });
+        if (!isAdmin) throw new err.AdminPermissionRequiredError();
+
+        await Room.findOneAndUpdate({ _id: room._id }, { $pull: { room_users: { _id: uuid } } });
     }
 }
 
-const service = new Service();
+const service = new RoomUserService();
 
 export default service;

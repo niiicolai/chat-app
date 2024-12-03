@@ -29,7 +29,7 @@ class UserService {
      * @description Find a user by uuid
      * @param {Object} options
      * @param {String} options.uuid
-     * @returns {Object}
+     * @returns {Promise<Object>}
      */
     async findOne(options = { uuid: null }) {
         Validator.findOne(options);
@@ -52,18 +52,18 @@ class UserService {
      * @param {String} options.body.password
      * @param {Object} options.file
      * @param {Boolean} disableVerifyInTest
-     * @returns {Object}
+     * @returns {Promise<Object>}
      */
     async create(options = { body: null, file: null }, disableVerifyInTest = false) {
         Validator.create(options);
 
         const { body, file } = options;
         const { uuid, email, username } = body;
+        const avatar_src = (file && file.size > 0) ? await uploader.create(file, uuid) : null;
 
         const session = await mongoose.startSession();
         session.startTransaction();
         try {
-            const avatar_src = (file && file.size > 0) ? await uploader.create(file, uuid) : null;
             const savedUser = await new User({
                 _id: uuid,
                 username,
@@ -93,8 +93,12 @@ class UserService {
             }
 
             return { user: dto(savedUser._doc), token: JwtService.sign(uuid) };
+
         } catch (error) {
             await session.abortTransaction();
+            // If there is an error, delete the avatar if it was created
+            if (avatar_src) await uploader.destroy(avatar_src);
+
             if (error?.errorResponse?.code === 11000) {
                 if (error.keyPattern?.email) {
                     throw new err.DuplicateEntryError('user', 'user_email', email);
@@ -124,43 +128,51 @@ class UserService {
      * @param {String} options.body.password
      * @param {Object} options.file
      * @param {Object} options.user
-     * @returns {Object}
+     * @returns {Promise<Object>}
      */
     async update(options = { body: null, file: null, user: null }) {
         Validator.update(options);
 
         const { body, file, user } = options;
-        const { username, email, password } = body;
+        const { username, email } = body;
         const { sub: uuid } = user;
+        const avatar_src = (file && file.size > 0) ? await uploader.create(file, uuid) : null;
+        const password = body.password ? await PwdService.hash(body.password) : null;
+        const user_login_type = 'Password';
 
+        let savedUser = null;
         const session = await mongoose.startSession();
         session.startTransaction();
         try {
-            const savedUser = await User.findOne({ _id: uuid }).session(session);
+            savedUser = await User.findOne({ _id: uuid }).session(session);
             if (!savedUser) throw new err.EntityNotFoundError('user');
 
             if (username) savedUser.username = username;
             if (email) savedUser.email = email;
-            if (file && file.size > 0) {
-                savedUser.avatar_src = await uploader.createOrUpdate(savedUser.avatar_src, file, uuid);
-            }
+            
+            const old_avatar_src = savedUser.avatar_src;
+            if (avatar_src) savedUser.avatar_src = avatar_src;
 
             if (password) {
-                let userPasswordLogin = savedUser.user_logins.find(l => l.user_login_type === "Password");
+                let userPasswordLogin = savedUser.user_logins.find(l => l.user_login_type === user_login_type);
                 if (!userPasswordLogin) {
-                    userPasswordLogin = { uuid: uuidv4(), user_login_type: "Password" };
+                    userPasswordLogin = { uuid: uuidv4(), user_login_type };
                     savedUser.user_logins.push(userPasswordLogin);
                 }
 
-                userPasswordLogin.password = await PwdService.hash(password);
+                userPasswordLogin.password = password;
             }
 
             await savedUser.save({ session });
 
-            return dto(savedUser);
-
+            if (avatar_src && old_avatar_src) {
+                await uploader.destroy(old_avatar_src);
+            }
         } catch (error) {
             await session.abortTransaction();
+            // If there is an error, delete the avatar if it was created
+            if (avatar_src) await uploader.destroy(avatar_src);
+
             if (error?.errorResponse?.code === 11000) {
                 if (error.keyPattern?.email) {
                     throw new err.DuplicateEntryError('user', 'user_email', email);
@@ -180,6 +192,8 @@ class UserService {
             }
             session.endSession();
         }
+
+        return dto(savedUser);
     }
 
     /**
@@ -189,7 +203,7 @@ class UserService {
      * @param {Object} options.body
      * @param {String} options.body.email
      * @param {String} options.body.password
-     * @returns {Object}
+     * @returns {Promise<Object>}
      */
     async login(options = { body: null }) {
         Validator.login(options);
@@ -218,17 +232,15 @@ class UserService {
         Validator.destroy(options);
 
         const session = await mongoose.startSession();
+        session.startTransaction();
         try {
-            session.startTransaction();
-
             const user = await User.findOne({ _id: options.uuid }).session(session);
             if (!user) throw new err.EntityNotFoundError('user');
 
             await User.deleteOne({ _id: options.uuid }).session(session);
 
             if (user.avatar_src) {
-                const key = uploader.parseKey(user.avatar_src);
-                await uploader.destroy(key);
+                await uploader.destroy(user.avatar_src);
             }
 
             await session.commitTransaction();
@@ -245,7 +257,7 @@ class UserService {
      * @description Destroy a user's avatar by uuid
      * @param {Object} options
      * @param {String} options.uuid
-     * @returns {void}
+     * @returns {Promise<void>}
      */
     async destroyAvatar(options = { uuid: null }) {
         Validator.destroyAvatar(options);
@@ -267,7 +279,7 @@ class UserService {
      * @description Get a user's logins by uuid
      * @param {Object} options
      * @param {String} options.uuid
-     * @returns {Array}
+     * @returns {Promise<Array>}
      */
     async getUserLogins(options = { uuid: null }) {
         Validator.getUserLogins(options);
@@ -284,7 +296,7 @@ class UserService {
      * @param {Object} options
      * @param {String} options.uuid
      * @param {String} options.login_uuid
-     * @returns {void}
+     * @returns {Promise<void>}
      */
     async destroyUserLogins(options = { uuid: null, login_uuid: null }) {
         Validator.destroyUserLogins(options);
@@ -303,6 +315,17 @@ class UserService {
         await user.save();
     }
 
+    /**
+     * @function createUserLogin
+     * @description Create a user login
+     * @param {Object} options
+     * @param {String} options.uuid
+     * @param {Object} options.body
+     * @param {String} options.body.user_login_type_name
+     * @param {String} options.body.password
+     * @param {String} options.body.third_party_id
+     * @returns {Promise<Object>}
+     */
     async createUserLogin(options = { uuid: null, body: null }) {
         Validator.createUserLogin(options);
 

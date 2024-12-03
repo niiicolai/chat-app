@@ -24,7 +24,15 @@ const roomUserServiceTest = (RoomUserService, RoomInviteLinkService, name) => {
     const room_invite_link_uuid = data.rooms[0].room_invite_link.uuid;
 
 
-    
+
+    /**
+     * Fake entities
+     */
+
+    const fakeId = '1635e897-b84b-4b98-b8cf-5471ff349022';
+
+
+
     /**
      * Expected methods
      */
@@ -37,17 +45,17 @@ const roomUserServiceTest = (RoomUserService, RoomInviteLinkService, name) => {
         expect(RoomUserService).toHaveProperty('destroy');
     });
 
-    
+
 
     /**
      * RoomUserService.findAuthenticatedUser
      */
 
     test.each([
-        [{ room_uuid, user: admin }],
-        [{ room_uuid, user: mod }],
-        [{ room_uuid, user: member }],
-    ])(`(${name}) - RoomUserService.findAuthenticatedUser valid partitions`, async (options) => {
+        [{ room_uuid, user: admin }, 'Admin'],
+        [{ room_uuid, user: mod }, 'Moderator'],
+        [{ room_uuid, user: member }, 'Member'],
+    ])(`(${name}) - RoomUserService.findAuthenticatedUser valid partitions`, async (options, role) => {
         const roomUser = await RoomUserService.findAuthenticatedUser(options);
 
         expect(roomUser).toHaveProperty('uuid');
@@ -56,6 +64,9 @@ const roomUserServiceTest = (RoomUserService, RoomInviteLinkService, name) => {
         expect(roomUser).toHaveProperty('room_user_role_name');
         expect(roomUser).toHaveProperty('created_at');
         expect(roomUser).toHaveProperty('updated_at');
+        expect(roomUser.room_uuid).toBe(options.room_uuid);
+        expect(roomUser.user_uuid).toBe(options.user.sub);
+        expect(roomUser.room_user_role_name).toBe(role);
     });
 
     test.each([
@@ -76,10 +87,11 @@ const roomUserServiceTest = (RoomUserService, RoomInviteLinkService, name) => {
      */
 
     test.each([
-        [{ room_uuid, user: admin }],
-        [{ room_uuid, user: mod }],
-        [{ room_uuid, user: member }],
-    ])(`(${name}) - RoomUserService.findOne valid partitions`, async (options) => {
+        [{ room_uuid, user: admin }, 'Admin'],
+        [{ room_uuid, user: mod }, 'Moderator'],
+        [{ room_uuid, user: member }, 'Member'],
+    ])(`(${name}) - RoomUserService.findOne valid partitions`, async (options, role) => {
+        expect(options.room_uuid).toBeDefined();
         const { uuid } = await RoomUserService.findAuthenticatedUser(options);
         const roomUser = await RoomUserService.findOne({ uuid, user: options.user });
 
@@ -89,16 +101,19 @@ const roomUserServiceTest = (RoomUserService, RoomInviteLinkService, name) => {
         expect(roomUser).toHaveProperty('room_user_role_name');
         expect(roomUser).toHaveProperty('created_at');
         expect(roomUser).toHaveProperty('updated_at');
+        expect(roomUser.room_uuid).toBe(options.room_uuid);
+        expect(roomUser.user_uuid).toBe(options.user.sub);
+        expect(roomUser.room_user_role_name).toBe(role);
     });
 
     test.each([
         [undefined, 'No uuid provided'],
         [null, 'No options provided'],
         [{ uuid: null }, 'No uuid provided'],
-        [{ uuid: "test" }, 'No user provided'],
-        [{ uuid: "test", user: null }, 'No user provided'],
-        [{ uuid: "test", user: { sub: null } }, 'No user.sub provided'],
-    ])(`(${name}) - RoomUserService.findAuthenticatedUser invalid partitions`, async (options, expected) => {
+        [{ uuid: fakeId }, 'No user provided'],
+        [{ uuid: fakeId, user: null }, 'No user provided'],
+        [{ uuid: fakeId, user: { sub: null } }, 'No user.sub provided'],
+    ])(`(${name}) - RoomUserService.findOne invalid partitions`, async (options, expected) => {
         expect(async () => await RoomUserService.findOne(options)).rejects.toThrow(expected);
     });
 
@@ -130,6 +145,7 @@ const roomUserServiceTest = (RoomUserService, RoomInviteLinkService, name) => {
         expect(result.data[0]).toHaveProperty('room_user_role_name');
         expect(result.data[0]).toHaveProperty('created_at');
         expect(result.data[0]).toHaveProperty('updated_at');
+        expect(result.data[0].room_uuid).toBe(options.room_uuid);
 
         if (options?.page) {
             expect(result).toHaveProperty('pages');
@@ -145,11 +161,11 @@ const roomUserServiceTest = (RoomUserService, RoomInviteLinkService, name) => {
         [0, 'No options provided'],
         [[], 'No room_uuid provided'],
         [{}, 'No room_uuid provided'],
-        [{ room_uuid: "test" }, 'No user provided'],
-        [{ room_uuid: "test", user: {} }, 'No user.sub provided'],
-        [{ room_uuid: "test", user: { sub: "test" }, page: -1 }, 'page must be greater than 0'],
-        [{ room_uuid: "test", user: { sub: "test" }, page: 1 }, 'page requires limit'],
-        [{ room_uuid: "test", user: { sub: "test" }, page: 1, limit: -1 }, 'limit must be greater than 0'],
+        [{ room_uuid: fakeId }, 'No user provided'],
+        [{ room_uuid: fakeId, user: {} }, 'No user.sub provided'],
+        [{ room_uuid: fakeId, user: { sub: fakeId }, page: -1 }, 'page must be greater than 0'],
+        [{ room_uuid: fakeId, user: { sub: fakeId }, page: 1 }, 'page requires limit'],
+        [{ room_uuid: fakeId, user: { sub: fakeId }, page: 1, limit: -1 }, 'limit must be greater than 0'],
     ])(`(${name}) - RoomUserService.findAll invalid partitions`, async (options, expected) => {
         expect(async () => await RoomUserService.findAll(options)).rejects.toThrowError(expected);
     });
@@ -189,11 +205,11 @@ const roomUserServiceTest = (RoomUserService, RoomInviteLinkService, name) => {
         [0, 'No options provided'],
         [[], 'No uuid provided'],
         [{}, 'No uuid provided'],
-        [{ uuid: "test" }, 'No user provided'],
-        [{ uuid: "test", user: {} }, 'No user.sub provided'],
-        [{ uuid: "test", user: { sub: "test" } }, 'No body provided'],
-        [{ uuid: "test", user: { sub: "test" }, body: {} }, 'No room_user_role_name provided'],
-        [{ uuid: "test", user: { sub: "test" }, body: { room_user_role_name: "test" } }, 'room_user not found'],
+        [{ uuid: fakeId }, 'No user provided'],
+        [{ uuid: fakeId, user: {} }, 'No user.sub provided'],
+        [{ uuid: fakeId, user: { sub: fakeId } }, 'No body provided'],
+        [{ uuid: fakeId, user: { sub: fakeId }, body: {} }, 'No room_user_role_name provided'],
+        [{ uuid: fakeId, user: { sub: fakeId }, body: { room_user_role_name: "test" } }, 'room_user not found'],
     ])(`(${name}) - RoomUserService.update invalid partitions`, async (options, expected) => {
         expect(async () => await RoomUserService.update(options)).rejects.toThrowError(expected);
     });
@@ -214,10 +230,13 @@ const roomUserServiceTest = (RoomUserService, RoomInviteLinkService, name) => {
         await RoomInviteLinkService.join({ uuid: room_invite_link_uuid, user: options.user });
         // Find the room user and destroy it as the acting user
         const roomUser = await RoomUserService.findAuthenticatedUser({ room_uuid, user: options.user });
+        // Verify the room user exists
+        expect(roomUser).toBeDefined();
         await RoomUserService.destroy({ uuid: roomUser.uuid, user: options.acting_user });
         // Verify the destroy
         expect(async () => await RoomUserService.findOne({ uuid: roomUser.uuid, user: options.acting_user }))
             .rejects.toThrow("room_user not found");
+
     });
 
     test.each([
@@ -227,13 +246,12 @@ const roomUserServiceTest = (RoomUserService, RoomInviteLinkService, name) => {
         [0, 'No options provided'],
         [[], 'No uuid provided'],
         [{}, 'No uuid provided'],
-        [{ uuid: "test" }, 'No user provided'],
-        [{ uuid: "test", user: {} }, 'No user.sub provided'],
-        [{ uuid: "test", user: { sub: "test" } }, 'room_user not found'],
+        [{ uuid: fakeId }, 'No user provided'],
+        [{ uuid: fakeId, user: {} }, 'No user.sub provided'],
+        [{ uuid: fakeId, user: { sub: fakeId } }, 'room_user not found'],
     ])(`(${name}) - RoomUserService.destroy invalid partitions`, async (options, expected) => {
         expect(async () => await RoomUserService.destroy(options)).rejects.toThrowError(expected);
     });
-
 
 
     /**
@@ -283,7 +301,5 @@ const roomUserServiceTest = (RoomUserService, RoomInviteLinkService, name) => {
 };
 
 roomUserServiceTest(RelationalRoomUserService, RelationalRoomInviteLinkService, 'Relational');
-/*
 roomUserServiceTest(DocumentRoomUserService, DocumentRoomInviteLinkService, 'Document');
-roomUserServiceTest(GraphRoomUserService, GraphRoomInviteLinkService, 'Graph');
-*/
+//roomUserServiceTest(GraphRoomUserService, GraphRoomInviteLinkService, 'Graph');

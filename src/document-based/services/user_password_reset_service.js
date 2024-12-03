@@ -27,7 +27,7 @@ class UserPasswordResetService {
      * @param {Object} options.body
      * @param {String} options.body.email
      * @param {String} resetPasswordUuid - optional (mainly used for testing)
-     * @returns {void}
+     * @returns {Promise<void>}
      */
     async create(options = { body: null }, resetPasswordUuid = null) {
         Validator.create(options);
@@ -54,7 +54,7 @@ class UserPasswordResetService {
      * @param {String} options.uuid
      * @param {Object} options.body
      * @param {String} options.body.password
-     * @returns {void}
+     * @returns {Promise<void>}
      */
     async resetPassword(options = { uuid: null, body: null }) {
         Validator.resetPassword(options);

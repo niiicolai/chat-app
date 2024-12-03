@@ -1,16 +1,20 @@
-import RoomInviteLinkServiceValidator from '../../shared/validators/room_invite_link_service_validator.js';
-import ControllerError from '../../shared/errors/controller_error.js';
-import RoomPermissionService from './room_permission_service.js';
+import Validator from '../../shared/validators/room_invite_link_service_validator.js';
+import err from '../../shared/errors/index.js';
+import RPS from './room_permission_service.js';
 import dto from '../dto/room_invite_link_dto.js';
 import Room from '../mongoose/models/room.js';
-import RoomUserRole from '../mongoose/models/room_user_role.js';
 import Channel from '../mongoose/models/channel.js';
 import ChannelMessage from '../mongoose/models/channel_message.js';
-import ChannelMessageType from '../mongoose/models/channel_message_type.js';
+import mongoose from '../mongoose/index.js';
 import User from '../mongoose/models/user.js';
 import { v4 as uuidv4 } from 'uuid';
 
-class Service {
+/**
+ * @class RoomInviteLinkService
+ * @description Service class for room invite links.
+ * @exports RoomInviteLinkService
+ */
+class RoomInviteLinkService {
 
     /**
      * @function findOne
@@ -19,22 +23,21 @@ class Service {
      * @param {String} options.uuid
      * @param {Object} options.user
      * @param {String} options.user.sub
-     * @returns {Object}
+     * @returns {Promise<Object>}
      */
     async findOne(options = { uuid: null, user: null }) {
-        RoomInviteLinkServiceValidator.findOne(options);
+        Validator.findOne(options);
 
-        const room = await Room.findOne({ room_invite_links: { $elemMatch: { uuid: options.uuid } } });
-        const room_invite_link = room?.room_invite_links?.find(u => u.uuid === options.uuid);
+        const { uuid, user } = options;
+        const room = await Room.findOne({ room_invite_links: { $elemMatch: { _id: uuid } } });
+        const room_invite_link = room?.room_invite_links?.find(u => u._id === uuid);
 
-        if (!room) throw new ControllerError(404, 'room_invite_link not found');
-        if (!room_invite_link) throw new ControllerError(404, 'room_invite_link not found');
+        if (!room || !room_invite_link) throw new err.EntityNotFoundError('room_invite_link');
 
-        if (!(await RoomPermissionService.isInRoom({ room_uuid: room.uuid, user: options.user, role_name: null }))) {
-            throw new ControllerError(403, 'User is not in the room');
-        }
-        
-        return dto({ ...room_invite_link._doc, room });
+        const isInRoom = await RPS.isInRoom({ room_uuid: room._id, user });
+        if (!isInRoom) throw new err.RoomMemberRequiredError();
+
+        return dto({ ...room_invite_link._doc, room: room._doc });
     }
 
     /**
@@ -46,30 +49,30 @@ class Service {
      * @param {String} options.user.sub
      * @param {Number} options.page
      * @param {Number} options.limit
-     * @returns {Object}
+     * @returns {Promise<Object>}
      */
     async findAll(options = { room_uuid: null, user: null, page: null, limit: null }) {
-        options = RoomInviteLinkServiceValidator.findAll(options);
+        options = Validator.findAll(options);
+
         const { room_uuid, user, page, limit, offset } = options;
 
-        if (!(await RoomPermissionService.isInRoom({ room_uuid, user, role_name: null }))) {
-            throw new ControllerError(403, 'User is not in the room');
-        }
-        
-        const params = { uuid: room_uuid };
+        const isInRoom = await RPS.isInRoom({ room_uuid, user });
+        if (!isInRoom) throw new err.RoomMemberRequiredError();
+
+        const params = { _id: room_uuid };
         const room = await Room.findOne(params)
-            .populate('room_invite_links')
             .sort({ created_at: -1 })
             .limit(limit || 0)
             .skip((page && limit) ? offset : 0);
-        
+        const total = room?.room_invite_links?.length || 0;
+
         return {
-            total: room.room_invite_links.length,
-            data: await Promise.all(room.room_invite_links.map(async (room_invite_link) => {
-                return dto({ ...room_invite_link._doc, room: { uuid: room_uuid } });
-            })),
+            total,
+            data: room.room_invite_links.map((room_invite_link) => {
+                return dto({ ...room_invite_link._doc, room: room._doc });
+            }),
             ...(limit && { limit }),
-            ...(page && limit && { page, pages: Math.ceil(room.room_invite_links.length / limit) }),
+            ...(page && limit && { page, pages: Math.ceil(total / limit) }),
         };
     }
 
@@ -78,30 +81,40 @@ class Service {
      * @description Create a room invite link for a room
      * @param {Object} options
      * @param {Object} options.body
+     * @param {String} options.body.uuid
      * @param {String} options.body.room_uuid
      * @param {String} options.body.expires_at
      * @param {Object} options.user
      * @param {String} options.user.sub
-     * @returns {Object}
+     * @returns {Promise<Object>}
      */
     async create(options = { body: null, user: null }) {
-        RoomInviteLinkServiceValidator.create(options);
+        Validator.create(options);
+
         const { body, user } = options;
 
-        if (!(await RoomPermissionService.isInRoom({ room_uuid: body.room_uuid, user, role_name: 'Admin' }))) {
-            throw new ControllerError(403, 'User is not an admin of the room');
-        }
+        const room = await Room.findOne({ _id: body.room_uuid });
+        if (!room) throw new err.EntityNotFoundError('room');
+
+        const isAdmin = await RPS.isInRoom({ room_uuid: body.room_uuid, user, role_name: 'Admin' });
+        if (!isAdmin) throw new err.AdminPermissionRequiredError();
+
+        const uuidInUse = await Room.findOne({ room_invite_links: { $elemMatch: { _id: body.uuid } } });
+        if (uuidInUse) throw new err.DuplicateEntryError('room_invite_link', 'PRIMARY', body.uuid);
+
+        await Room.findOneAndUpdate(
+            { _id: body.room_uuid },
+            { $push: { room_invite_links: {
+                _id: body.uuid,
+                expires_at: body.expires_at,
+                never_expires: body.expires_at ? false : true
+            } } }
+        );
         
-        const room = await Room.findOne({ uuid: body.room_uuid });
-        if (!room) throw new ControllerError(404, 'Room not found');
+        const updateRoom = await Room.findOne({ _id: body.room_uuid });
+        const room_invite_link = updateRoom.room_invite_links.find(u => u._id === body.uuid);
 
-        room.room_invite_links.push(body);
-        await room.save();
-
-        const roomUpdated = await Room.findOne({ uuid: body.room_uuid });
-        const room_invite_link = roomUpdated.room_invite_links[room.room_invite_links.length - 1];
-
-        return dto({ ...room_invite_link._doc, room });
+        return dto({ ...room_invite_link._doc, room: room._doc });
     }
 
     /**
@@ -113,25 +126,28 @@ class Service {
      * @param {String} options.body.expires_at
      * @param {Object} options.user
      * @param {String} options.user.sub
-     * @returns {Object}
+     * @returns {Promise<Object>}
      */
     async update(options = { uuid: null, body: null, user: null }) {
-        RoomInviteLinkServiceValidator.update(options);
+        Validator.update(options);
 
-        const room = await Room.findOne({ room_invite_links: { $elemMatch: { uuid: options.uuid } } });
-        const room_invite_link = room?.room_invite_links?.find(u => u.uuid === options.uuid);
+        const { uuid, body, user } = options;
+        const room = await Room.findOne({ room_invite_links: { $elemMatch: { _id: uuid } } });
+        const room_invite_link = room?.room_invite_links?.find(u => u._id === uuid);
 
-        if (!room) throw new ControllerError(404, 'Room not found');
-        if (!room_invite_link) throw new ControllerError(404, 'Room Invite Link not found');
-        if (!(await RoomPermissionService.isInRoom({ room_uuid: room.uuid, user: options.user, role_name: 'Admin' }))) {
-            throw new ControllerError(403, 'User is not an admin of the room');
-        }
+        if (!room_invite_link) throw new err.EntityNotFoundError('room_invite_link');
 
-        room_invite_link.expires_at = options.body.expires_at;
-        
-        await room.save();
+        const isAdmin = await RPS.isInRoom({ room_uuid: room._id, user, role_name: 'Admin' });
+        if (!isAdmin) throw new err.AdminPermissionRequiredError();
 
-        return dto({...room_invite_link._doc, room});
+        const result = await Room.findOneAndUpdate(
+            { 'room_invite_links._id': uuid },
+            { $set: { 'room_invite_links.$.expires_at': body.expires_at } }
+        );
+
+        const updated_link = result.room_invite_links.find(u => u._id === uuid);
+
+        return dto({ ...updated_link._doc, room });
     }
 
     /**
@@ -141,21 +157,26 @@ class Service {
      * @param {String} options.uuid
      * @param {Object} options.user
      * @param {String} options.user.sub
-     * @returns {void}
+     * @returns {Promise<void>}
      */
     async destroy(options = { uuid: null, user: null }) {
-        RoomInviteLinkServiceValidator.destroy(options);
+        Validator.destroy(options);
 
-        const room = await Room.findOne({ room_invite_links: { $elemMatch: { uuid: options.uuid } } });
-        const room_invite_link = room?.room_invite_links?.find(u => u.uuid === options.uuid);
+        const { uuid, user } = options;
+        const room = await Room.findOne({ room_invite_links: { $elemMatch: { _id: uuid } } });
+        const room_invite_link = room?.room_invite_links?.find(u => u._id === uuid);
 
-        if (!room) throw new ControllerError(404, 'Room not found');
-        if (!room_invite_link) throw new ControllerError(404, 'room_invite_link not found');
-        if (!(await RoomPermissionService.isInRoom({ room_uuid: room.uuid, user: options.user, role_name: 'Admin' }))) {
-            throw new ControllerError(403, 'User is not an admin of the room');
-        }
+        if (!room_invite_link) throw new err.EntityNotFoundError('room_invite_link');
 
-        await Room.findOneAndUpdate({ uuid: room.uuid }, { $pull: { room_invite_links: { uuid: options.uuid } } });
+        const isAdmin = await RPS.isInRoom({ room_uuid: room._id, user, role_name: 'Admin' });
+        if (!isAdmin) throw new err.AdminPermissionRequiredError();
+
+        room.room_invite_links = room.room_invite_links.filter(link => link._id !== uuid);
+
+        await Room.findOneAndUpdate(
+            { _id: room._id },
+            { room_invite_links: room.room_invite_links }
+        );
     }
 
     /**
@@ -165,64 +186,84 @@ class Service {
      * @param {String} options.uuid
      * @param {Object} options.user
      * @param {String} options.user.sub
-     * @returns {void}
+     * @returns {Promise<void>}
      */
     async join(options = { uuid: null, user: null }) {
-        RoomInviteLinkServiceValidator.join(options);
+        Validator.join(options);
 
-        const room = await Room.findOne({ room_invite_links: { $elemMatch: { uuid: options.uuid } } })
-            .populate('room_users.user room_users.room_user_role room_join_settings.join_channel');
-        const room_invite_link = room?.room_invite_links?.find(u => u.uuid === options.uuid);
+        const { uuid, user } = options;
 
-        if (!room) throw new ControllerError(404, 'Room not found');
-        if (!room_invite_link) throw new ControllerError(404, 'Room Invite Link not found');
-        if (room_invite_link.expires_at && new Date(room_invite_link.expires_at) < new Date())
-            throw new ControllerError(400, 'Room Invite Link has expired');
-        if (!(await RoomPermissionService.isVerified({ user: options.user })))
-            throw new ControllerError(403, 'You must verify your email before you can join a room');
-        if (await RoomPermissionService.isInRoom({ room_uuid: room.uuid, user: options.user, role_name: null }))
-            throw new ControllerError(400, 'User is already in room');
-        if (await RoomPermissionService.roomUserCountExceedsLimit({ room_uuid: room.uuid, add_count: 1 }))
-            throw new ControllerError(400, 'Room user count exceeds limit. The room cannot have more users');
+        const session = await mongoose.startSession();
+        session.startTransaction();
+        try {
+            const room = await Room.findOne({ room_invite_links: { $elemMatch: { _id: uuid } } })
+                .populate('room_users.user room_join_settings.join_channel')
+                .session(session);
+            const room_invite_link = room?.room_invite_links?.find(u => u._id === uuid);
 
-        const [room_user_role, savedUser, channel_message_type] = await Promise.all([
-            RoomUserRole.findOne({ name: 'Member' }),
-            User.findOne({ uuid: options.user.sub }),
-            ChannelMessageType.findOne({ name: 'System' })
-        ]);
-
-        if (!room_user_role) throw new ControllerError(500, 'room_user_role not found');
-        if (!savedUser) throw new ControllerError(404, 'User not found');
-        if (!channel_message_type) throw new ControllerError(500, 'channel_message_type not found');
-
-        room.room_users.push({
-            uuid: uuidv4(),
-            user: savedUser._id,
-            room_user_role,
-        });
-
-        await room.save();
-
-        const channelId = room.room_join_settings.join_channel
-            ? room.room_join_settings.join_channel._id
-            : (await Channel.findOne({ room: room._id }))?._id;
-
-        if (channelId) {
-            let body = room.room_join_settings.join_message;
-            if (body.includes('{name}')) {
-                body = body.replace('{name}', savedUser.username);
+            if (!room_invite_link) throw new err.EntityNotFoundError('room_invite_link');
+            if (room_invite_link.expires_at && new Date(room_invite_link.expires_at) < new Date()) {
+                throw new err.EntityExpiredError('room_invite_link');
             }
 
-            await new ChannelMessage({
-                uuid: uuidv4(),
-                channel: channelId,
-                channel_message_type,
-                body,
-            }).save();
+            const [isVerified, isInRoom, countExceedsLimit] = await Promise.all([
+                RPS.isVerified({ user }, session),
+                RPS.isInRoom({ room_uuid: room._id, user }, session),
+                RPS.roomUserCountExceedsLimit({ room_uuid: room._id, add_count: 1 }, session)
+            ]);
+            if (!isVerified) throw new err.VerifiedEmailRequiredError();
+            if (isInRoom) throw new err.DuplicateRoomUserError();
+            if (countExceedsLimit) throw new err.ExceedsRoomUserCountError();
+
+            const savedUser = await User.findOne({ _id: user.sub }).session(session);
+            if (!savedUser) throw new err.EntityNotFoundError('user');
+
+            // Add user to room
+            room.room_users.push({
+                _id: uuidv4(),
+                user: savedUser._id,
+                room_user_role: "Member"
+            });
+
+            await Room.findOneAndUpdate(
+                { _id: room._id },
+                { room_users: room.room_users }
+            ).session(session);
+
+            // Find channel for sending join message
+            const channelId = room.room_join_settings.join_channel
+                ? room.room_join_settings.join_channel._id
+                : (await Channel.findOne({ room: room._id }).session(session))?._id;
+
+            if (channelId) {
+                // Add username to join message
+                let body = room.room_join_settings.join_message;
+                if (body.includes('{name}')) {
+                    body = body.replace('{name}', savedUser.username);
+                }
+        
+                await new ChannelMessage({
+                    _id: uuidv4(),
+                    channel: channelId,
+                    channel_message_type: "System",
+                    body,
+                }).save({ session });
+            }
+
+        } catch (error) {
+            await session.abortTransaction();
+            console.error(error);
+            throw error;
+        } finally {
+            if (session.inTransaction()) {
+                await session.commitTransaction();
+            }
+
+            session.endSession();
         }
     }
 }
 
-const service = new Service();
+const service = new RoomInviteLinkService();
 
 export default service;

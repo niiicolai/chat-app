@@ -105,7 +105,7 @@ class RoomInviteLinkService {
                 : null
         }).catch((error) => {
             if (error.name === 'SequelizeUniqueConstraintError') {
-                throw new err.DuplicateEntryError('user_login', error.errors[0].path, error.errors[0].value);
+                throw new err.DuplicateEntryError('room_invite_link', error.errors[0].path, error.errors[0].value);
             } else if (error.name === 'SequelizeForeignKeyConstraintError') {
                 throw new err.EntityNotFoundError(error.fields[0]);
             }

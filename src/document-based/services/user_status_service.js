@@ -15,7 +15,7 @@ class UserStatusService {
      * @description Find a user status by user_uuid
      * @param {Object} options
      * @param {String} options.user_uuid
-     * @returns {Object}
+     * @returns {Promise<Object>}
      */
     async findOne(options = { user_uuid: null }) {
         Validator.findOne(options);
@@ -37,7 +37,7 @@ class UserStatusService {
      * @param {String} options.body.message
      * @param {String} options.body.user_status_state
      * @param {String} options.user_uuid
-     * @returns {Object}
+     * @returns {Promise<Object>}
      */
     async update(options={ body: null, user_uuid: null }) {
         Validator.update(options);

@@ -15,7 +15,7 @@ class UserStatusStateService {
      * @description Find a user status state by name.
      * @param {Object} options
      * @param {String} options.name
-     * @returns {Object}
+     * @returns {Promise<Object>}
      */
     async findOne(options = { name: null }) {
         Validator.findOne(options);
@@ -33,7 +33,7 @@ class UserStatusStateService {
      * @param {Object} options
      * @param {number} options.page optional
      * @param {number} options.limit optional
-     * @returns {Object}
+     * @returns {Promise<Object>}
      */
     async findAll(options = { page: null, limit: null }) {
         options = Validator.findAll(options);
