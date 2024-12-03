@@ -344,15 +344,9 @@ export default async (db) => {
                                     description: "must be a string and is required"
                                 },
                                 join_channel: {
-                                    bsonType: "object",
-                                    required: ["_id"],
-                                    properties: {
-                                        _id: {
-                                            bsonType: "binData",
-                                            pattern: "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
-                                            description: "must be a valid UUID referencing a channel document"
-                                        }
-                                    }
+                                    bsonType: "binData",
+                                    pattern: "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+                                    description: "must be a valid UUID referencing a channel document"
                                 }
                             }
                         },

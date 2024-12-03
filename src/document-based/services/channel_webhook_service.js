@@ -381,8 +381,8 @@ class ChannelWebhookService {
 
         if (file && file.size > 0) {
             const [singleLimit, totalLimit] = await Promise.all([
-                RoomPermissionService.fileExceedsSingleFileSize({ room_uuid, bytes: file.size }),
-                RoomPermissionService.fileExceedsTotalFilesLimit({ room_uuid, bytes: file.size }),
+                RPS.fileExceedsSingleFileSize({ room_uuid, bytes: file.size }),
+                RPS.fileExceedsTotalFilesLimit({ room_uuid, bytes: file.size }),
             ]);
 
             if (totalLimit) throw new err.ExceedsRoomTotalFilesLimitError();

@@ -280,10 +280,12 @@ class ChannelService {
             await ChannelMessage.deleteMany({ channel: channel._id }, { session });
             await Channel.deleteOne({ _id: uuid }, { session });
 
-            const roomFilesForDeletion = [
-                ...[channel.room_file && [channel.room_file]],
-                ...[channel.channel_webhook?.room_file && [channel.channel_webhook.room_file]],
-            ];
+            const roomFilesForDeletion = [];
+            const channelRoomFile = channel.room_file;
+            const channelWebhookRoomFile = channel.channel_webhook?.room_file;
+
+            if (channelRoomFile) roomFilesForDeletion.push(channelRoomFile);
+            if (channelWebhookRoomFile) roomFilesForDeletion.push(channelWebhookRoomFile);
 
             // Delete room files from the database first
             await RoomFile.deleteMany({ _id: { $in: roomFilesForDeletion
@@ -293,14 +295,12 @@ class ChannelService {
             // Delete room files from the storage
             await Promise.all(roomFilesForDeletion
                 .filter(Boolean)
-                .map((file) => storage.deleteFile(storage.parseKey(file.src))
-            ));
+                .map((file) => storage.deleteFile(storage.parseKey(file.src)))
+            );
 
             await session.commitTransaction();
         } catch (error) {
             await session.abortTransaction();
-            // Delete the avatar file if it was uploaded
-            if (avatar_src) storage.deleteFile(storage.parseKey(avatar_src));
             console.error(error);
             throw error;
         } finally {
@@ -326,8 +326,8 @@ class ChannelService {
 
         if (file && file.size > 0) {
             const [singleLimit, totalLimit] = await Promise.all([
-                RoomPermissionService.fileExceedsSingleFileSize({ room_uuid, bytes: file.size }),
-                RoomPermissionService.fileExceedsTotalFilesLimit({ room_uuid, bytes: file.size }),
+                RPS.fileExceedsSingleFileSize({ room_uuid, bytes: file.size }),
+                RPS.fileExceedsTotalFilesLimit({ room_uuid, bytes: file.size }),
             ]);
 
             if (totalLimit) throw new err.ExceedsRoomTotalFilesLimitError();

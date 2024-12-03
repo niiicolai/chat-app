@@ -21,15 +21,12 @@ const single_file_bytes_allowed = parseInt(process.env.ROOM_UPLOAD_SIZE || 52428
 const join_message = process.env.ROOM_JOIN_MESSAGE || "Welcome to the room!";
 const rules_text = process.env.ROOM_RULES_TEXT || "# Rules\n 1. No Spamming!";
 
+/**
+ * @constant storage
+ * @description Storage service instance
+ * @type {StorageService}
+ */
 const storage = new StorageService('room_avatar');
-
-const populate = (query) => query.populate({
-    path: 'room_avatar',
-    populate: {
-        path: 'room_file',
-        model: 'RoomFile'
-    }
-});
 
 /**
  * @class RoomService
@@ -51,7 +48,8 @@ class RoomService {
         Validator.findOne(options);
 
         const { uuid: _id, user } = options;
-        const room = await populate(Room.findOne({ _id }));
+        const room = await Room.findOne({ _id })
+            .populate('room_avatar.room_file');
 
         if (!room) throw new err.EntityNotFoundError('room');
 
@@ -82,7 +80,8 @@ class RoomService {
         const params = { room_users: { $elemMatch: { user: savedUser._id } } };
         const [total, rooms] = await Promise.all([
             Room.find(params).countDocuments(),
-            populate(Room.find(params))
+            Room.find(params)
+                .populate('room_avatar.room_file')
                 .sort({ created_at: -1 })
                 .limit(limit || 0)
                 .skip((page && limit) ? offset : 0),
@@ -207,7 +206,7 @@ class RoomService {
             session.endSession();
         }
 
-        return dto(await populate(Room.findOne({ _id: uuid })));
+        return dto(await Room.findOne({ _id: uuid }).populate('room_avatar.room_file'));
     }
 
     /**
@@ -230,7 +229,8 @@ class RoomService {
         const { uuid, body, file, user } = options;
         const { name, description, room_category_name } = body;
 
-        const room = await populate(Room.findOne({ _id: uuid }));
+        const room = await Room.findOne({ _id: uuid })
+            .populate('room_avatar.room_file');
         if (!room) throw new err.EntityNotFoundError('room');
 
         const isAdmin = await RPS.isInRoom({ room_uuid: uuid, user, role_name: 'Admin' });
@@ -256,17 +256,16 @@ class RoomService {
         const session = await mongoose.startSession();
         session.startTransaction();
         try {
-            let newRoomFileUuid = null;
-            let oldRoomFile = null;
+            const newRoomFileUuid = uuidv4();
+            const oldRoomFile = room.room_avatar.room_file;
             if (avatar_src) {
-                oldRoomFile = await RoomFile.findOne({ _id: room.room_avatar.room_file });
-                newRoomFileUuid = (await new RoomFile({
-                    _id: uuidv4(),
+                await RoomFile.insertMany([{
+                    _id: newRoomFileUuid,
                     src: avatar_src,
                     size: file.size,
                     room_file_type: "RoomAvatar",
                     room: uuid,
-                }).save({ session }))._id;
+                }], { session });
             }
 
             await Room.findOneAndUpdate(
@@ -310,7 +309,7 @@ class RoomService {
             session.endSession();
         }
 
-        return dto(await populate(Room.findOne({ _id: uuid })));
+        return dto(await Room.findOne({ _id: uuid }).populate('room_avatar.room_file'));
     }
 
     /**
@@ -327,7 +326,7 @@ class RoomService {
 
         const { uuid, user } = options;
 
-        const room = await Room.findOne({ _id: uuid });
+        const room = await Room.findOne({ _id: uuid }).populate('room_avatar.room_file');;
         if (!room) throw new err.EntityNotFoundError('room');
 
         const isAdmin = await RPS.isInRoom({ room_uuid: uuid, user, role_name: 'Admin' });
@@ -374,7 +373,7 @@ class RoomService {
         const { uuid, body, user } = options;
         const { join_message, rules_text, join_channel_uuid } = body;
 
-        const room = await Room.findOne({ _id: uuid });
+        const room = await Room.findOne({ _id: uuid }).populate('room_avatar.room_file');;
         if (!room) throw new err.EntityNotFoundError('room');
 
         const isAdmin = await RPS.isInRoom({ room_uuid: uuid, user, role_name: 'Admin' });

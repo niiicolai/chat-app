@@ -119,29 +119,32 @@ class RoomFileService {
         session.startTransaction();
         try {
             if (isMessageUpload) {
-                await ChannelMessage
-                    .findOne({ 'channel_message_upload.room_file': uuid })
-                    .updateOne({ 'channel_message_upload': null })
-                    .session(session);
+                await ChannelMessage.updateOne(
+                    { 'channel_message_upload.room_file': uuid },
+                    { $unset: { channel_message_upload: "" } },
+                    { session }
+                );
             }
             else if (roomFile.room_file_type.name === 'ChannelWebhookAvatar') {
-                await Channel
-                    .findOne({ 'channel_webhook.room_file': uuid })
-                    .updateOne({ 'channel_webhook.room_file': null })
-                    .session(session);
-
+                await Channel.updateOne(
+                    { 'channel_webhook.room_file': uuid },
+                    { $unset: { 'channel_webhook.room_file': "" } },
+                    { session }
+                );
             }
             else if (roomFile.room_file_type.name === 'ChannelAvatar') {
-                await Channel
-                    .findOne({ room_file: uuid })
-                    .updateOne({ room_file: null })
-                    .session(session);
+                await Channel.updateOne(
+                    { room_file: uuid },
+                    { $unset: { room_file: "" } },
+                    { session }
+                );
             }
             else if (roomFile.room_file_type.name === 'RoomAvatar') {
-                await Room
-                    .findOne({ _id: room_uuid })
-                    .updateOne({ 'room_avatar.room_file': null })
-                    .session(session);
+                await Channel.updateOne(
+                    { _id: room_uuid },
+                    { $unset: { 'room_avatar.room_file': "" } },
+                    { session }
+                );
             }
 
             await RoomFile.deleteOne({ _id: roomFile._id }, { session });
