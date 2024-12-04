@@ -120,7 +120,6 @@ class RoomService {
 
         const { body, file, user } = options;
         const { uuid, name, description, room_category_name } = body;
-        const avatar_src = (file && file.size > 0 ? await storage.uploadFile(file, uuid) : null);
 
         const isVerified = await RPS.isVerified({ user });
         if (!isVerified) throw new err.VerifiedEmailRequiredError("create a room");
@@ -133,6 +132,8 @@ class RoomService {
 
         const nameInUse = await Room.findOne({ name });
         if (nameInUse) throw new err.DuplicateEntryError('room', 'room_name', name);
+
+        const avatar_src = (file && file.size > 0 ? await storage.uploadFile(file, uuid) : null);
 
         const session = await mongoose.startSession();
         session.startTransaction();

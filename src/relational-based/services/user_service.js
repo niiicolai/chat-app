@@ -128,10 +128,10 @@ class UserService {
         Validator.update(options);
 
         const { body, file, user } = options;
-        const avatar = (file && file.size > 0) ? await uploader.create(file, user.sub) : null;
         const user_login_password = body.password ? await PwdService.hash(body.password) : null;
         const user_login_type_name = 'Password';
         const user_uuid = user.sub;
+        const avatar = (file && file.size > 0) ? await uploader.create(file, user.sub) : null;
 
         await db.sequelize.transaction(async (transaction) => {
             const savedUser = await db.UserView.findOne({ 
@@ -329,6 +329,7 @@ class UserService {
      * @param {Object} options
      * @param {String} options.uuid
      * @param {Object} options.body
+     * @param {String} options.body.uuid
      * @param {String} options.body.user_login_type_name
      * @param {String} options.body.password optional
      * @param {String} options.body.third_party_id optional

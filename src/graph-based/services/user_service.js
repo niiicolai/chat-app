@@ -155,8 +155,109 @@ class UserService {
         return { user, token: JwtService.sign(uuid) };
     }
 
+    /**
+     * @function update
+     * @description Update a user.
+     * @param {Object} options
+     * @param {string} options.uuid
+     * @param {Object} options.body
+     * @param {string} options.body.username optional
+     * @param {string} options.body.email optional
+     * @param {string} options.body.password optional
+     * @param {Object} options.file optional
+     * @returns {Promise<Object>}
+     */
     async update(options = { uuid: null, body: null, file: null }) {
         Validator.update(options);
+
+        const { body, file, user, uuid } = options;
+
+        let savedUser = await neodeInstance.model('User').find(user.sub);
+        if (!savedUser) throw new err.EntityNotFoundError('user');
+        savedUser = savedUser.properties();
+        
+        const user_login_password = body.password ? await PwdService.hash(body.password) : null;
+        const user_login_type_name = 'Password';
+        const user_uuid = user.sub;
+        const avatar_src = (file && file.size > 0) ? await uploader.create(file, user.sub) : null;
+
+        const session = neodeInstance.session();
+        await session.writeTransaction(async tx => {
+            // update email if provided
+            if (body.email && body.email !== savedUser.email) {
+                const email = body.email;
+                const mailUsed = await tx.run('MATCH (u:User) WHERE u.email = $email RETURN u', { email });
+                if (mailUsed.records.length > 0) throw new err.DuplicateEntryError('user', 'user_email', email);
+                await tx.run(
+                    'MATCH (u:User {uuid: $user_uuid}) ' +
+                    'SET u.email = $email',
+                    { user_uuid, email }
+                );
+            }
+
+            // update username if provided
+            if (body.username && body.username !== savedUser.username) {
+                const username = body.username;
+                const usernameUsed = await tx.run('MATCH (u:User) WHERE u.username = $username RETURN u', { username });
+                if (usernameUsed.records.length > 0) throw new err.DuplicateEntryError('user', 'user_username', username);
+                await tx.run(
+                    'MATCH (u:User {uuid: $user_uuid}) ' +
+                    'SET u.username = $username',
+                    { user_uuid, username }
+                );
+            }
+
+            // update or create user login if user does not have a password login
+            if (user_login_password) {
+                const userLogin = await tx.run(
+                    'MATCH (u:User {uuid: $user_uuid}) ' +
+                    'MATCH (ult:UserLoginType {name: $user_login_type_name}) ' +
+                    'MATCH (u)-[:AUTHORIZE_VIA]->(ul:UserLogin) ' +
+                    'RETURN ul',
+                    { user_uuid, user_login_type_name }
+                );
+                if (userLogin.records.length > 0) {
+                    await tx.run(
+                        'MATCH (u:User {uuid: $user_uuid}) ' +
+                        'MATCH (ult:UserLoginType {name: $user_login_type_name}) ' +
+                        'MATCH (u)-[:AUTHORIZE_VIA]->(ul:UserLogin) ' +
+                        'SET ul.password = $user_login_password',
+                        { user_uuid, user_login_password, user_login_type_name }
+                    );
+                } else {
+                    await tx.run(
+                        'MATCH (u:User {uuid: $user_uuid}) ' +
+                        'MATCH (ult:UserLoginType {name: $user_login_type_name}) ' +
+                        'CREATE (ul:UserLogin {uuid: $login_uuid, password: $user_login_password}) ' +
+                        'CREATE (ul)-[:TYPE_IS]->(ult) ' +
+                        'CREATE (u)-[:AUTHORIZE_VIA]->(ul)',
+                        { user_uuid, user_login_type_name, login_uuid: uuidv4(), user_login_password }
+                    );
+                }
+            }
+
+            if (avatar_src) {
+                await tx.run(
+                    'MATCH (u:User {uuid: $user_uuid}) ' +
+                    'SET u.avatar_src = $avatar_src',
+                    { user_uuid, avatar_src }
+                );
+
+                if (savedUser.avatar_src) {
+                    // Old file must be deleted last to prevent database update failures
+                    // to delete the file if the database update fails.
+                    await uploader.destroy(savedUser.avatar_src);
+                }
+            }
+        }).catch((error) => {
+            // If an error occurs, delete the new avatar file if it exists.
+            if (avatar_src) uploader.destroy(avatar_src);
+
+            console.error(error);
+            throw error;
+        });
+
+        return await this.findOne({ uuid });
     }
 
     async login(options = { body: null }) {
@@ -164,32 +265,32 @@ class UserService {
 
         const { email, password } = options.body;
         const result = await neodeInstance.cypher(
-            'MATCH (u:User) WHERE u.email = $email ' +
-            'MATCH (u)-[:HAS_USER_STATUS]->(us:UserStatus) ' +
-            'MATCH (us)-[:HAS_USER_STATUS_STATE]->(uss:UserStatusState) ' +
-            'MATCH (u)-[:HAS_USER_EMAIL_VERIFICATION]->(uev:UserEmailVerification) ' +
-            'MATCH (ul:UserLogin)-[:HAS_USER]->(u) ' +
-            'MATCH (ul)-[:HAS_LOGIN_TYPE]->(ult:UserLoginType {name: "Password"}) ' +
-            'RETURN u, us, uev, ul, ult, uss',
+            'MATCH (u:User {email: $email}) ' +
+            'MATCH (u)-[:AUTHORIZE_VIA]->(ul:UserLogin) ' +
+            'MATCH (ul)-[:TYPE_IS]->(ult:UserLoginType {name: "Password"}) ' +
+            'MATCH (u)-[:STATUS_IS]->(us:UserStatus) ' +
+            'MATCH (us)-[:STATE_IS]->(uss:UserStatusState) ' +
+            'MATCH (u)-[:EMAIL_VERIFY_VIA]->(uev:UserEmailVerification) ' +
+            'RETURN u, ul, us, uss, uev',
             { email }
         );
 
-        if (!result?.records[0]) throw new ControllerError(400, 'Invalid email or password');
+        if (!result.records.length) throw new err.InvalidCredentialsError();
 
-        const savedUser = result?.records[0]?.get('u').properties;
-        const savedUserLogin = result?.records[0]?.get('ul').properties;
+        const savedUser = result.records[0].get('u')?.properties;
+        const savedUserLogin = result.records[0].get('ul')?.properties;
 
-        if (!savedUserLogin || !await bcrypt.compare(password, savedUserLogin.password)) {
-            throw new ControllerError(400, 'Invalid email or password');
-        }
+        const isPasswordValid = await PwdService.compare(password, savedUserLogin.password);
+        if (!isPasswordValid) throw new err.InvalidCredentialsError();
 
         return {
             token: JwtService.sign(savedUser.uuid),
-            user: dto(savedUser, [
-                { user_status: result?.records[0]?.get('us').properties },
-                { user_email_verification: result?.records[0]?.get('uev').properties },
-                { user_status_state: result?.records[0]?.get('uss').properties }
-            ])
+            user: dto({
+                ...savedUser,
+                user_status: result.records[0].get('us').properties,
+                user_status_state: result.records[0].get('uss').properties,
+                user_email_verification: result.records[0].get('uev').properties
+            })
         };
     }
 
@@ -223,7 +324,6 @@ class UserService {
                 await uploader.destroy(savedUser.avatar_src);
             }
 
-            tx.commit();
         }).catch(error => {
             console.error('transaction', error);
             throw error;
@@ -232,29 +332,43 @@ class UserService {
         });
     }
 
+    /**
+     * @function destroyAvatar
+     * @description Destroy a user's avatar.
+     * @param {Object} options
+     * @param {string} options.uuid
+     * @returns {Promise<void>}
+     */
     async destroyAvatar(options = { uuid: null }) {
         Validator.destroyAvatar(options);
 
         const { uuid } = options;
-        const existingInstance = await neodeInstance.model('User').find(uuid);
-        if (!existingInstance) throw new ControllerError(400, 'User not found');
+        const user = await neodeInstance.model('User').find(uuid);
+        if (!user) throw new err.EntityNotFoundError('user');
 
-        const savedUser = existingInstance.properties();
-        if (savedUser.avatar_src) {
-            await existingInstance.update({ avatar_src: null });
+        const userProps = existingInstance.properties();
+        
+        if (userProps.avatar_src) {
+            await user.update({ avatar_src: null });
             await uploader.destroy(savedUser.avatar_src);
         }
     }
 
+    /**
+     * @function getUserLogins
+     * @description Get user logins.
+     * @param {Promise<Object>} options
+     */
     async getUserLogins(options = { uuid: null }) {
         Validator.getUserLogins(options);
 
         const user = await neodeInstance.model('User').find(options.uuid);
-        if (!user) throw new ControllerError(404, 'User not found');
+        if (!user) throw new err.EntityNotFoundError('user');
 
         const result = await neodeInstance.cypher(
-            'MATCH (ul:UserLogin)-[:HAS_USER]->(u:User {uuid: $uuid}) ' +
-            'MATCH (ul)-[:HAS_LOGIN_TYPE]->(ult:UserLoginType) ' +
+            'MATCH (u:User {uuid: $uuid}) ' +
+            'MATCH (u)-[:AUTHORIZE_VIA]->(ul:UserLogin) ' +
+            'MATCH (ul)-[:TYPE_IS]->(ult:UserLoginType) ' +
             'RETURN ul, ult',
             { uuid: options.uuid }
         );
@@ -265,53 +379,89 @@ class UserService {
         }));
     }
 
+    /**
+     * @function destroyUserLogins
+     * @description Destroy user logins.
+     * @param {Object} options
+     * @param {string} options.uuid
+     * @param {string} options.login_uuid
+     * @returns {Promise<void>}
+     */
     async destroyUserLogins(options = { uuid: null, login_uuid: null }) {
         Validator.destroyUserLogins(options);
 
-        const [userLogin, userLogins] = await Promise.all([
+        const [userLogin, userLoginCount] = await Promise.all([
             neodeInstance.model('UserLogin').find(options.login_uuid),
             neodeInstance.cypher(
-                'MATCH (ul:UserLogin)-[:HAS_USER]->(u:User {uuid: $uuid}) ' +
-                'MATCH (ul)-[:HAS_LOGIN_TYPE]->(ult:UserLoginType) ' +
-                'RETURN ul, ult',
+                'MATCH (u:User {uuid: $uuid}) ' +
+                'MATCH (u)-[:AUTHORIZE_VIA]->(ul:UserLogin) ' +
+                'RETURN COUNT(ul) AS user_login_count',
                 { uuid: options.uuid }
             )
         ]);
 
-        if (!userLogin) throw new ControllerError(404, 'User login not found');
-        if (userLogin.get('user_login_type').get('name') === 'Password') throw new ControllerError(400, 'Cannot delete password login');
-        if (userLogins.records.length === 1) throw new ControllerError(400, 'You cannot delete your last login');
+        if (!userLogin) 
+            throw new err.EntityNotFoundError('user_login');
+        if (userLogin.get('user_login_type').get('name') === 'Password') 
+            throw new err.ControllerError(400, 'Cannot delete password login');
+        if (userLoginCount === 1) 
+            throw new err.ControllerError(400, 'Cannot delete last login');
 
         await userLogin.delete();
     }
 
+    /**
+     * @function createUserLogin
+     * @description Create a user login.
+     * @param {Object} options
+     * @param {string} options.uuid
+     * @param {Object} options.body
+     * @param {String} options.body.uuid
+     * @param {string} options.body.user_login_type_name
+     * @param {string} options.body.password optional
+     * @param {string} options.body.third_party_id optional
+     * @param {String} options.body.login_uuid optional
+     * @returns {Promise<Object>}
+     */
     async createUserLogin(options = { uuid: null, body: null }) {
         Validator.createUserLogin(options);
 
         const { uuid, body } = options;
-        const user = await neodeInstance.model('User').find(uuid);
-        if (!user) throw new ControllerError(404, 'User not found');
-
-        const userLoginType = await neodeInstance.model('UserLoginType').find(body.user_login_type_name);
-        if (!userLoginType) throw new ControllerError(404, 'User login type not found');
-
         const { user_login_type_name } = body;
 
+        const user = await neodeInstance.model('User').find(uuid);
+        if (!user) throw new err.EntityNotFoundError('user');
+
+        const userLoginType = await neodeInstance.model('UserLoginType').find(body.user_login_type_name);
+        if (!userLoginType) throw new err.EntityNotFoundError('user_login_type');
+
         if (user_login_type_name === 'Password') {
-            if (!body.password) throw new ControllerError(400, 'No password provided');
-            body.password = bcrypt.hashSync(body.password, SALT_ROUNDS);
+            if (!body.password) throw new err.ControllerError(400, 'No password provided');
+            body.password = await PwdService.hash(body.password);
         } else body.password = null;
 
         if (user_login_type_name === 'Google') {
-            if (!body.third_party_id) throw new ControllerError(400, 'No third_party_id provided');
+            if (!body.third_party_id) throw new err.ControllerError(400, 'No third_party_id provided');
         } else body.third_party_id = null;
 
-        const userLogin = await neodeInstance.model('UserLogin').create({
-            ...body
-        });
+        await neodeInstance.batch([
+            {
+                query: 'MATCH (u:User {uuid: $uuid}) ' +
+                       'MATCH (ult:UserLoginType {name: $user_login_type_name}) ' +
+                       'CREATE (ul:UserLogin {uuid: $login_uuid, third_party_id: $third_party_id, password: $password}) ' +
+                       'CREATE (ul)-[:TYPE_IS]->(ult) ' +
+                       'CREATE (u)-[:AUTHORIZE_VIA]->(ul)',
+                params: {
+                    uuid,
+                    user_login_type_name,
+                    login_uuid: body.uuid,
+                    third_party_id: body.third_party_id,
+                    password: body.password
+                }
+            }
+        ])
 
-        await userLogin.relateTo(user, 'user');
-        await userLogin.relateTo(userLoginType, 'user_login_type');
+        const userLogin = await neodeInstance.model('UserLogin').find(body.uuid);
 
         return userLoginDto({
             ...userLogin.properties(),

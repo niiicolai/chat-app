@@ -122,7 +122,7 @@ const userServiceTest = (UserService, name) => {
 
     /**
      * UserService.login
-     
+     */
 
     test.each([
         [{ body: admin }],
@@ -152,13 +152,13 @@ const userServiceTest = (UserService, name) => {
         [{ body: { email: 'not_a_valid_mail@test.test', password: '1234' } }, 'Invalid email or password'],
     ])(`(${name}) - UserService.login invalid partitions`, async (options, expected) => {
         expect(async () => await UserService.login(options)).rejects.toThrowError(expected);
-    });*/
+    });
 
 
 
     /**
      * UserService.update
-     
+     */
 
     test(`(${name}) - UserService.update valid partitions`, async () => {
         const username = `test-${uuidv4()}`;
@@ -197,13 +197,13 @@ const userServiceTest = (UserService, name) => {
         [{ body: { email: admin.email }, user: { sub: user.uuid } }, `user with user_email ${admin.email} already exists`],
     ])(`(${name}) - UserService.update invalid partitions`, async (options, expected) => {
         expect(async () => await UserService.update(options)).rejects.toThrowError(expected);
-    });*/
+    });
 
 
 
     /**
      * UserService.createUserLogin
-     
+     */
 
     test(`(${name}) - UserService.createUserLogin valid partitions`, async () => {
         const result = await UserService.createUserLogin({
@@ -220,7 +220,7 @@ const userServiceTest = (UserService, name) => {
         expect(result.uuid).toBe(login_uuid);
         expect(result.user_login_type_name).toBe('Google');
     });
- 
+
     test.each([
         [undefined, 'No UUID provided'],
         [null, 'No options provided'],
@@ -235,13 +235,13 @@ const userServiceTest = (UserService, name) => {
         [{ uuid: user.uuid, body: { uuid: 'test', user_login_type_name: "Google" } }, 'No third_party_id provided'],
     ])(`(${name}) - UserService.createUserLogin invalid partitions`, async (options, expected) => {
         expect(async () => await UserService.createUserLogin(options)).rejects.toThrowError(expected);
-    });*/
+    });
 
 
 
     /**
      * UserService.getUserLogins
-     
+     */
 
     test.each([
         [{ uuid: admin.sub }, 1],
@@ -268,13 +268,13 @@ const userServiceTest = (UserService, name) => {
         [{ uuid: fakeId }, 'user not found'],
     ])(`(${name}) - UserService.getUserLogins invalid partitions`, async (options, expected) => {
         expect(async () => await UserService.getUserLogins(options)).rejects.toThrowError(expected);
-    });*/
+    });
 
 
 
     /**
      * UserService.destroyUserLogins
-     
+     */
 
     test(`(${name}) - UserService.destroyUserLogins valid partitions`, async () => {
         await UserService.destroyUserLogins({ uuid: user.uuid, login_uuid });
@@ -295,7 +295,7 @@ const userServiceTest = (UserService, name) => {
         [{ uuid: user.uuid, login_uuid: fakeId }, 'user_login not found'],
     ])(`(${name}) - UserService.destroyUserLogins invalid partitions`, async (options, expected) => {
         expect(async () => await UserService.destroyUserLogins(options)).rejects.toThrowError(expected);
-    });*/
+    });
 
 
 
@@ -308,7 +308,7 @@ const userServiceTest = (UserService, name) => {
         expect(async () => await UserService.destroy({ uuid: user.uuid }))
             .rejects.toThrowError(`user not found`);
     });
-/**
+
     test.each([
         [undefined, 'No UUID provided'],
         [null, 'No options provided'],
@@ -319,10 +319,10 @@ const userServiceTest = (UserService, name) => {
         [{ uuid: fakeId }, 'user not found'],
     ])(`(${name}) - UserService.destroy invalid partitions`, async (options, expected) => {
         expect(async () => await UserService.destroy(options)).rejects.toThrowError(expected);
-    });*/
+    });
 };
 
-//userServiceTest(RelationalUserService, 'Relational');
-//userServiceTest(DocumentUserService, 'Document');
+userServiceTest(RelationalUserService, 'Relational');
+userServiceTest(DocumentUserService, 'Document');
 userServiceTest(GraphUserService, 'Graph');
 

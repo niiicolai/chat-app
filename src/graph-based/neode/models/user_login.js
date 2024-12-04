@@ -30,7 +30,7 @@ export default {
         target: 'UserLoginType',
         relationship: 'TYPE_IS',
         direction: 'out',
-        eager: false
+        eager: true
     },
     /**
      * INCOMING RELATION
