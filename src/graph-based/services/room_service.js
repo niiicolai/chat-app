@@ -19,9 +19,19 @@ const single_file_bytes_allowed = parseInt(process.env.ROOM_UPLOAD_SIZE || 52428
 const join_message = process.env.ROOM_JOIN_MESSAGE || "Welcome to the room!";
 const rules_text = process.env.ROOM_RULES_TEXT || "# Rules\n 1. No Spamming!";
 
+/**
+ * @constant storage
+ * @description Storage service instance
+ * @type {StorageService}
+ */
 const storage = new StorageService('room_avatar');
 
-class Service extends NeodeBaseFindService {
+/**
+ * @class RoomService
+ * @description Service class for rooms
+ * @exports RoomService
+ */
+class RoomService extends NeodeBaseFindService {
     constructor() {
         super('uuid', 'Room', dto);
     }
@@ -374,6 +384,6 @@ class Service extends NeodeBaseFindService {
     }
 };
 
-const service = new Service();
+const service = new RoomService();
 
 export default service;

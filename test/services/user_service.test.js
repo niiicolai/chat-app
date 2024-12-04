@@ -52,9 +52,10 @@ const userServiceTest = (UserService, name) => {
         expect(UserService).toHaveProperty('getUserLogins');
         expect(UserService).toHaveProperty('createUserLogin');
         expect(UserService).toHaveProperty('destroyUserLogins');
+        expect(UserService).toHaveProperty('getUserEmailVerification');
     });
 
-
+    
 
     /**
      * UserService.findOne
@@ -168,7 +169,7 @@ const userServiceTest = (UserService, name) => {
             username,
             email,
             password,
-        }, user: { sub: user.uuid } });
+        } });
 
         expect(result).toHaveProperty('username');
         expect(result).toHaveProperty('email');
@@ -188,13 +189,11 @@ const userServiceTest = (UserService, name) => {
         [0, 'No options provided'],
         [{}, 'No body provided'],
         [{ body: null }, 'No body provided'],
-        [{ body: {} }, 'No user provided'],
-        [{ body: {}, user: null }, 'No user provided'],
-        [{ body: {}, user: {} }, 'No user UUID provided'],
-        [{ body: {}, user: { sub: null } }, 'No user UUID provided'],
-        [{ body: {}, user: { sub: fakeId } }, 'user not found'],
-        [{ body: { username: admin.username }, user: { sub: user.uuid } }, `user with user_username ${admin.username} already exists`],
-        [{ body: { email: admin.email }, user: { sub: user.uuid } }, `user with user_email ${admin.email} already exists`],
+        [{ body: {} }, 'No UUID provided'],
+        [{ body: {}, uuid: null }, 'No UUID provided'],
+        [{ body: {}, uuid: fakeId }, 'user not found'],
+        [{ body: { username: admin.username }, uuid: user.uuid }, `user with user_username ${admin.username} already exists`],
+        [{ body: { email: admin.email }, uuid: user.uuid }, `user with user_email ${admin.email} already exists`],
     ])(`(${name}) - UserService.update invalid partitions`, async (options, expected) => {
         expect(async () => await UserService.update(options)).rejects.toThrowError(expected);
     });

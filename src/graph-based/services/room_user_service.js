@@ -6,7 +6,12 @@ import NeodeBaseFindService from './neode_base_find_service.js';
 import neodeInstance from '../neode/index.js';
 import neo4j from 'neo4j-driver';
 
-class Service extends NeodeBaseFindService {
+/**
+ * @class RoomUserService
+ * @description Service class for room users
+ * @exports RoomUserService
+ */
+class RoomUserService extends NeodeBaseFindService {
     constructor() {
         super('uuid', 'RoomUser', dto);
     }
@@ -160,6 +165,6 @@ class Service extends NeodeBaseFindService {
     }
 }
 
-const service = new Service();
+const service = new RoomUserService();
 
 export default service;

@@ -5,7 +5,12 @@ import neodeInstance from '../neode/index.js';
 import dto from '../dto/room_audit_dto.js';
 import neo4j from 'neo4j-driver';
 
-class Service {
+/**
+ * @class RoomAuditService
+ * @description Service class for room audits
+ * @exports RoomAuditService
+ */
+class RoomAuditService {
 
     async findOne(options = { uuid: null, user: null }) {
         RoomAuditServiceValidator.findOne(options);
@@ -67,6 +72,6 @@ class Service {
     }
 }
 
-const service = new Service();
+const service = new RoomAuditService();
 
 export default service;

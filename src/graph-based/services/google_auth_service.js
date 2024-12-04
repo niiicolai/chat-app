@@ -5,7 +5,12 @@ import neodeInstance from '../neode/index.js';
 import dto from '../dto/user_dto.js';
 import { v4 as uuidv4 } from 'uuid';
 
-class Service {
+/**
+ * @class GoogleAuthService
+ * @description Service class for Google auth
+ * @exports GoogleAuthService
+ */
+class GoogleAuthService {
 
     async create(options = { info: null }) {
         GoogleAuthServiceValidator.create(options);
@@ -150,6 +155,6 @@ class Service {
     }
 }
 
-const service = new Service();
+const service = new GoogleAuthService();
 
 export default service;

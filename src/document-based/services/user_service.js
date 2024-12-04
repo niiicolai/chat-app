@@ -127,15 +127,14 @@ class UserService {
      * @param {String} options.body.email
      * @param {String} options.body.password
      * @param {Object} options.file
-     * @param {Object} options.user
+     * @param {Object} options.uuid
      * @returns {Promise<Object>}
      */
-    async update(options = { body: null, file: null, user: null }) {
+    async update(options = { body: null, file: null, uuid: null }) {
         Validator.update(options);
 
-        const { body, file, user } = options;
+        const { body, file, uuid } = options;
         const { username, email } = body;
-        const { sub: uuid } = user;
         const avatar_src = (file && file.size > 0) ? await uploader.create(file, uuid) : null;
         const password = body.password ? await PwdService.hash(body.password) : null;
         const user_login_type = 'Password';

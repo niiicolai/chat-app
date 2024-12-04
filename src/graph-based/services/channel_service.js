@@ -6,9 +6,19 @@ import neodeInstance from '../neode/index.js';
 import NeodeBaseFindService from './neode_base_find_service.js';
 import dto from '../dto/channel_dto.js';
 
+/**
+ * @constant storage
+ * @description Storage service instance
+ * @type {StorageService}
+ */
 const storage = new StorageService('channel_avatar');
 
-class Service extends NeodeBaseFindService {
+/**
+ * @class ChannelService
+ * @description Service class for channels
+ * @exports ChannelService
+ */
+class ChannelService extends NeodeBaseFindService {
 
     constructor() {
         super('uuid', 'Channel', dto);
@@ -225,6 +235,6 @@ class Service extends NeodeBaseFindService {
     }
 }
 
-const service = new Service();
+const service = new ChannelService();
 
 export default service;

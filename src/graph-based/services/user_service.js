@@ -67,26 +67,26 @@ class UserService {
         const { file } = options;
         const { uuid, email, username, password } = options.body;
 
+        const mailUsed = await neodeInstance.model('User').first({ email });
+        if (mailUsed) throw new err.DuplicateEntryError('user', 'user_email', email);
+
+        const usernameUsed = await neodeInstance.model('User').first({ username }); 
+        if (usernameUsed) throw new err.DuplicateEntryError('user', 'user_username', username);
+
+        const uuidUsed = await neodeInstance.model('User').find(uuid);
+        if (uuidUsed) throw new err.DuplicateEntryError('user', 'PRIMARY', uuid);
+
         const avatar_src = (file && file.size > 0) ? await uploader.create(file, uuid) : null
         const user_login_password = await PwdService.hash(password);
 
         const session = neodeInstance.session();
         await session.writeTransaction(async tx => {
-            const uuidUsed = await tx.run('MATCH (u:User) WHERE u.uuid = $uuid RETURN u', { uuid });
-            if (uuidUsed.records.length > 0) throw new err.DuplicateEntryError('user', 'PRIMARY', uuid);
-
-            const mailUsed = await tx.run('MATCH (u:User) WHERE u.email = $email RETURN u', { email });
-            if (mailUsed.records.length > 0) throw new err.DuplicateEntryError('user', 'user_email', email);
-
-            const usernameUsed = await tx.run('MATCH (u:User) WHERE u.username = $username RETURN u', { username });
-            if (usernameUsed.records.length > 0) throw new err.DuplicateEntryError('user', 'user_username', username);
-            
             // Create user
             await tx.run(
                 'CREATE (u:User {uuid: $uuid, email: $email, username: $username})',
                 { uuid, email, username }
             );
-            
+
             // Create user status
             await tx.run(
                 'MATCH (u:User {uuid: $uuid}) ' +
@@ -95,21 +95,21 @@ class UserService {
                 'CREATE (u)-[:STATUS_IS]->(us) ' +
                 'CREATE (us)-[:STATE_IS]->(uss)',
                 {
-                    uuid, 
+                    uuid,
                     status_uuid: uuidv4(),
                     last_seen_at: new Date().toDateString(),
                     message: 'new msg',
                     total_online_hours: 0
                 }
             );
-            
+
             // Create user email verification
             await tx.run(
                 'MATCH (u:User {uuid: $uuid}) ' +
                 'CREATE (uev:UserEmailVerification {uuid: $user_email_verification_uuid, is_verified: $is_verified}) ' +
                 'CREATE (u)-[:EMAIL_VERIFY_VIA]->(uev)',
                 {
-                    uuid, 
+                    uuid,
                     user_email_verification_uuid: uuidv4(),
                     is_verified: (process.env.NODE_ENV === 'test' && !disableVerifyInTest) ? true : false
                 }
@@ -123,7 +123,7 @@ class UserService {
                 'CREATE (ul)-[:TYPE_IS]->(ult) ' +
                 'CREATE (u)-[:AUTHORIZE_VIA]->(ul)',
                 {
-                    uuid, 
+                    uuid,
                     login_uuid: uuidv4(),
                     user_login_password
                 }
@@ -170,24 +170,32 @@ class UserService {
     async update(options = { uuid: null, body: null, file: null }) {
         Validator.update(options);
 
-        const { body, file, user, uuid } = options;
+        const { body, file, uuid } = options;
+        const { email, username, password } = body;
 
-        let savedUser = await neodeInstance.model('User').find(user.sub);
+        let savedUser = await neodeInstance.model('User').find(uuid);
         if (!savedUser) throw new err.EntityNotFoundError('user');
         savedUser = savedUser.properties();
-        
-        const user_login_password = body.password ? await PwdService.hash(body.password) : null;
+
+        if (email && email !== savedUser.email) {
+            const mailUsed = await neodeInstance.model('User').first({ email });
+            if (mailUsed) throw new err.DuplicateEntryError('user', 'user_email', email);
+        }
+
+        if (username && username !== savedUser.username) {
+            const usernameUsed = await neodeInstance.model('User').first({ username });
+            if (usernameUsed) throw new err.DuplicateEntryError('user', 'user_username', username);
+        }
+
+        const user_uuid = uuid;
         const user_login_type_name = 'Password';
-        const user_uuid = user.sub;
-        const avatar_src = (file && file.size > 0) ? await uploader.create(file, user.sub) : null;
+        const user_login_password = password ? await PwdService.hash(password) : null;
+        const avatar_src = (file && file.size > 0) ? await uploader.create(file, uuid) : null;
 
         const session = neodeInstance.session();
         await session.writeTransaction(async tx => {
             // update email if provided
             if (body.email && body.email !== savedUser.email) {
-                const email = body.email;
-                const mailUsed = await tx.run('MATCH (u:User) WHERE u.email = $email RETURN u', { email });
-                if (mailUsed.records.length > 0) throw new err.DuplicateEntryError('user', 'user_email', email);
                 await tx.run(
                     'MATCH (u:User {uuid: $user_uuid}) ' +
                     'SET u.email = $email',
@@ -197,9 +205,6 @@ class UserService {
 
             // update username if provided
             if (body.username && body.username !== savedUser.username) {
-                const username = body.username;
-                const usernameUsed = await tx.run('MATCH (u:User) WHERE u.username = $username RETURN u', { username });
-                if (usernameUsed.records.length > 0) throw new err.DuplicateEntryError('user', 'user_username', username);
                 await tx.run(
                     'MATCH (u:User {uuid: $user_uuid}) ' +
                     'SET u.username = $username',
@@ -347,7 +352,7 @@ class UserService {
         if (!user) throw new err.EntityNotFoundError('user');
 
         const userProps = existingInstance.properties();
-        
+
         if (userProps.avatar_src) {
             await user.update({ avatar_src: null });
             await uploader.destroy(savedUser.avatar_src);
@@ -400,11 +405,11 @@ class UserService {
             )
         ]);
 
-        if (!userLogin) 
+        if (!userLogin)
             throw new err.EntityNotFoundError('user_login');
-        if (userLogin.get('user_login_type').get('name') === 'Password') 
+        if (userLogin.get('user_login_type').get('name') === 'Password')
             throw new err.ControllerError(400, 'Cannot delete password login');
-        if (userLoginCount === 1) 
+        if (userLoginCount === 1)
             throw new err.ControllerError(400, 'Cannot delete last login');
 
         await userLogin.delete();
@@ -447,10 +452,10 @@ class UserService {
         await neodeInstance.batch([
             {
                 query: 'MATCH (u:User {uuid: $uuid}) ' +
-                       'MATCH (ult:UserLoginType {name: $user_login_type_name}) ' +
-                       'CREATE (ul:UserLogin {uuid: $login_uuid, third_party_id: $third_party_id, password: $password}) ' +
-                       'CREATE (ul)-[:TYPE_IS]->(ult) ' +
-                       'CREATE (u)-[:AUTHORIZE_VIA]->(ul)',
+                    'MATCH (ult:UserLoginType {name: $user_login_type_name}) ' +
+                    'CREATE (ul:UserLogin {uuid: $login_uuid, third_party_id: $third_party_id, password: $password}) ' +
+                    'CREATE (ul)-[:TYPE_IS]->(ult) ' +
+                    'CREATE (u)-[:AUTHORIZE_VIA]->(ul)',
                 params: {
                     uuid,
                     user_login_type_name,
@@ -467,6 +472,28 @@ class UserService {
             ...userLogin.properties(),
             user_login_type: userLoginType.properties()
         });
+    }
+
+    /**
+     * @function getUserEmailVerification
+     * @description Get a user email verification. (mainly for testing)
+     * @param {Object} options
+     * @param {String} options.uuid
+     * @returns {Promise<Object>}
+     */    
+    async getUserEmailVerification(options = { uuid: null }) {
+        Validator.getUserEmailVerification(options);
+
+        const user = await neodeInstance.model('User').find(options.uuid);
+        if (!user) throw new err.EntityNotFoundError('user');
+
+        const emailVerificationProps = user.get('user_email_verification').endNode().properties();
+        if (!emailVerificationProps) throw new err.EntityNotFoundError('user_email_verification');
+
+        return {
+            uuid: emailVerificationProps.uuid,
+            is_verified: emailVerificationProps.is_verified
+        }
     }
 }
 

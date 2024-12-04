@@ -6,9 +6,19 @@ import neodeInstance from '../neode/index.js';
 import NeodeBaseFindService from './neode_base_find_service.js';
 import dto from '../dto/room_file_dto.js';
 
+/**
+ * @constant storage
+ * @description Storage service instance
+ * @type {StorageService}
+ */
 const storage = new StorageService('room_file');
 
-class Service extends NeodeBaseFindService {
+/**
+ * @class RoomFileService
+ * @description Service class for room files
+ * @exports RoomFileService
+ */
+class RoomFileService extends NeodeBaseFindService {
 
     constructor() {
         super('uuid', 'RoomFile', dto);
@@ -128,6 +138,6 @@ class Service extends NeodeBaseFindService {
     }
 };
 
-const service = new Service();
+const service = new RoomFileService();
 
 export default service;

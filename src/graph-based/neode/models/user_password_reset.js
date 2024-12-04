@@ -26,6 +26,6 @@ export default {
         target: 'User',
         relationship: 'RESETTED_BY',
         direction: 'in',
-        eager: false
+        eager: true
     },
 }

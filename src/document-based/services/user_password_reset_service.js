@@ -9,7 +9,7 @@ import { v4 as v4uuid } from 'uuid';
 const WEBSITE_HOST = process.env.WEBSITE_HOST;
 if (!WEBSITE_HOST) console.error(`
     WEBSITE_HOST is not defined in the .env file.
-    - User email verification is currently not configured correct.
+    - User password reset is currently not configured correct.
     - Add WEBSITE_HOST=http://localhost:3000 to the .env file.
 `);
 

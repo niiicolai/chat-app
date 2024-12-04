@@ -8,9 +8,19 @@ import NeodeBaseFindService from './neode_base_find_service.js';
 import { broadcastChannel } from '../../../websocket_server.js';
 import { v4 as uuidv4 } from 'uuid';
 
+/**
+ * @constant storage
+ * @description Storage service instance
+ * @type {StorageService}
+ */
 const storage = new StorageService('channel_avatar');
 
-class Service extends NeodeBaseFindService {
+/**
+ * @class ChannelWebhookService
+ * @description Service class for channel webhooks
+ * @exports ChannelWebhookService
+ */
+class ChannelWebhookService extends NeodeBaseFindService {
 
     constructor() {
         super('uuid', 'ChannelWebhook', dto);
@@ -241,6 +251,6 @@ class Service extends NeodeBaseFindService {
     }
 }
 
-const service = new Service();
+const service = new ChannelWebhookService();
 
 export default service;

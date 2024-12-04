@@ -11,12 +11,12 @@ export default {
     },
     created_at: {
         type: 'datetime',
-        required: true,
+        required: false,
         default: () => new Date().toISOString()
     },
     updated_at: {
         type: 'datetime',
-        required: true,
+        required: false,
         default: () => new Date().toISOString()
     },
     /**

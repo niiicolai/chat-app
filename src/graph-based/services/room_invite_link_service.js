@@ -8,7 +8,12 @@ import dto from '../dto/room_invite_link_dto.js';
 import { v4 as uuidv4 } from 'uuid';
 import { getJoinMessage } from '../../shared/utils/join_message_utils.js';
 
-class Service extends NeodeBaseFindService {
+/**
+ * @class RoomInviteLinkService
+ * @description Service class for room invite links
+ * @exports RoomInviteLinkService
+ */
+class RoomInviteLinkService extends NeodeBaseFindService {
     constructor() {
         super('uuid', 'RoomInviteLink', dto);
     }
@@ -199,6 +204,6 @@ class Service extends NeodeBaseFindService {
     }
 }
 
-const service = new Service();
+const service = new RoomInviteLinkService();
 
 export default service;

@@ -120,18 +120,17 @@ class UserService {
      * @param {String} options.body.email optional
      * @param {String} options.body.password optional
      * @param {Object} options.file optional
-     * @param {Object} options.user
-     * @param {String} options.user.sub
+     * @param {Object} options.uuid
      * @returns {Promise<Object>}
      */
-    async update(options = { body: null, file: null, user: null }) {
+    async update(options = { body: null, file: null, uuid: null }) {
         Validator.update(options);
 
-        const { body, file, user } = options;
+        const { body, file, uuid } = options;
         const user_login_password = body.password ? await PwdService.hash(body.password) : null;
         const user_login_type_name = 'Password';
-        const user_uuid = user.sub;
-        const avatar = (file && file.size > 0) ? await uploader.create(file, user.sub) : null;
+        const user_uuid = uuid;
+        const avatar = (file && file.size > 0) ? await uploader.create(file, uuid) : null;
 
         await db.sequelize.transaction(async (transaction) => {
             const savedUser = await db.UserView.findOne({ 
@@ -182,7 +181,7 @@ class UserService {
         });
 
         return await db.UserView
-            .findOne({ where: { user_uuid: user.sub } })
+            .findOne({ where: { user_uuid } })
             .then(entity => dto(entity));
     }
 

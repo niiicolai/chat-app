@@ -15,11 +15,10 @@ export default class UserServiceValidator {
         if (!options.body.password) throw new ControllerError(400, 'No password provided');
     }
 
-    static update(options = { body: null, file: null, user: null }) {
+    static update(options = { body: null, file: null, uuid: null }) {
         if (!options) throw new ControllerError(500, 'No options provided');
         if (!options.body) throw new ControllerError(400, 'No body provided');
-        if (!options.user) throw new ControllerError(500, 'No user provided');
-        if (!options.user.sub) throw new ControllerError(500, 'No user UUID provided');
+        if (!options.uuid) throw new ControllerError(500, 'No UUID provided');
     }
 
     static login(options = { body: null }) {

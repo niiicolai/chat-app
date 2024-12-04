@@ -1,6 +1,11 @@
 import RoomPermissionServiceValidator from '../../shared/validators/room_permission_service_validator.js';
 import neodeInstance from '../neode/index.js';
 
+/**
+ * @class RoomPermissionService
+ * @description Service class for room permissions
+ * @exports RoomPermissionService
+ */
 class RoomPermissionService {
 
     /**
@@ -9,7 +14,7 @@ class RoomPermissionService {
      * @param {Object} options
      * @param {Object} options.user
      * @param {String} options.user.sub
-     * @returns {Boolean}
+     * @returns {Promise<Boolean>}
      */
     async isVerified(options = { user: null }) {
         RoomPermissionServiceValidator.isVerified(options);
@@ -32,7 +37,7 @@ class RoomPermissionService {
      * @param {Object} options.user
      * @param {String} options.user.sub
      * @param {String} options.role_name
-     * @returns {Boolean}
+     * @returns {Promise<Boolean>}
      */
     async isInRoom(options = { room_uuid: null, user: null, role_name: null }) {
         RoomPermissionServiceValidator.isInRoom(options);
@@ -58,7 +63,7 @@ class RoomPermissionService {
      * @param {Object} options.user
      * @param {String} options.user.sub
      * @param {String} options.role_name
-     * @returns {Boolean}
+     * @returns {Promise<Boolean>}
      */
     async isInRoomByChannel(options = { channel_uuid: null, user: null, role_name: null }) {
         RoomPermissionServiceValidator.isInRoomByChannel(options);
@@ -83,7 +88,7 @@ class RoomPermissionService {
      * @param {Object} options
      * @param {String} options.room_uuid
      * @param {Number} options.bytes
-     * @returns {Boolean}
+     * @returns {Promise<Boolean>}
      */
     async fileExceedsTotalFilesLimit(options = { room_uuid: null, bytes: null }) {
         RoomPermissionServiceValidator.fileExceedsTotalFilesLimit(options);
@@ -107,7 +112,7 @@ class RoomPermissionService {
      * @param {Object} options
      * @param {String} options.room_uuid
      * @param {Number} options.bytes
-     * @returns {Boolean}
+     * @returns {Promise<Boolean>}
      */
     async fileExceedsSingleFileSize(options = { room_uuid: null, bytes: null }) {
         RoomPermissionServiceValidator.fileExceedsSingleFileSize(options);
@@ -130,7 +135,7 @@ class RoomPermissionService {
      * @param {Object} options
      * @param {String} options.room_uuid
      * @param {Number} options.add_count
-     * @returns {Boolean}
+     * @returns {Promise<Boolean>}
      */
     async roomUserCountExceedsLimit(options = { room_uuid: null, add_count: null }) {
         RoomPermissionServiceValidator.roomUserCountExceedsLimit(options);
@@ -154,7 +159,7 @@ class RoomPermissionService {
      * @param {Object} options
      * @param {String} options.room_uuid
      * @param {Number} options.add_count
-     * @returns {Boolean}
+     * @returns {Promise<Boolean>}
      */
     async channelCountExceedsLimit(options = { room_uuid: null, add_count: null }) {
         RoomPermissionServiceValidator.channelCountExceedsLimit(options);

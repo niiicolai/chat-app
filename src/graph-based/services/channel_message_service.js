@@ -9,9 +9,19 @@ import { v4 as uuidv4 } from 'uuid';
 import { getUploadType } from '../../shared/utils/file_utils.js';
 import { broadcastChannel } from '../../../websocket_server.js';
 
+/**
+ * @constant storage
+ * @description Storage service instance
+ * @type {StorageService}
+ */
 const storage = new StorageService('channel_message_upload');
 
-class Service extends NeodeBaseFindService {
+/**
+ * @class ChannelMessageService
+ * @description Service class for channel messages
+ * @exports ChannelMessageService
+ */
+class ChannelMessageService extends NeodeBaseFindService {
 
     constructor() {
         super('uuid', 'ChannelMessage', dto);
@@ -239,6 +249,6 @@ class Service extends NeodeBaseFindService {
     }
 }
 
-const service = new Service();
+const service = new ChannelMessageService();
 
 export default service;
