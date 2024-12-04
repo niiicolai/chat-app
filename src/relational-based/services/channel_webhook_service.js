@@ -1,12 +1,19 @@
 import Validator from '../../shared/validators/channel_webhook_service_validator.js';
 import BroadcastChannelService from '../../shared/services/broadcast_channel_service.js';
+import StorageService from '../../shared/services/storage_service.js';
 import err from '../../shared/errors/index.js';
-import RFS from './room_file_service.js';
 import RPS from './room_permission_service.js';
 import dto from '../dto/channel_webhook_dto.js';
 import dtoCM from '../dto/channel_message_dto.js';
 import db from '../sequelize/models/index.cjs';
 import { v4 as uuidv4 } from 'uuid';
+
+/**
+ * @constant storage
+ * @description Storage service instance
+ * @type {StorageService}
+ */
+const storage = new StorageService('channel_webhook_avatar');
 
 /**
  * @class ChannelWebhookService
@@ -97,21 +104,29 @@ class ChannelWebhookService {
         const { body, file, user } = options;
         const { uuid, name, description, channel_uuid } = body;
 
-        await db.sequelize.transaction(async (transaction) => {
-            const channel = await Promise.all([
-                db.ChannelView.findOne({ where: { channel_uuid }, transaction }),
-                RPS.isInRoomByChannel({ channel_uuid, user, role_name: 'Admin' }, transaction),
-            ]).then(([channel, isAdmin]) => {
-                if (!channel) throw new err.EntityNotFoundError('channel');
-                if (!isAdmin) throw new err.AdminPermissionRequiredError();
-                return channel;
-            });
+        const channel = await Promise.all([
+            db.ChannelView.findOne({ where: { channel_uuid } }),
+            RPS.isInRoomByChannel({ channel_uuid, user, role_name: 'Admin' }),
+        ]).then(([channel, isAdmin]) => {
+            if (!channel) throw new err.EntityNotFoundError('channel');
+            if (!isAdmin) throw new err.AdminPermissionRequiredError();
+            return channel;
+        });
 
-            const room_uuid = channel.room_uuid;
-            const room_file_body = { room_uuid, room_file_type_name: 'ChannelWebhookAvatar' };
-            const room_file_uuid = (file && file.size > 0)
-                ? (await RFS.create({ file, user, body: room_file_body }, transaction)).uuid
-                : null;
+        const room_uuid = channel.room_uuid;
+        const room_file_src = await this.createAvatar({ uuid, room_uuid, file });
+
+        await db.sequelize.transaction(async (transaction) => {
+            const room_file_uuid = (room_file_src ? uuidv4() : null);
+            if (room_file_src) {
+                await db.RoomFileView.createRoomFileProcStatic({
+                    room_file_uuid,
+                    room_file_src,
+                    room_file_size: file.size,
+                    room_uuid: room_uuid,
+                    room_file_type_name: 'ChannelWebhookAvatar',
+                }, transaction);
+            }
 
             await db.ChannelWebhookView.createChannelWebhookProc({
                 uuid,
@@ -123,6 +138,9 @@ class ChannelWebhookService {
             }, transaction);
 
         }).catch((error) => {
+            // Delete the avatar file if it was uploaded
+            if (room_file_src) storage.deleteFile(storage.parseKey(room_file_src));
+
             if (error.name === 'SequelizeUniqueConstraintError') {
                 throw new err.DuplicateEntryError('channel', error.errors[0].path, error.errors[0].value);
             } else if (error.name === 'SequelizeForeignKeyConstraintError') {
@@ -156,31 +174,45 @@ class ChannelWebhookService {
         const { uuid, body, file, user } = options;
         const { name, description } = body;
 
+        const channelWebhook = await db.ChannelWebhookView.findByPk(uuid);
+        if (!channelWebhook) throw new err.EntityNotFoundError('channel_webhook');
+
+        const channel_uuid = channelWebhook.channel_uuid;
+        const isAdmin = await RPS.isInRoomByChannel({ channel_uuid, user, role_name: 'Admin' });
+        if (!isAdmin) throw new err.AdminPermissionRequiredError();
+
+        const room_uuid = channelWebhook.room_uuid;
+        const room_file_src = await this.createAvatar({ uuid, room_uuid, file });
+
         await db.sequelize.transaction(async (transaction) => {
-            const channelWebhook = await db.ChannelWebhookView.findByPk(uuid, { transaction });
-            if (!channelWebhook) throw new err.EntityNotFoundError('channel_webhook');
-
-            const channel_uuid = channelWebhook.channel_uuid;
-            const isAdmin = await RPS.isInRoomByChannel({ channel_uuid, user, role_name: 'Admin' }, transaction);
-            if (!isAdmin) throw new err.AdminPermissionRequiredError();
-
-            const room_uuid = channelWebhook.room_uuid;
-            const room_file_body = { room_uuid, room_file_type_name: 'ChannelWebhookAvatar' };
-            const room_file_uuid = (file && file.size > 0)
-                ? (await RFS.create({ file, user, body: room_file_body }, transaction)).uuid
-                : null;
+           
+            const newRoomFileUuid = (room_file_src ? uuidv4() : null);
+            const oldRoomFileUuid = channelWebhook.room_file_uuid;
+            if (room_file_src) {
+                await db.RoomFileView.createRoomFileProcStatic({
+                    room_file_uuid: newRoomFileUuid,
+                    room_file_src,
+                    room_file_size: file.size,
+                    room_uuid: room_uuid,
+                    room_file_type_name: 'ChannelWebhookAvatar',
+                }, transaction);
+            }
 
             await channelWebhook.editChannelWebhookProc({
                 ...(name && { name }),
                 ...(description && { description }),
-                ...(room_file_uuid && { room_file_uuid }),
+                ...(newRoomFileUuid && { room_file_uuid: newRoomFileUuid }),
             }, transaction);
 
-            if (file && file.size > 0 && channelWebhook.room_file_uuid) {
-                await RFS.remove(channelWebhook.room_file_uuid, channelWebhook.room_file_src, transaction);
+            if (room_file_src && oldRoomFileUuid && channelWebhook.room_file_src) {
+                await db.RoomFileView.deleteRoomFileProcStatic({ uuid: oldRoomFileUuid }, transaction);
+                await storage.deleteFile(storage.parseKey(channelWebhook.room_file_src));
             }
 
         }).catch((error) => {
+            // Delete the avatar file if it was uploaded
+            if (room_file_src) storage.deleteFile(storage.parseKey(room_file_src));
+
             if (error.name === 'SequelizeUniqueConstraintError') {
                 throw new err.DuplicateEntryError('channel', error.errors[0].path, error.errors[0].value);
             } else if (error.name === 'SequelizeForeignKeyConstraintError') {
@@ -218,8 +250,10 @@ class ChannelWebhookService {
             if (!isAdmin) throw new err.AdminPermissionRequiredError();
 
             await channelWebhook.deleteChannelWebhookProc(transaction);
+
             if (channelWebhook.room_file_uuid) {
-                await RFS.remove(channelWebhook.room_file_uuid, channelWebhook.room_file_src, transaction);
+                await db.RoomFileView.deleteRoomFileProcStatic({ uuid: channelWebhook.room_file_uuid }, transaction);
+                await storage.deleteFile(storage.parseKey(channelWebhook.room_file_src));
             }
         });
     }
@@ -256,6 +290,37 @@ class ChannelWebhookService {
 
         const data = dtoCM(channelMessage);
         BroadcastChannelService.create(data);
+    }
+
+    /**
+     * @function createAvatar
+     * @description Create a channel webhook avatar (helper function)
+     * @param {Object} options
+     * @param {String} options.uuid
+     * @param {String} options.room_uuid
+     * @param {Object} options.file
+     * @returns {Promise<String | null>}
+     */
+    async createAvatar(options = { uuid: null, room_uuid: null, file: null }) {
+        if (!options) throw new Error('createAvatar: options is required');
+        if (!options.uuid) throw new Error('createAvatar: options.uuid is required');
+        if (!options.room_uuid) throw new Error('createAvatar: options.room_uuid is required');
+
+        const { uuid, room_uuid, file } = options;
+
+        if (file && file.size > 0) {
+            const [singleLimit, totalLimit] = await Promise.all([
+                RPS.fileExceedsSingleFileSize({ room_uuid, bytes: file.size }),
+                RPS.fileExceedsTotalFilesLimit({ room_uuid, bytes: file.size }),
+            ]);
+
+            if (totalLimit) throw new err.ExceedsRoomTotalFilesLimitError();
+            if (singleLimit) throw new err.ExceedsSingleFileSizeError();
+
+            return await storage.uploadFile(file, uuid);
+        }
+
+        return null;
     }
 }
 

@@ -6,23 +6,14 @@ export default class ChannelMessageUploadTypeSeeder {
     }
     
     async up(neodeInstance) {
-        for (let state of data.channel_message_upload_types) {
-            neodeInstance.model('ChannelMessageUploadType').create({
+        await Promise.all(data.channel_message_upload_types.map(async (state) => {
+            return neodeInstance.model('ChannelMessageUploadType').create({
                 name: state.name,
-                created_at: new Date(),
-                updated_at: new Date()
             });
-        }
+        }));
     }
 
     async down(neodeInstance) {
-        for (let state of data.channel_message_upload_types) {
-            const savedState = await neodeInstance.model('ChannelMessageUploadType').find(state.name);
-            if (!savedState) {
-                continue;
-            }
-
-            await savedState.delete();
-        }        
+        await neodeInstance.cypher('MATCH (n:ChannelMessageUploadType) DETACH DELETE n');
     }
 }

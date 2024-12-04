@@ -11,11 +11,36 @@ export const execute = async (command) => {
 
     // Clear all data
     if (command === 'up') {
+        console.log(`${now} - Clearing all data`);
         const session = instance.driver.session();
         await session.run('MATCH (n) DETACH DELETE n');
         session.close();
     }
 
+    console.log(`${now} - Running cypher scripts`);
+    const scriptsDir = path.resolve('src', 'graph-based', 'scripts');
+    fs.readdirSync(scriptsDir).forEach(file => {
+        if (!file.endsWith('.cypher')) {
+            return;
+        }
+        try {
+            const fileDir = path.join(scriptsDir, file);
+            const filePath = pathToFileURL(fileDir);
+            // Import file as text
+            const text = fs.readFileSync(fileDir, 'utf8');
+            // Split text into individual queries by semicolon
+            const queries = text.split(';')
+                .map(query => query.trim())
+                .filter(query => query.length > 0);
+
+            // Execute each query
+            instance.batch(queries.map(query => ({ query })));
+        } catch (error) {
+            console.error('seed_all.js (neo4j)', error);
+        }
+    });
+
+    console.log(`${now} - Running seeders`);
     const dir = path.resolve('src', 'graph-based', 'neode', 'seeders');
     await Promise.all(
         // Read all files in the seeders directory

@@ -1,11 +1,19 @@
 import Validator from '../../shared/validators/channel_message_service_validator.js';
+import StorageService from '../../shared/services/storage_service.js';
 import BroadcastChannelService from '../../shared/services/broadcast_channel_service.js';
 import { getUploadType } from '../../shared/utils/file_utils.js';
 import err from '../../shared/errors/index.js';
-import RFS from './room_file_service.js';
 import RPS from './room_permission_service.js';
 import dto from '../dto/channel_message_dto.js';
 import db from '../sequelize/models/index.cjs';
+import { v4 as uuidv4 } from 'uuid';
+
+/**
+ * @constant storage
+ * @description Storage service instance
+ * @type {StorageService}
+ */
+const storage = new StorageService('channel_message_upload');
 
 /**
  * @class ChannelMessageService
@@ -97,20 +105,28 @@ class ChannelMessageService {
         const { body, file, user } = options;
         const { uuid, body: msg, channel_uuid } = body;
 
-        await db.sequelize.transaction(async (transaction) => {
-            const [channel, isInRoom] = await Promise.all([
-                db.ChannelView.findByPk(channel_uuid, { transaction }),
-                RPS.isInRoomByChannel({ channel_uuid, user }, transaction),
-            ]);
-            
-            if (!channel) throw new err.EntityNotFoundError('channel');
-            if (!isInRoom) throw new err.RoomMemberRequiredError();
+        const [channel, isInRoom] = await Promise.all([
+            db.ChannelView.findByPk(channel_uuid),
+            RPS.isInRoomByChannel({ channel_uuid, user }),
+        ]);
+        
+        if (!channel) throw new err.EntityNotFoundError('channel');
+        if (!isInRoom) throw new err.RoomMemberRequiredError();
 
-            const room_uuid = channel.room_uuid;
-            const room_file_body = { room_uuid, room_file_type_name: 'ChannelMessageUpload' };
-            const room_file_uuid = (file && file.size > 0)
-                ? (await RFS.create({ file, user, body: room_file_body }, transaction)).uuid
-                : null;
+        const room_uuid = channel.room_uuid;
+        const room_file_src = await this.createUpload({ uuid, room_uuid, file });
+
+        await db.sequelize.transaction(async (transaction) => {
+            const room_file_uuid = (room_file_src ? uuidv4() : null);
+            if (room_file_src) {
+                await db.RoomFileView.createRoomFileProcStatic({
+                    room_file_uuid,
+                    room_file_src,
+                    room_file_size: file.size,
+                    room_uuid: room_uuid,
+                    room_file_type_name: 'ChannelMessageUpload',
+                }, transaction);
+            }
 
             await db.ChannelMessageView.createChannelMessageProcStatic({
                 uuid,
@@ -125,6 +141,9 @@ class ChannelMessageService {
                 })
             }, transaction);
         }).catch((error) => {
+            // Delete the avatar file if it was uploaded
+            if (room_file_src) storage.deleteFile(storage.parseKey(room_file_src));
+
             if (error.name === 'SequelizeUniqueConstraintError') {
                 throw new err.DuplicateEntryError('channel_message', error.errors[0].path, error.errors[0].value);
             } else if (error.name === 'SequelizeForeignKeyConstraintError') {
@@ -191,19 +210,20 @@ class ChannelMessageService {
 
         const { uuid, user } = options;
 
-        await db.sequelize.transaction(async (transaction) => {
-            const channelMessage = await db.ChannelMessageView.findByPk(uuid, { transaction });
-            if (!channelMessage) throw new err.EntityNotFoundError('channel_message');
+        const channelMessage = await db.ChannelMessageView.findByPk(uuid);
+        if (!channelMessage) throw new err.EntityNotFoundError('channel_message');
 
+        await db.sequelize.transaction(async (transaction) => {
             await ChannelMessageService.handleWritePermission(channelMessage, user, transaction);
             await channelMessage.deleteChannelMessageProc(transaction);
 
-            if (channelMessage.upload_src) {
-                await RFS.remove(channelMessage.room_file_uuid, channelMessage.upload_src, transaction);
+            if (channelMessage.room_file_uuid) {
+                await db.RoomFileView.deleteRoomFileProcStatic({ uuid: channelWebhook.room_file_uuid }, transaction);
+                await storage.deleteFile(storage.parseKey(channelMessage.room_file_src));
             }
-
-            BroadcastChannelService.destroy(channelMessage.channel_uuid, uuid);
         });
+
+        BroadcastChannelService.destroy(channelMessage.channel_uuid, uuid);
     }
 
     /**
@@ -228,6 +248,37 @@ class ChannelMessageService {
         if (!isOwner && !isModerator && !isAdmin) {
             throw new err.OwnershipOrLeastModRequiredError('channel_message');
         }
+    }
+
+    /**
+     * @function createUpload
+     * @description Create a channel message upload file (helper function)
+     * @param {Object} options
+     * @param {String} options.uuid
+     * @param {String} options.room_uuid
+     * @param {Object} options.file
+     * @returns {Promise<String | null>}
+     */
+    async createUpload(options = { uuid: null, room_uuid: null, file: null }) {
+        if (!options) throw new Error('createUpload: options is required');
+        if (!options.uuid) throw new Error('createUpload: options.uuid is required');
+        if (!options.room_uuid) throw new Error('createUpload: options.room_uuid is required');
+
+        const { uuid, room_uuid, file } = options;
+
+        if (file && file.size > 0) {
+            const [singleLimit, totalLimit] = await Promise.all([
+                RPS.fileExceedsSingleFileSize({ room_uuid, bytes: file.size }),
+                RPS.fileExceedsTotalFilesLimit({ room_uuid, bytes: file.size }),
+            ]);
+
+            if (totalLimit) throw new err.ExceedsRoomTotalFilesLimitError();
+            if (singleLimit) throw new err.ExceedsSingleFileSizeError();
+
+            return await storage.uploadFile(file, uuid);
+        }
+
+        return null;
     }
 }
 

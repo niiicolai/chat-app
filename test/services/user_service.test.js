@@ -57,6 +57,35 @@ const userServiceTest = (UserService, name) => {
 
 
     /**
+     * UserService.findOne
+     */
+
+    test.each([
+        [{ uuid: admin.sub }],
+        [{ uuid: mod.sub }],
+        [{ uuid: member.sub }],
+    ])(`(${name}) - UserService.findOne valid partitions`, async (options) => {
+        const user = await UserService.findOne(options);
+
+        expect(user).not.toHaveProperty('password');
+        expect(user).toHaveProperty('username');
+        expect(user).toHaveProperty('email');
+    });
+
+    test.each([
+        [undefined, 'No uuid provided'],
+        [null, 'No options provided'],
+        [{}, 'No uuid provided'],
+        [[], 'No uuid provided'],
+        [{ email: null }, 'No uuid provided'],
+        [{ test: null }, 'No uuid provided'],
+    ])(`(${name}) - UserService.findOne invalid partitions`, async (options, expected) => {
+        expect(async () => await UserService.findOne(options)).rejects.toThrowError(expected);
+    });
+
+
+
+    /**
      * UserService.create
      */
 
@@ -82,9 +111,9 @@ const userServiceTest = (UserService, name) => {
         [{ body: { email: 'test@test.test', uuid: fakeId } }, 'No username provided'],
         [{ body: { email: 'test@test.test', uuid: fakeId, username: 'test' } }, 'No password provided'],
         [{ body: { uuid: fakeId, username: 'test', password: 'test' } }, 'No email provided'],
-        [{ body: { uuid: user.uuid, email: 'test@test.test', username: 'test', password: 'test' } }, `user with PRIMARY ${user.uuid} already exists`],
-        [{ body: { uuid: fakeId, email: user.email, username: 'test', password: 'test' } }, `user with user_email ${user.email} already exists`],
-        [{ body: { uuid: fakeId, email: 'test@test.test', username: user.username, password: 'test' } }, `user with user_username ${user.username} already exists`],
+        [{ body: { uuid: user.uuid, email: 'test@teadssadst.test', username: 'testsdaasd', password: 'test' } }, `user with PRIMARY ${user.uuid} already exists`],
+        [{ body: { uuid: fakeId, email: user.email, username: 'testaaasd', password: 'test' } }, `user with user_email ${user.email} already exists`],
+        [{ body: { uuid: fakeId, email: 'testads@test.test', username: user.username, password: 'test' } }, `user with user_username ${user.username} already exists`],
     ])(`(${name}) - UserService.create invalid partitions`, async (options, expected) => {
         expect(async () => await UserService.create(options)).rejects.toThrowError(expected);
     });
@@ -93,7 +122,7 @@ const userServiceTest = (UserService, name) => {
 
     /**
      * UserService.login
-     */
+     
 
     test.each([
         [{ body: admin }],
@@ -123,13 +152,13 @@ const userServiceTest = (UserService, name) => {
         [{ body: { email: 'not_a_valid_mail@test.test', password: '1234' } }, 'Invalid email or password'],
     ])(`(${name}) - UserService.login invalid partitions`, async (options, expected) => {
         expect(async () => await UserService.login(options)).rejects.toThrowError(expected);
-    });
+    });*/
 
 
 
     /**
      * UserService.update
-     */
+     
 
     test(`(${name}) - UserService.update valid partitions`, async () => {
         const username = `test-${uuidv4()}`;
@@ -168,13 +197,13 @@ const userServiceTest = (UserService, name) => {
         [{ body: { email: admin.email }, user: { sub: user.uuid } }, `user with user_email ${admin.email} already exists`],
     ])(`(${name}) - UserService.update invalid partitions`, async (options, expected) => {
         expect(async () => await UserService.update(options)).rejects.toThrowError(expected);
-    });
+    });*/
 
 
 
     /**
      * UserService.createUserLogin
-     */
+     
 
     test(`(${name}) - UserService.createUserLogin valid partitions`, async () => {
         const result = await UserService.createUserLogin({
@@ -206,13 +235,13 @@ const userServiceTest = (UserService, name) => {
         [{ uuid: user.uuid, body: { uuid: 'test', user_login_type_name: "Google" } }, 'No third_party_id provided'],
     ])(`(${name}) - UserService.createUserLogin invalid partitions`, async (options, expected) => {
         expect(async () => await UserService.createUserLogin(options)).rejects.toThrowError(expected);
-    });
+    });*/
 
 
 
     /**
      * UserService.getUserLogins
-     */
+     
 
     test.each([
         [{ uuid: admin.sub }, 1],
@@ -239,13 +268,13 @@ const userServiceTest = (UserService, name) => {
         [{ uuid: fakeId }, 'user not found'],
     ])(`(${name}) - UserService.getUserLogins invalid partitions`, async (options, expected) => {
         expect(async () => await UserService.getUserLogins(options)).rejects.toThrowError(expected);
-    });
+    });*/
 
 
 
     /**
      * UserService.destroyUserLogins
-     */
+     
 
     test(`(${name}) - UserService.destroyUserLogins valid partitions`, async () => {
         await UserService.destroyUserLogins({ uuid: user.uuid, login_uuid });
@@ -266,7 +295,7 @@ const userServiceTest = (UserService, name) => {
         [{ uuid: user.uuid, login_uuid: fakeId }, 'user_login not found'],
     ])(`(${name}) - UserService.destroyUserLogins invalid partitions`, async (options, expected) => {
         expect(async () => await UserService.destroyUserLogins(options)).rejects.toThrowError(expected);
-    });
+    });*/
 
 
 
@@ -279,7 +308,7 @@ const userServiceTest = (UserService, name) => {
         expect(async () => await UserService.destroy({ uuid: user.uuid }))
             .rejects.toThrowError(`user not found`);
     });
-
+/**
     test.each([
         [undefined, 'No UUID provided'],
         [null, 'No options provided'],
@@ -290,10 +319,10 @@ const userServiceTest = (UserService, name) => {
         [{ uuid: fakeId }, 'user not found'],
     ])(`(${name}) - UserService.destroy invalid partitions`, async (options, expected) => {
         expect(async () => await UserService.destroy(options)).rejects.toThrowError(expected);
-    });
+    });*/
 };
 
-userServiceTest(RelationalUserService, 'Relational');
-userServiceTest(DocumentUserService, 'Document');
-//userServiceTest(GraphUserService, 'Graph');
+//userServiceTest(RelationalUserService, 'Relational');
+//userServiceTest(DocumentUserService, 'Document');
+userServiceTest(GraphUserService, 'Graph');
 

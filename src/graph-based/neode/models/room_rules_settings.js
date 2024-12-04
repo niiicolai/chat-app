@@ -8,12 +8,6 @@ export default {
         type: 'string',
         required: true
     },
-    room: {
-        type: 'relationship',
-        target: 'Room',
-        relationship: 'HAS_RULES_SETTINGS',
-        direction: 'in',
-    },
     created_at: {
         type: 'datetime',
         required: true,
@@ -23,5 +17,14 @@ export default {
         type: 'datetime',
         required: true,
         default: () => new Date().toISOString()
+    },
+    /**
+     * INCOMING RELATION
+     */
+    room: {
+        type: 'relationship',
+        target: 'Room',
+        relationship: 'RULES_SETTINGS_IS',
+        direction: 'in',
     },
 }

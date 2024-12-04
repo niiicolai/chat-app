@@ -14,10 +14,11 @@ export default (entity = {}) => {
     }
 
     if (entity.user_status) {
-        dto.user_status = userStatusDto(entity.user_status, [
-            { user: { uuid: entity.uuid } },
-            { user_status_state: entity.user_status_state },
-        ]);
+        dto.user_status = userStatusDto({
+            ...entity.user_status,
+            user_status_state: entity.user_status_state,
+            user: entity,
+        });
     }
 
     return dateHelper(entity, dto);

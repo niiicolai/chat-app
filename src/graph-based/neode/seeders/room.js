@@ -1,5 +1,4 @@
 import data from '../../../seed_data.js';
-import { v4 as uuidv4 } from 'uuid';
 
 export default class RoomSeeder {
     order() {
@@ -7,23 +6,124 @@ export default class RoomSeeder {
     }
 
     async up(neodeInstance) {
-        const roomCategory = await neodeInstance.model('RoomCategory').find('General');
-        const room = await neodeInstance.model('Room').create({
-            uuid: data.room.uuid,
-            name: data.room.name,
-            description: data.room.description,
-            created_at: new Date(),
-            updated_at: new Date()
-        });
+        await Promise.all(data.rooms.map(async (roomData) => {
+            return new Promise(async (resolve, reject) => {
+                const room = await neodeInstance.model('Room').create({
+                    uuid: roomData.uuid,
+                    name: roomData.name,
+                    description: roomData.description,
+                });
 
-        await room.relateTo(roomCategory, 'room_category');
+                const roomAvatar = await neodeInstance.model('RoomAvatar').create({
+                    uuid: roomData.room_avatar.uuid,
+                });
+
+                const roomJoinSettings = await neodeInstance.model('RoomJoinSettings').create({
+                    uuid: roomData.room_join_settings.uuid,
+                    join_message: roomData.room_join_settings.join_message,
+                });
+        
+                const roomFileSettings = await neodeInstance.model('RoomFileSettings').create({
+                    uuid: roomData.room_file_settings.uuid,
+                    file_days_to_live: roomData.room_file_settings.file_days_to_live,
+                    total_files_bytes_allowed: roomData.room_file_settings.total_files_bytes_allowed,
+                    single_file_bytes_allowed: roomData.room_file_settings.single_file_bytes_allowed,
+                });
+        
+                const roomUserSettings = await neodeInstance.model('RoomUserSettings').create({
+                    uuid: roomData.room_user_settings.uuid,
+                    max_users: roomData.room_user_settings.max_users,
+                });
+        
+                const roomChannelSettings = await neodeInstance.model('RoomChannelSettings').create({
+                    uuid: roomData.room_channel_settings.uuid,
+                    max_channels: roomData.room_channel_settings.max_channels,
+                    message_days_to_live: roomData.room_channel_settings.message_days_to_live,
+                });
+        
+                const roomRulesSettings = await neodeInstance.model('RoomRulesSettings').create({
+                    uuid: roomData.room_rules_settings.uuid,
+                    rules_text: roomData.room_rules_settings.rules_text,
+                });
+
+                const roomInviteLink = await neodeInstance.model('RoomInviteLink').create({
+                    uuid: roomData.room_invite_link.uuid,
+                });
+
+                await room.relateTo(roomAvatar, 'room_avatar');
+                await room.relateTo(roomJoinSettings, 'room_join_settings');
+                await room.relateTo(roomFileSettings, 'room_file_settings');
+                await room.relateTo(roomUserSettings, 'room_user_settings');
+                await room.relateTo(roomChannelSettings, 'room_channel_settings');
+                await room.relateTo(roomRulesSettings, 'room_rules_settings');
+                await room.relateTo(roomInviteLink, 'room_invite_link');
+
+                await Promise.all(roomData.room_files.map(async (roomFileData) => {
+                    return new Promise(async (resolve, reject) => {
+                        const type = await neodeInstance.model('RoomFileType').find(roomFileData.room_file_type_name);
+                        const file = await neodeInstance.model('RoomFile').create({
+                            uuid: roomFileData.uuid,
+                            src: roomFileData.src,
+                            size: roomFileData.size,
+                        });
+
+                        await file.relateTo(room, 'room');
+                        await file.relateTo(type, 'room_file_type');
+                        
+                        if (roomFileData.room_file_type_name === 'RoomAvatar') {
+                            await file.relateTo(roomAvatar, 'room_avatar');
+                        }
+                        resolve();
+                    });
+                }));
+
+                await Promise.all(roomData.room_audits.map(async (auditData) => {
+                    return new Promise(async (resolve, reject) => {
+                        const type = await neodeInstance.model('RoomAuditType').find(auditData.room_audit_type_name);
+                        const audit = await neodeInstance.model('RoomAudit').create({
+                            uuid: auditData.uuid,
+                            body: auditData.body,
+                        });
+
+                        await audit.relateTo(room, 'room');
+                        await audit.relateTo(type, 'room_audit_type');
+              
+                        resolve();
+                    });
+                }));
+
+                await neodeInstance.batch([
+                    {
+                        query:
+                            'MATCH (rc:RoomCategory {name: $name}) ' +
+                            'MATCH (r:Room {uuid: $uuid}) ' +
+                            'CREATE (r)-[:CATEGORY_IS]->(rc)',
+                        params: { uuid: roomData.uuid, name: roomData.room_category_name }
+                    },
+                    ...roomData.room_users.map((roomUserData) => {
+                        return {
+                            query:
+                                'MATCH (u:User {uuid: $user_uuid}) ' +
+                                'MATCH (r:Room {uuid: $room_uuid}) ' +
+                                'CREATE (u)-[:MEMBER_IN {role: $role}]->(r) ',
+                            params: {
+                                user_uuid: roomUserData.user_uuid,
+                                room_uuid: roomData.uuid,
+                                role: roomUserData.room_user_role_name,
+                            }
+                        }
+                    })
+                ]);
+
+                resolve();
+            });
+        }));
+        
+
+        /*
 
         const roomAvatarFileType = await neodeInstance.model('RoomFileType').find('RoomAvatar');
-        const roomAvatarFile = await neodeInstance.model('RoomFile').create({
-            uuid: data.room.room_avatar.room_file.uuid,
-            src: data.room.room_avatar.room_file.src,
-            size: data.room.room_avatar.room_file.size,
-        });
+        
 
         await roomAvatarFile.relateTo(room, 'room');
         await roomAvatarFile.relateTo(roomAvatarFileType, 'room_file_type');
@@ -111,34 +211,19 @@ export default class RoomSeeder {
             body: "{}",
         });
         await roomAudit.relateTo(room, 'room');
-        await roomAudit.relateTo(roomAuditType, 'room_audit_type');
+        await roomAudit.relateTo(roomAuditType, 'room_audit_type');*/
     }
 
     async down(neodeInstance) {
-        const room = await neodeInstance.model('Room').find(data.room.uuid);
-        if (!room) {
-            return;
-        }
-
-        const roomFileSettings = await room.get("room_file_settings");
-        const roomJoinSettings = await room.get("room_join_settings");
-        const roomUserSettings = await room.get("room_user_settings");
-        const roomChannelSettings = await room.get("room_channel_settings");
-        const roomRulesSettings = await room.get("room_rules_settings");
-        const roomAvatar = await room.get("room_avatar");
-        const roomInviteLink = await room.get("room_invite_link");
-        const roomFiles = await room.get("room_files");
-        const roomUsers = await room.get("room_users");
-
-        await roomFileSettings?.delete();
-        await roomJoinSettings?.delete();
-        await roomUserSettings?.delete();
-        await roomChannelSettings?.delete();
-        await roomRulesSettings?.delete();
-        await roomAvatar?.delete();
-        await roomInviteLink?.delete();
-        await roomFiles?.delete();
-        await roomUsers?.delete();
-        await room.delete();
+        await neodeInstance.cypher('MATCH (n:Room) DETACH DELETE n');
+        await neodeInstance.cypher('MATCH (n:RoomFile) DETACH DELETE n');
+        await neodeInstance.cypher('MATCH (n:RoomAvatar) DETACH DELETE n');
+        await neodeInstance.cypher('MATCH (n:RoomJoinSettings) DETACH DELETE n');
+        await neodeInstance.cypher('MATCH (n:RoomFileSettings) DETACH DELETE n');
+        await neodeInstance.cypher('MATCH (n:RoomUserSettings) DETACH DELETE n');
+        await neodeInstance.cypher('MATCH (n:RoomChannelSettings) DETACH DELETE n');
+        await neodeInstance.cypher('MATCH (n:RoomRulesSettings) DETACH DELETE n');
+        await neodeInstance.cypher('MATCH (n:RoomInviteLink) DETACH DELETE n');
+        await neodeInstance.cypher('MATCH (n:RoomAudit) DETACH DELETE n');
     }
 }

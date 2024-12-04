@@ -1,9 +1,17 @@
 import Validator from '../../shared/validators/channel_service_validator.js';
+import StorageService from '../../shared/services/storage_service.js';
 import err from '../../shared/errors/index.js';
-import RFS from './room_file_service.js';
 import RPS from './room_permission_service.js';
 import db from '../sequelize/models/index.cjs';
 import dto from '../dto/channel_dto.js';
+import { v4 as uuidv4 } from 'uuid';
+
+/**
+ * @constant storage
+ * @description Storage service instance
+ * @type {StorageService}
+ */
+const storage = new StorageService('channel_avatar');
 
 /**
  * @class ChannelService
@@ -94,7 +102,9 @@ class ChannelService {
         Validator.create(options);
 
         const { body, file, user } = options;
-        const { room_uuid } = body;
+        const { room_uuid, uuid } = body;
+
+        const room_file_src = await this.createAvatar({ uuid, room_uuid, file });
 
         await db.sequelize.transaction(async (transaction) => {
             const [inRoom, countExceedsLimit] = await Promise.all([
@@ -105,14 +115,26 @@ class ChannelService {
             if (!inRoom) throw new err.AdminPermissionRequiredError();
             if (countExceedsLimit) throw new err.ExceedsRoomChannelCountError();
 
-            const room_file_body = { room_uuid, room_file_type_name: 'ChannelAvatar' };
-            const room_file_uuid = (file && file.size > 0)
-                ? (await RFS.create({ file, user, body: room_file_body }, transaction)).uuid
-                : null;
+            const room_file_uuid = (room_file_src ? uuidv4() : null);
+            if (room_file_src) {
+                await db.RoomFileView.createRoomFileProcStatic({
+                    room_file_uuid,
+                    room_file_src,
+                    room_file_size: file.size,
+                    room_uuid: room_uuid,
+                    room_file_type_name: 'ChannelAvatar',
+                }, transaction);
+            }
 
-            await db.ChannelView.createChannelProcStatic({ ...body, room_file_uuid }, transaction);
+            await db.ChannelView.createChannelProcStatic({ 
+                ...body, 
+                ...(room_file_uuid && { room_file_uuid }), 
+            }, transaction);
             
         }).catch((error) => {
+            // Delete the avatar file if it was uploaded
+            if (room_file_src) storage.deleteFile(storage.parseKey(room_file_src));
+
             if (error.name === 'SequelizeUniqueConstraintError') {
                 throw new err.DuplicateEntryError('channel', error.errors[0].path, error.errors[0].value);
             } else if (error.name === 'SequelizeForeignKeyConstraintError') {
@@ -144,20 +166,28 @@ class ChannelService {
         const { uuid, body, file, user } = options;
         const { name, description } = body;
 
+        const [channel, isAdmin] = await Promise.all([
+            db.ChannelView.findByPk(uuid),
+            RPS.isInRoomByChannel({ channel_uuid: uuid, user, role_name: 'Admin' })
+        ]);
+
+        if (!channel) throw new err.EntityNotFoundError('channel');
+        if (!isAdmin) throw new err.AdminPermissionRequiredError();
+
+        const room_uuid = channel.room_uuid;
+        const room_file_src = await this.createAvatar({ uuid, room_uuid, file });
+
         await db.sequelize.transaction(async (transaction) => {
-            const [channel, isAdmin] = await Promise.all([
-                db.ChannelView.findByPk(uuid, { transaction }),
-                RPS.isInRoomByChannel({ channel_uuid: uuid, user, role_name: 'Admin' }, transaction)
-            ]);
-
-            if (!channel) throw new err.EntityNotFoundError('channel');
-            if (!isAdmin) throw new err.AdminPermissionRequiredError();
-
-            const room_uuid = channel.room_uuid;
-            const room_file_body = { room_uuid, room_file_type_name: 'ChannelAvatar' };
-            const room_file_uuid = (file && file.size > 0)
-                ? (await RFS.create({ file, user, body: room_file_body }, transaction)).uuid
-                : null;
+            const room_file_uuid = (room_file_src ? uuidv4() : null);
+            if (room_file_src) {
+                await db.RoomFileView.createRoomFileProcStatic({
+                    room_file_uuid,
+                    room_file_src,
+                    room_file_size: file.size,
+                    room_uuid: room_uuid,
+                    room_file_type_name: 'ChannelAvatar',
+                }, transaction);
+            }
 
             await channel.editChannelProc({
                 ...(name && { name }),
@@ -165,11 +195,15 @@ class ChannelService {
                 ...(room_file_uuid && { room_file_uuid }),
             }, transaction);
 
-            if (file && file.size > 0 && channel.room_file_uuid) {
-                await RFS.remove(channel.room_file_uuid, channel.room_file_src, transaction);
+            if (room_file_src && channel.room_file_uuid) {
+                await db.RoomFileView.deleteRoomFileProcStatic({ uuid: channel.room_file_uuid }, transaction);
+                await storage.deleteFile(storage.parseKey(channel.room_file_src));
             }
 
         }).catch((error) => {
+            // Delete the avatar file if it was uploaded
+            if (room_file_src) storage.deleteFile(storage.parseKey(room_file_src));
+
             if (error.name === 'SequelizeUniqueConstraintError') {
                 throw new err.DuplicateEntryError('channel', error.errors[0].path, error.errors[0].value);
             } else if (error.name === 'SequelizeForeignKeyConstraintError') {
@@ -210,9 +244,41 @@ class ChannelService {
             await channel.deleteChannelProc(transaction);
 
             if (channel.room_file_uuid) {
-                await RFS.remove(channel.room_file_uuid, channel.room_file_src, transaction);
+                await db.RoomFileView.deleteRoomFileProcStatic({ uuid: channel.room_file_uuid }, transaction);
+                await storage.deleteFile(storage.parseKey(channel.room_file_src));
             }
         });
+    }
+
+    /**
+     * @function createAvatar
+     * @description Create a channel webhook avatar (helper function)
+     * @param {Object} options
+     * @param {String} options.uuid
+     * @param {String} options.room_uuid
+     * @param {Object} options.file
+     * @returns {Promise<String | null>}
+     */
+    async createAvatar(options = { uuid: null, room_uuid: null, file: null }) {
+        if (!options) throw new Error('createAvatar: options is required');
+        if (!options.uuid) throw new Error('createAvatar: options.uuid is required');
+        if (!options.room_uuid) throw new Error('createAvatar: options.room_uuid is required');
+
+        const { uuid, room_uuid, file } = options;
+
+        if (file && file.size > 0) {
+            const [singleLimit, totalLimit] = await Promise.all([
+                RPS.fileExceedsSingleFileSize({ room_uuid, bytes: file.size }),
+                RPS.fileExceedsTotalFilesLimit({ room_uuid, bytes: file.size }),
+            ]);
+
+            if (totalLimit) throw new err.ExceedsRoomTotalFilesLimitError();
+            if (singleLimit) throw new err.ExceedsSingleFileSizeError();
+
+            return await storage.uploadFile(file, uuid);
+        }
+
+        return null;
     }
 }
 

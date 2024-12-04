@@ -1,24 +1,40 @@
-import UserServiceValidator from '../../shared/validators/user_service_validator.js';
-import UserEmailVerificationService from './user_email_verification_service.js';
-import UserAvatarUploader from '../../shared/uploaders/user_avatar_uploader.js';
-import ControllerError from '../../shared/errors/controller_error.js';
+import Validator from '../../shared/validators/user_service_validator.js';
+import PwdService from '../../shared/services/pwd_service.js';
 import JwtService from '../../shared/services/jwt_service.js';
+import UserAvatarUploader from '../../shared/uploaders/user_avatar_uploader.js';
+import err from '../../shared/errors/index.js';
+import UserEmailVerificationService from './user_email_verification_service.js';
 import neodeInstance from '../neode/index.js';
 import dto from '../dto/user_dto.js';
 import userLoginDto from '../dto/user_login_dto.js';
-import bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
 
-const SALT_ROUNDS = 10;
+/**
+ * @constant uploader
+ * @description User avatar uploader instance.
+ * @type {UserAvatarUploader}
+ */
 const uploader = new UserAvatarUploader();
 
+/**
+ * @class UserService
+ * @description Service class for users.
+ * @exports UserService
+ */
 class UserService {
 
+    /**
+     * @function findOne
+     * @description Find a user by uuid.
+     * @param {Object} options
+     * @param {string} options.uuid
+     * @returns {Promise<Object>}
+     */
     async findOne(options = { uuid: null }) {
-        UserServiceValidator.findOne(options);
+        Validator.findOne(options);
 
         const user = await neodeInstance.model("User").find(options.uuid);
-        if (!user) throw new ControllerError(404, 'User not found');
+        if (!user) throw new err.EntityNotFoundError('user');
 
         const user_status = user.get('user_status').endNode();
         const user_status_state = user_status.get('user_status_state').endNode();
@@ -32,130 +48,119 @@ class UserService {
         })
     }
 
+    /**
+     * @function create
+     * @description Create a user.
+     * @param {Object} options
+     * @param {Object} options.body
+     * @param {string} options.body.uuid
+     * @param {string} options.body.email
+     * @param {string} options.body.username
+     * @param {string} options.body.password
+     * @param {Object} options.file optional
+     * @param {Boolean} disableVerifyInTest (optional)
+     * @returns {Promise<Object>}
+     */
     async create(options = { body: null, file: null }, disableVerifyInTest = false) {
-        UserServiceValidator.create(options);
+        Validator.create(options);
 
-        const [mailUsed, usernameUsed, uuidUsed, userLoginType, userStatusState] = await Promise
-            .all([
-                neodeInstance.cypher(
-                    'MATCH (u:User) WHERE u.email = $email RETURN u',
-                    { email: options.body.email }
-                ),
-                neodeInstance.cypher(
-                    'MATCH (u:User) WHERE u.username = $username RETURN u',
-                    { username: options.body.username }
-                ),
-                neodeInstance.cypher(
-                    'MATCH (u:User) WHERE u.uuid = $uuid RETURN u',
-                    { uuid: options.body.uuid }
-                ),
-                neodeInstance.model('UserLoginType').find('Password'),
-                neodeInstance.model('UserStatusState').find('Offline')
-            ]);
+        const { file } = options;
+        const { uuid, email, username, password } = options.body;
 
-        if (mailUsed.records.length > 0) throw new ControllerError(400, 'Email already exists');
-        if (usernameUsed.records.length > 0) throw new ControllerError(400, 'Username already exists');
-        if (uuidUsed.records.length > 0) throw new ControllerError(400, 'UUID already exists');
-        if (!userLoginType) throw new ControllerError(500, 'User login type not found');
-        if (!userStatusState) throw new ControllerError(500, 'User status state not found');
+        const avatar_src = (file && file.size > 0) ? await uploader.create(file, uuid) : null
+        const user_login_password = await PwdService.hash(password);
 
-        options.body.password = bcrypt.hashSync(options.body.password, SALT_ROUNDS);
-
-        const { body, file } = options;
-        const { uuid, email, username, password } = body;
-
-        // start transaction
         const session = neodeInstance.session();
-        const transaction = session.beginTransaction();
+        await session.writeTransaction(async tx => {
+            const uuidUsed = await tx.run('MATCH (u:User) WHERE u.uuid = $uuid RETURN u', { uuid });
+            if (uuidUsed.records.length > 0) throw new err.DuplicateEntryError('user', 'PRIMARY', uuid);
 
-        try {
-            const [avatar_src, userLogin, userState, userEmailVerification] = await Promise.all([
-                (file && file.size > 0) ? uploader.create(file, uuid) : null,
-                neodeInstance.model('UserLogin').create({ uuid: uuidv4(), password }, transaction),
-                neodeInstance.model('UserStatus').create({
-                    last_seen_at: new Date(),
-                    message: "No message",
-                    total_online_hours: 0,
-                }),
-                neodeInstance.model('UserEmailVerification').create({
-                    uuid: uuidv4(),
-                    is_verified: (process.env.NODE_ENV === 'test' && !disableVerifyInTest) ? true : false
-                }),
-                
-            ]);
-            const savedUser = await neodeInstance.model('User').create({
-                uuid,
-                username,
-                email,
-                avatar_src,
-            });
+            const mailUsed = await tx.run('MATCH (u:User) WHERE u.email = $email RETURN u', { email });
+            if (mailUsed.records.length > 0) throw new err.DuplicateEntryError('user', 'user_email', email);
+
+            const usernameUsed = await tx.run('MATCH (u:User) WHERE u.username = $username RETURN u', { username });
+            if (usernameUsed.records.length > 0) throw new err.DuplicateEntryError('user', 'user_username', username);
             
-            await Promise.all([
-                userState.relateTo(userStatusState, 'user_status_state'),
-                savedUser.relateTo(userState, 'user_status'),
-                savedUser.relateTo(userEmailVerification, 'user_email_verification'),
-                userLogin.relateTo(savedUser, 'user'),
-                userLogin.relateTo(userLoginType, 'user_login_type'),
-            ]);
+            // Create user
+            await tx.run(
+                'CREATE (u:User {uuid: $uuid, email: $email, username: $username})',
+                { uuid, email, username }
+            );
+            
+            // Create user status
+            await tx.run(
+                'MATCH (u:User {uuid: $uuid}) ' +
+                'MATCH (uss:UserStatusState {name: "Offline"}) ' +
+                'CREATE (us:UserStatus {uuid: $status_uuid, last_seen_at: $last_seen_at, message: $message, total_online_hours: $total_online_hours}) ' +
+                'CREATE (u)-[:STATUS_IS]->(us) ' +
+                'CREATE (us)-[:STATE_IS]->(uss)',
+                {
+                    uuid, 
+                    status_uuid: uuidv4(),
+                    last_seen_at: new Date().toDateString(),
+                    message: 'new msg',
+                    total_online_hours: 0
+                }
+            );
+            
+            // Create user email verification
+            await tx.run(
+                'MATCH (u:User {uuid: $uuid}) ' +
+                'CREATE (uev:UserEmailVerification {uuid: $user_email_verification_uuid, is_verified: $is_verified}) ' +
+                'CREATE (u)-[:EMAIL_VERIFY_VIA]->(uev)',
+                {
+                    uuid, 
+                    user_email_verification_uuid: uuidv4(),
+                    is_verified: (process.env.NODE_ENV === 'test' && !disableVerifyInTest) ? true : false
+                }
+            );
 
-            if (process.env.NODE_ENV !== 'test') {
-                await UserEmailVerificationService.resend({ user_uuid: uuid });
+            // Create user login
+            await tx.run(
+                'MATCH (u:User {uuid: $uuid}) ' +
+                'MATCH (ult:UserLoginType {name: "Password"}) ' +
+                'CREATE (ul:UserLogin {uuid: $login_uuid, password: $user_login_password}) ' +
+                'CREATE (ul)-[:TYPE_IS]->(ult) ' +
+                'CREATE (u)-[:AUTHORIZE_VIA]->(ul)',
+                {
+                    uuid, 
+                    login_uuid: uuidv4(),
+                    user_login_password
+                }
+            );
+
+            // Create user avatar if provided
+            if (avatar_src) {
+                await tx.run(
+                    'MATCH (u:User {uuid: $uuid}) ' +
+                    'SET u.avatar_src = $avatar_src',
+                    { uuid, avatar_src }
+                );
             }
-
-            return {
-                token: JwtService.sign(uuid),
-                user: dto(savedUser.properties(), [
-                    { user_status: userState.properties() },
-                    { user_email_verification: userEmailVerification.properties() }
-                ]),
-            };
-        } catch (error) {
-            await transaction.rollback();
+        }).catch(error => {
+            // rollback avatar upload if error occurs
+            if (avatar_src) uploader.destroy(avatar_src);
+            console.error('transaction', error);
             throw error;
-        } finally {
-            if (transaction.isOpen()) await transaction.commit();
+        }).finally(() => {
             session.close();
+        });
+
+        if (process.env.NODE_ENV !== 'test') {
+            await UserEmailVerificationService.resend({ user_uuid: uuid });
         }
+
+        const user = await this.findOne({ uuid });
+
+        return { user, token: JwtService.sign(uuid) };
     }
 
-    async update(options = { body: null, file: null, user: null }) {
-        UserServiceValidator.update(options);
-
-        const { body, file, user } = options;
-        const { sub: uuid } = user;
-
-        const existingInstance = await neodeInstance.model('User').find(uuid);
-        if (!existingInstance) throw new ControllerError(404, 'User not found');
-        const existing = existingInstance.properties();
-
-        const params = {};
-        if (body.username) params.username = body.username;
-        if (body.email) params.email = body.email;
-        if (file && file.size > 0) params.avatar_src = await uploader.createOrUpdate(existing.avatar_src, file, uuid);
-        await existingInstance.update(params);
-
-        if (body.password) {
-            const password = bcrypt.hashSync(body.password, SALT_ROUNDS);
-            const userLoginType = await neodeInstance.model('UserLoginType').find('Password');
-            const userLogin = await neodeInstance.cypher(
-                'MATCH (ul:UserLogin)-[:HAS_USER]->(u:User {uuid: $uuid}) ' +
-                'MATCH (ul)-[:HAS_LOGIN_TYPE]->(ult:UserLoginType {name: "Password"}) ' +
-                'RETURN ul, ult',
-                { uuid }
-            )
-                .then(result => result?.records[0]?.get('ul').properties);
-            if (userLogin && password) await userLogin.update({ password });
-            else if (!userLogin && body.password) await neodeInstance.model('UserLogin')
-                .create({ uuid: uuidv4(), password })
-                .relateTo(existingInstance, 'user')
-                .relateTo(userLoginType, 'user_login_type');
-        }
-
-        return this.findOne({ uuid });
+    async update(options = { uuid: null, body: null, file: null }) {
+        Validator.update(options);
     }
 
     async login(options = { body: null }) {
-        UserServiceValidator.login(options);
+        Validator.login(options);
 
         const { email, password } = options.body;
         const result = await neodeInstance.cypher(
@@ -188,25 +193,47 @@ class UserService {
         };
     }
 
+    /**
+     * @function destroy
+     * @description Destroy a user.
+     * @param {Object} options
+     * @param {string} options.uuid
+     * @returns {Promise<void>}
+     */
     async destroy(options = { uuid: null }) {
-        UserServiceValidator.destroy(options);
+        Validator.destroy(options);
 
         const { uuid } = options;
         const existingInstance = await neodeInstance.model('User').find(uuid);
-        if (!existingInstance) throw new ControllerError(400, 'User not found');
+        if (!existingInstance) throw new err.EntityNotFoundError('user');
 
         const savedUser = existingInstance.properties();
-        if (savedUser.avatar_src) {
-            await uploader.destroy(savedUser.avatar_src);
-        }
 
-        await existingInstance.delete();
+        const session = neodeInstance.session();
+        await session.writeTransaction(async tx => {
 
-        console.warn('TODO: implement destroy relations in user_service.js destroy method');
+            // Delete user
+            await tx.run(
+                'MATCH (u:User {uuid: $uuid}) ' +
+                'DETACH DELETE u',
+                { uuid }
+            );
+
+            if (savedUser.avatar_src) {
+                await uploader.destroy(savedUser.avatar_src);
+            }
+
+            tx.commit();
+        }).catch(error => {
+            console.error('transaction', error);
+            throw error;
+        }).finally(() => {
+            session.close();
+        });
     }
 
     async destroyAvatar(options = { uuid: null }) {
-        UserServiceValidator.destroyAvatar(options);
+        Validator.destroyAvatar(options);
 
         const { uuid } = options;
         const existingInstance = await neodeInstance.model('User').find(uuid);
@@ -220,7 +247,7 @@ class UserService {
     }
 
     async getUserLogins(options = { uuid: null }) {
-        UserServiceValidator.getUserLogins(options);
+        Validator.getUserLogins(options);
 
         const user = await neodeInstance.model('User').find(options.uuid);
         if (!user) throw new ControllerError(404, 'User not found');
@@ -239,7 +266,7 @@ class UserService {
     }
 
     async destroyUserLogins(options = { uuid: null, login_uuid: null }) {
-        UserServiceValidator.destroyUserLogins(options);
+        Validator.destroyUserLogins(options);
 
         const [userLogin, userLogins] = await Promise.all([
             neodeInstance.model('UserLogin').find(options.login_uuid),
@@ -259,7 +286,7 @@ class UserService {
     }
 
     async createUserLogin(options = { uuid: null, body: null }) {
-        UserServiceValidator.createUserLogin(options);
+        Validator.createUserLogin(options);
 
         const { uuid, body } = options;
         const user = await neodeInstance.model('User').find(uuid);

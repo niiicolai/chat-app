@@ -4,12 +4,7 @@ export default {
         type: 'string',
         required: true
     },
-    user_logins: {
-        type: 'relationship',
-        target: 'UserLogin',
-        relationship: 'HAS_LOGIN_TYPE',
-        direction: 'in',
-    },
+    
     created_at: {
         type: 'datetime',
         required: true,
@@ -19,5 +14,14 @@ export default {
         type: 'datetime',
         required: true,
         default: () => new Date().toISOString()
+    },
+    /**
+     * INCOMING RELATION
+     */
+    user_login: {
+        type: 'relationship',
+        target: 'UserLogin',
+        relationship: 'TYPE_IS',
+        direction: 'in',
     },
 }

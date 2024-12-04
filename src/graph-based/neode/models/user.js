@@ -16,38 +16,6 @@ export default {
         type: 'string',
         required: false
     },
-    user_status: {
-        type: 'relationship',
-        target: 'UserStatus',
-        relationship: 'HAS_USER_STATUS',
-        direction: 'out',
-        required: false,
-        eager: true
-    },
-    user_email_verification: {
-        type: 'relationship',
-        target: 'UserEmailVerification',
-        relationship: 'HAS_USER_EMAIL_VERIFICATION',
-        direction: 'out',
-        required: false,
-        eager: true
-    },
-    user_password_resets: {
-        type: 'relationship',
-        target: 'UserPasswordReset',
-        relationship: 'HAS_PASSWORD_RESET',
-        direction: 'in',
-        required: false,
-        eager: true
-    },
-    user_logins: {
-        type: 'relationship',
-        target: 'UserLogin',
-        relationship: 'HAS_USER',
-        direction: 'in',
-        required: false,
-        eager: true
-    },
     created_at: {
         type: 'datetime',
         required: true,
@@ -57,5 +25,75 @@ export default {
         type: 'datetime',
         required: true,
         default: () => new Date().toISOString()
-    }
+    },
+    /**
+     * OUTGOING RELATION
+     */
+    user_status: {
+        type: 'relationship',
+        target: 'UserStatus',
+        relationship: 'STATUS_IS',
+        direction: 'out',
+        required: false,
+        eager: true
+    },
+    user_email_verification: {
+        type: 'relationship',
+        target: 'UserEmailVerification',
+        relationship: 'EMAIL_VERIFY_VIA',
+        direction: 'out',
+        required: false,
+        eager: true
+    },
+    user_login: {
+        type: 'relationship',
+        target: 'UserLogin',
+        relationship: 'AUTHORIZE_VIA',
+        direction: 'out',
+        required: false,
+        eager: true
+    },
+    room_user: {
+        type: 'relationship',
+        target: 'Room',
+        relationship: 'MEMBER_IN',
+        direction: 'out',
+        required: false,
+        eager: true,
+        properties: {
+            role: {
+                type: 'string',
+                required: true
+            },
+            created_at: {
+                type: 'datetime',
+                required: true,
+                default: () => new Date().toISOString()
+            },
+            updated_at: {
+                type: 'datetime',
+                required: true,
+                default: () => new Date().toISOString()
+            }
+        }
+    },
+    user_password_reset: {
+        type: 'relationship',
+        target: 'UserPasswordReset',
+        relationship: 'RESETTED_BY',
+        direction: 'out',
+        required: false,
+        eager: true
+    },
+    /**
+     * INCOMING RELATION
+     */
+    channel_message: {
+        type: 'relationship',
+        target: 'ChannelMessage',
+        relationship: 'WRITTEN_BY',
+        direction: 'in',
+        required: false,
+        eager: false
+    },
 }

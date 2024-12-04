@@ -1,12 +1,24 @@
-import ControllerError from '../../shared/errors/controller_error.js';
+import Validator from '../../shared/validators/user_status_service_validator.js';
+import err from '../../shared/errors/index.js';
 import dto from '../dto/user_status_dto.js';
 import neodeInstance from '../neode/index.js';
 
-class Service {
+/**
+ * @class UserStatusService
+ * @description Service class for user statuses.
+ * @exports UserStatusService
+ */
+class UserStatusService {
 
+    /**
+     * @function findOne
+     * @description Find a user status by user uuid.
+     * @param {Object} options
+     * @param {string} options.user_uuid
+     * @returns {Promise<Object>}
+     */
     async findOne(options = { user_uuid: null }) {
-        if (!options) throw new ControllerError(500, 'No options provided');
-        if (!options.user_uuid) throw new ControllerError(400, 'No user_uuid provided');
+        Validator.findOne(options);
 
         const { user_uuid } = options;
 
@@ -14,48 +26,56 @@ class Service {
         const userStatus = user ? user.get('user_status').endNode() : null;
         const userStatusState = userStatus ? userStatus.get('user_status_state').endNode() : null;
 
-        if (!userStatus) throw new ControllerError(404, 'User status not found');
+        if (!userStatus) throw new err.EntityNotFoundError('user_status');
 
-        return dto(userStatus.properties(), [
-                { user_status_state: userStatusState.properties() },
-                { user: { uuid: user_uuid} }
-            ]
-        );
+        return dto({
+            ...userStatus.properties(), 
+            user_status_state: userStatusState.properties(),
+            user: user.properties(),
+        });
     }
 
-    async update(options={ body: null, user_uuid: null }) {
-        if (!options) throw new ControllerError(500, 'No options provided');
-        if (!options.body) throw new ControllerError(400, 'No body provided');
-        if (!options.user_uuid) throw new ControllerError(500, 'No user_uuid provided');
+    /**
+     * @function update
+     * @description Update a user status.
+     * @param {Object} options
+     * @param {Object} options.body
+     * @param {string} options.body.message optional
+     * @param {string} options.body.user_status_state optional
+     * @param {string} options.user_uuid
+     * @returns {Promise<Object>}
+     */
+    async update(options = { body: null, user_uuid: null }) {
+        Validator.update(options);
 
         const { body, user_uuid } = options;
         const { message, user_status_state } = body;
 
         const user = await neodeInstance.model('User').find(user_uuid);
-        if (!user) throw new ControllerError(404, 'User not found');
+        if (!user) throw new err.EntityNotFoundError('user');
 
-        const userStatus = user.get('user_status').endNode().properties();
-        if (!userStatus) throw new ControllerError(500, 'User status not found');
+        const session = neodeInstance.session();
+        await session.writeTransaction(async tx => {
+            await tx.run(
+                'MATCH (u:User {uuid: $user_uuid}) ' +
+                'MATCH (u)-[:STATUS_IS]->(us:UserStatus) ' +
+                'MATCH (uss:UserStatusState {name: $user_status_state}) ' +
+                'CREATE (us)-[:STATE_IS]->(uss)',
+                { user_uuid, user_status_state }
+            );
 
-        const userStatusInstance = await neodeInstance.model('UserStatus').find(userStatus.uuid);
-        if (!userStatusInstance) throw new ControllerError(500, 'User status not found');
-
-        if (user_status_state) {
-            const oldState = userStatusInstance.get('user_status_state').endNode();
-            if (oldState) await userStatusInstance.detachFrom(oldState);
-
-            const newState = await neodeInstance.model('UserStatusState').find(user_status_state); 
-            if (!newState) throw new ControllerError(404, 'User status state not found');
-            
-            await userStatusInstance.relateTo(newState, 'user_status_state');
-        }
-
-        if (message) await userStatusInstance.update({ message });
-
+            await tx.run(
+                'MATCH (u:User {uuid: $user_uuid}) ' +
+                'MATCH (u)-[:STATUS_IS]->(us:UserStatus) ' +
+                'SET us.message = $message',
+                { user_uuid, message }
+            );
+        }).finally(() => session.close());
+        
         return this.findOne({ user_uuid });
     }
 }
 
-const service = new Service();
+const service = new UserStatusService();
 
 export default service;

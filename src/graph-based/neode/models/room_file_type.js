@@ -4,12 +4,6 @@ export default {
         type: 'string',
         required: true
     },
-    room_files: {
-        type: 'relationship',
-        target: 'RoomFile',
-        relationship: 'HAS_FILE_TYPE',
-        direction: 'in',
-    },
     created_at: {
         type: 'datetime',
         required: true,
@@ -19,5 +13,14 @@ export default {
         type: 'datetime',
         required: true,
         default: () => new Date().toISOString()
+    },
+    /**
+     * INCOMING RELATION
+     */
+    room_file: {
+        type: 'relationship',
+        target: 'RoomFile',
+        relationship: 'TYPE_IS',
+        direction: 'in',
     },
 }

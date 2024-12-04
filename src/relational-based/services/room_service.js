@@ -1,9 +1,17 @@
 import Validator from '../../shared/validators/room_service_validator.js';
+import StorageService from '../../shared/services/storage_service.js';
 import err from '../../shared/errors/index.js';
 import db from '../sequelize/models/index.cjs';
-import RFS from './room_file_service.js';
 import RPS from './room_permission_service.js';
 import dto from '../dto/room_dto.js';
+import { v4 as uuidv4 } from 'uuid';
+
+/**
+ * @constant storage
+ * @description Storage service instance
+ * @type {StorageService}
+ */
+const storage = new StorageService('room_avatar');
 
 /**
  * @class RoomService
@@ -91,6 +99,8 @@ class RoomService {
 
         const { body, file, user } = options;
 
+        const room_file_src = (file && file.size > 0 ? await storage.uploadFile(file, uuid) : null);
+
         await db.sequelize.transaction(async (transaction) => {
             const isVerified = await RPS.isVerified({ user }, transaction);
             if (!isVerified) throw new err.VerifiedEmailRequiredError('create a room');
@@ -108,15 +118,22 @@ class RoomService {
                 role_name: 'Admin',
             }, transaction);
 
-            if (file && file.size > 0) {
-                const { uuid: room_file_uuid } = await RFS.create({ file, user, body: {
+            if (room_file_src) {
+                const room_file_uuid = (room_file_src ? uuidv4() : null);
+                await db.RoomFileView.createRoomFileProcStatic({
+                    room_file_uuid: room_file_uuid,
+                    room_file_src,
+                    room_file_size: file.size,
                     room_uuid: body.uuid,
-                    room_file_type_name: "RoomAvatar"
-                }}, transaction);
+                    room_file_type_name: 'RoomAvatar',
+                }, transaction);
                 await db.RoomView.editRoomAvatarProcStatic({ room_uuid: body.uuid, room_file_uuid }, transaction);
             }
 
         }).catch((error) => {
+            // Delete the avatar file if it was uploaded
+            if (room_file_src) storage.deleteFile(storage.parseKey(room_file_src));
+
             if (error.name === 'SequelizeUniqueConstraintError') {
                 throw new err.DuplicateEntryError('room', error.errors[0].path, error.errors[0].value);
             } else if (error.name === 'SequelizeForeignKeyConstraintError') {
@@ -152,6 +169,18 @@ class RoomService {
         const { uuid, body, file, user } = options;
         const { name, description, room_category_name } = body;
 
+        let room_file_src = null;
+        if (file && file.size > 0) {
+            const [exceedsTotal, exceedsSingle] = await Promise.all([
+                RPS.fileExceedsTotalFilesLimit({ room_uuid: uuid, bytes: file.size }),
+                RPS.fileExceedsSingleFileSize({ room_uuid: uuid, bytes: file.size }),
+            ]);
+            if (exceedsTotal) throw new err.ExceedsRoomTotalFilesLimitError();
+            if (exceedsSingle) throw new err.ExceedsSingleFileSizeError();
+
+            room_file_src = await storage.uploadFile(file, uuid);
+        }
+
         await db.sequelize.transaction(async (transaction) => {
             const [room, isAdmin] = await Promise.all([
                 db.RoomView.findByPk(uuid, { transaction }),
@@ -167,19 +196,27 @@ class RoomService {
                 ...(room_category_name && { room_category_name }),
             }, transaction);
 
-            if (file && file.size > 0) {
-                const { uuid: room_file_uuid } = await RFS.create({ file, user, body: {
-                    room_uuid: uuid,
-                    room_file_type_name: "RoomAvatar"
-                }}, transaction);
+            if (room_file_src) {
+                const room_file_uuid = (room_file_src ? uuidv4() : null);
+                await db.RoomFileView.createRoomFileProcStatic({
+                    room_file_uuid: room_file_uuid,
+                    room_file_src,
+                    room_file_size: file.size,
+                    room_uuid: body.uuid,
+                    room_file_type_name: 'RoomAvatar',
+                }, transaction);
                 await room.editRoomAvatarProc({ room_file_uuid }, transaction);
 
                 if (room.room_file_uuid) {
-                    await RFS.remove(room.room_file_uuid, room.room_file_src, transaction);
+                    await db.RoomFileView.deleteRoomFileProcStatic({ uuid: room.room_file_uuid }, transaction);
+                    await storage.deleteFile(storage.parseKey(room.room_file_src));
                 }
             }
 
         }).catch((error) => {
+            // Delete the avatar file if it was uploaded
+            if (room_file_src) storage.deleteFile(storage.parseKey(room_file_src));
+
             if (error.name === 'SequelizeUniqueConstraintError') {
                 throw new err.DuplicateEntryError('room', error.errors[0].path, error.errors[0].value);
             } else if (error.name === 'SequelizeForeignKeyConstraintError') {
@@ -217,7 +254,8 @@ class RoomService {
             await room.deleteRoomProc(transaction);
 
             if (room.room_file_uuid) {
-                await RFS.remove(room.room_file_uuid, room.room_file_src, transaction);
+                await db.RoomFileView.deleteRoomFileProcStatic({ uuid: room.room_file_uuid }, transaction);
+                await storage.deleteFile(storage.parseKey(room.room_file_src));
             }
         });
     }

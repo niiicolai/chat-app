@@ -8,13 +8,6 @@ export default {
         type: 'datetime',
         required: true
     },
-    user: {
-        type: 'relationship',
-        target: 'User',
-        relationship: 'HAS_PASSWORD_RESET',
-        direction: 'out',
-        eager: true
-    },
     created_at: {
         type: 'datetime',
         required: true,
@@ -24,5 +17,15 @@ export default {
         type: 'datetime',
         required: true,
         default: () => new Date().toISOString()
+    },
+    /**
+     * INCOMING RELATION
+     */
+    user: {
+        type: 'relationship',
+        target: 'User',
+        relationship: 'RESETTED_BY',
+        direction: 'in',
+        eager: false
     },
 }

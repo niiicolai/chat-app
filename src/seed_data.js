@@ -332,7 +332,7 @@ export default {
                             user_uuid: "d5a0831c-88e5-4713-ae0c-c4e86c2f4209",
                         },
                         {
-                            uuid: "a592b5cb-7e47-4ce7-9875-cdf99184a73c",
+                            uuid: "3b210fd6-6e45-42eb-b72d-5bada4851bf3",
                             body: "Test Channel Message 2",
                             channel_message_type_name: "Webhook",
                             channel_webhook_message: {
@@ -344,7 +344,7 @@ export default {
                     ]
                 },
                 {
-                    uuid: "a595b2cb-7e47-4ce7-9875-cdf99184a73c",
+                    uuid: "df9b64cf-2a3f-48af-b99e-d265a0e78e56",
                     name: "Call",
                     description: "General call channel",
                     channel_type_name: "Call",
@@ -366,6 +366,96 @@ export default {
                     body: "some data here",
                     channel_audit_type_name: "CHANNEL_CREATED",
                     channel_uuid: "1c9337b0-4e88-4a8e-84f0-679c7714407f",
+                }
+            ]
+        },
+        {
+            uuid: "530df49e-e864-4df8-8aef-0c0b48060d03",
+            name: 'General Chat3',
+            description: 'A room for general discussion3',
+            room_category_name: 'General',
+            room_join_settings: {
+                uuid: "b34a094b-c7d7-4ed6-be3b-5ee5bd986e32",
+                join_message: 'Welcome to the room!',
+            },
+            room_file_settings: {
+                uuid: "539497a4-7cbe-4093-9001-53bc6fe14aed",
+                file_days_to_live: 30,
+                total_files_bytes_allowed: 100000000,
+                single_file_bytes_allowed: 5000000,
+            },
+            room_user_settings: {
+                uuid: "6f2dca20-3478-4bea-84df-eb2daa4816b4",
+                max_users: 25,
+            },
+            room_channel_settings: {
+                uuid: "e0a7924a-f94f-4ec1-b73c-58913a70e578",
+                max_channels: 5,
+                message_days_to_live: 30,
+            },
+            room_rules_settings: {
+                uuid: "c5eee100-f741-41f7-b319-d13877d5ac30",
+                rules_text: '# Rules\n 1. No Spamming!',
+            },
+            room_avatar: {
+                uuid: "006f4947-feda-429f-bf01-e429abeab548",
+            },
+            room_invite_link: {
+                uuid: "499dcbeb-4624-4cdf-bce5-ce4defc473a0",
+            },
+            room_users: [
+                {
+                    uuid: "efc6106a-3389-457d-aba1-7432e1d44296",
+                    room_user_role_name: 'Admin',
+                    user_uuid: "d5a0831c-88e5-4713-ae0c-c4e86c2f4209",
+                },
+                {
+                    uuid: "c38d3c99-ff93-49dd-acdd-4615a4dda193",
+                    room_user_role_name: 'Moderator',
+                    user_uuid: "cdcf569f-57de-4cb3-98d6-36c7cd7141d6",
+                },
+                {
+                    uuid: "dd52cbd0-9ade-498b-9cde-73f53f996be2",
+                    room_user_role_name: 'Member',
+                    user_uuid: "dd1db381-0b0a-4b2c-b0e1-0b5d569e6f9b",
+                }
+            ],
+            room_files: [],
+            channels: [
+                {
+                    uuid: "069c276b-3f4f-464c-86b1-2bbef68075ae",
+                    name: "General Discussion",
+                    description: "General discussion channel",
+                    channel_type_name: "Text",
+                    channel_webhook: {
+                        uuid: "abcf119e-c66e-4a5d-952e-47d93e9c8cde",
+                        name: "Test Channel Webhook",
+                        description: "Test Channel Webhook Description",
+                    },
+                    channel_messages: [
+                        {
+                            uuid: "48f2d784-d039-4f98-a684-42f379d8a51d",
+                            body: "Test Channel Message 1",
+                            channel_message_type_name: "User",
+                            user_uuid: "d5a0831c-88e5-4713-ae0c-c4e86c2f4209",
+                        },
+                    ]
+                },
+            ],
+            room_audits: [
+                {
+                    uuid: "156e7a16-5ff8-4aff-8529-fb8f0da2c99b",
+                    body: "some data here",
+                    room_audit_type_name: "ROOM_CREATED",
+                    room_uuid: "530df49e-e864-4df8-8aef-0c0b48060d03",
+                }
+            ],
+            channel_audits: [
+                {
+                    uuid: "671c1862-9144-4575-9675-1a666be52b3a",
+                    body: "some data here",
+                    channel_audit_type_name: "CHANNEL_CREATED",
+                    channel_uuid: "069c276b-3f4f-464c-86b1-2bbef68075ae",
                 }
             ]
         },

@@ -1,5 +1,4 @@
 import data from '../../../seed_data.js';
-import { v4 as uuidv4 } from 'uuid';
 
 const channelUuid = "1c9437b0-4e88-4a8e-84f0-679c7714407f";
 
@@ -9,6 +8,102 @@ export default class ChannelSeeder {
     }
 
     async up(neodeInstance) {
+        await Promise.all(data.rooms.flatMap(async (roomData) => {
+            return roomData.channels.map(async (channelData) => {
+                return new Promise(async (resolve, reject) => {
+                    const channel = await neodeInstance.model('Channel').create({
+                        uuid: channelData.uuid,
+                        name: channelData.name,
+                        description: channelData.description,
+                    });
+
+                    if (channelData.channel_webhook) {
+                        const channelWebhook = await neodeInstance.model('ChannelWebhook').create({
+                            uuid: channelData.channel_webhook.uuid,
+                            name: channelData.channel_webhook.name,
+                            description: channelData.channel_webhook.description,
+                        });
+                        await channel.relateTo(channelWebhook, 'channel_webhook');
+                    }
+
+                    await Promise.all(channelData.channel_messages.map(async (channel_message) => {
+                        return new Promise(async (resolve, reject) => {
+                            const type = await neodeInstance.model('ChannelMessageType').find(channel_message.channel_message_type_name);
+                            const msg = await neodeInstance.model('ChannelMessage').create({
+                                uuid: channel_message.uuid,
+                                body: channel_message.body,
+                            });
+
+                            await msg.relateTo(channel, 'channel');
+                            await msg.relateTo(type, 'channel_message_type');
+
+                            if (channel_message.user) {
+                                const user = await neodeInstance.model('User').find(channel_message.user.uuid);
+                                await msg.relateTo(user, 'user');
+                            }
+
+                            if (channel_message.channel_message_upload) {
+                                const uploadType = await neodeInstance.model('ChannelMessageUploadType').find(channel_message.channel_message_upload.channel_message_upload_type_name);
+                                const upload = await neodeInstance.model('ChannelMessageUpload').create({
+                                    uuid: channel_message.channel_message_upload.uuid,
+                                });
+
+                                await upload.relateTo(uploadType, 'channel_message_upload_type');
+                                await msg.relateTo(upload, 'channel_message_upload');
+
+                                await neodeInstance.batch([
+                                    {
+                                        query:
+                                            'MATCH (rf:RoomFile {uuid: $uuid}) ' +
+                                            'MATCH (c:ChannelMessageUpload {uuid: $upload_uuid}) ' +
+                                            'CREATE (c)-[:SAVED_AS]->(rf)',
+                                        params: { 
+                                            uuid: channel_message.channel_message_upload.room_file_uuid, 
+                                            upload_uuid: channel_message.channel_message_upload.uuid
+                                        }
+                                    },
+                                ]);
+                            }
+
+                            if (channel_message.channel_webhook_message) {
+                                const webhook = await neodeInstance.model('ChannelWebhook').find(channelData.channel_webhook.uuid);
+                                const webhookMessageType = await neodeInstance.model('ChannelWebhookMessageType').find(channel_message.channel_webhook_message.channel_webhook_message_type_name);
+                                const webhookMessage = await neodeInstance.model('ChannelWebhookMessage').create({
+                                    uuid: channel_message.channel_webhook_message.uuid,
+                                    body: channel_message.channel_webhook_message.body,
+                                });
+
+                                await webhookMessage.relateTo(webhookMessageType, 'channel_webhook_message_type');
+                                await webhookMessage.relateTo(webhook, 'channel_webhook');
+                                await msg.relateTo(webhookMessage, 'channel_webhook_message');
+                            }
+
+                            resolve();
+                        });
+                    }));
+
+                    await neodeInstance.batch([
+                        {
+                            query:
+                                'MATCH (ct:ChannelType {name: $name}) ' +
+                                'MATCH (c:Channel {uuid: $uuid}) ' +
+                                'CREATE (c)-[:TYPE_IS]->(ct)',
+                            params: { uuid: channelData.uuid, name: channelData.channel_type_name }
+                        },
+                        {
+                            query:
+                                'MATCH (r:Room {uuid: $room_uuid}) ' +
+                                'MATCH (c:Channel {uuid: $uuid}) ' +
+                                'CREATE (c)-[:COMMUNICATES_IN]->(r)',
+                            params: { uuid: channelData.uuid, room_uuid: roomData.uuid }
+                        },
+                    ]);
+
+                    resolve();
+                });
+            });
+        }));
+        /*
         const room = await neodeInstance.model('Room').find(data.room.uuid);
         const roomJoinSettings = await neodeInstance.model('RoomJoinSettings').find(data.room.room_join_settings.uuid);
         const roomFileType = await neodeInstance.model('RoomFileType').find('ChannelAvatar');
@@ -157,15 +252,16 @@ export default class ChannelSeeder {
             body: "Channel created",
         });
         await channelAudit.relateTo(channel, 'channel');
-        await channelAudit.relateTo(channelAuditType, 'channel_audit_type');
+        await channelAudit.relateTo(channelAuditType, 'channel_audit_type');*/
     }
 
     async down(neodeInstance) {
-        const channel = await neodeInstance.model('Channel').find(channelUuid);
-        if (!channel) {
-            return;
-        }
-
-        await channel.delete();
+        await neodeInstance.cypher('MATCH (n:Channel) DETACH DELETE n');
+        await neodeInstance.cypher('MATCH (n:ChannelMessage) DETACH DELETE n');
+        await neodeInstance.cypher('MATCH (n:ChannelMessageUpload) DETACH DELETE n');
+        await neodeInstance.cypher('MATCH (n:ChannelWebhook) DETACH DELETE n');
+        await neodeInstance.cypher('MATCH (n:ChannelWebhookMessage) DETACH DELETE n');
+        await neodeInstance.cypher('MATCH (n:ChannelAudit) DETACH DELETE n');
+        await neodeInstance.cypher('MATCH (n:RoomFile) DETACH DELETE n');
     }
 }

@@ -13,10 +13,10 @@ const channelTest = (ChannelService, name) => {
      */
 
     const user = { sub: data.users.find(u => u.username === 'not_in_a_room').uuid };
-    const room_uuid = data.rooms[1].uuid;
-    const channel_uuid = data.rooms[1].channels[1].uuid;
-    const channel_name = data.rooms[1].channels[1].name;
-    const channel_type = data.rooms[1].channels[1].channel_type_name;
+    const room_uuid = data.rooms[2].uuid;
+    const channel_uuid = data.rooms[2].channels[0].uuid;
+    const channel_name = data.rooms[2].channels[0].name;
+    const channel_type = data.rooms[2].channels[0].channel_type_name;
     const admin = { sub: data.users[0].uuid };
     const mod = { sub: data.users[1].uuid };
     const member = { sub: data.users[2].uuid };

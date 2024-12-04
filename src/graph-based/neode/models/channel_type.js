@@ -14,4 +14,13 @@ export default {
         required: true,
         default: () => new Date().toISOString()
     },
+    /**
+     * INCOMING RELATION
+     */
+    channel: {
+        type: 'relationship',
+        target: 'ChannelType',
+        relationship: 'TYPE_IS',
+        direction: 'in',
+    },
 }

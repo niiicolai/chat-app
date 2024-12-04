@@ -17,14 +17,6 @@ export default {
         type: 'number',
         required: true
     },
-    user_status_state: {
-        type: 'relationship',
-        target: 'UserStatusState',
-        relationship: 'STATE_IS',
-        direction: 'out',
-        required: false,
-        eager: true
-    },
     created_at: {
         type: 'datetime',
         required: true,
@@ -34,6 +26,26 @@ export default {
         type: 'datetime',
         required: true,
         default: () => new Date().toISOString()
+    },
+    /**
+     * OUTGOING RELATION
+     */
+    user_status_state: {
+        type: 'relationship',
+        target: 'UserStatusState',
+        relationship: 'STATE_IS',
+        direction: 'out',
+        eager: true
+    },
+    /**
+     * INCOMING RELATION
+     */
+    user: {
+        type: 'relationship',
+        target: 'User',
+        relationship: 'STATUS_IS',
+        direction: 'in',
+        eager: false
     }
 }
 
