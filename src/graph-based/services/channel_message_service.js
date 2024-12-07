@@ -1,13 +1,12 @@
-import ChannelMessageServiceValidator from '../../shared/validators/channel_message_service_validator.js';
-import ControllerError from '../../shared/errors/controller_error.js';
+import Validator from '../../shared/validators/channel_message_service_validator.js';
+import err from '../../shared/errors/index.js';
 import StorageService from '../../shared/services/storage_service.js';
-import RoomPermissionService from './room_permission_service.js';
+import BroadcastChannelService from '../../shared/services/broadcast_channel_service.js';
+import RPS from './room_permission_service.js';
 import dto from '../dto/channel_message_dto.js';
 import neodeInstance from '../neode/index.js';
-import NeodeBaseFindService from './neode_base_find_service.js';
 import { v4 as uuidv4 } from 'uuid';
 import { getUploadType } from '../../shared/utils/file_utils.js';
-import { broadcastChannel } from '../../../websocket_server.js';
 
 /**
  * @constant storage
@@ -21,14 +20,20 @@ const storage = new StorageService('channel_message_upload');
  * @description Service class for channel messages
  * @exports ChannelMessageService
  */
-class ChannelMessageService extends NeodeBaseFindService {
+class ChannelMessageService {
 
-    constructor() {
-        super('uuid', 'ChannelMessage', dto);
-    }
 
+    /**
+     * @function findOne
+     * @description Find a channel message by uuid
+     * @param {Object} options
+     * @param {string} options.uuid
+     * @param {Object} options.user
+     * @param {String} options.user.sub
+     * @returns {Promise<Object>}
+     */
     async findOne(options = { uuid: null, user: null }) {
-        ChannelMessageServiceValidator.findOne(options);
+        Validator.findOne(options);
 
         const { user, uuid } = options;
 
@@ -56,10 +61,21 @@ class ChannelMessageService extends NeodeBaseFindService {
         ]);
     }
 
+    /**
+     * @function findAll
+     * @description Find all channel messages in a channel
+     * @param {Object} options
+     * @param {string} options.channel_uuid
+     * @param {Object} options.user
+     * @param {String} options.user.sub
+     * @param {number} options.page optional
+     * @param {number} options.limit optional
+     * @returns {Promise<Object>}
+     */
     async findAll(options = { channel_uuid: null, user: null, page: null, limit: null }) {
-        options = ChannelMessageServiceValidator.findAll(options);
+        options = Validator.findAll(options);
 
-        const { channel_uuid, user, page, limit } = options;
+        const { channel_uuid, user, page, limit, offset } = options;
 
         if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid, user, role_name: null }))) {
             throw new ControllerError(403, 'User is not in the room');
@@ -96,8 +112,21 @@ class ChannelMessageService extends NeodeBaseFindService {
         });
     }
 
+    /**
+     * @function create
+     * @description Create a channel message
+     * @param {Object} options
+     * @param {Object} options.body
+     * @param {String} options.body.uuid
+     * @param {String} options.body.body
+     * @param {String} options.body.channel_uuid
+     * @param {Object} options.file optional
+     * @param {Object} options.user
+     * @param {String} options.user.sub
+     * @returns {Promise<Object>}
+     */
     async create(options = { body: null, file: null, user: null }) {
-        ChannelMessageServiceValidator.create(options);
+        Validator.create(options);
 
         const { body, file, user } = options;
         const { uuid, body: msg, channel_uuid } = body;
@@ -164,8 +193,19 @@ class ChannelMessageService extends NeodeBaseFindService {
         return result;
     }
 
+    /**
+     * @function update
+     * @description Update a channel message
+     * @param {Object} options
+     * @param {string} options.uuid
+     * @param {Object} options.body
+     * @param {string} options.body.body optional
+     * @param {Object} options.user
+     * @param {String} options.user.sub
+     * @returns {Promise<Object>}
+     */
     async update(options = { uuid: null, body: null, user: null }) {
-        ChannelMessageServiceValidator.update(options);
+        Validator.update(options);
 
         const { uuid, body, user } = options;
         const { body: msg } = body;
@@ -202,8 +242,17 @@ class ChannelMessageService extends NeodeBaseFindService {
         return result;
     }
 
+    /**
+     * @function destroy
+     * @description Delete a channel message
+     * @param {Object} options
+     * @param {string} options.uuid
+     * @param {Object} options.user
+     * @param {String} options.user.sub
+     * @returns {Promise<void>}
+     */
     async destroy(options = { uuid: null, user: null }) {
-        ChannelMessageServiceValidator.destroy(options);
+        Validator.destroy(options);
 
         const { uuid, user } = options;
         const { sub: user_uuid } = user;

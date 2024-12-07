@@ -46,7 +46,7 @@ const roomSchema = new mongoose.Schema({
 roomSchema.post('save', async (doc) => {
     const isNew = doc.created_at === doc.updated_at;
     await RoomAudit.create({
-        uuid: uuidv4(),
+        _id: uuidv4(),
         body: doc,
         room: doc._id,
         room_audit_type: (isNew ? 'ROOM_CREATED' : 'ROOM_EDITED'),
@@ -55,7 +55,7 @@ roomSchema.post('save', async (doc) => {
 
 roomSchema.post('remove', async (doc) => {
     await RoomAudit.create({
-        uuid: uuidv4(),
+        _id: uuidv4(),
         body: doc,
         room: doc._id,
         room_audit_type: 'ROOM_DELETED',

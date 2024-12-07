@@ -158,7 +158,7 @@ class ChannelMessageService {
         try {
             const roomFileUuid = (upload_src ? uuidv4() : null);
             if (upload_src) {                
-                await RoomFile.insertMany([{
+                await RoomFile.create([{
                     _id: roomFileUuid,
                     src: upload_src,
                     size: file.size,
@@ -167,7 +167,7 @@ class ChannelMessageService {
                 }], { session });
             }
 
-            await ChannelMessage.insertMany([{
+            await ChannelMessage.create([{
                 _id: uuid,
                 body: msg,
                 channel_message_type: "User",
@@ -315,7 +315,7 @@ class ChannelMessageService {
         const session = await mongoose.startSession();
         session.startTransaction();
         try {
-            await ChannelMessage.deleteOne({ _id: uuid });
+            await ChannelMessage.deleteOne({ _id: uuid }, { session });
 
             if (channelMessage.channel_message_upload?.room_file) {
                 const roomFile = channelMessage.channel_message_upload.room_file;

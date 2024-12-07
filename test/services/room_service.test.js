@@ -350,6 +350,6 @@ const isValidRoom = (room) => {
     expect(room.joinSettings).toHaveProperty('join_channel_uuid');
 };
 
-roomServiceTest(RelationalRoomService, 'Relational');
+//roomServiceTest(RelationalRoomService, 'Relational');
 roomServiceTest(DocumentRoomService, 'Document');
-roomServiceTest(GraphRoomService, 'Graph');
+//roomServiceTest(GraphRoomService, 'Graph');

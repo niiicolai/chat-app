@@ -140,7 +140,7 @@ class ChannelWebhookService {
         try {
             const roomFileUuid = (avatar_src ? uuidv4() : null);
             if (avatar_src) {                
-                await RoomFile.insertMany([{
+                await RoomFile.create([{
                     _id: roomFileUuid,
                     src: avatar_src,
                     size: file.size,
@@ -219,7 +219,7 @@ class ChannelWebhookService {
             const newRoomFileUuid = (avatar_src ? uuidv4() : null);
             const oldRoomFile = channelWebhook.room_file;
             if (avatar_src) {                
-                await RoomFile.insertMany([{
+                await RoomFile.create([{
                     _id: newRoomFileUuid,
                     src: avatar_src,
                     size: file.size,

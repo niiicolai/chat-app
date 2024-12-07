@@ -155,6 +155,6 @@ const roomFileServiceTest = (RoomFileService, name) => {
     });
 };
 
-//roomFileServiceTest(RelationalRoomFileService, 'Relational');
-//roomFileServiceTest(DocumentRoomFileService, 'Document');
+roomFileServiceTest(RelationalRoomFileService, 'Relational');
+roomFileServiceTest(DocumentRoomFileService, 'Document');
 roomFileServiceTest(GraphRoomFileService, 'Graph');

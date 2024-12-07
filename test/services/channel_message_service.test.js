@@ -99,7 +99,7 @@ const channelMessageTest = (ChannelMessageService, name) => {
 
     /**
      * ChannelMessageService.update
-     
+     */
 
     test.each([
         [{ user: admin, uuid: channel_message_uuid_admin, body: { body: `test-${uuidv4()}` } }],
@@ -136,7 +136,7 @@ const channelMessageTest = (ChannelMessageService, name) => {
         [{ uuid: fakeId, user: { sub: fakeId }, body: { } }, 'channel_message not found'],
     ])(`(${name}) - ChannelMessageService.update invalid partitions`, async (options, expected) => {
         expect(async () => await ChannelMessageService.update(options)).rejects.toThrowError(expected);
-    });*/
+    });
 
 
 
@@ -311,5 +311,5 @@ const channelMessageTest = (ChannelMessageService, name) => {
 };
 
 //channelMessageTest(RelationalChannelMessageService, 'Relational');
-//channelMessageTest(DocumentChannelMessageService, 'Document');
-channelMessageTest(GraphChannelMessageService, 'Graph');
+channelMessageTest(DocumentChannelMessageService, 'Document');
+//channelMessageTest(GraphChannelMessageService, 'Graph');

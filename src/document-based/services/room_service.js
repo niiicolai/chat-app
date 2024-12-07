@@ -150,7 +150,7 @@ class RoomService {
         const session = await mongoose.startSession();
         session.startTransaction();
         try {
-            await Room.insertMany([{
+            await Room.create([{
                 _id: uuid,
                 name,
                 description,
@@ -194,7 +194,7 @@ class RoomService {
 
             if (room_file_src) {
                 const roomFileUuid = uuidv4();
-                await RoomFile.insertMany([{
+                await RoomFile.create([{
                     _id: roomFileUuid,
                     src: room_file_src,
                     size: file.size,
@@ -211,6 +211,7 @@ class RoomService {
             await session.commitTransaction();
         } catch (error) {
             await session.abortTransaction();
+            console.error(error);
             // Delete the avatar file if it was uploaded
             if (room_file_src) storage.deleteFile(storage.parseKey(room_file_src));
 
@@ -272,7 +273,7 @@ class RoomService {
             const newRoomFileUuid = uuidv4();
             const oldRoomFile = room.room_avatar.room_file;
             if (avatar_src) {
-                await RoomFile.insertMany([{
+                await RoomFile.create([{
                     _id: newRoomFileUuid,
                     src: avatar_src,
                     size: file.size,

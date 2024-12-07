@@ -44,7 +44,7 @@ const channelSchema = new mongoose.Schema({
 channelSchema.post('save', async (doc) => {
     const isNew = doc.created_at === doc.updated_at;
     await ChannelAudit.create({
-        uuid: uuidv4(),
+        _id: uuidv4(),
         body: doc,
         channel: doc._id,
         channel_audit_type: (isNew ? 'CHANNEL_CREATED' : 'CHANNEL_EDITED'),
@@ -53,7 +53,7 @@ channelSchema.post('save', async (doc) => {
 
 channelSchema.post('remove', async (doc) => {
     await ChannelAudit.create({
-        uuid: uuidv4(),
+        _id: uuidv4(),
         body: doc,
         channel: doc._id,
         channel_audit_type: 'CHANNEL_DELETED',
