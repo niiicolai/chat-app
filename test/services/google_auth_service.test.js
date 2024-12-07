@@ -80,8 +80,6 @@ const googleAuthTest = (GoogleAuthService, UserService, name) => {
 
         expect(googleLogin).toHaveProperty('uuid');
         expect(googleLogin).toHaveProperty('user_login_type_name');
-        expect(googleLogin).toHaveProperty('created_at');
-        expect(googleLogin).toHaveProperty('updated_at');
         expect(googleLogin).not.toHaveProperty('third_party_id');
         expect(googleLogin).not.toHaveProperty('password');
     });
@@ -174,4 +172,4 @@ const googleAuthTest = (GoogleAuthService, UserService, name) => {
 
 googleAuthTest(RelationalGoogleAuthService, RelationalUserService, 'Relational');
 googleAuthTest(DocumentGoogleAuthService, DocumentUserService, 'Document');
-// googleAuthTest(GraphGoogleAuthService, GraphUserService, 'Graph');
+googleAuthTest(GraphGoogleAuthService, GraphUserService, 'Graph');

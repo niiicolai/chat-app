@@ -24,7 +24,7 @@ export default class BroadcastChannelService {
     /**
      * @function create
      * @description Broadcast a chat message to a channel.
-     * @returns {String}
+     * @returns {void}
      */
     static create(channelMessage) {
         if (!channelMessage) throw new Error('Channel message is required.');
@@ -37,7 +37,7 @@ export default class BroadcastChannelService {
     /**
      * @function update
      * @description Broadcast an updated chat message to a channel.
-     * @returns {String}
+     * @returns {void}
      */
     static update(channelMessage) {
         if (!channelMessage) throw new Error('Channel message is required.');
@@ -50,7 +50,7 @@ export default class BroadcastChannelService {
     /**
      * @function destroy
      * @description Broadcast a deleted chat message to a channel.
-     * @returns {String}
+     * @returns {void}
      */
     static destroy(channel_uuid, channel_message_uuid) {
         if (!channel_uuid) throw new Error('Channel UUID is required.');

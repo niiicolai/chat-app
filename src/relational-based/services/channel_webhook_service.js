@@ -106,10 +106,12 @@ class ChannelWebhookService {
 
         const channel = await Promise.all([
             db.ChannelView.findOne({ where: { channel_uuid } }),
+            db.ChannelWebhookView.findOne({ where: { channel_uuid } }),
             RPS.isInRoomByChannel({ channel_uuid, user, role_name: 'Admin' }),
-        ]).then(([channel, isAdmin]) => {
+        ]).then(([channel, channelHasWebhook, isAdmin]) => {
             if (!channel) throw new err.EntityNotFoundError('channel');
             if (!isAdmin) throw new err.AdminPermissionRequiredError();
+            if (channelHasWebhook) throw new err.ControllerError(400, 'channel already has a webhook');
             return channel;
         });
 

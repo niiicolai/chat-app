@@ -29,7 +29,7 @@ class UserStatusService {
         if (!userStatus) throw new err.EntityNotFoundError('user_status');
 
         return dto({
-            ...userStatus.properties(), 
+            ...userStatus.properties(),
             user_status_state: userStatusState.properties(),
             user: user.properties(),
         });
@@ -56,22 +56,36 @@ class UserStatusService {
 
         const session = neodeInstance.session();
         await session.writeTransaction(async tx => {
-            await tx.run(
-                'MATCH (u:User {uuid: $user_uuid}) ' +
-                'MATCH (u)-[:STATUS_IS]->(us:UserStatus) ' +
-                'MATCH (uss:UserStatusState {name: $user_status_state}) ' +
-                'CREATE (us)-[:STATE_IS]->(uss)',
-                { user_uuid, user_status_state }
-            );
+            if (user_status_state) {
+                // remove old status state
+                await tx.run(
+                    'MATCH (u:User {uuid: $user_uuid}) ' +
+                    'MATCH (u)-[:STATUS_IS]->(us:UserStatus) ' +
+                    'MATCH (us)-[r:STATE_IS]->(uss:UserStatusState) ' +
+                    'DELETE r',
+                    { user_uuid }
+                );
 
-            await tx.run(
-                'MATCH (u:User {uuid: $user_uuid}) ' +
-                'MATCH (u)-[:STATUS_IS]->(us:UserStatus) ' +
-                'SET us.message = $message',
-                { user_uuid, message }
-            );
+                // create new status state
+                await tx.run(
+                    'MATCH (u:User {uuid: $user_uuid}) ' +
+                    'MATCH (u)-[:STATUS_IS]->(us:UserStatus) ' +
+                    'MATCH (uss:UserStatusState {name: $user_status_state}) ' +
+                    'CREATE (us)-[:STATE_IS]->(uss)',
+                    { user_uuid, user_status_state }
+                );
+            }
+
+            if (message) {
+                await tx.run(
+                    'MATCH (u:User {uuid: $user_uuid}) ' +
+                    'MATCH (u)-[:STATUS_IS]->(us:UserStatus) ' +
+                    'SET us.message = $message',
+                    { user_uuid, message }
+                );
+            }
         }).finally(() => session.close());
-        
+
         return this.findOne({ user_uuid });
     }
 }

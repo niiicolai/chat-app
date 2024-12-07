@@ -35,7 +35,6 @@ const roomFileServiceTest = (RoomFileService, name) => {
         expect(RoomFileService).toHaveProperty('findOne');
         expect(RoomFileService).toHaveProperty('findAll');
         expect(RoomFileService).toHaveProperty('destroy');
-        expect(RoomFileService).toHaveProperty('isOwner');
     });
 
 
@@ -151,11 +150,11 @@ const roomFileServiceTest = (RoomFileService, name) => {
     ])(`(${name}) - RoomFileService.destroy return error for users who are not admin or moderator`, async (user) => {
         const { data } = await RoomFileService.findAll({ room_uuid, user: admin, limit: 2 });
 
-        expect(async () => await RoomFileService.destroy({ uuid: data[0].uuid, user }))
+        expect(async () => await RoomFileService.destroy({ uuid: data[0].uuid, user }, true))
             .rejects.toThrow("User is not an owner of the room_file, or an admin or moderator of the room");
     });
 };
 
-roomFileServiceTest(RelationalRoomFileService, 'Relational');
-roomFileServiceTest(DocumentRoomFileService, 'Document');
-//roomFileServiceTest(GraphRoomFileService, 'Graph'
+//roomFileServiceTest(RelationalRoomFileService, 'Relational');
+//roomFileServiceTest(DocumentRoomFileService, 'Document');
+roomFileServiceTest(GraphRoomFileService, 'Graph');

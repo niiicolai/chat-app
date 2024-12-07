@@ -25,7 +25,7 @@ export default {
         type: 'relationship',
         target: 'Room',
         relationship: 'INVITES_VIA',
-        direction: 'out',
+        direction: 'in',
         eager: true
     },
 }

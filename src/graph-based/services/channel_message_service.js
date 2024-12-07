@@ -247,6 +247,37 @@ class ChannelMessageService extends NeodeBaseFindService {
                 broadcastChannel(`channel-${channel_uuid}`, 'chat_message_deleted', { uuid });
             });
     }
+
+    /**
+     * @function createUpload
+     * @description Create a channel message upload file (helper function)
+     * @param {Object} options
+     * @param {String} options.uuid
+     * @param {String} options.room_uuid
+     * @param {Object} options.file
+     * @returns {Promise<String | null>}
+     */
+    async createUpload(options = { uuid: null, room_uuid: null, file: null }) {
+        if (!options) throw new Error('createUpload: options is required');
+        if (!options.uuid) throw new Error('createUpload: options.uuid is required');
+        if (!options.room_uuid) throw new Error('createUpload: options.room_uuid is required');
+
+        const { uuid, room_uuid, file } = options;
+
+        if (file && file.size > 0) {
+            const [singleLimit, totalLimit] = await Promise.all([
+                RPS.fileExceedsSingleFileSize({ room_uuid, bytes: file.size }),
+                RPS.fileExceedsTotalFilesLimit({ room_uuid, bytes: file.size }),
+            ]);
+
+            if (totalLimit) throw new err.ExceedsRoomTotalFilesLimitError();
+            if (singleLimit) throw new err.ExceedsSingleFileSizeError();
+
+            return await storage.uploadFile(file, uuid);
+        }
+
+        return null;
+    }
 }
 
 const service = new ChannelMessageService();

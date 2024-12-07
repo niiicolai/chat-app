@@ -69,11 +69,11 @@ class ChannelWebhookService {
 
         const { room_uuid, user, page, limit, offset } = options;
 
-        const room = await Room.findOne({ _id: room_uuid });
-        if (!room) throw new err.EntityNotFoundError('room');
-
         const isInRoom = await RPS.isInRoom({ room_uuid, user });
         if (!isInRoom) throw new err.RoomMemberRequiredError();
+
+        const room = await Room.findOne({ _id: room_uuid });
+        if (!room) throw new err.EntityNotFoundError('room');
 
         const params = { room: room_uuid, channel_webhook: { $exists: true } };
         const [total, data] = await Promise.all([
@@ -125,12 +125,12 @@ class ChannelWebhookService {
         const isAdmin = await RPS.isInRoomByChannel({ channel_uuid, user, role_name: 'Admin' });
         if (!isAdmin) throw new err.AdminPermissionRequiredError();
 
+        if (channel.channel_webhook) {
+            throw new err.ControllerError(400, 'channel already has a webhook');
+        }   
+
         const uuidExists = await Channel.findOne({ 'channel_webhook._id': uuid });
         if (uuidExists) throw new err.DuplicateEntryError('channel_webhook', 'PRIMARY', uuid);
-
-        if (channel.channel_webhook) {
-            throw new err.DuplicateEntryError('channel_webhook', 'channel_uuid', channel_uuid);
-        }    
 
         const room_uuid = channel.room._id;
         const avatar_src = await this.createAvatar({ uuid, room_uuid, file });

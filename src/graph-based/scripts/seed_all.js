@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import { pathToFileURL } from 'url';
 import instance from '../neode/index.js';
+import ChannelSeeder from '../neode/seeders/channel.js';
 
 export const execute = async (command) => {
     const now = new Date();
@@ -42,7 +43,7 @@ export const execute = async (command) => {
 
     console.log(`${now} - Running seeders`);
     const dir = path.resolve('src', 'graph-based', 'neode', 'seeders');
-    await Promise.all(
+    const seeders = await Promise.all(
         // Read all files in the seeders directory
         fs.readdirSync(dir).map(file => {
             try {
@@ -57,13 +58,17 @@ export const execute = async (command) => {
         .then(files => files.map(file => new file.default()))
         // Sort seeders by order method
         .then(seeders => seeders.sort((a, b) => a.order() - b.order()))
-        // Execute the command on all seeders
-        .then(async seeders => await Promise.all(seeders.map(seeder => {
-            seeder[command](instance);
-            console.log(`Finished ${command} on ${seeder.constructor.name}`);
-        })))
-        .catch(error => console.error('seed_all.js (neo4j)', error))
-        // Log the total time
-        .then(() => console.log(`${now} - Finished ${command} on all seeders`))
-        .then(() => console.log(`Total time: ${new Date() - now}ms`));
+
+    await Promise.all(seeders.map(async seeder => {
+        if (seeder.constructor.name === 'ChannelSeeder') {
+            return;
+        }
+        console.log(`Finished ${command} on ${seeder.constructor.name}`);
+        return await seeder[command](instance);
+    }))
+
+    await new ChannelSeeder()[command](instance);
+    console.log(`Finished ${command} on ChannelSeeder`);
+    console.log(`${now} - Finished ${command} on all seeders`);
+    console.log(`Total time: ${new Date() - now}ms`);
 }

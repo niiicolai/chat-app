@@ -61,6 +61,10 @@ export default {
         required: false,
         eager: true,
         properties: {
+            uuid: {
+                type: 'uuid',
+                required: true
+            },
             role: {
                 type: 'string',
                 required: true

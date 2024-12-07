@@ -133,7 +133,19 @@ class RoomService {
         const nameInUse = await Room.findOne({ name });
         if (nameInUse) throw new err.DuplicateEntryError('room', 'room_name', name);
 
-        const avatar_src = (file && file.size > 0 ? await storage.uploadFile(file, uuid) : null);
+        let room_file_src = null;
+        if (file && file.size > 0) {
+            const size = file.size;
+
+            if (file.size > parseFloat(process.env.ROOM_TOTAL_UPLOAD_SIZE)) {
+                throw new err.ExceedsRoomTotalFilesLimitError();
+            }
+            if (file.size > parseFloat(process.env.ROOM_UPLOAD_SIZE)) {
+                throw new err.ExceedsSingleFileSizeError();
+            }
+
+            room_file_src = await storage.uploadFile(file, uuid);
+        }
 
         const session = await mongoose.startSession();
         session.startTransaction();
@@ -180,11 +192,11 @@ class RoomService {
                 }],
             }], { session });
 
-            if (avatar_src) {
+            if (room_file_src) {
                 const roomFileUuid = uuidv4();
                 await RoomFile.insertMany([{
                     _id: roomFileUuid,
-                    src: avatar_src,
+                    src: room_file_src,
                     size: file.size,
                     room_file_type: "RoomAvatar",
                     room: uuid,
@@ -200,7 +212,7 @@ class RoomService {
         } catch (error) {
             await session.abortTransaction();
             // Delete the avatar file if it was uploaded
-            if (avatar_src) storage.deleteFile(storage.parseKey(avatar_src));
+            if (room_file_src) storage.deleteFile(storage.parseKey(room_file_src));
 
             throw error;
         } finally {

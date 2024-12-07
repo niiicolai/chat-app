@@ -105,8 +105,9 @@ export default class RoomSeeder {
                             query:
                                 'MATCH (u:User {uuid: $user_uuid}) ' +
                                 'MATCH (r:Room {uuid: $room_uuid}) ' +
-                                'CREATE (u)-[:MEMBER_IN {role: $role}]->(r) ',
+                                'CREATE (u)-[:MEMBER_IN {uuid: $uuid, role: $role, created_at: datetime(), updated_at: datetime()}]->(r)',
                             params: {
+                                uuid: roomUserData.uuid,
                                 user_uuid: roomUserData.user_uuid,
                                 room_uuid: roomData.uuid,
                                 role: roomUserData.room_user_role_name,

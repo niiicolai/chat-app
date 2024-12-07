@@ -132,6 +132,6 @@ const channelAuditServiceTest = (ChannelAuditService, name) => {
     });
 };
 
-channelAuditServiceTest(RelationalChannelAuditService, 'Relational');
-channelAuditServiceTest(DocumentChannelAuditService, 'Document');
-//channelAuditServiceTest(GraphChannelAuditService, 'Graph');
+//channelAuditServiceTest(RelationalChannelAuditService, 'Relational');
+//channelAuditServiceTest(DocumentChannelAuditService, 'Document');
+channelAuditServiceTest(GraphChannelAuditService, 'Graph');

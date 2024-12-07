@@ -20,7 +20,7 @@ export default {
     room_file: {
         type: 'relationship',
         target: 'RoomFile',
-        relationship: 'HAS_ROOM_FILE',
+        relationship: 'ROOM_AVATAR_IS',
         direction: 'out',
         eager: true
     },

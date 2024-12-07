@@ -321,7 +321,11 @@ class UserService {
             // Delete user
             await tx.run(
                 'MATCH (u:User {uuid: $uuid}) ' +
-                'DETACH DELETE u',
+                'MATCH (u)-[:AUTHORIZE_VIA]->(ul:UserLogin) ' +
+                'MATCH (u)-[:STATUS_IS]->(us:UserStatus) ' +
+                'MATCH (u)-[:EMAIL_VERIFY_VIA]->(uev:UserEmailVerification) ' +
+                'OPTIONAL MATCH (u)-[:RESETTED_BY]->(upr:UserPasswordReset) ' +
+                'DETACH DELETE u, ul, us, uev, upr',
                 { uuid }
             );
 

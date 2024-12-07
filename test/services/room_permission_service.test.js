@@ -242,4 +242,4 @@ const roomPermissionServiceTest = (RoomPermissionService, RoomService, name) => 
 
 roomPermissionServiceTest(RelationalRoomPermissionService, RelationalRoomService, 'Relational');
 roomPermissionServiceTest(DocumentRoomPermissionService, DocumentRoomService, 'Document');
-// roomPermissionServiceTest(GraphRoomPermissionService, GraphRoomService, 'Graph');
+roomPermissionServiceTest(GraphRoomPermissionService, GraphRoomService, 'Graph');

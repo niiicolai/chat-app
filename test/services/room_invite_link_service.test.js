@@ -287,7 +287,7 @@ const roomInviteLinkServiceTest = (RoomInviteLinkService, RoomUserService, name)
         await RoomInviteLinkService.join(options);
 
         const { data } = await RoomUserService.findAll({ user: admin, room_uuid });
-        console.log(data);
+
         const roomUser = data.find(roomUser => roomUser.user_uuid === options.user.sub);
         expect(roomUser.user_uuid).toBe(options.user.sub);
         expect(roomUser.room_uuid).toBe(room_uuid);
@@ -337,4 +337,4 @@ const roomInviteLinkServiceTest = (RoomInviteLinkService, RoomUserService, name)
 
 roomInviteLinkServiceTest(RelationalRoomInviteLinkService, RelationalRoomUserService, 'Relational');
 roomInviteLinkServiceTest(DocumentRoomInviteLinkService, DocumentRoomUserService, 'Document');
-// roomInviteLinkServiceTest(GraphRoomInviteLinkService, GraphRoomUserService, 'Graph');
+roomInviteLinkServiceTest(GraphRoomInviteLinkService, GraphRoomUserService, 'Graph');

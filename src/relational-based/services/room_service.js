@@ -99,7 +99,19 @@ class RoomService {
 
         const { body, file, user } = options;
 
-        const room_file_src = (file && file.size > 0 ? await storage.uploadFile(file, uuid) : null);
+        let room_file_src = null;
+        if (file && file.size > 0) {
+            const size = file.size;
+
+            if (file.size > parseFloat(process.env.ROOM_TOTAL_UPLOAD_SIZE)) {
+                throw new err.ExceedsRoomTotalFilesLimitError();
+            }
+            if (file.size > parseFloat(process.env.ROOM_UPLOAD_SIZE)) {
+                throw new err.ExceedsSingleFileSizeError();
+            }
+
+            room_file_src = await storage.uploadFile(file, body.uuid);
+        }
 
         await db.sequelize.transaction(async (transaction) => {
             const isVerified = await RPS.isVerified({ user }, transaction);

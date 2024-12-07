@@ -222,6 +222,7 @@ const roomServiceTest = (RoomService, name) => {
         await RoomService.editSettings(options);
 
         const room = await RoomService.findOne({ uuid: options.uuid, user: options.user });
+
         expect(room.joinSettings.join_message).toBe(options.body.join_message);
         expect(room.rulesSettings.rules_text).toBe(options.body.rules_text);
     });
@@ -351,4 +352,4 @@ const isValidRoom = (room) => {
 
 roomServiceTest(RelationalRoomService, 'Relational');
 roomServiceTest(DocumentRoomService, 'Document');
-//roomServiceTest(GraphRoomService, 'Graph');
+roomServiceTest(GraphRoomService, 'Graph');

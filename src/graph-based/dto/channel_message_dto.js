@@ -5,51 +5,38 @@ import channelWebhookMessageDto from './channel_webhook_message_dto.js';
 import channelWebhookDto from './channel_webhook_dto.js';
 import dateHelper from './_date_helper.js';
 
-export default (entity = {}, relations=[]) => {
-    const user = relations.find((rel) => rel.user)?.user || null;
-    const channelMessageType = relations.find((rel) => rel.channelMessageType)?.channelMessageType || null;
-    const channelMessageUpload = relations.find((rel) => rel.channelMessageUpload)?.channelMessageUpload || null;
-    const channelMessageUploadType = relations.find((rel) => rel.channelMessageUploadType)?.channelMessageUploadType || null;
-    const channelWebhookMessage = relations.find((rel) => rel.channelWebhookMessage)?.channelWebhookMessage || null;
-    const channelWebhook = relations.find((rel) => rel.channelWebhook)?.channelWebhook || null;
-    const channelWebhookFile = relations.find((rel) => rel.channelWebhookFile)?.channelWebhookFile || null;
-    const roomFile = relations.find((rel) => rel.roomFile)?.roomFile || null;
-    const channel = relations.find((rel) => rel.channel)?.channel || null;
-
+export default (entity = {}) => {
     const dto = { uuid: entity.uuid, body: entity.body };
 
-    if (channelMessageType) {
-        dto.channel_message_type_name = channelMessageType.name;
+    if (entity.channelMessageType) {
+        dto.channel_message_type_name = entity.channelMessageType.name;
     }
 
-    if (user) {
-        dto.user = userDto(user);
-        dto.user_uuid = user.uuid;
+    if (entity.user) {
+        dto.user = userDto(entity.user);
+        dto.user_uuid = entity.user.uuid;
         delete dto.user.email;
     }
 
-    if (channel) {
-        dto.channel_uuid = channel.uuid;
+    if (entity.channel) {
+        dto.channel_uuid = entity.channel.uuid;
     }
 
-    if (channelWebhookMessage) {
-        dto.channel_webhook_message = channelWebhookMessageDto(channelWebhookMessage);
-        if (channelWebhook) {
-            dto.channel_webhook_message.channel_webhook = channelWebhookDto(channelWebhook);
-            
-            if (channelWebhookFile) {
-                dto.channel_webhook_message.channel_webhook.room_file = roomFileDto(channelWebhookFile);
-            }
-        }
+    if (entity.channelWebhookMessage) {
+        dto.channel_webhook_message = channelWebhookMessageDto({
+            ...entity.channelWebhookMessage,
+            channelWebhook: entity.channelWebhook,
+            channelWebhookFile: entity.channelWebhookFile,
+        });
     }
 
-    if (channelMessageUpload) {
-        const channelMessageUploadRel = [];
-        if (channelMessageUploadType) channelMessageUploadRel.push({ channelMessageUploadType });
-        dto.channel_message_upload = channelMessageUploadDto(channelMessageUpload, channelMessageUploadRel);
-        if (roomFile) {
-            dto.channel_message_upload.room_file = roomFileDto(roomFile);
-        }
+    if (entity.channelMessageUpload) {
+        dto.channel_message_upload = channelMessageUploadDto({
+            ...entity.channelMessageUpload,
+            channelMessage: entity,
+            channelMessageUploadType: entity.channelMessageUploadType,
+            channelMessageUploadFile: entity.channelMessageUploadFile,
+        });
     }
 
     return dateHelper(entity, dto);

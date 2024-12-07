@@ -53,12 +53,14 @@ export default {
         target: 'Room',
         relationship: 'COMMUNICATES_IN',
         direction: 'in',
+        eager: true
     },
     channel_webhook: {
         type: 'relationship',
         target: 'ChannelWebhook',
         relationship: 'WRITE_TO',
         direction: 'in',
+        eager: true
     },
     channel_message: {
         type: 'relationship',

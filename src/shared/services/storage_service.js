@@ -30,6 +30,8 @@ if (!S3_ENDPOINT_URL || !S3_ACCESS_KEY_ID ||
     `);
 }
 
+const env = process.env.NODE_ENV || 'development';
+
 /**
  * @class StorageService
  * @description The storage service.
@@ -79,6 +81,17 @@ export default class StorageService {
      * @throws {Error} - The error.
      */
     async upload(params) {
+        if (!params) throw new Error("StorageService.upload: params is required.");
+        if (!params.Key) throw new Error("StorageService.upload: params.Key is required.");
+        if (!params.Body) throw new Error("StorageService.upload: params.Body is required.");
+        if (!params.ACL) throw new Error("StorageService.upload: params.ACL is required.");
+        if (!params.Bucket) throw new Error("StorageService.upload: params.Bucket is required.");
+
+        if (env === 'test') {
+            console.warn("Returns a fake URL in test environment.");
+            return `${this.cdnURL}/${params.Key}`;
+        }
+
         const command = new PutObjectCommand(params);
         try {
             await this.s3.send(command);
@@ -90,11 +103,14 @@ export default class StorageService {
     }
 
     async uploadFile(file, key, ACL = 'public-read') {
+        if (!file) throw new Error("StorageService.uploadFile: file is required.");
+        if (!key) throw new Error("StorageService.uploadFile: key is required.");
+        if (!ACL) throw new Error("StorageService.uploadFile: ACL is required.");
+
         const { buffer, mimetype } = file;
         const originalname = file.originalname.split('.').slice(0, -1).join('.').replace(/\s/g, '');
         const timestamp = new Date().getTime();
         const filename = `${originalname}-${key}-${timestamp}.${mimetype.split('/')[1]}`;
-
         const { Bucket, prefix } = this;
 
         return this.upload({ Bucket, Key: `${prefix}/${filename}`, Body: buffer, ACL });
@@ -110,6 +126,14 @@ export default class StorageService {
      * @throws {Error} - The error.
      */
     async updateFile(Body, Key, ACL = 'public-read') {
+        if (!Body) throw new Error("StorageService.updateFile: Body is required.");
+        if (!Key) throw new Error("StorageService.updateFile: Key is required.");
+        if (!ACL) throw new Error("StorageService.updateFile: ACL is required.");
+        if (env === 'test') {
+            console.warn("Returns a fake URL in test environment.");
+            return `${this.cdnURL}/${Key}`;
+        }
+
         const { Bucket } = this;
         return this.upload({ Bucket, Key, Body, ACL });
     }
@@ -122,6 +146,12 @@ export default class StorageService {
      * @throws {Error} - The error.
      */
     async deleteFile(Key) {
+        if (!Key) throw new Error("StorageService.deleteFile: Key is required.");
+        if (env === 'test') {
+            console.warn("File deletion is disabled in test environment.");
+            return;
+        }
+
         const { Bucket } = this;
         const params = { Bucket, Key };
         const command = new DeleteObjectCommand(params);
@@ -140,6 +170,8 @@ export default class StorageService {
      * @returns {string} - The key.
      */
     parseKey(url) {
+        if (!url) throw new Error("StorageService.parseKey: url is required.");
+
         return url.replace(`${this.cdnURL}/`, '');
     }
 }

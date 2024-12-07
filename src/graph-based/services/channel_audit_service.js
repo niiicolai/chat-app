@@ -30,7 +30,8 @@ class ChannelAuditService {
 
         const channel = channelAudit.get('channel').endNode().properties();
         const channel_audit_type = channelAudit.get('channel_audit_type').endNode().properties();
-
+        const channel_uuid = channel.uuid;
+        
         const isInRoom = await RPS.isInRoomByChannel({ channel_uuid, user });
         if (!isInRoom) throw new err.RoomMemberRequiredError();
 
@@ -61,8 +62,8 @@ class ChannelAuditService {
 
         const result = await neodeInstance.batch([
             { query:
-                `MATCH (ca:ChannelAudit)-[:HAS_CHANNEL]->(c:Channel {uuid: $channel_uuid}) ` +
-                `MATCH (ca)-[:HAS_AUDIT_TYPE]->(cat:ChannelAuditType) ` +
+                `MATCH (ca:ChannelAudit)-[:AUDIT_BY]->(c:Channel {uuid: $channel_uuid}) ` +
+                `MATCH (ca)-[:TYPE_IS]->(cat:ChannelAuditType) ` +
                 `ORDER BY ca.created_at DESC ` +
                 (offset ? `SKIP $offset `:``) + (limit ? `LIMIT $limit ` : ``) +
                 `RETURN ca, cat`,
