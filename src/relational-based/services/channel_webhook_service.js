@@ -1,194 +1,331 @@
-import ChannelWebhookServiceValidator from '../../shared/validators/channel_webhook_service_validator.js';
-import MysqlBaseFindService from './_mysql_base_find_service.js';
-import db from '../sequelize/models/index.cjs';
-import ControllerError from '../../shared/errors/controller_error.js';
+import Validator from '../../shared/validators/channel_webhook_service_validator.js';
+import BroadcastChannelService from '../../shared/services/broadcast_channel_service.js';
 import StorageService from '../../shared/services/storage_service.js';
-import RoomPermissionService from './room_permission_service.js';
-import channelMessageDto from '../dto/channel_message_dto.js';
+import err from '../../shared/errors/index.js';
+import RPS from './room_permission_service.js';
 import dto from '../dto/channel_webhook_dto.js';
-import { broadcastChannel } from '../../../websocket_server.js';
+import dtoCM from '../dto/channel_message_dto.js';
+import db from '../sequelize/models/index.cjs';
 import { v4 as uuidv4 } from 'uuid';
 
-const storage = new StorageService('channel_avatar');
+/**
+ * @constant storage
+ * @description Storage service instance
+ * @type {StorageService}
+ */
+const storage = new StorageService('channel_webhook_avatar');
 
-class Service extends MysqlBaseFindService {
-    constructor() {
-        super(db.ChannelWebhookView, dto);
-    }
+/**
+ * @class ChannelWebhookService
+ * @description Service class for channel webhooks.
+ * @exports ChannelWebhookService
+ */
+class ChannelWebhookService {
 
+    /**
+     * @function findOne
+     * @description Find a channel webhook by UUID.
+     * @param {Object} options
+     * @param {string} options.uuid
+     * @param {string} options.user
+     * @param {string} options.user.sub
+     * @returns {Promise<Object>}
+     */
     async findOne(options = { uuid: null, user: null }) {
-        ChannelWebhookServiceValidator.findOne(options);
+        Validator.findOne(options);
 
-        const { user, uuid } = options;
-        const webhook = await super.findOne({ uuid });
+        const { uuid, user } = options;
+        const entity = await db.ChannelWebhookView.findByPk(uuid);
+        if (!entity) throw new err.EntityNotFoundError('channel_webhook');
 
-        if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid: webhook.channel_uuid, user, role_name: null }))) {
-            throw new ControllerError(403, 'User is not in the room');
-        }
+        const isInRoom = await RPS.isInRoomByChannel({ channel_uuid: entity.channel_uuid, user });
+        if (!isInRoom) throw new err.RoomMemberRequiredError();
 
-        return webhook;
+        return dto(entity);
     }
 
+    /**
+     * @function findAll
+     * @description Find all channel webhooks in a room.
+     * @param {Object} options
+     * @param {string} options.room_uuid
+     * @param {string} options.user
+     * @param {string} options.user.sub
+     * @param {number} options.page
+     * @param {number} options.limit
+     * @returns {Promise<Object>}
+     */
     async findAll(options = { room_uuid: null, user: null, page: null, limit: null }) {
-        options = ChannelWebhookServiceValidator.findAll(options);
-        const { room_uuid, user, page, limit } = options;
+        options = Validator.findAll(options);
 
-        if (!(await RoomPermissionService.isInRoom({ room_uuid, user, role_name: null }))) {
-            throw new ControllerError(403, 'User is not in the room');
-        }
+        const { room_uuid, user, page, limit, offset } = options;
 
-        return await super.findAll({ page, limit, where: { room_uuid } });
+        const room = await db.RoomView.findOne({ uuid: room_uuid });
+        if (!room) throw new err.EntityNotFoundError('room');
+
+        const isInRoom = await RPS.isInRoom({ room_uuid, user });
+        if (!isInRoom) throw new err.RoomMemberRequiredError();
+
+        const [total, data] = await Promise.all([
+            db.ChannelWebhookView.count({ room_uuid }),
+            db.ChannelWebhookView.findAll({
+                where: { room_uuid },
+                ...(limit && { limit }),
+                ...(offset && { offset })
+            })
+        ]);
+
+        return {
+            total,
+            data: data.map(entity => dto(entity)),
+            ...(limit && { limit }),
+            ...(page && { page }),
+            ...(page && { pages: Math.ceil(total / limit) })
+        };
     }
 
-    async create(options={ body: null, file: null, user: null }) {
-        ChannelWebhookServiceValidator.create(options);
+    /**
+     * @function create
+     * @description Create a channel webhook.
+     * @param {Object} options
+     * @param {Object} options.body
+     * @param {string} options.body.uuid
+     * @param {string} options.body.name
+     * @param {string} options.body.description
+     * @param {string} options.body.channel_uuid
+     * @param {Object} options.file optional
+     * @param {Object} options.user
+     * @param {string} options.user.sub
+     * @returns {Promise<Object>}
+     */
+    async create(options = { body: null, file: null, user: null }) {
+        Validator.create(options);
 
         const { body, file, user } = options;
         const { uuid, name, description, channel_uuid } = body;
 
-        if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid, user, role_name: 'Admin' }))) {
-            throw new ControllerError(403, 'User is not an admin of the room');
-        }
-
-        const channel = await db.ChannelView.findOne({ where: { channel_uuid } });
-        if (!channel) {
-            throw new ControllerError(400, 'Channel does not exist');
-        }
-
-        if (await db.ChannelWebhookView.findOne({ where: { channel_webhook_uuid: uuid } })) {
-            throw new ControllerError(400, 'Channel webhook with that UUID already exists');
-        }
-
-        const channelCheck = await db.ChannelWebhookView.findOne({ where: { channel_uuid } });
-        if (channelCheck) {
-            throw new ControllerError(400, 'Channel already has a webhook');
-        }
-
-        if (file && file.size > 0) {
-            if ((await RoomPermissionService.fileExceedsTotalFilesLimit({ room_uuid: channel.room_uuid, bytes: file.size }))) {
-                throw new ControllerError(400, 'The room does not have enough space for this file');
-            }
-            if ((await RoomPermissionService.fileExceedsSingleFileSize({ room_uuid: channel.room_uuid, bytes: file.size }))) {
-                throw new ControllerError(400, 'File exceeds single file size limit');
-            }
-            body.src = await storage.uploadFile(file, uuid);
-            body.bytes = file.size;
-        }
-
-        await db.sequelize.query('CALL create_channel_webhook_proc(:uuid, :channel_uuid, :name, :description, :src, :bytes, :room_uuid, @result)', {
-            replacements: {
-                uuid,
-                channel_uuid,
-                name,
-                description,
-                src: body.src || null,
-                bytes: body.bytes || null,
-                room_uuid: channel.room_uuid,
-            },
+        const channel = await Promise.all([
+            db.ChannelView.findOne({ where: { channel_uuid } }),
+            db.ChannelWebhookView.findOne({ where: { channel_uuid } }),
+            RPS.isInRoomByChannel({ channel_uuid, user, role_name: 'Admin' }),
+        ]).then(([channel, channelHasWebhook, isAdmin]) => {
+            if (!channel) throw new err.EntityNotFoundError('channel');
+            if (!isAdmin) throw new err.AdminPermissionRequiredError();
+            if (channelHasWebhook) throw new err.ControllerError(400, 'channel already has a webhook');
+            return channel;
         });
 
-        return await service.findOne({ uuid, user });
+        const room_uuid = channel.room_uuid;
+        const room_file_src = await this.createAvatar({ uuid, room_uuid, file });
+
+        await db.sequelize.transaction(async (transaction) => {
+            const room_file_uuid = (room_file_src ? uuidv4() : null);
+            if (room_file_src) {
+                await db.RoomFileView.createRoomFileProcStatic({
+                    room_file_uuid,
+                    room_file_src,
+                    room_file_size: file.size,
+                    room_uuid: room_uuid,
+                    room_file_type_name: 'ChannelWebhookAvatar',
+                }, transaction);
+            }
+
+            await db.ChannelWebhookView.createChannelWebhookProc({
+                uuid,
+                name,
+                description,
+                channel_uuid,
+                room_uuid,
+                ...(room_file_uuid && { room_file_uuid }),
+            }, transaction);
+
+        }).catch((error) => {
+            // Delete the avatar file if it was uploaded
+            if (room_file_src) storage.deleteFile(storage.parseKey(room_file_src));
+
+            if (error.name === 'SequelizeUniqueConstraintError') {
+                throw new err.DuplicateEntryError('channel', error.errors[0].path, error.errors[0].value);
+            } else if (error.name === 'SequelizeForeignKeyConstraintError') {
+                throw new err.EntityNotFoundError(error.fields[0]);
+            }
+
+            throw error;
+        });
+
+        return await db.ChannelWebhookView
+            .findByPk(uuid)
+            .then((channelWebhook) => dto(channelWebhook));
     }
 
-    async update(options={ uuid: null, body: null, file: null, user: null }) {
-        ChannelWebhookServiceValidator.update(options);
+    /**
+     * @function update
+     * @description Update a channel webhook.
+     * @param {Object} options
+     * @param {string} options.uuid
+     * @param {Object} options.body
+     * @param {string} options.body.name optional
+     * @param {string} options.body.description optional
+     * @param {Object} options.file optional
+     * @param {Object} options.user
+     * @param {string} options.user.sub
+     * @returns {Promise<Object>}
+     */
+    async update(options = { uuid: null, body: null, file: null, user: null }) {
+        Validator.update(options);
 
         const { uuid, body, file, user } = options;
         const { name, description } = body;
 
-        const existing = await service.findOne({ uuid, user });
+        const channelWebhook = await db.ChannelWebhookView.findByPk(uuid);
+        if (!channelWebhook) throw new err.EntityNotFoundError('channel_webhook');
 
-        if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid: existing.channel_uuid, user, role_name: 'Admin' }))) {
-            throw new ControllerError(403, 'User is not an admin of the room');
-        }
+        const channel_uuid = channelWebhook.channel_uuid;
+        const isAdmin = await RPS.isInRoomByChannel({ channel_uuid, user, role_name: 'Admin' });
+        if (!isAdmin) throw new err.AdminPermissionRequiredError();
 
-        if (!name) {
-            body.name = existing.name;
-        }
+        const room_uuid = channelWebhook.room_uuid;
+        const room_file_src = await this.createAvatar({ uuid, room_uuid, file });
 
-        if (!description) {
-            body.description = existing.description;
-        }
-
-        if (file && file.size > 0) {
-            if ((await RoomPermissionService.fileExceedsTotalFilesLimit({ room_uuid: existing.room_uuid, bytes: file.size }))) {
-                throw new ControllerError(400, 'The room does not have enough space for this file');
+        await db.sequelize.transaction(async (transaction) => {
+           
+            const newRoomFileUuid = (room_file_src ? uuidv4() : null);
+            const oldRoomFileUuid = channelWebhook.room_file_uuid;
+            if (room_file_src) {
+                await db.RoomFileView.createRoomFileProcStatic({
+                    room_file_uuid: newRoomFileUuid,
+                    room_file_src,
+                    room_file_size: file.size,
+                    room_uuid: room_uuid,
+                    room_file_type_name: 'ChannelWebhookAvatar',
+                }, transaction);
             }
-            if ((await RoomPermissionService.fileExceedsSingleFileSize({ room_uuid: existing.room_uuid, bytes: file.size }))) {
-                throw new ControllerError(400, 'File exceeds single file size limit');
-            }
-            body.src = await storage.uploadFile(file, uuid);
-            body.bytes = file.size;
-        } else {
-            body.src = existing.room_file?.src;
-            body.bytes = existing.room_file?.size;
-        }
 
-        await db.sequelize.query('CALL edit_channel_webhook_proc(:uuid, :name, :description, :src, :bytes, :room_uuid, @result)', {
-            replacements: {
-                uuid,
-                name: body.name,
-                description: body.description,
-                src: body.src || null,
-                bytes: body.bytes || null,
-                room_uuid: existing.room_uuid,
-            },
+            await channelWebhook.editChannelWebhookProc({
+                ...(name && { name }),
+                ...(description && { description }),
+                ...(newRoomFileUuid && { room_file_uuid: newRoomFileUuid }),
+            }, transaction);
+
+            if (room_file_src && oldRoomFileUuid && channelWebhook.room_file_src) {
+                await db.RoomFileView.deleteRoomFileProcStatic({ uuid: oldRoomFileUuid }, transaction);
+                await storage.deleteFile(storage.parseKey(channelWebhook.room_file_src));
+            }
+
+        }).catch((error) => {
+            // Delete the avatar file if it was uploaded
+            if (room_file_src) storage.deleteFile(storage.parseKey(room_file_src));
+
+            if (error.name === 'SequelizeUniqueConstraintError') {
+                throw new err.DuplicateEntryError('channel', error.errors[0].path, error.errors[0].value);
+            } else if (error.name === 'SequelizeForeignKeyConstraintError') {
+                throw new err.EntityNotFoundError(error.fields[0]);
+            }
+
+            throw error;
         });
 
-        return await service.findOne({ uuid, user });
+        return await db.ChannelWebhookView
+            .findByPk(uuid)
+            .then((channelWebhook) => dto(channelWebhook));
     }
 
-    async destroy(options={ uuid: null, user: null }) {
-        ChannelWebhookServiceValidator.destroy(options);
+    /**
+     * @function destroy
+     * @description Delete a channel webhook.
+     * @param {Object} options
+     * @param {string} options.uuid
+     * @param {Object} options.user
+     * @param {string} options.user.sub
+     * @returns {Promise<void>}
+     */
+    async destroy(options = { uuid: null, user: null }) {
+        Validator.destroy(options);
 
         const { uuid, user } = options;
-        const existing = await service.findOne({ uuid, user });
 
-        if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid: existing.channel_uuid, user, role_name: 'Admin' }))) {
-            throw new ControllerError(403, 'User is not an admin of the room');
-        }
+        await db.sequelize.transaction(async (transaction) => {
+            const channelWebhook = await db.ChannelWebhookView.findByPk(uuid, { transaction });
+            if (!channelWebhook) throw new err.EntityNotFoundError('channel_webhook');
 
-        await db.sequelize.query('CALL delete_channel_webhook_proc(:uuid, @result)', {
-            replacements: {
-                uuid,
-            },
+            const channel_uuid = channelWebhook.channel_uuid;
+            const isAdmin = await RPS.isInRoomByChannel({ channel_uuid, user, role_name: 'Admin' }, transaction);
+            if (!isAdmin) throw new err.AdminPermissionRequiredError();
+
+            await channelWebhook.deleteChannelWebhookProc(transaction);
+
+            if (channelWebhook.room_file_uuid) {
+                await db.RoomFileView.deleteRoomFileProcStatic({ uuid: channelWebhook.room_file_uuid }, transaction);
+                await storage.deleteFile(storage.parseKey(channelWebhook.room_file_src));
+            }
         });
     }
 
-    async message(options={ uuid: null, body: null }) {
-        ChannelWebhookServiceValidator.message(options);
+    /**
+     * @function message
+     * @description Send a message to a channel connected to a webhook.
+     * @param {Object} options
+     * @param {string} options.uuid
+     * @param {Object} options.body
+     * @param {string} options.body.message
+     * @returns {Promise<void>}
+     */
+    async message(options = { uuid: null, body: null }) {
+        Validator.message(options);
 
         const { uuid, body } = options;
         const { message } = body;
-
-        const channelWebhook = await service.model.findOne({ where: { channel_webhook_uuid: uuid } });
-        if (!channelWebhook) {
-            throw new ControllerError(404, 'Channel Webhook not found');
-        }
-
         const channel_message_uuid = uuidv4();
-        const channel_uuid = channelWebhook.channel_uuid;
-        await db.sequelize.query('CALL create_webhook_message_proc(:message_uuid_input, :message_body_input, :channel_uuid_input, :channel_webhook_uuid_input, :channel_webhook_message_type_name_input, @result)', {
-            replacements: {
-                message_uuid_input: channel_message_uuid,
-                message_body_input: message,
-                channel_uuid_input: channel_uuid,
-                channel_webhook_uuid_input: uuid,
-                channel_webhook_message_type_name_input: 'Custom',
-            },
+
+        await db.sequelize.transaction(async (transaction) => {
+            const channelWebhook = await db.ChannelWebhookView.findByPk(uuid, { transaction });
+            if (!channelWebhook) throw new err.EntityNotFoundError('channel_webhook');
+
+            await channelWebhook.createChannelWebhookMessageProc({
+                message,
+                channel_message_uuid,
+                channel_webhook_message_type_name: 'Custom'
+            }, transaction);
         });
 
         const channelMessage = await db.ChannelMessageView.findOne({ where: { channel_message_uuid } });
-        if (!channelMessage) throw new ControllerError(500, 'Channel Message not found');
+        if (!channelMessage) throw new err.ControllerError(500, 'Channel Message not found');
 
-        /**
-          * Broadcast the channel message to all users
-          * in the room where the channel message was deleted.
-          */
-        broadcastChannel(`channel-${channel_uuid}`, 'chat_message_created', channelMessageDto(channelMessage));
+        const data = dtoCM(channelMessage);
+        BroadcastChannelService.create(data);
+    }
+
+    /**
+     * @function createAvatar
+     * @description Create a channel webhook avatar (helper function)
+     * @param {Object} options
+     * @param {String} options.uuid
+     * @param {String} options.room_uuid
+     * @param {Object} options.file
+     * @returns {Promise<String | null>}
+     */
+    async createAvatar(options = { uuid: null, room_uuid: null, file: null }) {
+        if (!options) throw new Error('createAvatar: options is required');
+        if (!options.uuid) throw new Error('createAvatar: options.uuid is required');
+        if (!options.room_uuid) throw new Error('createAvatar: options.room_uuid is required');
+
+        const { uuid, room_uuid, file } = options;
+
+        if (file && file.size > 0) {
+            const [singleLimit, totalLimit] = await Promise.all([
+                RPS.fileExceedsSingleFileSize({ room_uuid, bytes: file.size }),
+                RPS.fileExceedsTotalFilesLimit({ room_uuid, bytes: file.size }),
+            ]);
+
+            if (totalLimit) throw new err.ExceedsRoomTotalFilesLimitError();
+            if (singleLimit) throw new err.ExceedsSingleFileSizeError();
+
+            return await storage.uploadFile(file, uuid);
+        }
+
+        return null;
     }
 }
 
-const service = new Service();
+const service = new ChannelWebhookService();
 
 export default service;

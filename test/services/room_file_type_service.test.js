@@ -1,20 +1,29 @@
 import RelationalRoomFileTypeService from '../../src/relational-based/services/room_file_type_service.js';
 import DocumentRoomFileTypeService from '../../src/document-based/services/room_file_type_service.js';
 import GraphRoomFileTypeService from '../../src/graph-based/services/room_file_type_service.js';
+
+import data from '../../src/seed_data.js';
 import { test, expect } from 'vitest';
 
 const roomFileTypeServiceTest = (RoomFileTypeService, name) => {
+
+    /**
+     * Expected methods
+     */
 
     test(`(${name}) - RoomFileTypeService must implement expected methods`, () => {
         expect(RoomFileTypeService).toHaveProperty('findOne');
         expect(RoomFileTypeService).toHaveProperty('findAll');
     });
 
+
+
+    /**
+     * RoomFileTypeService.findOne
+     */
+
     test.each([
-        ['ChannelWebhookAvatar'],
-        ['ChannelMessageUpload'],
-        ['ChannelAvatar'],
-        ['RoomAvatar'],
+        data.room_file_types.map(rft => rft.name),
     ])(`(${name}) - RoomFileTypeService.findOne valid partitions`, async (name) => {
         const result = await RoomFileTypeService.findOne({ name });
 
@@ -38,6 +47,12 @@ const roomFileTypeServiceTest = (RoomFileTypeService, name) => {
     ])(`(${name}) - RoomFileTypeService.findOne invalid partitions`, async (options, expected) => {
         expect(async () => await RoomFileTypeService.findOne(options)).rejects.toThrowError(expected);
     });
+
+
+
+    /**
+     * RoomFileTypeService.findAll
+     */
 
     test.each([
         [undefined],

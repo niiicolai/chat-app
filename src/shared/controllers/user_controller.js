@@ -1,4 +1,7 @@
 import authMiddleware from '../middlewares/auth_middleware.js';
+import csrfMiddleware from '../middlewares/csrf_middleware.js';
+import originMiddleware from '../middlewares/origin_middleware.js';
+import CsrfService from '../services/csrf_service.js';
 import errorHandler from './_error_handler.js';
 import express from 'express';
 import multer from 'multer';
@@ -9,7 +12,7 @@ export default (crudService) => {
     const ctrl = { router };
 
     ctrl.getUserLogins = () => {
-        router.get('/user/me/logins', [authMiddleware], async (req, res) => {
+        router.get('/user/me/logins', [originMiddleware, authMiddleware], async (req, res) => {
             await errorHandler(res, async () => {
                 const result = await crudService.getUserLogins({ uuid: req.user.sub });
                 res.json(result);
@@ -18,16 +21,16 @@ export default (crudService) => {
     }
 
     ctrl.findOne = () => {
-        router.get('/user/me', [authMiddleware], async (req, res) => {
+        router.get('/user/me', [originMiddleware, authMiddleware], async (req, res) => {
             await errorHandler(res, async () => {
                 const result = await crudService.findOne({ uuid: req.user.sub });
-                res.json(result);
+                res.json({...result, csrf: CsrfService.create()});
             });
         });
     }
 
     ctrl.create = () => {
-        router.post('/user', [uploadMiddleware], async (req, res) => {
+        router.post('/user', [originMiddleware, uploadMiddleware], async (req, res) => {
             await errorHandler(res, async () => {
                 const result = await crudService.create({ body: req.body, file: req.file });
                 res.json(result);
@@ -36,7 +39,7 @@ export default (crudService) => {
     }
 
     ctrl.login = () => {
-        router.post('/user/login', async (req, res) => {
+        router.post('/user/login', [originMiddleware], async (req, res) => {
             await errorHandler(res, async () => {
                 const result = await crudService.login({ body: req.body });
                 res.json(result);
@@ -45,7 +48,7 @@ export default (crudService) => {
     }
 
     ctrl.update = () => {
-        router.patch('/user/me', [uploadMiddleware, authMiddleware], async (req, res) => {
+        router.patch('/user/me', [originMiddleware, csrfMiddleware, uploadMiddleware, authMiddleware], async (req, res) => {
             await errorHandler(res, async () => {
                 const result = await crudService.update({ body: req.body, file: req.file, user: req.user });
                 res.json(result);
@@ -54,7 +57,7 @@ export default (crudService) => {
     }
 
     ctrl.destroy = () => {
-        router.delete('/user/me', [authMiddleware], async (req, res) => {
+        router.delete('/user/me', [originMiddleware, csrfMiddleware, authMiddleware], async (req, res) => {
             await errorHandler(res, async () => {
                 await crudService.destroy({ uuid: req.user.sub });
                 res.sendStatus(204);
@@ -63,7 +66,7 @@ export default (crudService) => {
     }
 
     ctrl.destroyAvatar = () => {
-        router.delete('/user/me/avatar', [authMiddleware], async (req, res) => {
+        router.delete('/user/me/avatar', [originMiddleware, csrfMiddleware, authMiddleware], async (req, res) => {
             await errorHandler(res, async () => {
                 await crudService.destroyAvatar({ uuid: req.user.sub });
                 res.sendStatus(204);
@@ -72,7 +75,7 @@ export default (crudService) => {
     }
 
     ctrl.destroyUserLogins = () => {
-        router.delete('/user/me/login/:uuid', [authMiddleware], async (req, res) => {
+        router.delete('/user/me/login/:uuid', [originMiddleware, csrfMiddleware, authMiddleware], async (req, res) => {
             await errorHandler(res, async () => {
                 await crudService.destroyUserLogins({ uuid: req.user.sub, login_uuid: req.params.uuid });
                 res.sendStatus(204);

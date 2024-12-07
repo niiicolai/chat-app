@@ -1,13 +1,17 @@
 import jwt from 'jsonwebtoken';
 import validator from 'validator';
 
-
 /**
  * @const SECRET
  * @description The secret used to sign the token.
  */
 const SECRET = process.env.JWT_SECRET;
-if (!SECRET) console.error('JWT_SECRET is not defined in the .env file.\n  - Authenticating users is currently not configured correct.\n  - You can generate a secret by running: node -e "console.log(require(\'crypto\').randomBytes(64).toString(\'hex\'))"'); 
+if (!SECRET) console.error(`
+    JWT_SECRET is not defined in the .env file.
+    - Authenticating users is currently not configured correct.
+    - You can generate a secret by running: node -e "console.log(require(\'crypto\').randomBytes(64).toString(\'hex\'))"
+    - Please add JWT_SECRET=your_secret to the .env file to sign tokens.
+`); 
 
 
 /**
@@ -15,13 +19,22 @@ if (!SECRET) console.error('JWT_SECRET is not defined in the .env file.\n  - Aut
  * @description The time in seconds before the token expires.
  */
 const EXPIRE = process.env.JWT_EXPIRE ? parseInt(process.env.JWT_EXPIRE) : null;
-if (!EXPIRE) console.error('ERROR: JWT_EXPIRE is not defined in the .env file.\n  - Authenticating users is currently not configured correct.\n  - Please add JWT_EXPIRE=3600 to the .env file to expire tokens after 1 hour.');
-if (EXPIRE && EXPIRE < 1) console.error('ERROR: JWT_EXPIRE must be greater than 0.\n  - Authenticating users is currently not configured correct.\n  - Please add a valid number to the .env file to expire tokens after a certain amount of time.');
+if (!EXPIRE) console.error(`
+    JWT_EXPIRE is not defined in the .env file.
+    - Authenticating users is currently not configured correct.
+    - Please add JWT_EXPIRE=3600 to the .env file to expire tokens after 1 hour.
+`);
+if (EXPIRE && EXPIRE < 1) console.error(`
+    JWT_EXPIRE must be greater than 0.
+    - Authenticating users is currently not configured correct.
+    - Please add a valid number to the .env file to expire tokens after a certain amount of time.
+`);
 
 
 /**
  * @class JwtService
  * @description Service for handling JWT tokens.
+ * @exports JwtService
  */
 export default class JwtService {
 

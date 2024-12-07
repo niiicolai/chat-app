@@ -1,40 +1,80 @@
 import ChannelAuditServiceValidator from '../../shared/validators/channel_audit_service_validator.js';
-import MysqlBaseFindService from './_mysql_base_find_service.js';
+import err from '../../shared/errors/index.js';
 import db from '../sequelize/models/index.cjs';
-import ControllerError from '../../shared/errors/controller_error.js';
-import RoomPermissionService from './room_permission_service.js';
+import RPS from './room_permission_service.js';
 import dto from '../dto/channel_audit_dto.js';
 
-class Service extends MysqlBaseFindService {
-    constructor() {
-        super(db.ChannelAuditView, dto);
-    }
+/**
+ * @class ChannelAuditService
+ * @description Service class for channel audits.
+ * @exports ChannelAuditService
+ */
+class ChannelAuditService {
 
+    /**
+     * @function findOne
+     * @description Find a channel audit by UUID.
+     * @param {Object} options
+     * @param {string} options.uuid
+     * @param {string} options.user
+     * @param {string} options.user.sub
+     * @returns {Promise<Object>}
+     */
     async findOne(options = { uuid: null, user: null }) {
         ChannelAuditServiceValidator.findOne(options);
 
-        const { user, uuid } = options;
-        const r = await super.findOne({ uuid });
+        const { uuid, user } = options;
+        const entity = await db.ChannelAuditView.findByPk(uuid);
 
-        if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid: r.channel_uuid, user, role_name: null }))) {
-            throw new ControllerError(403, 'User is not in the room');
-        }
+        if (!entity) throw new err.EntityNotFoundError('channel_audit');
 
-        return r;
+        const isInRoom = await RPS.isInRoomByChannel({ channel_uuid: entity.channel_uuid, user });
+        if (!isInRoom) throw new err.RoomMemberRequiredError();
+
+        return dto(entity);
     }
 
+    /**
+     * @function findAll
+     * @description Find all channel audits by channel UUID.
+     * @param {Object} options
+     * @param {string} options.channel_uuid
+     * @param {string} options.user
+     * @param {string} options.user.sub
+     * @param {number} options.page optional
+     * @param {number} options.limit optional
+     * @returns {Promise<Object>}
+     */
     async findAll(options = { channel_uuid: null, user: null, page: null, limit: null }) {
         options = ChannelAuditServiceValidator.findAll(options);
-        const { channel_uuid, user, page, limit } = options;
 
-        if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid, user, role_name: null }))) {
-            throw new ControllerError(403, 'User is not in the room');
-        }
+        const { channel_uuid, user, page, limit, offset } = options;
 
-        return await super.findAll({ page, limit, where: { channel_uuid } });
+        const channel = await db.ChannelView.findOne({ uuid: channel_uuid });
+        if (!channel) throw new err.EntityNotFoundError('channel');
+
+        const isInRoom = await RPS.isInRoomByChannel({ channel_uuid, user });
+        if (!isInRoom) throw new err.RoomMemberRequiredError();
+
+        const [total, data] = await Promise.all([
+            db.ChannelAuditView.count({ channel_uuid }),
+            db.ChannelAuditView.findAll({
+                where: { channel_uuid },
+                ...(limit && { limit }),
+                ...(offset && { offset })
+            })
+        ]);
+
+        return {
+            data: data.map(entity => dto(entity)),
+            total,
+            ...(limit && { limit }),
+            ...(page && { page }),
+            ...(page && { pages: Math.ceil(total / limit) })
+        };
     }
 }
 
-const service = new Service();
+const service = new ChannelAuditService();
 
 export default service;

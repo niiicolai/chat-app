@@ -1,35 +1,34 @@
 import mongoose from "mongoose";
 
-import { channelTypeSchema as channel_type } from "./channel_type.js";
-import channel_webhook from "./channel_webhook.js";
+import channel_webhook from "../subdocuments/channel_webhook.js";
 import ChannelAudit from "./channel_audit.js";
 import { v4 as uuidv4 } from 'uuid';
 
 const channelSchema = new mongoose.Schema({
-    uuid: { 
-        type: String, 
-        required: true,
-        unique: true 
-    },
+    _id: mongoose.Schema.Types.UUID,
     name: { 
-        type: String, 
+        type: mongoose.Schema.Types.String, 
         required: true 
     },
     description: { 
-        type: String, 
+        type: mongoose.Schema.Types.String, 
         required: true 
     },
     room: { 
-        type: mongoose.Schema.Types.ObjectId, 
+        type: mongoose.Schema.Types.UUID, 
         ref: 'Room', 
         required: true 
     },
     room_file: { 
-        type: mongoose.Schema.Types.ObjectId, 
+        type: mongoose.Schema.Types.UUID, 
         ref: 'RoomFile', 
         required: false 
     },
-    channel_type,
+    channel_type: {
+        type: mongoose.Schema.Types.String, 
+        ref: 'ChannelType',
+        required: true
+    },
     channel_webhook: {
         type: channel_webhook,
         required: false
@@ -38,13 +37,14 @@ const channelSchema = new mongoose.Schema({
     timestamps: {
         createdAt: 'created_at',
         updatedAt: 'updated_at'
-    }
+    },
+    autoCreate: false
 });
 
 channelSchema.post('save', async (doc) => {
     const isNew = doc.created_at === doc.updated_at;
     await ChannelAudit.create({
-        uuid: uuidv4(),
+        _id: uuidv4(),
         body: doc,
         channel: doc._id,
         channel_audit_type: (isNew ? 'CHANNEL_CREATED' : 'CHANNEL_EDITED'),
@@ -53,7 +53,7 @@ channelSchema.post('save', async (doc) => {
 
 channelSchema.post('remove', async (doc) => {
     await ChannelAudit.create({
-        uuid: uuidv4(),
+        _id: uuidv4(),
         body: doc,
         channel: doc._id,
         channel_audit_type: 'CHANNEL_DELETED',

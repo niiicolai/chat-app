@@ -25,6 +25,9 @@ export default class RoomInviteLinkServiceValidator {
         if (!options.user.sub) throw new ControllerError(500, 'No user.sub provided');
         if (!options.body.uuid) throw new ControllerError(400, 'No uuid provided');
         if (!options.body.room_uuid) throw new ControllerError(400, 'No room_uuid provided');
+        if (options.body.expires_at && isNaN(new Date(options.body.expires_at))) {
+            throw new ControllerError(400, 'Invalid time value');
+        }
         if (options.body.expires_at && new Date(options.body.expires_at) < new Date()) {
             throw new ControllerError(400, 'The expiration date cannot be in the past');
         }

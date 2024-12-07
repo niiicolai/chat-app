@@ -1,172 +1,287 @@
-import ChannelMessageServiceValidator from '../../shared/validators/channel_message_service_validator.js';
-import MysqlBaseFindService from './_mysql_base_find_service.js';
-import ControllerError from '../../shared/errors/controller_error.js';
+import Validator from '../../shared/validators/channel_message_service_validator.js';
 import StorageService from '../../shared/services/storage_service.js';
-import RoomPermissionService from './room_permission_service.js';
+import BroadcastChannelService from '../../shared/services/broadcast_channel_service.js';
+import { getUploadType } from '../../shared/utils/file_utils.js';
+import err from '../../shared/errors/index.js';
+import RPS from './room_permission_service.js';
 import dto from '../dto/channel_message_dto.js';
 import db from '../sequelize/models/index.cjs';
-import { getUploadType } from '../../shared/utils/file_utils.js';
-import { broadcastChannel } from '../../../websocket_server.js';
+import { v4 as uuidv4 } from 'uuid';
 
+/**
+ * @constant storage
+ * @description Storage service instance
+ * @type {StorageService}
+ */
 const storage = new StorageService('channel_message_upload');
 
-class Service extends MysqlBaseFindService {
-    constructor() {
-        super(db.ChannelMessageView, dto);
-    }
+/**
+ * @class ChannelMessageService
+ * @description Service class for channel messages.
+ * @exports ChannelMessageService
+ */
+class ChannelMessageService {
 
+    /**
+     * @function findOne
+     * @description Find a channel message by UUID.
+     * @param {Object} options
+     * @param {string} options.uuid
+     * @param {string} options.user
+     * @param {string} options.user.sub
+     * @returns {Promise<Object>}
+     */
     async findOne(options = { uuid: null, user: null }) {
-        ChannelMessageServiceValidator.findOne(options);
-        const { user, uuid } = options;
-        const existing = await super.findOne({ uuid });
+        Validator.findOne(options);
 
-        if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid: existing.channel_uuid, user, role_name: null }))) {
-            throw new ControllerError(403, 'User is not in the room');
-        }
+        const { uuid, user } = options;
+        const entity = await db.ChannelMessageView.findByPk(uuid);
 
-        return existing;
+        if (!entity) throw new err.EntityNotFoundError('channel_message');
+
+        const isInRoom = await RPS.isInRoomByChannel({ channel_uuid: entity.channel_uuid, user });
+        if (!isInRoom) throw new err.RoomMemberRequiredError();
+
+        return dto(entity);
     }
 
+    /**
+     * @function findAll
+     * @description Find all channel messages by channel UUID.
+     * @param {Object} options
+     * @param {string} options.channel_uuid
+     * @param {string} options.user
+     * @param {string} options.user.sub
+     * @param {number} options.page optional
+     * @param {number} options.limit optional
+     * @returns {Promise<Object>}
+     */
     async findAll(options = { channel_uuid: null, user: null, page: null, limit: null }) {
-        options = ChannelMessageServiceValidator.findAll(options);
-        const { channel_uuid, user, page, limit } = options;
+        options = Validator.findAll(options);
 
-        if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid, user, role_name: null }))) {
-            throw new ControllerError(403, 'User is not in the room');
-        }
+        const { channel_uuid, user, page, limit, offset } = options;
+        const [channel, isInRoom] = await Promise.all([
+            db.ChannelView.findByPk(channel_uuid),
+            RPS.isInRoomByChannel({ channel_uuid, user }),
+        ]);
 
-        return await super.findAll({ page, limit, where: { channel_uuid } });
+        if (!channel) throw new err.EntityNotFoundError('channel');
+        if (!isInRoom) throw new err.RoomMemberRequiredError();
+
+        const [total, data] = await Promise.all([
+            db.ChannelMessageView.count({ channel_uuid }),
+            db.ChannelMessageView.findAll({
+                where: { channel_uuid },
+                ...(limit && { limit }),
+                ...(offset && { offset })
+            })
+        ]);
+
+        return {
+            total,
+            data: data.map(entity => dto(entity)),
+            ...(limit && { limit }),
+            ...(page && { page }),
+            ...(page && { pages: Math.ceil(total / limit) })
+        };
     }
 
+    /**
+     * @function create
+     * @description Create a channel message.
+     * @param {Object} options
+     * @param {Object} options.body
+     * @param {string} options.body.uuid
+     * @param {string} options.body.body
+     * @param {string} options.body.channel_uuid
+     * @param {Object} options.file optional
+     * @param {Object} options.user
+     * @param {string} options.user.sub
+     * @returns {Promise<Object>}
+     */
     async create(options = { body: null, file: null, user: null }) {
-        ChannelMessageServiceValidator.create(options);
+        Validator.create(options);
 
         const { body, file, user } = options;
         const { uuid, body: msg, channel_uuid } = body;
-        const { sub: user_uuid } = user;
 
-        const channel = await db.ChannelView.findOne({ where: { channel_uuid } });
-        if (!channel) {
-            throw new ControllerError(404, 'Channel not found');
-        }
-
-        if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid, user, role_name: null }))) {
-            throw new ControllerError(403, 'User is not in the room');
-        }
-
-        if (file && file.size > 0) {
-            if ((await RoomPermissionService.fileExceedsTotalFilesLimit({ room_uuid: channel.room_uuid, bytes: file.size }))) {
-                throw new ControllerError(400, 'The room does not have enough space for this file');
-            }
-            if ((await RoomPermissionService.fileExceedsSingleFileSize({ room_uuid: channel.room_uuid, bytes: file.size }))) {
-                throw new ControllerError(400, 'File exceeds single file size limit');
-            }
-            body.src = await storage.uploadFile(file, uuid);
-            body.bytes = file.size;
-            body.upload_type = getUploadType(file);
-        }
+        const [channel, isInRoom] = await Promise.all([
+            db.ChannelView.findByPk(channel_uuid),
+            RPS.isInRoomByChannel({ channel_uuid, user }),
+        ]);
         
-        await db.sequelize.query('CALL create_channel_message_proc(:uuid, :msg, :channel_message_type_name, :channel_uuid, :user_uuid, :upload_type, :upload_src, :bytes, :room_uuid, @result)', {
-            replacements: {
+        if (!channel) throw new err.EntityNotFoundError('channel');
+        if (!isInRoom) throw new err.RoomMemberRequiredError();
+
+        const room_uuid = channel.room_uuid;
+        const room_file_src = await this.createUpload({ uuid, room_uuid, file });
+
+        await db.sequelize.transaction(async (transaction) => {
+            const room_file_uuid = (room_file_src ? uuidv4() : null);
+            if (room_file_src) {
+                await db.RoomFileView.createRoomFileProcStatic({
+                    room_file_uuid,
+                    room_file_src,
+                    room_file_size: file.size,
+                    room_uuid: room_uuid,
+                    room_file_type_name: 'ChannelMessageUpload',
+                }, transaction);
+            }
+
+            await db.ChannelMessageView.createChannelMessageProcStatic({
                 uuid,
                 msg,
-                channel_message_type_name: "User",
                 channel_uuid,
-                user_uuid,
-                upload_type: body.upload_type || null,
-                upload_src: body.src || null,
-                bytes: body.bytes || null,
+                user_uuid: user.sub,
                 room_uuid: channel.room_uuid,
-            },
+                channel_message_type_name: "User",
+                ...(room_file_uuid && {
+                    upload_type: getUploadType(file),
+                    room_file_uuid,
+                })
+            }, transaction);
+        }).catch((error) => {
+            // Delete the avatar file if it was uploaded
+            if (room_file_src) storage.deleteFile(storage.parseKey(room_file_src));
+
+            if (error.name === 'SequelizeUniqueConstraintError') {
+                throw new err.DuplicateEntryError('channel_message', error.errors[0].path, error.errors[0].value);
+            } else if (error.name === 'SequelizeForeignKeyConstraintError') {
+                throw new err.EntityNotFoundError(error.fields[0]);
+            }
+
+            throw error;
         });
 
-        const ch = await service.findOne({ uuid, user });
-
-        /**
-          * Broadcast the channel message to all users
-          * in the room where the channel message was created.
-          */
-        broadcastChannel(`channel-${channel_uuid}`, 'chat_message_created', ch);
-
-        return ch;
+        return await db.ChannelMessageView
+            .findByPk(uuid)
+            .then((channelMessage) => dto(channelMessage))
+            .then((channelMessage) => {
+                BroadcastChannelService.create(channelMessage);
+                return channelMessage;
+            });
     }
 
+    /**
+     * @function update
+     * @description Update a channel message.
+     * @param {Object} options
+     * @param {string} options.uuid
+     * @param {Object} options.body
+     * @param {string} options.body.body optional
+     * @param {Object} options.user
+     * @param {string} options.user.sub
+     * @returns {Promise<Object>}
+     */
     async update(options = { uuid: null, body: null, user: null }) {
-        ChannelMessageServiceValidator.update(options);
+        Validator.update(options);
 
         const { uuid, body, user } = options;
         const { body: msg } = body;
-        const { sub: user_uuid } = user;
 
-        const existing = await db.ChannelMessageView.findOne({ where: { channel_message_uuid: uuid } });
-        if (!existing) throw new ControllerError(404, 'channel_message not found');
+        await db.sequelize.transaction(async (transaction) => {
+            const channelMessage = await db.ChannelMessageView.findByPk(uuid, { transaction });
+            if (!channelMessage) throw new err.EntityNotFoundError('channel_message');
 
-        const isOwner = existing.user_uuid === user_uuid;
-        const [moderator, admin] = await Promise.all([
-            RoomPermissionService.isInRoomByChannel({ channel_uuid: existing.channel_uuid, user, role_name: 'Moderator' }),
-            RoomPermissionService.isInRoomByChannel({ channel_uuid: existing.channel_uuid, user, role_name: 'Admin' }),
-        ]);
-
-        if (!isOwner && !moderator && !admin) {
-            throw new ControllerError(403, 'User is not an owner of the message, or an admin or moderator of the room');
-        }
-
-        if (!msg) {
-            body.body = existing.body;
-        }
-
-        await db.sequelize.query('CALL edit_channel_message_proc(:uuid, :msg, @result)', {
-            replacements: {
-                uuid,
-                msg: body.body,
-            },
+            await ChannelMessageService.handleWritePermission(channelMessage, user, transaction);
+            await channelMessage.editChannelMessageProc({ msg }, transaction);
         });
 
-        const ch = await service.findOne({ uuid, user });
-        const channel_uuid = ch.channel_uuid;
-
-        /**
-          * Broadcast the channel message to all users
-          * in the room where the channel message was updated.
-          */
-        broadcastChannel(`channel-${channel_uuid}`, 'chat_message_updated', ch);
-
-        return ch;
+        return await db.ChannelMessageView
+            .findByPk(uuid)
+            .then((channelMessage) => dto(channelMessage))
+            .then((channelMessage) => {
+                BroadcastChannelService.update(channelMessage);
+                return channelMessage;
+            });
     }
 
+    /**
+     * @function destroy
+     * @description Destroy a channel message.
+     * @param {Object} options
+     * @param {string} options.uuid
+     * @param {Object} options.user
+     * @param {string} options.user.sub
+     * @returns {Promise<void>}
+     */
     async destroy(options = { uuid: null, user: null }) {
-        ChannelMessageServiceValidator.destroy(options);
+        Validator.destroy(options);
 
         const { uuid, user } = options;
-        const { sub: user_uuid } = user;
 
-        const existing = await db.ChannelMessageView.findOne({ where: { channel_message_uuid: uuid } });
-        if (!existing) throw new ControllerError(404, 'channel_message not found');
+        const channelMessage = await db.ChannelMessageView.findByPk(uuid);
+        if (!channelMessage) throw new err.EntityNotFoundError('channel_message');
 
-        const channel_uuid = existing.channel_uuid;
-        const isOwner = existing.user_uuid === user_uuid;
-        const [moderator, admin] = await Promise.all([
-            RoomPermissionService.isInRoomByChannel({ channel_uuid, user, role_name: 'Moderator' }),
-            RoomPermissionService.isInRoomByChannel({ channel_uuid, user, role_name: 'Admin' }),
-        ]);
-        if (!isOwner && !moderator && !admin) {
-            throw new ControllerError(403, 'User is not an owner of the message, or an admin or moderator of the room');
-        }
+        await db.sequelize.transaction(async (transaction) => {
+            await ChannelMessageService.handleWritePermission(channelMessage, user, transaction);
+            await channelMessage.deleteChannelMessageProc(transaction);
 
-        await db.sequelize.query('CALL delete_channel_message_proc(:uuid, @result)', {
-            replacements: {
-                uuid,
-            },
+            if (channelMessage.room_file_uuid) {
+                await db.RoomFileView.deleteRoomFileProcStatic({ uuid: channelWebhook.room_file_uuid }, transaction);
+                await storage.deleteFile(storage.parseKey(channelMessage.room_file_src));
+            }
         });
 
-        /**
-          * Broadcast the channel message to all users
-          * in the room where the channel message was deleted.
-          */
-        broadcastChannel(`channel-${channel_uuid}`, 'chat_message_deleted', { uuid });
+        BroadcastChannelService.destroy(channelMessage.channel_uuid, uuid);
+    }
+
+    /**
+     * @function handleWritePermission
+     * @description Handle write permission for a channel message that already exists and is being modified.
+     * The user must be the owner of the message, a moderator, or an admin.
+     * @param {Object} channelMessage
+     * @param {Object} user
+     * @param {Object} transaction
+     * @throws {OwnershipOrLeastModRequiredError}
+     */
+    static async handleWritePermission(channelMessage, user, transaction) {
+        if (!channelMessage) throw new Error('Handle write permission requires a channel message.');
+        if (!user) throw new Error('Handle write permission requires a user.');
+        
+        const isOwner = channelMessage.user_uuid === user.sub;
+        const [isModerator, isAdmin] = await Promise.all([
+            RPS.isInRoomByChannel({ channel_uuid: channelMessage.channel_uuid, user, role_name: 'Moderator' }, transaction),
+            RPS.isInRoomByChannel({ channel_uuid: channelMessage.channel_uuid, user, role_name: 'Admin' }, transaction),
+        ]);
+
+        if (!isOwner && !isModerator && !isAdmin) {
+            throw new err.OwnershipOrLeastModRequiredError('channel_message');
+        }
+    }
+
+    /**
+     * @function createUpload
+     * @description Create a channel message upload file (helper function)
+     * @param {Object} options
+     * @param {String} options.uuid
+     * @param {String} options.room_uuid
+     * @param {Object} options.file
+     * @returns {Promise<String | null>}
+     */
+    async createUpload(options = { uuid: null, room_uuid: null, file: null }) {
+        if (!options) throw new Error('createUpload: options is required');
+        if (!options.uuid) throw new Error('createUpload: options.uuid is required');
+        if (!options.room_uuid) throw new Error('createUpload: options.room_uuid is required');
+
+        const { uuid, room_uuid, file } = options;
+
+        if (file && file.size > 0) {
+            const [singleLimit, totalLimit] = await Promise.all([
+                RPS.fileExceedsSingleFileSize({ room_uuid, bytes: file.size }),
+                RPS.fileExceedsTotalFilesLimit({ room_uuid, bytes: file.size }),
+            ]);
+
+            if (totalLimit) throw new err.ExceedsRoomTotalFilesLimitError();
+            if (singleLimit) throw new err.ExceedsSingleFileSizeError();
+
+            return await storage.uploadFile(file, uuid);
+        }
+
+        return null;
     }
 }
 
-const service = new Service();
+const service = new ChannelMessageService();
 
 export default service;

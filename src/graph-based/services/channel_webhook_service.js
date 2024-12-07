@@ -1,246 +1,417 @@
-import ChannelWebhookServiceValidator from '../../shared/validators/channel_webhook_service_validator.js';
-import ControllerError from '../../shared/errors/controller_error.js';
+import Validator from '../../shared/validators/channel_webhook_service_validator.js';
+import err from '../../shared/errors/index.js';
 import StorageService from '../../shared/services/storage_service.js';
-import RoomPermissionService from './room_permission_service.js';
+import BroadcastChannelService from '../../shared/services/broadcast_channel_service.js';
+import RPS from './room_permission_service.js';
 import dto from '../dto/channel_webhook_dto.js';
+import channelMessageDto from '../dto/channel_message_dto.js';
 import neodeInstance from '../neode/index.js';
-import NeodeBaseFindService from './neode_base_find_service.js';
-import { broadcastChannel } from '../../../websocket_server.js';
 import { v4 as uuidv4 } from 'uuid';
 
+/**
+ * @constant storage
+ * @description Storage service instance
+ * @type {StorageService}
+ */
 const storage = new StorageService('channel_avatar');
 
-class Service extends NeodeBaseFindService {
+/**
+ * @class ChannelWebhookService
+ * @description Service class for channel webhooks
+ * @exports ChannelWebhookService
+ */
+class ChannelWebhookService {
 
-    constructor() {
-        super('uuid', 'ChannelWebhook', dto);
-    }
-
+    /**
+     * @function findOne
+     * @description Find a channel webhook by UUID
+     * @param {Object} options - The options object
+     * @param {string} options.uuid - The channel webhook UUID
+     * @param {Object} options.user - The user object
+     * @param {Object} options.user.sub - The user UUID
+     * @returns {Promise<Object>} The channel webhook object
+     */
     async findOne(options = { uuid: null, user: null }) {
-        ChannelWebhookServiceValidator.findOne(options);
+        Validator.findOne(options);
 
         const webhhook = await neodeInstance.model('ChannelWebhook').find(options.uuid);
-        if (!webhhook) throw new ControllerError(404, 'Channel Webhook not found');
+        if (!webhhook) throw new err.EntityNotFoundError('channel_webhook');
 
         const channel = webhhook.get('channel').endNode().properties();
-        const roomFile = webhhook.get('room_file')?.endNode()?.properties();
+        const roomFile = webhhook.get('room_file')?.endNode();
+        const roomFileType = roomFile?.get('room_file_type')?.endNode();
 
-        if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid: channel.uuid, user: options.user, role_name: null }))) {
-            throw new ControllerError(403, 'User is not in the room');
-        }
+        const isInRoom = await RPS.isInRoomByChannel({ channel_uuid: channel.uuid, user: options.user });
+        if (!isInRoom) throw new err.RoomMemberRequiredError();
 
-        return dto(webhhook.properties(), [{ channel }, { roomFile }]);
+        return dto({
+            ...webhhook.properties(),
+            channel,
+            roomFile: roomFile?.properties(),
+            roomFileType: roomFileType?.properties(),
+        });
     }
 
+    /**
+     * @function findAll
+     * @description Find all channel webhooks in a room
+     * @param {Object} options - The options object
+     * @param {string} options.room_uuid - The room UUID
+     * @param {Object} options.user - The user object
+     * @param {Object} options.user.sub - The user UUID
+     * @param {number} options.page - The page number (optional)
+     * @param {number} options.limit - The limit number (optional)
+     * @returns {Promise<Object>} The channel webhook object
+     */
     async findAll(options = { room_uuid: null, user: null, page: null, limit: null }) {
-        options = ChannelWebhookServiceValidator.findAll(options);
+        options = Validator.findAll(options);
 
-        const { room_uuid, user, page, limit } = options;
+        const { room_uuid, user, page, limit, offset } = options;
 
-        if (!(await RoomPermissionService.isInRoom({ room_uuid, user, role_name: null }))) {
-            throw new ControllerError(403, 'User is not in the room');
-        }
+        const isInRoom = await RPS.isInRoom({ room_uuid, user });
+        if (!isInRoom) throw new err.RoomMemberRequiredError();
 
-        return super.findAll({ page, limit, override: {
-            match: [
-                'MATCH (c:Channel)-[:HAS_ROOM]->(r:Room { uuid: $room_uuid })',
-                'MATCH (cw:ChannelWebhook)-[:HAS_CHANNEL]->(c)',
-                'OPTIONAL MATCH (cw)-[:HAS_ROOM_FILE]->(rf:RoomFile)',
-                'OPTIONAL MATCH (rf)-[:HAS_ROOM_FILE_TYPE]->(ct:RoomFileType)',
-            ],
-            return: ['cw', 'c', 'rf', 'ct'],
-            map: { model: 'cw', relationships: [
-                { alias: 'c', to: 'channel' },
-                { alias: 'rf', to: 'roomFile' },
-                { alias: 'ct', to: 'roomFileType' },
-            ]},
-            params: { room_uuid }
-        }}); 
+        const result = await neodeInstance.cypher(
+            `MATCH (r:Room { uuid: $room_uuid })-[:COMMUNICATES_IN]->(c:Channel) ` +
+            `MATCH (c)<-[:WRITE_TO]-(cw:ChannelWebhook) ` +
+            `OPTIONAL MATCH (cw)-[:WEBHOOK_AVATAR_IS]->(ra:RoomFile) ` +
+            `OPTIONAL MATCH (ra)-[:TYPE_IS]->(rat:RoomFileType) ` +
+            `ORDER BY cw.created_at DESC ` +
+            (offset ? `SKIP $offset ` : ``) +
+            (limit ? `LIMIT $limit ` : ``) +
+            `RETURN cw, c, ra, rat, COUNT(cw) AS total`,
+            {
+                ...(offset && { offset: neo4j.int(offset) }),
+                ...(limit && { limit: neo4j.int(limit) }),
+                room_uuid
+            }
+        );
+
+        const total = result.records[0].get('total').low;
+        return {
+            total,
+            data: result.records.map(record => dto({
+                ...record.get('cw').properties,
+                channel: record.get('c').properties,
+                roomFile: record.get('ra')?.properties,
+                roomFileType: record.get('rat')?.properties,
+            })),
+            ...(limit && { limit }),
+            ...(page && limit && { page, pages: Math.ceil(total / limit) }),
+        };
     }
 
+    /**
+     * @function create
+     * @description Create a channel webhook
+     * @param {Object} options - The options object
+     * @param {Object} options.body - The request body
+     * @param {File} options.file - The request file
+     * @param {Object} options.user - The user object
+     * @param {string} options.user.sub - The user UUID
+     * @returns {Promise<Object>} The channel webhook object
+     */
     async create(options = { body: null, file: null, user: null }) {
-        ChannelWebhookServiceValidator.create(options);
+        Validator.create(options);
 
         const { body, file, user } = options;
         const { uuid, name, description, channel_uuid } = body;
 
-        if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid, user, role_name: 'Admin' }))) {
-            throw new ControllerError(403, 'User is not an admin of the room');
-        }
+        const isAdmin = await RPS.isInRoomByChannel({ channel_uuid, user, role_name: 'Admin' });
+        if (!isAdmin) throw new err.AdminPermissionRequiredError();
 
-        const channelInstance = await neodeInstance.model('Channel').find(channel_uuid);
-        if (!channelInstance) throw new ControllerError(404, 'Channel not found');
-
-        const uuidExists = await neodeInstance.model('ChannelWebhook').find(uuid);
-        if (uuidExists) throw new ControllerError(400, 'Channel Webhook with that UUID already exists');
-
-        const channelWebhookExists = await neodeInstance.cypher(
-            `MATCH (cw:ChannelWebhook)-[:HAS_CHANNEL]->(c:Channel { uuid: $channel_uuid }) ` +
-            `RETURN COUNT(cw) AS count`,
+        const channelResult = await neodeInstance.cypher(
+            'MATCH (c:Channel { uuid: $channel_uuid }) ' +
+            'MATCH (c)<-[:COMMUNICATES_IN]-(r:Room) ' +
+            'OPTIONAL MATCH (cw:ChannelWebhook)-[:WRITE_TO]->(c) ' +
+            'RETURN c, r, cw',
             { channel_uuid }
         );
-        if (channelWebhookExists.records[0].get('count').toNumber() > 0) {
-            throw new ControllerError(400, 'Channel already has a webhook');
-        }
+        if (channelResult.records.length == 0) throw err.EntityNotFoundError('channel');
 
-        const channelWebhook = await neodeInstance.model('ChannelWebhook').create({
-            uuid,
-            name,
-            description,
+        const uuidExists = await neodeInstance.model('ChannelWebhook').find(uuid);
+        if (uuidExists) throw new err.DuplicateEntryError('channel_webhook', 'uuid', uuid);
+
+        const channelWebhookExists = channelResult.records[0]?.get('cw')?.properties;
+        if (channelWebhookExists) throw new err.ControllerError(400, 'channel already has a webhook');
+
+        const room = channelResult.records[0].get('r').properties;
+        const room_file_src = await this.createAvatar({ uuid, room_uuid: room.uuid, file });
+
+        const session = neodeInstance.session();
+        await session.writeTransaction(async tx => {
+            // Create channel webhook
+            await tx.run(
+                'MATCH (c:Channel { uuid: $channel_uuid }) ' +
+                'CREATE (cw:ChannelWebhook {uuid: $uuid, name: $name, description: $description, created_at: datetime(), updated_at: datetime()}) ' +
+                'CREATE (cw)-[:WRITE_TO]->(c)',
+                { uuid, name, description, channel_uuid }
+            );
+
+            if (room_file_src) {
+                // Create room file
+                await tx.run(
+                    'MATCH (cw:ChannelWebhook { uuid: $uuid }) ' +
+                    'MATCH (r:Room { uuid: $room_uuid }) ' +
+                    'MATCH (rft:RoomFileType { name: "ChannelWebhookAvatar" }) ' +
+                    'MATCH (rf:RoomFile { uuid: $room_file_uuid, src: $room_file_src, size: $room_file_size, created_at: datetime(), updated_at: datetime() }) ' +
+                    'CREATE (rf)-[:TYPE_IS]->(rft) ' +
+                    'CREATE (rf)-[:STORED_IN]->(r) ' +
+                    'CREATE (cw)-[:WEBHOOK_AVATAR_IS]->(rf)',
+                    { room_uuid: room.uuid, room_file_uuid: uuidv4(), room_file_src, room_file_size: file.size }
+                );
+            }
+        }).catch(error => {
+            if (room_file_src) storage.deleteFile(storage.parseKey(room_file_src));
+            console.error('transaction', error);
+            throw error;
+        }).finally(() => {
+            session.close();
         });
-
-        await channelWebhook.relateTo(channelInstance, 'channel');
-
-        if (file && file.size > 0) {
-            const room = channelInstance.get('room').endNode().properties();
-            const roomInstance = await neodeInstance.model('Room').find(room.uuid);
-            const size = file.size;
-
-            if ((await RoomPermissionService.fileExceedsTotalFilesLimit({ room_uuid: room.uuid, bytes: size }))) {
-                throw new ControllerError(400, 'The room does not have enough space for this file');
-            }
-            if ((await RoomPermissionService.fileExceedsSingleFileSize({ room_uuid: room.uuid, bytes: size }))) {
-                throw new ControllerError(400, 'File exceeds single file size limit');
-            }
-
-            const roomFileType = await neodeInstance.model('RoomFileType').find('ChannelWebhookAvatar');
-            const src = await storage.uploadFile(file, uuid);
-            const roomFile = await neodeInstance.model('RoomFile').create({ uuid: uuidv4(), src, size });
-            await roomFile.relateTo(roomFileType, 'room_file_type');
-            await roomFile.relateTo(roomInstance, 'room');
-            await channelWebhook.relateTo(roomFile, 'room_file');
-        }
 
         return this.findOne({ uuid, user });
     }
 
+    /**
+     * @function update
+     * @description Update a channel webhook
+     * @param {Object} options - The options object
+     * @param {string} options.uuid - The channel webhook UUID
+     * @param {Object} options.body - The request body
+     * @param {File} options.file - The request file
+     * @param {Object} options.user - The user object
+     * @param {string} options.user.sub - The user UUID
+     * @returns {Promise<Object>} The channel webhook object
+     */
     async update(options = { uuid: null, body: null, file: null, user: null }) {
-        ChannelWebhookServiceValidator.update(options);
+        Validator.update(options);
 
         const { uuid, body, file, user } = options;
         const { name, description } = body;
 
-        const webhookInstance = await neodeInstance.model('ChannelWebhook').find(uuid);
-        if (!webhookInstance) throw new ControllerError(404, 'Channel Webhook not found');
+        const result = await neodeInstance.cypher(
+            'MATCH (cw:ChannelWebhook { uuid: $uuid })-[:WRITE_TO]->(c) ' +
+            'MATCH (c)<-[:COMMUNICATES_IN]-(r:Room) ' +
+            'OPTIONAL MATCH (cw)-[:WEBHOOK_AVATAR_IS]->(rf:RoomFile) ' +
+            'RETURN c, cw, r, rf',
+            { uuid }
+        );
+        if (result.records.length == 0) throw new err.EntityNotFoundError('channel_webhook');
 
-        const channel = webhookInstance.get('channel').endNode().properties();
-        if (!channel) throw new ControllerError(404, 'Channel not found');
+        const webhhook = result.records[0].get('cw').properties;
+        if (!webhhook) throw new err.EntityNotFoundError('channel_webhook');
 
-        if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid: channel.uuid, user, role_name: 'Admin' }))) {
-            throw new ControllerError(403, 'User is not an admin of the room');
-        }
+        const room = result.records[0].get('r').properties;
+        const oldRoomFile = result.records[0].get('rf')?.properties;
 
-        const props = {};
-        if (name) props.name = name;
-        if (description) props.description = description;
-        if (Object.keys(props).length > 0) await webhookInstance.update(props);
+        const isAdmin = await RPS.isInRoom({ room_uuid: room.uuid, user, role_name: 'Admin' });
+        if (!isAdmin) throw new err.AdminPermissionRequiredError();
 
-        if (file && file.size > 0) {
-            const size = file.size;
-            const channelInstance = await neodeInstance.model('Channel').find(channel.uuid);
-            const room = channelInstance.get('room').endNode().properties();
-            const roomInstance = await neodeInstance.model('Room').find(room.uuid);
-            const room_uuid = room.uuid;
+        const room_file_src = await this.createAvatar({ uuid, room_uuid: room.uuid, file });
 
-            if ((await RoomPermissionService.fileExceedsTotalFilesLimit({ room_uuid, bytes: size }))) {
-                throw new ControllerError(400, 'The room does not have enough space for this file');
+        const session = neodeInstance.session();
+        await session.writeTransaction(async tx => {
+            if (name) await tx.run(
+                'MATCH (cw:ChannelWebhook { uuid: $uuid }) ' +
+                'SET cw.name = $name',
+                { uuid, name }
+            );
+
+            if (description) await tx.run(
+                'MATCH (cw:ChannelWebhook { uuid: $uuid }) ' +
+                'SET cw.description = $description',
+                { uuid, description }
+            );
+
+            // update avatar
+            if (room_file_src) {
+                // Delete old avatar if exists
+                if (oldRoomFile) await tx.run(
+                    'MATCH (rf:RoomFile { uuid: $room_file_uuid }) ' +
+                    'DETACH DELETE rf',
+                    { room_file_uuid: oldRoomFile.uuid }
+                );
+                // Create room file
+                await tx.run(
+                    'MATCH (cw:ChannelWebhook { uuid: $uuid }) ' +
+                    'MATCH (r:Room { uuid: $room_uuid }) ' +
+                    'MATCH (rft:RoomFileType { name: "ChannelWebhookAvatar" }) ' +
+                    'MATCH (rf:RoomFile { uuid: $room_file_uuid, src: $room_file_src, size: $room_file_size, created_at: datetime(), updated_at: datetime() }) ' +
+                    'CREATE (rf)-[:TYPE_IS]->(rft) ' +
+                    'CREATE (rf)-[:STORED_IN]->(r) ' +
+                    'CREATE (cw)-[:WEBHOOK_AVATAR_IS]->(rf)',
+                    { room_uuid: room.uuid, room_file_uuid: uuidv4(), room_file_src, room_file_size: file.size }
+                );
             }
-            if ((await RoomPermissionService.fileExceedsSingleFileSize({ room_uuid, bytes: size }))) {
-                throw new ControllerError(400, 'File exceeds single file size limit');
-            }
 
-            const roomFileType = await neodeInstance.model('RoomFileType').find('ChannelWebhookAvatar');
-            const src = await storage.uploadFile(file, uuid);
-            const roomFile = await neodeInstance.model('RoomFile').create({ uuid: uuidv4(), src, size });
-            await roomFile.relateTo(roomFileType, 'room_file_type');
-            await roomFile.relateTo(roomInstance, 'room');
-            await webhookInstance.relateTo(roomFile, 'room_file');
-        }
+            // update updated_at
+            await tx.run(
+                'MATCH (cw:ChannelWebhook { uuid: $uuid }) ' +
+                'SET cw.updated_at = datetime()',
+                { uuid }
+            );
+        }).catch(error => {
+            if (room_file_src) storage.deleteFile(storage.parseKey(room_file_src));
+            console.error('transaction', error);
+            throw error;
+        }).finally(() => {
+            session.close();
+        });
 
         return this.findOne({ uuid, user });
     }
 
+    /**
+     * @function destroy
+     * @description Destroy a channel webhook
+     * @param {Object} options - The options object
+     * @param {string} options.uuid - The channel webhook UUID
+     * @param {Object} options.user - The user object
+     * @param {string} options.user.sub - The user UUID
+     * @returns {Promise<void>}
+     */
     async destroy(options = { uuid: null, user: null }) {
-        ChannelWebhookServiceValidator.destroy(options);
+        Validator.destroy(options);
 
         const { uuid, user } = options;
 
-        const webhookInstance = await neodeInstance.model('ChannelWebhook').find(uuid);
-        if (!webhookInstance) throw new ControllerError(404, 'Channel Webhook not found');
+        const result = await neodeInstance.cypher(
+            'MATCH (cw:ChannelWebhook { uuid: $uuid })-[:WRITE_TO]->(c) ' +
+            'MATCH (c)<-[:COMMUNICATES_IN]-(r:Room) ' +
+            'OPTIONAL MATCH (cw)-[:WEBHOOK_AVATAR_IS]->(rf:RoomFile) ' +
+            'RETURN c, cw, r, rf',
+            { uuid }
+        );
+        if (result.records.length == 0) throw new err.EntityNotFoundError('channel_webhook');
 
-        const channel = webhookInstance.get('channel').endNode().properties();
-        if (!channel) throw new ControllerError(404, 'Channel not found');
+        const webhhook = result.records[0].get('cw').properties;
+        if (!webhhook) throw new err.EntityNotFoundError('channel_webhook');
 
-        if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid: channel.uuid, user, role_name: 'Admin' }))) {
-            throw new ControllerError(403, 'User is not an admin of the room');
-        }
+        const room = result.records[0].get('r').properties;
+        const roomFile = result.records[0].get('rf')?.properties;
 
-        const src = webhookInstance.get('room_file')?.endNode()?.properties()?.src;
+        const isAdmin = await RPS.isInRoom({ room_uuid: room.uuid, user, role_name: 'Admin' });
+        if (!isAdmin) throw new err.AdminPermissionRequiredError();
 
         const session = neodeInstance.session();
-        session.writeTransaction(async (transaction) => {
+        await session.writeTransaction(async (transaction) => {
             await transaction.run(
                 `MATCH (cw:ChannelWebhook { uuid: $uuid }) ` +
-                `OPTIONAL MATCH (rf:RoomFile)-[:HAS_ROOM_FILE]->(cw) ` +
-                `OPTIONAL MATCH (cw)-[:HAS_CHANNEL_WEBHOOK_MESSAGE]->(cwm:ChannelWebhookMessage) ` +
-                `OPTIONAL MATCH (cm:ChannelMessage)-[:HAS_CHANNEL_WEBHOOK_MESSAGE]->(cwm) ` +
+                `OPTIONAL MATCH (cw)-[:WEBHOOK_AVATAR_IS]->(rf:RoomFile) ` +
+                `OPTIONAL MATCH (cw)<-[:WRITTEN_BY]-(cwm:ChannelWebhookMessage) ` +
+                `OPTIONAL MATCH (cm:ChannelMessage)-[:GENERATED_BY]->(cwm) ` +
                 `DETACH DELETE cw, rf, cwm, cm`,
                 { uuid }
             );
 
-            if (src) {
-                const key = storage.parseKey(src);
+            if (roomFile) {
+                const key = storage.parseKey(roomFile.src);
                 await storage.deleteFile(key);
             }
+        }).catch(error => {
+            console.error('transaction', error);
+            throw error;
+        }).finally(() => {
+            session.close();
         });
     }
 
+    /**
+     * @function message
+     * @description Send a message to a channel webhook
+     * @param {Object} options - The options object
+     * @param {string} options.uuid - The channel webhook UUID
+     * @param {Object} options.body - The request body
+     * @param {string} options.body.message - The message body
+     * @returns {Promise<void>}
+     */
     async message(options = { uuid: null, body: null }) {
-        ChannelWebhookServiceValidator.message(options);
+        Validator.message(options);
 
         const { uuid, body } = options;
         const { message } = body;
 
-        const webhookInstance = await neodeInstance.model('ChannelWebhook').find(uuid);
-        if (!webhookInstance) throw new ControllerError(404, 'Channel Webhook not found');
+        const result = await neodeInstance.cypher(
+            'MATCH (cw:ChannelWebhook { uuid: $uuid })-[:WRITE_TO]->(c) ' +
+            'MATCH (c)<-[:COMMUNICATES_IN]-(r:Room) ' +
+            'OPTIONAL MATCH (cw)-[:WEBHOOK_AVATAR_IS]->(rf:RoomFile) ' +
+            'RETURN c, cw, r, rf',
+            { uuid }
+        );
+        if (result.records.length == 0) throw new err.EntityNotFoundError('channel_webhook');
 
-        const channel = webhookInstance.get('channel').endNode().properties();
-        if (!channel) throw new ControllerError(404, 'Channel not found');
-        const channelInstance = await neodeInstance.model('Channel').find(channel.uuid);
+        const webhhook = result.records[0].get('cw').properties;
+        if (!webhhook) throw new err.EntityNotFoundError('channel_webhook');
 
-        const channelMessageType = await neodeInstance.model('ChannelMessageType').find('Webhook');
-        if (!channelMessageType) throw new ControllerError(500, 'Channel Message Type not found');
+        const channel = result.records[0].get('c').properties;
+        const channelWebhookFile = result.records[0].get('rf')?.properties;
 
-        const channelWebhookMessageType = await neodeInstance.model('ChannelWebhookMessageType').find('Custom');
-        if (!channelWebhookMessageType) throw new ControllerError(500, 'Channel Webhook Message Type not found');
+        try {
+            const result = await neodeInstance.writeCypher(
+                'MATCH (cw:ChannelWebhook { uuid: $uuid }) ' +
+                'MATCH (cwt:ChannelWebhookMessageType { name: "Custom" }) ' +
+                'MATCH (cmt:ChannelMessageType { name: "Webhook" }) ' +
+                'CREATE (cwm:ChannelWebhookMessage { uuid: $cwm_uuid, body: $body, created_at: datetime(), updated_at: datetime() }) ' +
+                'CREATE (cm:ChannelMessage { uuid: $cm_uuid, body: $body, created_at: datetime(), updated_at: datetime() }) ' +
+                'CREATE (cwm)-[:WRITTEN_BY]->(cw) ' +
+                'CREATE (cwm)-[:TYPE_IS]->(cwt) ' +
+                'CREATE (cm)-[:GENERATED_BY]->(cwm) ' +
+                'CREATE (cm)-[:TYPE_IS]->(cmt) ' +
+                'RETURN cm, cmt, cwm, cwt',
+                { uuid, cwm_uuid: uuidv4(), cm_uuid: uuidv4(), body: message }
+            )
 
-        const channelWebhookMessage = await neodeInstance.model('ChannelWebhookMessage').create({
-            uuid: uuidv4(),
-            body: message,
-        });
+            const channelMessage = result.records[0].get('cm').properties;
+            const channelMessageType = result.records[0].get('cmt').properties;
+            const channelWebhookMessage = result.records[0].get('cwm').properties;
+            const channelWebhookMessageType = result.records[0].get('cwt').properties;
 
-        const channelMessage = await neodeInstance.model('ChannelMessage').create({
-            uuid: uuidv4(),
-            body: message,
-        });
+            BroadcastChannelService.create(channelMessageDto({
+                ...channelMessage,
+                channelMessageType,
+                channelWebhookMessage,
+                channelWebhookMessageType,
+                channelWebhookFile,
+                channel,
+            }))
+        } catch (error) {
+            console.error(error);
+            throw error;
+        }
+    }
 
-        await channelMessage.relateTo(channelInstance, 'channel');
-        await channelMessage.relateTo(channelMessageType, 'channel_message_type');
-        await channelMessage.relateTo(channelWebhookMessage, 'channel_webhook_message');
+    /**
+     * @function createAvatar
+     * @description Create a channel webhook avatar (helper function)
+     * @param {Object} options
+     * @param {String} options.uuid
+     * @param {String} options.room_uuid
+     * @param {Object} options.file
+     * @returns {Promise<String | null>}
+     */
+    async createAvatar(options = { uuid: null, room_uuid: null, file: null }) {
+        if (!options) throw new Error('createAvatar: options is required');
+        if (!options.uuid) throw new Error('createAvatar: options.uuid is required');
+        if (!options.room_uuid) throw new Error('createAvatar: options.room_uuid is required');
 
-        await channelWebhookMessage.relateTo(webhookInstance, 'channel_webhook');
-        await channelWebhookMessage.relateTo(channelWebhookMessageType, 'channel_webhook_message_type');
+        const { uuid, room_uuid, file } = options;
 
-        const channel_uuid = channel.uuid;
+        if (file && file.size > 0) {
+            const [singleLimit, totalLimit] = await Promise.all([
+                RPS.fileExceedsSingleFileSize({ room_uuid, bytes: file.size }),
+                RPS.fileExceedsTotalFilesLimit({ room_uuid, bytes: file.size }),
+            ]);
 
-        /**
-          * Broadcast the channel message to all users
-          * in the room where the channel message was deleted.
-          */
-        broadcastChannel(`channel-${channel_uuid}`, 'chat_message_created', { channel_uuid });
+            if (totalLimit) throw new err.ExceedsRoomTotalFilesLimitError();
+            if (singleLimit) throw new err.ExceedsSingleFileSizeError();
+
+            return await storage.uploadFile(file, uuid);
+        }
+
+        return null;
     }
 }
 
-const service = new Service();
+const service = new ChannelWebhookService();
 
 export default service;

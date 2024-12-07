@@ -1,19 +1,40 @@
 import TypeServiceValidator from '../../shared/validators/type_service_validator.js';
-import ControllerError from '../../shared/errors/controller_error.js';
+import err from '../../shared/errors/index.js';
 import neodeInstance from '../neode/index.js';
 import dto from '../dto/type_dto.js';
 import neo4j from 'neo4j-driver';
 
-class Service {
+/**
+ * @class RoomCategoryService
+ * @description Service class for room categories.
+ * @exports RoomCategoryService
+ */
+class RoomCategoryService {
+
+    /**
+     * @function findOne
+     * @description Find a room category by name.
+     * @param {Object} options
+     * @param {string} options.name
+     * @returns {Promise<Object>}
+     */
     async findOne(options = { name: null }) {
         TypeServiceValidator.findOne(options);
 
         const result = await neodeInstance.model('RoomCategory').find(options.name);
-        if (!result) throw new ControllerError(404, 'room_category not found');
+        if (!result) throw new err.EntityNotFoundError('room_category');
 
         return dto(result.properties());
     }
 
+    /**
+     * @function findAll
+     * @description Find all room categories.
+     * @param {Object} options
+     * @param {number} options.page optional
+     * @param {number} options.limit optional
+     * @returns {Promise<Object>}
+     */
     async findAll(options = { page: null, limit: null }) {
         options = TypeServiceValidator.findAll(options);
 
@@ -40,6 +61,6 @@ class Service {
     }
 }
 
-const service = new Service();
+const service = new RoomCategoryService();
 
 export default service;

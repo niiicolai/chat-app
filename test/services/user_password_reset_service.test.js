@@ -1,24 +1,55 @@
 import RelationalUserPasswordResetService from '../../src/relational-based/services/user_password_reset_service.js';
-import DocumentUserPasswordResetService from '../../src/document-based/services/user_password_reset_service.js';
-import GraphUserPasswordResetService from '../../src/graph-based/services/user_password_reset_service.js';
-import { test, expect } from 'vitest';
-import { context } from '../context.js';
-import { v4 as uuidv4 } from 'uuid';
+import RelationalUserService from '../../src/relational-based/services/user_service.js';
 
-const userPasswordResetServiceTest = (UserPasswordResetService, name) => {
+import DocumentUserPasswordResetService from '../../src/document-based/services/user_password_reset_service.js';
+import DocumentUserService from '../../src/document-based/services/user_service.js';
+
+import GraphUserPasswordResetService from '../../src/graph-based/services/user_password_reset_service.js';
+import GraphUserService from '../../src/graph-based/services/user_service.js';
+
+import data from '../../src/seed_data.js';
+import { test, expect } from 'vitest';
+import { v4 as v4uuid } from 'uuid';
+
+const userPasswordResetServiceTest = (UserPasswordResetService, UserService, name) => {
+
+    /**
+     * Exisiting entities
+     */
+
+    const user = { ...data.users.find(u => u.username === 'pass_reset_user') };
+
+
+
+    /**
+     * New entities
+     */
+    
+    const userResetUuid = v4uuid();
+    const userRandomPass = v4uuid();
+
+
+
+    /**
+     * Expected methods
+     */
 
     test(`(${name}) - UserPasswordResetService must implement expected methods`, () => {
         expect(UserPasswordResetService).toHaveProperty('create');
         expect(UserPasswordResetService).toHaveProperty('resetPassword');
     });
 
+
+
+    /**
+     * UserPasswordResetService.create
+     */
+
     test.each([
-        [{ body: { email: `test-${uuidv4()}@example.com` } }],
-        [{ body: { email: context.admin.email } }],
-        [{ body: { email: context.mod.email } }],
-        [{ body: { email: context.member.email } }],
-    ])(`(${name}) - UserPasswordResetService.create valid partitions`, async (options) => {
-        await UserPasswordResetService.create(options);
+        [{ body: { email: `test@example.com` } }, v4uuid()],
+        [{ body: { email: user.email } }, userResetUuid],
+    ])(`(${name}) - UserPasswordResetService.create valid partitions`, async (options, resetUuid) => {
+        await UserPasswordResetService.create(options, resetUuid);
     });
 
     test.each([
@@ -30,6 +61,21 @@ const userPasswordResetServiceTest = (UserPasswordResetService, name) => {
         [ { test: null }, 'No body provided' ],
     ])(`(${name}) - UserPasswordResetService.create invalid partitions`, async (options, expected) => {
         expect(async () => await UserPasswordResetService.create(options)).rejects.toThrowError(expected);
+    });
+
+
+
+    /**
+     * UserPasswordResetService.resetPassword
+     */
+
+    test.each([
+        [{ uuid: userResetUuid, body: { password: userRandomPass } }, user.email],
+    ])(`(${name}) - UserPasswordResetService.resetPassword valid partitions`, async (options, email) => {
+        await UserPasswordResetService.resetPassword(options);
+        // Verify the password is working
+        const { token } = await UserService.login({ body: { email, password: options.body.password } });
+        expect(token).toBeDefined();
     });
 
     test.each([
@@ -46,6 +92,6 @@ const userPasswordResetServiceTest = (UserPasswordResetService, name) => {
     });
 };
 
-userPasswordResetServiceTest(RelationalUserPasswordResetService, 'Relational');
-userPasswordResetServiceTest(DocumentUserPasswordResetService, 'Document');
-userPasswordResetServiceTest(GraphUserPasswordResetService, 'Graph');
+userPasswordResetServiceTest(RelationalUserPasswordResetService, RelationalUserService, 'Relational');
+userPasswordResetServiceTest(DocumentUserPasswordResetService, DocumentUserService, 'Document');
+userPasswordResetServiceTest(GraphUserPasswordResetService, GraphUserService, 'Graph');

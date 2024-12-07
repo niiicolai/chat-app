@@ -1,16 +1,27 @@
-import RoomFileServiceValidator from '../../shared/validators/room_file_service_validator.js';
-import ControllerError from '../../shared/errors/controller_error.js';
+import Validator from '../../shared/validators/room_file_service_validator.js';
+import err from '../../shared/errors/index.js';
 import StorageService from '../../shared/services/storage_service.js';
-import RoomPermissionService from './room_permission_service.js';
+import RPS from './room_permission_service.js';
 import dto from '../dto/room_file_dto.js';
 import RoomFile from '../mongoose/models/room_file.js';
 import Room from '../mongoose/models/room.js';
 import ChannelMessage from '../mongoose/models/channel_message.js';
 import Channel from '../mongoose/models/channel.js';
+import mongoose from '../mongoose/index.js';
 
+/**
+ * @constant storage
+ * @description Storage service instance
+ * @type {StorageService}
+ */
 const storage = new StorageService('room_file');
 
-class Service {
+/**
+ * @class RoomFileService
+ * @description Service class for room files.
+ * @exports RoomFileService
+ */
+class RoomFileService {
 
     /**
      * @function findOne
@@ -19,19 +30,19 @@ class Service {
      * @param {String} options.uuid
      * @param {Object} options.user
      * @param {String} options.user.sub
-     * @returns {Object}
+     * @returns {Promise<Object>}
      */
     async findOne(options = { uuid: null, user: null }) {
-        RoomFileServiceValidator.findOne(options);
+        Validator.findOne(options);
 
-        const roomFile = await RoomFile.findOne({ uuid: options.uuid }).populate('room');
-        if (!roomFile) throw new ControllerError(404, 'room_file not found');
+        const { uuid, user } = options;
+        const roomFile = await RoomFile.findOne({ _id: uuid }).populate('room');
+        if (!roomFile) throw new err.EntityNotFoundError('room_file');
 
-        if (!(await RoomPermissionService.isInRoom({ room_uuid: roomFile.room.uuid, user: options.user, role_name: null }))) {
-            throw new ControllerError(403, 'User is not in the room');
-        }
+        const isInRoom = await RPS.isInRoom({ room_uuid: roomFile.room._id, user });
+        if (!isInRoom) throw new err.RoomMemberRequiredError();
 
-        return dto(roomFile);
+        return dto(roomFile._doc);
     }
 
     /**
@@ -41,34 +52,35 @@ class Service {
      * @param {String} options.room_uuid
      * @param {Object} options.user
      * @param {String} options.user.sub
-     * @param {Number} options.page
-     * @param {Number} options.limit
-     * @returns {Object}
+     * @param {Number} options.page optional
+     * @param {Number} options.limit optional
+     * @returns {Promise<Object>}
      */
     async findAll(options = { room_uuid: null, user: null, page: null, limit: null }) {
-        options = RoomFileServiceValidator.findAll(options);
-        const { room_uuid, page, limit, offset } = options;
+        options = Validator.findAll(options);
 
-        if (!(await RoomPermissionService.isInRoom({ room_uuid, user: options.user, role_name: null }))) {
-            throw new ControllerError(403, 'User is not in the room');
-        }
-        
-        const room = await Room.findOne({ uuid: room_uuid });
-        if (!room) throw new ControllerError(404, 'Room not found');
+        const { room_uuid, page, limit, offset, user } = options;
+
+        const room = await Room.findOne({ _id: room_uuid });
+        if (!room) throw new err.EntityNotFoundError('room');
+
+        const isInRoom = await RPS.isInRoom({ room_uuid, user });
+        if (!isInRoom) throw new err.RoomMemberRequiredError();
         
         const params = { room: room._id };
-        const total = await RoomFile.find(params).countDocuments();
-        const roomFiles = await RoomFile.find(params)
-            .populate('room')
-            .sort({ created_at: -1 })
-            .limit(limit || 0)
-            .skip((page && limit) ? offset : 0);
+        const [total, data] = await Promise.all([
+            RoomFile.find(params).countDocuments(),
+            RoomFile.find(params)
+                .populate('room')
+                .sort({ created_at: -1 })
+                .limit(limit || 0)
+                .skip((page && limit) ? offset : 0)
+                .then((files) => files.map((file) => dto(file._doc))),
+        ]);
 
         return {
             total,
-            data: await Promise.all(roomFiles.map(async (roomFile) => {
-                return dto({ ...roomFile._doc, room: { uuid: room_uuid } });
-            })),
+            data,
             ...(limit && { limit }),
             ...(page && limit && { page, pages: Math.ceil(total / limit) }),
         };
@@ -81,56 +93,71 @@ class Service {
      * @param {String} options.uuid
      * @param {Object} options.user
      * @param {String} options.user.sub
-     * @returns {void}
+     * @returns {Promise<void>}
      */
     async destroy(options = { uuid: null, user: null }) {
-        RoomFileServiceValidator.destroy(options);
+        Validator.destroy(options);
 
         const { uuid, user } = options;
-        const roomFile = await RoomFile.findOne({ uuid }).populate('room');
-        if (!roomFile) throw new ControllerError(404, 'Room file not found');
+        const roomFile = await RoomFile.findOne({ _id: uuid }).populate('room');
+        if (!roomFile) throw new err.EntityNotFoundError('room_file');
 
-        const room_uuid = roomFile.room.uuid;
-        const isMessageUpload = roomFile.room_file_type.name === 'ChannelMessageUpload';
+        const room_uuid = roomFile.room._id;
+        const isMessageUpload = roomFile.room_file_type === 'ChannelMessageUpload';
 
         const [isOwner, isAdmin, isModerator] = await Promise.all([
             this.isOwner({ uuid, user }),
-            RoomPermissionService.isInRoom({ room_uuid, user, role_name: 'Admin' }),
-            RoomPermissionService.isInRoom({ room_uuid, user, role_name: 'Moderator' })
+            RPS.isInRoom({ room_uuid, user, role_name: 'Admin' }),
+            RPS.isInRoom({ room_uuid, user, role_name: 'Moderator' })
         ]);
 
         if (!isOwner && !isAdmin && !isModerator) {
-            throw new ControllerError(403, 'User is not an owner of the file, or an admin or moderator of the room');
+            throw new err.OwnershipOrLeastModRequiredError("room_file");
         }
 
-        if (isMessageUpload) {
-            await ChannelMessage
-                .findOne({ 'channel_message_upload.room_file': roomFile._id })
-                .updateOne({ 'channel_message_upload': null });
-        }
-        else if (roomFile.room_file_type.name === 'ChannelWebhookAvatar') {
-            await Channel
-                .findOne({ 'channel_webhook.room_file': roomFile._id })
-                .updateOne({ 'channel_webhook.room_file': null });
-        }
-        else if (roomFile.room_file_type.name === 'ChannelAvatar') {
-            await Channel
-                .findOne({ room_file: roomFile._id })
-                .updateOne({ room_file: null });
-        }
-        else if (roomFile.room_file_type.name === 'RoomAvatar') {
-            await Room
-                .findOne({ uuid: roomFile.room.uuid })
-                .updateOne({ 'room_avatar.room_file': null });
-        }
-       
-        await RoomFile.deleteOne({ uuid });
+        const session = await mongoose.startSession();
+        session.startTransaction();
+        try {
+            if (isMessageUpload) {
+                await ChannelMessage.updateOne(
+                    { 'channel_message_upload.room_file': uuid },
+                    { $unset: { channel_message_upload: "" } },
+                    { session }
+                );
+            }
+            else if (roomFile.room_file_type.name === 'ChannelWebhookAvatar') {
+                await Channel.updateOne(
+                    { 'channel_webhook.room_file': uuid },
+                    { $unset: { 'channel_webhook.room_file': "" } },
+                    { session }
+                );
+            }
+            else if (roomFile.room_file_type.name === 'ChannelAvatar') {
+                await Channel.updateOne(
+                    { room_file: uuid },
+                    { $unset: { room_file: "" } },
+                    { session }
+                );
+            }
+            else if (roomFile.room_file_type.name === 'RoomAvatar') {
+                await Channel.updateOne(
+                    { _id: room_uuid },
+                    { $unset: { 'room_avatar.room_file': "" } },
+                    { session }
+                );
+            }
 
-        /**
-         * Delete the file from storage as well
-         */
-        const key = storage.parseKey(roomFile.src);
-        storage.deleteFile(key);
+            await RoomFile.deleteOne({ _id: roomFile._id }, { session });
+            await session.commitTransaction();
+
+            const key = storage.parseKey(roomFile.src);
+            await storage.deleteFile(key);
+        } catch (error) {
+            await session.abortTransaction();
+            throw error;
+        } finally {
+            session.endSession();
+        }
     }
 
     /**
@@ -140,20 +167,22 @@ class Service {
      * @param {String} options.uuid
      * @param {Object} options.user
      * @param {String} options.user.sub
-     * @returns {Boolean}
+     * @returns {Promise<Boolean>}
      */
     async isOwner(options = { uuid: null, user: null }) {
-        RoomFileServiceValidator.isOwner(options);
+        Validator.isOwner(options);
 
         const { uuid, user } = options;
         const { sub: user_uuid } = user;
-        const channelMessage = await ChannelMessage.findOne({ 'channel_message_upload.room_file.uuid': uuid })
+        const channelMessage = await ChannelMessage
+            .findOne({ 'channel_message_upload.room_file': uuid })
             .populate('user');
+
         if (!channelMessage) return false;
-        return channelMessage.user.uuid === user_uuid;
+        return channelMessage.user._id === user_uuid;
     }
 };
 
-const service = new Service();
+const service = new RoomFileService();
 
 export default service;

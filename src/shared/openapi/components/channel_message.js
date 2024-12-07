@@ -61,6 +61,9 @@ export default {
             body: {
                 type: 'string'
             },
+            channel_uuid: {
+                type: 'string'
+            },
             file: {
                 type: 'string',
                 format: 'binary'

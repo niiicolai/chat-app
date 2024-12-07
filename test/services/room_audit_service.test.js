@@ -1,37 +1,49 @@
 import RelationalRoomAuditService from '../../src/relational-based/services/room_audit_service.js';
-import RelationalUserService from '../../src/relational-based/services/user_service.js';
-
 import DocumentRoomAuditService from '../../src/document-based/services/room_audit_service.js';
-import DocumentUserService from '../../src/document-based/services/user_service.js';
-
 import GraphRoomAuditService from '../../src/graph-based/services/room_audit_service.js';
-import GraphUserService from '../../src/graph-based/services/user_service.js';
 
-import { context } from '../context.js';
-import { test, expect, beforeAll } from 'vitest';
-import { v4 as uuidv4 } from 'uuid';
+import data from '../../src/seed_data.js';
+import { test, expect } from 'vitest';
 
-const roomAuditServiceTest = (RoomAuditService, UserService, name) => {
-    const user = { 
-        uuid: uuidv4(),
-        username: `test-${uuidv4()}`,
-        email: `test-${uuidv4()}@example.com`,
-        password: '12345678',
-    };
+const roomAuditServiceTest = (RoomAuditService, name) => {
 
-    beforeAll(async () => {
-        await UserService.create({ body: user });
-    });
+    /**
+     * Exisiting entities
+     */
+
+    const user = { sub: data.users.find(u => u.username === 'not_in_a_room').uuid };
+    const room_uuid = data.rooms[0].uuid;
+    const admin = { sub: data.users[0].uuid };
+
+
+
+    /**
+     * Fake entities
+     */
+
+    const fakeId = '1635e897-b84b-4b98-b8cf-5471ff349022';
+
+
+
+    /**
+     * Expected Methods
+     */
 
     test(`(${name}) - RoomAuditService must implement expected methods`, () => {
         expect(RoomAuditService).toHaveProperty('findOne');
         expect(RoomAuditService).toHaveProperty('findAll');
     });
 
+
+
+    /**
+     * RoomAuditService.findAll
+     */
+
     test.each([
-        [{ room_uuid: context.room.uuid, user: context.admin, limit: 2 }],
-        [{ room_uuid: context.room.uuid, user: context.admin, limit: 1 }],
-        [{ room_uuid: context.room.uuid, user: context.admin, limit: 2, page: 1 }],
+        [{ room_uuid, user: admin, limit: 2 }],
+        [{ room_uuid, user: admin, limit: 1 }],
+        [{ room_uuid, user: admin, limit: 2, page: 1 }],
     ])(`(${name}) - RoomAuditService.findAll valid partitions`, async (options) => {
         const result = await RoomAuditService.findAll(options);
 
@@ -59,21 +71,27 @@ const roomAuditServiceTest = (RoomAuditService, UserService, name) => {
         [0, 'Invalid options provided'],
         [[], 'Invalid options provided'],
         [{ page: 1 }, 'No room_uuid provided'],
-        [{ room_uuid: "test" }, 'No user provided'],
-        [{ room_uuid: "test", user: {}, page: 1 }, 'No user.sub provided'],
-        [{ room_uuid: "test", user: { sub: "test" }, page: 1 }, 'page requires limit'],
-        [{ room_uuid: "test", user: { sub: "test" }, page: -1 }, 'page must be greater than 0'],
-        [{ room_uuid: "test", user: { sub: "test" }, page: "test" }, 'page must be a number'],
-        [{ room_uuid: "test", user: { sub: "test" }, page: 1, limit: -1 }, 'limit must be greater than 0'],
-        [{ room_uuid: "test", user: { sub: "test" }, page: 1, limit: "test" }, 'limit must be a number'],
+        [{ room_uuid: fakeId }, 'No user provided'],
+        [{ room_uuid: fakeId, user: {}, page: 1 }, 'No user.sub provided'],
+        [{ room_uuid: fakeId, user: { sub: fakeId }, page: 1 }, 'page requires limit'],
+        [{ room_uuid: fakeId, user: { sub: fakeId }, page: -1 }, 'page must be greater than 0'],
+        [{ room_uuid: fakeId, user: { sub: fakeId }, page: "test" }, 'page must be a number'],
+        [{ room_uuid: fakeId, user: { sub: fakeId }, page: 1, limit: -1 }, 'limit must be greater than 0'],
+        [{ room_uuid: fakeId, user: { sub: fakeId }, page: 1, limit: "test" }, 'limit must be a number'],
     ])(`(${name}) - RoomAuditService.findAll invalid partitions`, async (options, expected) => {
         expect(async () => await RoomAuditService.findAll(options)).rejects.toThrowError(expected);
     });
+
+
+
+    /**
+     * RoomAuditService.findOne
+     */
     
     test(`(${name}) - RoomAuditService.findOne valid partitions`, async () => {
-        const audits = await RoomAuditService.findAll({ room_uuid: context.room.uuid, user: context.admin, limit: 1 });
+        const audits = await RoomAuditService.findAll({ room_uuid, user: admin, limit: 1 });
         expect(audits.data.length).toBeGreaterThan(0);
-        const result = await RoomAuditService.findOne({ uuid: audits.data[0].uuid, user: context.admin });
+        const result = await RoomAuditService.findOne({ uuid: audits.data[0].uuid, user: admin });
 
         expect(result).toHaveProperty('uuid');
         expect(result).toHaveProperty('body');
@@ -90,47 +108,35 @@ const roomAuditServiceTest = (RoomAuditService, UserService, name) => {
         [0, 'Invalid options provided'],
         [[], 'Invalid options provided'],
         [{}, 'No uuid provided'],
-        [{ uuid: "test" }, 'No user provided'],
-        [{ uuid: "test", user: { } }, 'No user.sub provided'],
-        [{ uuid: "test", user: { sub: "test" } }, 'room_audit not found'],
+        [{ uuid: fakeId }, 'No user provided'],
+        [{ uuid: fakeId, user: { } }, 'No user.sub provided'],
+        [{ uuid: fakeId, user: { sub: fakeId } }, 'room_audit not found'],
     ])(`(${name}) - RoomAuditService.findOne invalid partitions`, async (options, expected) => {
         expect(async () => await RoomAuditService.findOne(options)).rejects.toThrowError(expected);
     });
+
+    
 
     /**
      * Security Checks
      */
 
     test.each([
-        [user.uuid],
-    ])(`(${name}) - RoomAuditService.findOne return error for users who are not member`, async (sub) => {
-        const audits = await RoomAuditService.findAll({ room_uuid: context.room.uuid, user: context.admin, limit: 1 });
-        expect(async () => await RoomAuditService.findOne({ user: { sub }, uuid: audits.data[0].uuid }))
+        [user],
+    ])(`(${name}) - RoomAuditService.findOne return error for users who are not member`, async (user) => {
+        const audits = await RoomAuditService.findAll({ room_uuid, user: admin, limit: 1 });
+        expect(async () => await RoomAuditService.findOne({ user, uuid: audits.data[0].uuid }))
             .rejects.toThrow("User is not in the room");
     });
 
     test.each([
-        [user.uuid],
-    ])(`(${name}) - RoomAuditService.findAll return error for users who are not member`, async (sub) => {
-        expect(async () => await RoomAuditService.findAll({ room_uuid: context.room.uuid, user: { sub } }))
+        [user],
+    ])(`(${name}) - RoomAuditService.findAll return error for users who are not member`, async (user) => {
+        expect(async () => await RoomAuditService.findAll({ room_uuid, user }))
             .rejects.toThrow("User is not in the room");
     });
 };
 
-roomAuditServiceTest(
-    RelationalRoomAuditService,
-    RelationalUserService, 
-    'Relational'
-);
-
-roomAuditServiceTest(
-    DocumentRoomAuditService, 
-    DocumentUserService,
-    'Document'
-);
-
-roomAuditServiceTest(
-    GraphRoomAuditService,
-    GraphUserService, 
-    'Graph'
-);
+roomAuditServiceTest(RelationalRoomAuditService, 'Relational');
+roomAuditServiceTest(DocumentRoomAuditService, 'Document');
+roomAuditServiceTest(GraphRoomAuditService, 'Graph');

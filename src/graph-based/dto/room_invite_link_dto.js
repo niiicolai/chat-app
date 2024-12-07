@@ -1,7 +1,6 @@
 import dateHelper from './_date_helper.js';
 
-export default (entity = {}, relations=[]) => {
-    const room = relations.find((rel) => rel.room)?.room
+export default (entity = {}) => {
     const dto = { uuid: entity.uuid };
 
     if (entity.expires_at && typeof entity.expires_at === 'object') {
@@ -15,7 +14,7 @@ export default (entity = {}, relations=[]) => {
     dto.never_expires = (entity.expires_at === null || entity.expires_at === undefined);
 
 
-    if (room) dto.room_uuid = room.uuid;
+    if (entity.room) dto.room_uuid = entity.room.uuid;
 
     return dateHelper(entity, dto);
 }

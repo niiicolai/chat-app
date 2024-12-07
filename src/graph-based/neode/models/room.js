@@ -12,88 +12,6 @@ export default {
         type: 'string',
         required: true
     },
-    room_category: {
-        type: 'relationship',
-        target: 'RoomCategory',
-        relationship: 'HAS_CATEGORY',
-        direction: 'out',
-        eager: true
-    },
-    room_join_settings: {
-        type: 'relationship',
-        target: 'RoomJoinSettings',
-        relationship: 'HAS_JOIN_SETTINGS',
-        direction: 'out',
-        eager: true
-    },
-    room_file_settings: {
-        type: 'relationship',
-        target: 'RoomFileSettings',
-        relationship: 'HAS_FILE_SETTINGS',
-        direction: 'out',
-        eager: true
-    },
-    room_user_settings: {
-        type: 'relationship',
-        target: 'RoomUserSettings',
-        relationship: 'HAS_USER_SETTINGS',
-        direction: 'out',
-        eager: true
-    },
-    room_channel_settings: {
-        type: 'relationship',
-        target: 'RoomChannelSettings',
-        relationship: 'HAS_CHANNEL_SETTINGS',
-        direction: 'out',
-        eager: true
-    },
-    room_rules_settings: {
-        type: 'relationship',
-        target: 'RoomRulesSettings',
-        relationship: 'HAS_RULES_SETTINGS',
-        direction: 'out',
-        eager: true
-    },
-    room_avatar: {
-        type: 'relationship',
-        target: 'RoomAvatar',
-        relationship: 'HAS_ROOM_AVATAR',
-        direction: 'out',
-        eager: true
-    },
-    room_files: {
-        type: 'relationship',
-        target: 'RoomFile',
-        relationship: 'HAS_ROOM_FILE',
-        direction: 'in',
-        eager: true
-    },
-    room_invite_links: {
-        type: 'relationship',
-        target: 'RoomInviteLink',
-        relationship: 'HAS_INVITE_LINK',
-        direction: 'in',
-        eager: true
-    },
-    room_users: {
-        type: 'relationship',
-        target: 'User',
-        relationship: 'HAS_USER',
-        direction: 'in',
-        eager: true
-    },
-    room_audits: {
-        type: 'relationship',
-        target: 'RoomAudit',
-        relationship: 'HAS_ROOM',
-        direction: 'in',
-    },
-    channels: {
-        type: 'relationship',
-        target: 'Channel',
-        relationship: 'HAS_CHANNEL',
-        direction: 'in',
-    },
     created_at: {
         type: 'datetime',
         required: true,
@@ -103,5 +21,85 @@ export default {
         type: 'datetime',
         required: true,
         default: () => new Date().toISOString()
+    },
+    /**
+     * OUTGOING RELATION
+     */
+    channels: {
+        type: 'relationship',
+        target: 'Channel',
+        relationship: 'COMMUNICATES_IN',
+        direction: 'out',
+    },
+    room_category: {
+        type: 'relationship',
+        target: 'RoomCategory',
+        relationship: 'CATEGORY_IS',
+        direction: 'out',
+        eager: true
+    },
+    room_join_settings: {
+        type: 'relationship',
+        target: 'RoomJoinSettings',
+        relationship: 'JOIN_SETTINGS_IS',
+        direction: 'out',
+        eager: true
+    },
+    room_file_settings: {
+        type: 'relationship',
+        target: 'RoomFileSettings',
+        relationship: 'FILE_SETTINGS_IS',
+        direction: 'out',
+        eager: true
+    },
+    room_user_settings: {
+        type: 'relationship',
+        target: 'RoomUserSettings',
+        relationship: 'USER_SETTINGS_IS',
+        direction: 'out',
+        eager: true
+    },
+    room_channel_settings: {
+        type: 'relationship',
+        target: 'RoomChannelSettings',
+        relationship: 'CHANNEL_SETTINGS_IS',
+        direction: 'out',
+        eager: true
+    },
+    room_rules_settings: {
+        type: 'relationship',
+        target: 'RoomRulesSettings',
+        relationship: 'RULES_SETTINGS_IS',
+        direction: 'out',
+        eager: true
+    },
+    room_avatar: {
+        type: 'relationship',
+        target: 'RoomAvatar',
+        relationship: 'ROOM_AVATAR_IS',
+        direction: 'out',
+        eager: true
+    },
+    room_invite_link: {
+        type: 'relationship',
+        target: 'RoomInviteLink',
+        relationship: 'INVITES_VIA',
+        direction: 'out',
+        eager: true
+    },
+    /**
+     * INCOMING RELATION
+     */
+    room_file: {
+        type: 'relationship',
+        target: 'RoomFile',
+        relationship: 'STORED_IN',
+        direction: 'in'
+    },
+    room_audit: {
+        type: 'relationship',
+        target: 'RoomAudit',
+        relationship: 'AUDIT_BY',
+        direction: 'in',
     },
 }

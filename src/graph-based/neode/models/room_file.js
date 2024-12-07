@@ -12,44 +12,6 @@ export default {
         type: 'integer',
         required: true
     },
-    room_file_type: {
-        type: 'relationship',
-        target: 'RoomFileType',
-        relationship: 'HAS_ROOM_FILE_TYPE',
-        direction: 'out',
-        eager: true
-    },
-    room: {
-        type: 'relationship',
-        target: 'Room',
-        relationship: 'HAS_ROOM',
-        direction: 'out',
-        eager: true
-    },
-    room_avatar: {
-        type: 'relationship',
-        target: 'RoomAvatar',
-        relationship: 'HAS_ROOM_AVATAR',
-        direction: 'in',
-    },
-    channel: {
-        type: 'relationship',
-        target: 'Channel',
-        relationship: 'HAS_CHANNEL',
-        direction: 'in',
-    },
-    channel_webhook: {
-        type: 'relationship',
-        target: 'ChannelWebhook',
-        relationship: 'HAS_CHANNEL_WEBHOOK',
-        direction: 'in',
-    },
-    channel_message_upload: {
-        type: 'relationship',
-        target: 'ChannelMessageUpload',
-        relationship: 'HAS_CHANNEL_MESSAGE_UPLOAD',
-        direction: 'in',
-    },
     created_at: {
         type: 'datetime',
         required: true,
@@ -59,5 +21,49 @@ export default {
         type: 'datetime',
         required: true,
         default: () => new Date().toISOString()
+    },
+    /**
+     * OUTGOING RELATION
+     */
+    room: {
+        type: 'relationship',
+        target: 'Room',
+        relationship: 'STORED_IN',
+        direction: 'out',
+        eager: true
+    },
+    room_file_type: {
+        type: 'relationship',
+        target: 'RoomFileType',
+        relationship: 'TYPE_IS',
+        direction: 'out',
+        eager: true
+    },
+    /**
+     * INCOMING RELATION
+     */
+    channel_message_upload: {
+        type: 'relationship',
+        target: 'ChannelMessageUpload',
+        relationship: 'SAVED_AS',
+        direction: 'in',
+    },
+    channel_webhook: {
+        type: 'relationship',
+        target: 'ChannelWebhook',
+        relationship: 'WEBHOOK_AVATAR_IS',
+        direction: 'in',
+    },
+    channel: {
+        type: 'relationship',
+        target: 'Channel',
+        relationship: 'CHANNEL_AVATAR_IS',
+        direction: 'in',
+    },
+    room_avatar: {
+        type: 'relationship',
+        target: 'RoomAvatar',
+        relationship: 'ROOM_AVATAR_IS',
+        direction: 'in',
     },
 }

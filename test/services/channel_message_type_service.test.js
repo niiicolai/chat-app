@@ -1,19 +1,29 @@
 import RelationalChannelMessageTypeService from '../../src/relational-based/services/channel_message_type_service.js';
 import DocumentChannelMessageTypeService from '../../src/document-based/services/channel_message_type_service.js';
 import GraphChannelMessageTypeService from '../../src/graph-based/services/channel_message_type_service.js';
+
+import data from '../../src/seed_data.js';
 import { test, expect } from 'vitest';
 
 const channelMessageTypeServiceTest = (ChannelMessageTypeService, name) => {
+
+    /**
+     * Expected methods
+     */
 
     test(`(${name}) - ChannelMessageTypeService must implement expected methods`, () => {
         expect(ChannelMessageTypeService).toHaveProperty('findOne');
         expect(ChannelMessageTypeService).toHaveProperty('findAll');
     });
 
+
+
+    /**
+     * ChannelMessageTypeService.findOne
+     */
+
     test.each([
-        ['User'],
-        ['System'],
-        ['Webhook'],
+        data.channel_message_types.map(cmt => cmt.name),
     ])(`(${name}) - ChannelMessageTypeService.findOne valid partitions`, async (name) => {
         const result = await ChannelMessageTypeService.findOne({ name });
 
@@ -37,6 +47,12 @@ const channelMessageTypeServiceTest = (ChannelMessageTypeService, name) => {
     ])(`(${name}) - ChannelMessageTypeService.findOne invalid partitions`, async (options, expected) => {
         expect(async () => await ChannelMessageTypeService.findOne(options)).rejects.toThrowError(expected);
     });
+
+
+
+    /**
+     * ChannelMessageTypeService.findAll
+     */
 
     test.each([
         [undefined],

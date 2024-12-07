@@ -1,11 +1,16 @@
-import ChannelAuditServiceValidator from '../../shared/validators/channel_audit_service_validator.js';
-import ControllerError from '../../shared/errors/controller_error.js';
-import RoomPermissionService from './room_permission_service.js';
+import Validator from '../../shared/validators/channel_audit_service_validator.js';
+import err from '../../shared/errors/index.js';
+import RPS from './room_permission_service.js';
 import ChannelAudit from '../mongoose/models/channel_audit.js';
 import Channel from '../mongoose/models/channel.js';
 import dto from '../dto/channel_audit_dto.js';
 
-class Service {
+/**
+ * @class ChannelAuditService
+ * @description Service class for channel audits.
+ * @exports ChannelAuditService
+ */
+class ChannelAuditService {
 
     /**
      * @function findOne
@@ -17,18 +22,17 @@ class Service {
      * @returns {Object}
      */
     async findOne(options = { uuid: null, user: null }) {
-        ChannelAuditServiceValidator.findOne(options);
+        Validator.findOne(options);
 
         const { uuid, user } = options;
 
-        const channelAudit = await ChannelAudit.findOne({ uuid }).populate('channel');
-        if (!channelAudit) throw new ControllerError(404, 'channel_audit not found');
+        const channelAudit = await ChannelAudit.findOne({ _id: uuid }).populate('channel');
+        if (!channelAudit) throw new err.EntityNotFoundError('channel_audit');
 
-        if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid: channelAudit.channel.uuid, user, role_name: null }))) {
-            throw new ControllerError(403, 'User is not in the room');
-        }
+        const isInRoom = await RPS.isInRoomByChannel({ channel_uuid: channelAudit.channel._id, user });
+        if (!isInRoom) throw new err.RoomMemberRequiredError();
 
-        return dto(channelAudit);
+        return dto(channelAudit._doc);
     }
 
     /**
@@ -43,40 +47,41 @@ class Service {
      * @returns {Object}
      */
     async findAll(options = { channel_uuid: null, user: null, page: null, limit: null }) {
-        options = ChannelAuditServiceValidator.findAll(options);
+        options = Validator.findAll(options);
 
         const { channel_uuid, user, page, limit, offset } = options;
 
-        if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid, user, role_name: null }))) {
-            throw new ControllerError(403, 'User is not in the room');
-        }
+        const channel = await Channel.findOne({ _id: channel_uuid });
+        if (!channel) throw new err.EntityNotFoundError('channel');
 
-        const channel = await Channel.findOne({ uuid: channel_uuid });
-        if (!channel) throw new ControllerError(404, 'Channel not found');
+        const isInRoom = await RPS.isInRoomByChannel({ channel_uuid, user });
+        if (!isInRoom) throw new err.RoomMemberRequiredError();
 
         const params = { channel: channel._id };
-        const total = await ChannelAudit.find(params).countDocuments();
-        const channelAudits = await ChannelAudit.find(params)
-            .populate('channel')
-            .sort({ created_at: -1 })
-            .limit(limit || 0)
-            .skip((page && limit) ? offset : 0);
+        const [total, channelAudits] = await Promise.all([
+            ChannelAudit.find(params).countDocuments(),
+            ChannelAudit.find(params)
+                .populate('channel')
+                .sort({ created_at: -1 })
+                .limit(limit || 0)
+                .skip((page && limit) ? offset : 0),
+        ]);
 
         return {
             total,
-            data: await Promise.all(channelAudits.map(async (channelAudit) => {
+            data: channelAudits.map((channelAudit) => {
                 return dto({
                     ...channelAudit._doc,
-                    channel: { uuid: channel.uuid },
-                });
-            })),
+                    channel: { uuid: channel._id },
+                })
+            }),
             ...(limit && { limit }),
             ...(page && limit && { page, pages: Math.ceil(total / limit) }),
         };
     }
 }
 
-const service = new Service();
+const service = new ChannelAuditService();
 
 export default service;
 

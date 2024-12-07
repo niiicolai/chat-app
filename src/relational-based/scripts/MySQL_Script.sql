@@ -117,10 +117,8 @@ CREATE TABLE User (
     avatar_src TEXT DEFAULT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT user_username_unique UNIQUE (username),
-    CONSTRAINT user_email_unique UNIQUE (email),
-    CHECK (CHAR_LENGTH(username) >= 3 AND CHAR_LENGTH(username) <= 255),
-    CHECK (CHAR_LENGTH(email) >= 3 AND CHAR_LENGTH(email) <= 255)
+    CONSTRAINT user_username UNIQUE (username),
+    CONSTRAINT user_email UNIQUE (email)
 );
 
 DROP TABLE IF EXISTS UserLogin;
@@ -133,7 +131,9 @@ CREATE TABLE UserLogin (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_uuid) REFERENCES User(uuid),
-    FOREIGN KEY (user_login_type_name) REFERENCES UserLoginType(name)
+    FOREIGN KEY (user_login_type_name) REFERENCES UserLoginType(name),
+    CONSTRAINT user_login_unique UNIQUE (user_uuid, user_login_type_name),
+    CONSTRAINT user_login_third_party_id_unique UNIQUE (third_party_id)
 );
 
 -- Rooms can have members and channels for communication.
@@ -146,7 +146,7 @@ CREATE TABLE Room (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (room_category_name) REFERENCES RoomCategory(name),
-    CONSTRAINT room_name_unique UNIQUE (name)
+    CONSTRAINT room_name UNIQUE (name)
 );
 
 
@@ -189,7 +189,8 @@ CREATE TABLE RoomFile (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (room_uuid) REFERENCES Room(uuid),
-    FOREIGN KEY (room_file_type_name) REFERENCES RoomFileType(name)
+    FOREIGN KEY (room_file_type_name) REFERENCES RoomFileType(name),
+    INDEX (size)
 );
 
 
@@ -243,7 +244,7 @@ CREATE TABLE Channel (
     FOREIGN KEY (room_uuid) REFERENCES Room(uuid),
     FOREIGN KEY (channel_type_name) REFERENCES ChannelType(name),
     FOREIGN KEY (room_file_uuid) REFERENCES RoomFile(uuid),
-    UNIQUE KEY unique_channel (name, channel_type_name, room_uuid)
+    UNIQUE KEY name_type_room_uuid (name, channel_type_name, room_uuid)
 );
 
 
@@ -472,13 +473,7 @@ END //
 DELIMITER ;
 
 
--- Time to live for files should be handle by the client
--- because the MySQL server doesn't have access to the S3 bucket
-
-
-
 -- ### FUNCTIONS ###
-
 
 
 -- Convert bytes to kilobytes in SQL
@@ -663,35 +658,10 @@ CREATE PROCEDURE create_user_proc(
     IN user_uuid_input VARCHAR(36),
     IN user_name_input VARCHAR(255),
     IN user_email_input VARCHAR(255),
-    IN user_password_input VARCHAR(255),
-    IN user_avatar_src_input TEXT,
-    IN user_login_type_name_input VARCHAR(255),
-    IN user_login_third_party_id_input VARCHAR(255),
-    OUT result BOOLEAN
+    IN user_avatar_src_input TEXT
 )
 BEGIN
-    DECLARE exit_code VARCHAR(5);
-    DECLARE exit_message TEXT;
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION
-    BEGIN
-        GET DIAGNOSTICS CONDITION 1
-            exit_code = RETURNED_SQLSTATE, 
-            exit_message = MESSAGE_TEXT;
-        ROLLBACK;
-        SELECT CONCAT('Error Code: ', exit_code, ' Error Message: ', exit_message) AS error_output;
-        SET result = FALSE;
-    END;
-
-    START TRANSACTION;
-        INSERT INTO User (uuid, username, email, avatar_src) VALUES (user_uuid_input, user_name_input, user_email_input, user_avatar_src_input);
-        if user_login_type_name_input = "Password" then
-            INSERT INTO UserLogin (uuid, user_uuid, user_login_type_name, password) VALUES (UUID(), user_uuid_input, user_login_type_name_input, user_password_input);
-        end if;
-        if user_login_type_name_input = "Google" then
-            INSERT INTO UserLogin (uuid, user_uuid, user_login_type_name, third_party_id) VALUES (UUID(), user_uuid_input, user_login_type_name_input, user_login_third_party_id_input);
-        end if;
-    COMMIT;
-    SET result = TRUE;
+    INSERT INTO User (uuid, username, email, avatar_src) VALUES (user_uuid_input, user_name_input, user_email_input, user_avatar_src_input);
 END //
 DELIMITER ;
 
@@ -759,32 +729,10 @@ CREATE PROCEDURE edit_user_proc(
     IN user_uuid_input VARCHAR(36),
     IN user_name_input VARCHAR(255),
     IN user_email_input VARCHAR(255),
-    IN user_password_input VARCHAR(255),
-    IN user_avatar_src_input TEXT,
-    OUT result BOOLEAN
+    IN user_avatar_src_input TEXT
 )
 BEGIN
-DECLARE exit_code VARCHAR(5);
-    DECLARE exit_message TEXT;
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION
-    BEGIN
-        GET DIAGNOSTICS CONDITION 1
-            exit_code = RETURNED_SQLSTATE, 
-            exit_message = MESSAGE_TEXT;
-        ROLLBACK;
-        SELECT CONCAT('Error Code: ', exit_code, ' Error Message: ', exit_message) AS error_output;
-        SET result = FALSE;
-    END;
-
-    START TRANSACTION;
-        -- Update the user
-        UPDATE User SET username = user_name_input, email = user_email_input, avatar_src = user_avatar_src_input WHERE uuid = user_uuid_input;
-
-        if user_password_input is not null then
-            UPDATE UserLogin SET password = user_password_input WHERE user_uuid = user_uuid_input AND user_login_type_name = "Password";
-        end if;
-    COMMIT;
-    SET result = TRUE;
+    UPDATE User SET username = user_name_input, email = user_email_input, avatar_src = user_avatar_src_input WHERE uuid = user_uuid_input;
 END //
 DELIMITER ;
 
@@ -793,13 +741,10 @@ DELIMITER ;
 DROP PROCEDURE IF EXISTS delete_user_proc;
 DELIMITER //
 CREATE PROCEDURE delete_user_proc(
-    IN user_uuid_input VARCHAR(36),
-    OUT result BOOLEAN
+    IN user_uuid_input VARCHAR(36)
 )
 BEGIN
-    -- Delete the user
     DELETE FROM User WHERE uuid = user_uuid_input;
-    SET result = TRUE;
 END //
 DELIMITER ;
 
@@ -824,13 +769,29 @@ DELIMITER ;
 DROP PROCEDURE IF EXISTS delete_user_login_proc;
 DELIMITER //
 CREATE PROCEDURE delete_user_login_proc(
-    IN user_login_uuid_input VARCHAR(36),
-    OUT result BOOLEAN
+    IN user_login_uuid_input VARCHAR(36)
 )
 BEGIN
-    -- Delete the user login
     DELETE FROM UserLogin WHERE uuid = user_login_uuid_input;
-    SET result = TRUE;
+END //
+DELIMITER ;
+
+-- Edit a user login
+DROP PROCEDURE IF EXISTS edit_user_login_proc;
+DELIMITER //
+CREATE PROCEDURE edit_user_login_proc(
+    IN user_login_uuid_input VARCHAR(36),
+    IN user_login_type_name_input VARCHAR(255),
+    IN user_login_password_input VARCHAR(255),
+    IN user_login_third_party_id_input VARCHAR(255)
+)
+BEGIN
+    IF user_login_type_name_input = "Password" THEN
+        UPDATE UserLogin SET password = user_login_password_input WHERE uuid = user_login_uuid_input;
+    END IF;
+    IF user_login_type_name_input = "Google" THEN
+        UPDATE UserLogin SET third_party_id = user_login_third_party_id_input WHERE uuid = user_login_uuid_input;
+    END IF;
 END //
 DELIMITER ;
 
@@ -843,31 +804,15 @@ CREATE PROCEDURE create_user_login_proc(
     IN user_uuid_input VARCHAR(36),
     IN user_login_type_name_input VARCHAR(255),
     IN user_login_third_party_id_input VARCHAR(255),
-    IN user_login_password_input VARCHAR(255),
-    OUT result BOOLEAN
+    IN user_login_password_input VARCHAR(255)
 )
 BEGIN
-    DECLARE exit_code VARCHAR(5);
-    DECLARE exit_message TEXT;
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION
-    BEGIN
-        GET DIAGNOSTICS CONDITION 1
-            exit_code = RETURNED_SQLSTATE, 
-            exit_message = MESSAGE_TEXT;
-        ROLLBACK;
-        SELECT CONCAT('Error Code: ', exit_code, ' Error Message: ', exit_message) AS error_output;
-        SET result = FALSE;
-    END;
-
-    START TRANSACTION;
-        if user_login_type_name_input = "Password" then
-            INSERT INTO UserLogin (uuid, user_uuid, user_login_type_name, password) VALUES (user_login_uuid_input, user_uuid_input, user_login_type_name_input, user_login_password_input);
-        end if;
-        if user_login_type_name_input = "Google" then
-            INSERT INTO UserLogin (uuid, user_uuid, user_login_type_name, third_party_id) VALUES (user_login_uuid_input, user_uuid_input, user_login_type_name_input, user_login_third_party_id_input);
-        end if;
-    COMMIT;
-    SET result = TRUE;
+    if user_login_type_name_input = "Password" then
+        INSERT INTO UserLogin (uuid, user_uuid, user_login_type_name, password) VALUES (user_login_uuid_input, user_uuid_input, user_login_type_name_input, user_login_password_input);
+    end if;
+    if user_login_type_name_input = "Google" then
+        INSERT INTO UserLogin (uuid, user_uuid, user_login_type_name, third_party_id) VALUES (user_login_uuid_input, user_uuid_input, user_login_type_name_input, user_login_third_party_id_input);
+    end if;
 END //
 DELIMITER ;
 
@@ -877,55 +822,14 @@ DELIMITER ;
 DROP PROCEDURE IF EXISTS create_room_proc;
 DELIMITER //
 CREATE PROCEDURE create_room_proc(
-    IN user_uuid_input VARCHAR(36),
     IN room_uuid_input VARCHAR(36),
     IN room_name_input VARCHAR(255),
     IN room_description_input TEXT,
-    IN room_category_name_input VARCHAR(255),
-    IN room_user_role_name_input VARCHAR(255),
-    IN room_avatar_src_input TEXT,
-    IN room_avatar_size_input BIGINT,
-    OUT result BOOLEAN
+    IN room_category_name_input VARCHAR(255)
 )
 BEGIN
-    DECLARE room_file_uuid VARCHAR(36);
-    DECLARE exit_code VARCHAR(5);
-    DECLARE exit_message TEXT;
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION
-    BEGIN
-        GET DIAGNOSTICS CONDITION 1
-            exit_code = RETURNED_SQLSTATE, 
-            exit_message = MESSAGE_TEXT;
-        ROLLBACK;
-        -- Print the error message and code
-        SELECT CONCAT('Error Code: ', exit_code, ' Error Message: ', exit_message) AS error_output;
-        
-        SET result = FALSE;
-    END;
-
-    START TRANSACTION;
-
-        -- Insert the room
-        INSERT INTO Room (uuid, name, description, room_category_name) 
+    INSERT INTO Room (uuid, name, description, room_category_name) 
         VALUES (room_uuid_input, room_name_input, room_description_input, room_category_name_input);
-        
-        -- Check if the room avatar is not null and insert it into the RoomAvatar table
-        IF room_avatar_src_input IS NOT NULL THEN
-            SET room_file_uuid = UUID();
-
-            -- Create a room file
-            INSERT INTO RoomFile (uuid, src, size, room_uuid, room_file_type_name)
-            VALUES (room_file_uuid, room_avatar_src_input, room_avatar_size_input, room_uuid_input, 'RoomAvatar');
-
-            -- Update room avatar
-            UPDATE RoomAvatar SET room_file_uuid = room_file_uuid WHERE room_uuid = room_uuid_input;
-        END IF;
-
-        -- Insert the user into the room
-        INSERT INTO RoomUser (uuid, room_uuid, user_uuid, room_user_role_name) 
-        VALUES (UUID(), room_uuid_input, user_uuid_input, room_user_role_name_input);
-    COMMIT;
-    SET result = TRUE;
 END //
 DELIMITER ;
 
@@ -937,51 +841,23 @@ CREATE PROCEDURE edit_room_proc(
     IN room_uuid_input VARCHAR(36),
     IN room_name_input VARCHAR(255),
     IN room_description_input TEXT,
-    IN room_category_name_input VARCHAR(255),
-    IN room_avatar_src_input TEXT,
-    IN room_avatar_size_input BIGINT,
-    OUT result BOOLEAN
+    IN room_category_name_input VARCHAR(255)
 )
 BEGIN
-    DECLARE room_file_uuid VARCHAR(36);
-    DECLARE existing_avatar_uuid VARCHAR(36);
-    DECLARE existing_room_file_uuid VARCHAR(36);
-    DECLARE exit_code VARCHAR(5);
-    DECLARE exit_message TEXT;
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION
-    BEGIN
-        GET DIAGNOSTICS CONDITION 1
-            exit_code = RETURNED_SQLSTATE, 
-            exit_message = MESSAGE_TEXT;
-        ROLLBACK;
-        SELECT CONCAT('Error Code: ', exit_code, ' Error Message: ', exit_message) AS error_output;
-        SET result = FALSE;
-    END;
-    START TRANSACTION;
-        UPDATE Room 
-            SET name = room_name_input, description = room_description_input, room_category_name = room_category_name_input
-            WHERE uuid = room_uuid_input;
+    UPDATE Room SET name = room_name_input, description = room_description_input, room_category_name = room_category_name_input WHERE uuid = room_uuid_input;
+END //
+DELIMITER ;
 
-        SELECT r.uuid, r.room_file_uuid into existing_avatar_uuid, existing_room_file_uuid
-            FROM RoomAvatar as r
-            WHERE room_uuid = room_uuid_input LIMIT 1;
 
-        IF room_avatar_src_input IS NOT NULL THEN
-            IF existing_room_file_uuid IS NOT NULL THEN
-                UPDATE RoomFile SET src = room_avatar_src_input, size = room_avatar_size_input
-                WHERE uuid = existing_room_file_uuid;
-            ELSE
-                SET room_file_uuid = UUID();
-                INSERT INTO RoomFile (uuid, src, size, room_uuid, room_file_type_name)
-                VALUES (room_file_uuid, room_avatar_src_input, room_avatar_size_input, room_uuid_input, 'RoomAvatar');
-                UPDATE RoomAvatar SET room_file_uuid = room_file_uuid WHERE uuid = existing_avatar_uuid;
-            END IF;
-        ELSE
-            UPDATE RoomAvatar SET room_file_uuid = NULL WHERE uuid = existing_avatar_uuid;
-        END IF;
 
-    COMMIT;
-    SET result = TRUE;
+DROP PROCEDURE IF EXISTS edit_room_avatar_proc;
+DELIMITER //
+CREATE PROCEDURE edit_room_avatar_proc(
+    IN room_uuid_input VARCHAR(36),
+    IN room_file_uuid_input VARCHAR(36)
+)
+BEGIN
+    UPDATE RoomAvatar SET room_file_uuid = room_file_uuid_input WHERE room_uuid = room_uuid_input;
 END //
 DELIMITER ;
 
@@ -1208,47 +1084,18 @@ CREATE PROCEDURE create_channel_proc(
     IN channel_name_input VARCHAR(255),
     IN channel_description_input TEXT,
     IN channel_type_name_input VARCHAR(255),
-    IN channel_avatar_size_input BIGINT,
-    IN channel_avatar_src_input TEXT,
     IN room_uuid_input VARCHAR(36),
+    in room_file_uuid_input VARCHAR(36),
     OUT result BOOLEAN
 )
 BEGIN
-    DECLARE room_file_uuid VARCHAR(36);
-    DECLARE exit_code VARCHAR(5);
-    DECLARE exit_message TEXT;
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION
-    BEGIN
-        GET DIAGNOSTICS CONDITION 1
-            exit_code = RETURNED_SQLSTATE, 
-            exit_message = MESSAGE_TEXT;
-        ROLLBACK;
-        -- Print the error message and code
-        SELECT CONCAT('Error Code: ', exit_code, ' Error Message: ', exit_message) AS error_output;
-        
-        SET result = FALSE;
-    END;
-
-    START TRANSACTION;
-        
-        
-        -- Check if the channel avatar is not null and insert it into the RoomFile table
-        IF channel_avatar_src_input IS NOT NULL THEN
-            SET room_file_uuid = UUID();
-
-            -- Create a room file
-            INSERT INTO RoomFile (uuid, src, size, room_uuid, room_file_type_name)
-            VALUES (room_file_uuid, channel_avatar_src_input, channel_avatar_size_input, room_uuid_input, 'ChannelAvatar');
-
-            -- Insert the channel
-            INSERT INTO Channel (uuid, name, description, channel_type_name, room_uuid, room_file_uuid) 
-            VALUES (channel_uuid_input, channel_name_input, channel_description_input, channel_type_name_input, room_uuid_input, room_file_uuid);
-        ELSE
-            -- Insert the channel
-            INSERT INTO Channel (uuid, name, description, channel_type_name, room_uuid) 
-            VALUES (channel_uuid_input, channel_name_input, channel_description_input, channel_type_name_input, room_uuid_input);
-        END IF;
-    COMMIT;
+    INSERT INTO Channel (uuid, name, description, channel_type_name, room_uuid, room_file_uuid) 
+        VALUES (channel_uuid_input, 
+                channel_name_input, 
+                channel_description_input, 
+                channel_type_name_input, 
+                room_uuid_input, 
+                room_file_uuid_input);
     SET result = TRUE;
 END //
 DELIMITER ;
@@ -1263,45 +1110,18 @@ CREATE PROCEDURE edit_channel_proc(
     IN channel_name_input VARCHAR(255),
     IN channel_description_input TEXT,
     IN channel_type_name_input VARCHAR(255),
-    IN channel_avatar_size_input BIGINT,
-    IN channel_avatar_src_input TEXT,
     IN room_uuid_input VARCHAR(36),
+    in room_file_uuid_input VARCHAR(36),
     OUT result BOOLEAN
 )
 BEGIN
-    DECLARE room_file_uuid VARCHAR(36);
-    DECLARE exit_code VARCHAR(5);
-    DECLARE exit_message TEXT;
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION
-    BEGIN
-        GET DIAGNOSTICS CONDITION 1
-            exit_code = RETURNED_SQLSTATE, 
-            exit_message = MESSAGE_TEXT;
-        ROLLBACK;
-        -- Print the error message and code
-        SELECT CONCAT('Error Code: ', exit_code, ' Error Message: ', exit_message) AS error_output;
-        
-        SET result = FALSE;
-    END;
-
-    START TRANSACTION;
-        -- Check if the channel avatar is not null and insert it into the RoomFile table
-        IF channel_avatar_src_input IS NOT NULL THEN
-            SET room_file_uuid = UUID();
-
-            -- Create a room file
-            INSERT INTO RoomFile (uuid, src, size, room_uuid, room_file_type_name)
-            VALUES (room_file_uuid, channel_avatar_src_input, channel_avatar_size_input, room_uuid_input, 'ChannelAvatar');
-
-            -- Update the channel
-            UPDATE Channel SET name = channel_name_input, description = channel_description_input, channel_type_name = channel_type_name_input, room_file_uuid = room_file_uuid
+    -- Update the channel
+    UPDATE Channel SET name = channel_name_input, 
+                       description = channel_description_input, 
+                       channel_type_name = channel_type_name_input, 
+                       room_file_uuid = room_file_uuid_input,
+                       room_uuid = room_uuid_input
             WHERE uuid = channel_uuid_input;
-        ELSE
-            -- Update the channel
-            UPDATE Channel SET name = channel_name_input, description = channel_description_input, channel_type_name = channel_type_name_input
-            WHERE uuid = channel_uuid_input;
-        END IF;
-    COMMIT;
     SET result = TRUE;
 END //
 DELIMITER ;
@@ -1342,9 +1162,29 @@ END //
 DELIMITER ;
 
 
+-- Create a new channel for a room
+DROP PROCEDURE IF EXISTS create_room_file_proc;
+DELIMITER //
+CREATE PROCEDURE create_room_file_proc(
+    IN room_file_uuid_input VARCHAR(36),
+    IN room_file_src_input TEXT,
+    IN room_file_size_input BIGINT,
+    IN room_uuid_input VARCHAR(36),
+    IN room_file_type_name_input VARCHAR(255),
+    OUT result BOOLEAN
+)
+BEGIN
+    -- Insert the room file
+    INSERT INTO RoomFile (uuid, src, size, room_uuid, room_file_type_name) 
+        VALUES (room_file_uuid_input, room_file_src_input, room_file_size_input, room_uuid_input, room_file_type_name_input);
+    SET result = TRUE;
+END //
+DELIMITER ;
+
 
 -- Create a new channel message with an optional upload
--- It runs in a transaction to ensure that both inserts are successful
+-- The application is responsible for running this in a transaction
+-- because it involves operations with an external file system.
 DROP PROCEDURE IF EXISTS create_channel_message_proc;
 DELIMITER //
 CREATE PROCEDURE create_channel_message_proc(
@@ -1361,39 +1201,23 @@ CREATE PROCEDURE create_channel_message_proc(
 )
 BEGIN
     DECLARE room_file_uuid VARCHAR(36);
-    DECLARE exit_code VARCHAR(5);
-    DECLARE exit_message TEXT;
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION
-    BEGIN
-        GET DIAGNOSTICS CONDITION 1
-            exit_code = RETURNED_SQLSTATE, 
-            exit_message = MESSAGE_TEXT;
-        ROLLBACK;
-        -- Print the error message and code
-        SELECT CONCAT('Error Code: ', exit_code, ' Error Message: ', exit_message) AS error_output;
-        
-        SET result = FALSE;
-    END;
 
-    START TRANSACTION;
-
-        -- Insert the channel message
-        INSERT INTO ChannelMessage (uuid, body, channel_uuid, user_uuid, channel_message_type_name)
+    -- Insert the channel message
+    INSERT INTO ChannelMessage (uuid, body, channel_uuid, user_uuid, channel_message_type_name)
         VALUES (message_uuid_input, message_body_input, channel_uuid_input, user_uuid_input, channel_message_type_name_input);
         
-        -- Check if the channel message upload is not null and insert it into the ChannelMessageUpload table
-        IF channel_message_upload_src_input IS NOT NULL THEN
-            SET room_file_uuid = UUID();
+    -- Check if the channel message upload is not null and insert it into the ChannelMessageUpload table
+    IF channel_message_upload_src_input IS NOT NULL THEN
+        SET room_file_uuid = UUID();
 
-            -- Create a room file
-            INSERT INTO RoomFile (uuid, src, size, room_uuid, room_file_type_name)
+        -- Create a room file
+        INSERT INTO RoomFile (uuid, src, size, room_uuid, room_file_type_name)
             VALUES (room_file_uuid, channel_message_upload_src_input, channel_message_upload_size_input, room_uuid_input, 'ChannelMessageUpload');
 
-            -- Create a channel message upload
-            INSERT INTO ChannelMessageUpload (uuid, channel_message_uuid, channel_message_upload_type_name, room_file_uuid)
+        -- Create a channel message upload
+        INSERT INTO ChannelMessageUpload (uuid, channel_message_uuid, channel_message_upload_type_name, room_file_uuid)
             VALUES (UUID(), message_uuid_input, channel_message_upload_type_name_input, room_file_uuid);
-        END IF;
-    COMMIT;
+    END IF;
     SET result = TRUE;
 END //
 DELIMITER ;
@@ -1612,12 +1436,10 @@ DROP PROCEDURE IF EXISTS set_user_email_verification_proc;
 DELIMITER //
 CREATE PROCEDURE set_user_email_verification_proc(
     IN user_uuid_input VARCHAR(36),
-    IN user_is_verified_input BOOLEAN,
-    OUT result BOOLEAN
+    IN user_is_verified_input BOOLEAN
 )
 BEGIN
     UPDATE UserEmailVerification SET is_verified = user_is_verified_input WHERE user_uuid = user_uuid_input;
-    SET result = TRUE;
 END //
 DELIMITER ;
 
@@ -1680,6 +1502,7 @@ BEGIN
     DELETE FROM UserEmailVerification WHERE user_uuid = OLD.uuid;
     DELETE FROM UserPasswordReset WHERE user_uuid = OLD.uuid;
     DELETE FROM UserStatus WHERE user_uuid = OLD.uuid;
+    DELETE FROM UserLogin WHERE user_uuid = OLD.uuid;
 END //
 DELIMITER ;
 
@@ -2558,310 +2381,3 @@ SELECT
     cmu.name as channel_message_upload_type_name, cmu.created_at as channel_message_upload_type_created_at, cmu.updated_at as channel_message_upload_type_updated_at
 FROM ChannelMessageUploadType cmu;
 
-
--- ### TEST DATA ###
-
--- Generate uuids for the test data
--- except for the room uuid which is hardcoded
--- to ensure that the room is created with the same uuid
-SET @password = '$2b$10$sB6/ocJJK9HodVv7qEozKO826Ik5gmZH/1GU/xReM1ijIjlA7hvTa';
-SET @upload_src = 'https://ghostchat.fra1.cdn.digitaloceanspaces.com/static/c7QiLXb.png';
-SET @upload_src2 = 'https://ghostchat.fra1.cdn.digitaloceanspaces.com/static/LemonadeGuyCardboardAndPencilWithShadow-8cdc3130cc5498718fce7ee9d1ff5d92ddcc2ed81c689a1bf275bd14189a607c-512.jpg'; 
-SET @upload_src3 = 'https://ghostchat.fra1.cdn.digitaloceanspaces.com/static/mobile-park-character-animating.png';
-SET @room_uuid = 'a595b5cb-7e47-4ce7-9875-cdf99184a73c';
-SET @ch_uuid = '1c9437b0-4e88-4a8e-84f0-679c7714407f';
-SET @ch_uuid3D = UUID();
-SET @msg_uuid = UUID();
-SET @user_uuid = 'd5a0831c-88e5-4713-ae0c-c4e86c2f4209';
-SET @user2_uuid = 'cdcf569f-57de-4cb3-98d6-36c7cd7141d6';
-SET @user3_uuid = 'dd1db381-0b0a-4b2c-b0e1-0b5d569e6f9b';
-SET @wh_uuid = UUID();
-
-INSERT INTO UserLoginType (name) VALUES
-('Password'),
-('Google');
-
-INSERT INTO ChannelAuditType (name) VALUES
-('CHANNEL_CREATED'),
-('CHANNEL_EDITED'),
-('CHANNEL_DELETED'),
-('MESSAGE_CREATED'),
-('MESSAGE_EDITED'),
-('MESSAGE_DELETED'),
-('WEBHOOK_CREATED'),
-('WEBHOOK_EDITED'),
-('WEBHOOK_DELETED');
-
-INSERT INTO RoomAuditType (name) VALUES
-('ROOM_CREATED'),
-('ROOM_EDITED'),
-('ROOM_DELETED'),
-('JOIN_SETTING_EDITED'),
-('INVITE_LINK_CREATED'),
-('INVITE_LINK_EDITED'),
-('INVITE_LINK_DELETED'),
-('USER_ADDED'),
-('USER_REMOVED'),
-('FILE_CREATED'),
-('FILE_DELETED'),
-('AVATAR_CREATED'),
-('AVATAR_EDITED'),
-('AVATAR_DELETED');
-
-INSERT INTO RoomCategory (name) VALUES
-('General'),
-('Tech'),
-('Sports'),
-('Music'),
-('Movies'),
-('Books'),
-('Gaming'),
-('Food'),
-('Travel'),
-('Fitness'),
-('Fashion'),
-('Art'),
-('Science'),
-('Politics'),
-('Business'),
-('Education'),
-('Health'),
-('Lifestyle'),
-('Entertainment'),
-('Other');
-
-
-
-INSERT INTO RoomUserRole (name) VALUES
-('Admin'),
-('Moderator'),
-('Member');
-
-
-
-INSERT INTO ChannelMessageUploadType (name) VALUES
-('Image'),
-('Video'),
-('Document');
-
-
-
-INSERT INTO ChannelType (name) VALUES
-('Text'),
-('Call');
-
-
-
-INSERT INTO ChannelMessageType (name) VALUES
-('User'),
-('System'),
-('Webhook');
-
-
-
-INSERT INTO ChannelWebhookMessageType (name) VALUES
-('Custom'),
-('GitHub');
-
-INSERT INTO RoomFileType (name) VALUES
-('ChannelWebhookAvatar'),
-('ChannelMessageUpload'),
-('ChannelAvatar'),
-('RoomAvatar');
-
-
-INSERT INTO UserStatusState (name) VALUES
-('Online'),
-('Away'),
-('Do Not Disturb'),
-('Offline');
-
-
--- Create the admin, moderator, and member users
-SET @loginType = 'Password';
-SET @thirdPartyId = NULL;
-call create_user_proc(@user_uuid, 'admin', 'admin@example.com', @password, @upload_src2, @loginType, @thirdPartyId, @result);
-call create_user_proc(@user2_uuid, 'moderator', 'moderator@example.com', @password, @upload_src3, @loginType, @thirdPartyId, @result);
-call create_user_proc(@user3_uuid, 'member', 'member@example.com', @password, @upload_src, @loginType, @thirdPartyId, @result);
-
-
--- Create the room with the first user as the admin
-call create_room_proc(@user_uuid, @room_uuid, 'General Chat', 'A room for general discussion', 'General', 'Admin', @upload_src, 100450, @result);
-
-
-
--- Create channels for the room
-call create_channel_proc(@ch_uuid, 'General Discussion', 'General discussion channel', 'Text', 100450, @upload_src, @room_uuid, @result);
-call create_channel_proc(UUID(), 'Call Chat', 'Channel for voice and video calls', 'Call', 100450, @upload_src, @room_uuid, @result);
-
-
-
--- Joining the other two users to the room after the channel is created
--- to ensure that the join message is sent to a channel
-call join_room_proc(@user2_uuid, @room_uuid, 'Moderator', @result);
-call join_room_proc(@user3_uuid, @room_uuid, 'Member', @result);
-
-
-
--- Create messages for the channel
-call create_channel_message_proc(UUID(), 'Hello everyone!', 'User', @ch_uuid, @user_uuid, NULL, NULL, NULL, NULL, @result);
-call create_channel_message_proc(UUID(), 'Hey! How are you all doing?', 'User', @ch_uuid, @user2_uuid, NULL, NULL, NULL, NULL, @result);
-call create_channel_message_proc(UUID(), 'Doing great! How about you?', 'User', @ch_uuid, @user3_uuid, NULL, NULL, NULL, NULL, @result);
-call create_channel_message_proc(UUID(), 'I am good too, thanks for asking!', 'User', @ch_uuid, @user2_uuid, NULL, NULL, NULL, NULL, @result);
-call create_channel_message_proc(UUID(), 'What are you all working on today?', 'User', @ch_uuid, @user_uuid, NULL, NULL, NULL, NULL, @result);
-call create_channel_message_proc(UUID(), 'I am working on a new project for work.', 'User', @ch_uuid, @user3_uuid, NULL, NULL, NULL, NULL, @result);
-call create_channel_message_proc(UUID(), 'That sounds interesting! Tell me more.', 'User', @ch_uuid, @user2_uuid, NULL, NULL, NULL, NULL, @result);
-call create_channel_message_proc(UUID(), 'Sure, I will share the details in a bit.', 'User', @ch_uuid, @user3_uuid, NULL, NULL, NULL, NULL, @result);
-call create_channel_message_proc(UUID(), 'Check out this image:', 'User', @ch_uuid, @user3_uuid, 'Image', @upload_src, 100450, @room_uuid, @result);
-
-
-
--- Create a room invite link that never expires
-call create_room_invite_link_proc(UUID(), @room_uuid, NULL, @result);
-
-
-
--- Create a webhool url for the channel
-call create_channel_webhook_proc(@wh_uuid, @ch_uuid, 'General Chat Webhook', 'Webhook for the general chat channel', @upload_src, 100450, @room_uuid, @result);
-
-
-
--- Create a webhook message for the webhook
-call create_webhook_message_proc(UUID(), 'This is a webhook message!', @ch_uuid, @wh_uuid, 'Custom', @result);
-
-
--- Set users as verified
-call set_user_email_verification_proc(@user_uuid, 1, @result);
-call set_user_email_verification_proc(@user2_uuid, 1, @result);
-call set_user_email_verification_proc(@user3_uuid, 1, @result);
-
-
--- ### USER ###
-
-
--- Create application user
-CREATE USER IF NOT EXISTS 'chat_user'@'%' IDENTIFIED BY 'password';
--- Grant EXECUTE privilege on stored procedures
-GRANT EXECUTE ON PROCEDURE `chat`.`check_upload_exceeds_total_proc` TO 'chat_user'@'%';
-GRANT EXECUTE ON PROCEDURE `chat`.`check_upload_exceeds_single_proc` TO 'chat_user'@'%';
-GRANT EXECUTE ON PROCEDURE `chat`.`check_channels_exceeds_total_proc` TO 'chat_user'@'%';
-GRANT EXECUTE ON PROCEDURE `chat`.`check_users_exceeds_total_proc` TO 'chat_user'@'%';
-GRANT EXECUTE ON PROCEDURE `chat`.`check_user_in_room_with_role_proc` TO 'chat_user'@'%';
-GRANT EXECUTE ON PROCEDURE `chat`.`check_user_by_channel_uuid_in_room_with_role_proc` TO 'chat_user'@'%';
-GRANT EXECUTE ON PROCEDURE `chat`.`create_user_proc` TO 'chat_user'@'%';
-GRANT EXECUTE ON PROCEDURE `chat`.`edit_user_proc` TO 'chat_user'@'%';
-GRANT EXECUTE ON PROCEDURE `chat`.`delete_user_proc` TO 'chat_user'@'%';
-GRANT EXECUTE ON PROCEDURE `chat`.`delete_user_avatar_proc` TO 'chat_user'@'%';
-GRANT EXECUTE ON PROCEDURE `chat`.`create_room_proc` TO 'chat_user'@'%';
-GRANT EXECUTE ON PROCEDURE `chat`.`edit_room_proc` TO 'chat_user'@'%';
-GRANT EXECUTE ON PROCEDURE `chat`.`delete_room_proc` TO 'chat_user'@'%';
-GRANT EXECUTE ON PROCEDURE `chat`.`join_room_proc` TO 'chat_user'@'%';
-GRANT EXECUTE ON PROCEDURE `chat`.`edit_room_user_role_proc` TO 'chat_user'@'%';
-GRANT EXECUTE ON PROCEDURE `chat`.`leave_room_proc` TO 'chat_user'@'%';
-GRANT EXECUTE ON PROCEDURE `chat`.`delete_room_file_proc` TO 'chat_user'@'%';
-GRANT EXECUTE ON PROCEDURE `chat`.`create_room_invite_link_proc` TO 'chat_user'@'%';
-GRANT EXECUTE ON PROCEDURE `chat`.`edit_room_invite_link_proc` TO 'chat_user'@'%';
-GRANT EXECUTE ON PROCEDURE `chat`.`delete_room_invite_link_proc` TO 'chat_user'@'%';
-GRANT EXECUTE ON PROCEDURE `chat`.`create_channel_proc` TO 'chat_user'@'%';
-GRANT EXECUTE ON PROCEDURE `chat`.`edit_channel_proc` TO 'chat_user'@'%';
-GRANT EXECUTE ON PROCEDURE `chat`.`delete_channel_proc` TO 'chat_user'@'%';
-GRANT EXECUTE ON PROCEDURE `chat`.`create_channel_message_proc` TO 'chat_user'@'%';
-GRANT EXECUTE ON PROCEDURE `chat`.`edit_channel_message_proc` TO 'chat_user'@'%';
-GRANT EXECUTE ON PROCEDURE `chat`.`delete_channel_message_proc` TO 'chat_user'@'%';
-GRANT EXECUTE ON PROCEDURE `chat`.`delete_channel_message_upload_proc` TO 'chat_user'@'%';
-GRANT EXECUTE ON PROCEDURE `chat`.`create_channel_webhook_proc` TO 'chat_user'@'%';
-GRANT EXECUTE ON PROCEDURE `chat`.`edit_channel_webhook_proc` TO 'chat_user'@'%';
-GRANT EXECUTE ON PROCEDURE `chat`.`delete_channel_webhook_proc` TO 'chat_user'@'%';
-GRANT EXECUTE ON PROCEDURE `chat`.`create_webhook_message_proc` TO 'chat_user'@'%';
-GRANT EXECUTE ON PROCEDURE `chat`.`edit_room_setting_proc` TO 'chat_user'@'%';
-GRANT EXECUTE ON PROCEDURE `chat`.`set_user_email_verification_proc` TO 'chat_user'@'%';
-GRANT EXECUTE ON PROCEDURE `chat`.`create_user_password_reset_proc` TO 'chat_user'@'%';
-GRANT EXECUTE ON PROCEDURE `chat`.`delete_user_password_reset_proc` TO 'chat_user'@'%';
-GRANT EXECUTE ON PROCEDURE `chat`.`update_user_status_proc` TO 'chat_user'@'%';
-GRANT EXECUTE ON PROCEDURE `chat`.`create_user_login_proc` TO 'chat_user'@'%';
-GRANT EXECUTE ON PROCEDURE `chat`.`delete_user_login_proc` TO 'chat_user'@'%';
-
--- Grant SELECT privilege on views only
-GRANT SELECT ON `chat`.`user_view` TO 'chat_user'@'%';
-GRANT SELECT ON `chat`.`room_view` TO 'chat_user'@'%';
-GRANT SELECT ON `chat`.`room_user_view` TO 'chat_user'@'%';
-GRANT SELECT ON `chat`.`room_user_role_view` TO 'chat_user'@'%';
-GRANT SELECT ON `chat`.`room_category_view` TO 'chat_user'@'%';
-GRANT SELECT ON `chat`.`room_file_view` TO 'chat_user'@'%';
-GRANT SELECT ON `chat`.`room_file_type_view` TO 'chat_user'@'%';
-GRANT SELECT ON `chat`.`room_avatar_view` TO 'chat_user'@'%';
-GRANT SELECT ON `chat`.`room_audit_view` TO 'chat_user'@'%';
-GRANT SELECT ON `chat`.`room_audit_type_view` TO 'chat_user'@'%';
-GRANT SELECT ON `chat`.`room_invite_link_view` TO 'chat_user'@'%';
-GRANT SELECT ON `chat`.`channel_view` TO 'chat_user'@'%';
-GRANT SELECT ON `chat`.`channel_type_view` TO 'chat_user'@'%';
-GRANT SELECT ON `chat`.`channel_audit_view` TO 'chat_user'@'%';
-GRANT SELECT ON `chat`.`channel_audit_type_view` TO 'chat_user'@'%';
-GRANT SELECT ON `chat`.`channel_message_view` TO 'chat_user'@'%';
-GRANT SELECT ON `chat`.`channel_message_type_view` TO 'chat_user'@'%';
-GRANT SELECT ON `chat`.`channel_webhook_view` TO 'chat_user'@'%';
-GRANT SELECT ON `chat`.`channel_webhook_message_view` TO 'chat_user'@'%';
-GRANT SELECT ON `chat`.`channel_webhook_message_type_view` TO 'chat_user'@'%';
-GRANT SELECT ON `chat`.`user_status_state_view` TO 'chat_user'@'%';
-GRANT SELECT ON `chat`.`user_email_verification_view` TO 'chat_user'@'%';
-GRANT SELECT ON `chat`.`user_password_reset_view` TO 'chat_user'@'%';
-GRANT SELECT ON `chat`.`user_status_view` TO 'chat_user'@'%';
-GRANT SELECT ON `chat`.`user_login_view` TO 'chat_user'@'%';
-GRANT SELECT ON `chat`.`user_login_type_view` TO 'chat_user'@'%';
--- Flush privileges to apply changes
-FLUSH PRIVILEGES;
-
-
-
--- Create a user with full database admin privileges
-CREATE USER IF NOT EXISTS 'chat_admin'@'%' IDENTIFIED BY 'password';
--- Grant all privileges on chat database
-GRANT ALL PRIVILEGES ON chat.* TO 'chat_admin'@'%';
--- Flush privileges to apply changes
-FLUSH PRIVILEGES;
-
-
--- Create a user with read-only privileges
-CREATE USER IF NOT EXISTS 'chat_guest'@'%' IDENTIFIED BY 'password';
--- Grant SELECT privilege on views only
-GRANT SELECT ON `chat`.`user_view` TO 'chat_guest'@'%';
-GRANT SELECT ON `chat`.`room_view` TO 'chat_guest'@'%';
-GRANT SELECT ON `chat`.`room_user_view` TO 'chat_guest'@'%';
-GRANT SELECT ON `chat`.`room_user_role_view` TO 'chat_guest'@'%';
-GRANT SELECT ON `chat`.`room_category_view` TO 'chat_guest'@'%';
-GRANT SELECT ON `chat`.`room_file_view` TO 'chat_guest'@'%';
-GRANT SELECT ON `chat`.`room_file_type_view` TO 'chat_guest'@'%';
-GRANT SELECT ON `chat`.`room_avatar_view` TO 'chat_guest'@'%';
-GRANT SELECT ON `chat`.`room_audit_view` TO 'chat_guest'@'%';
-GRANT SELECT ON `chat`.`room_audit_type_view` TO 'chat_guest'@'%';
-GRANT SELECT ON `chat`.`room_invite_link_view` TO 'chat_guest'@'%';
-GRANT SELECT ON `chat`.`channel_view` TO 'chat_guest'@'%';
-GRANT SELECT ON `chat`.`channel_type_view` TO 'chat_guest'@'%';
-GRANT SELECT ON `chat`.`channel_audit_view` TO 'chat_guest'@'%';
-GRANT SELECT ON `chat`.`channel_audit_type_view` TO 'chat_guest'@'%';
-GRANT SELECT ON `chat`.`channel_message_view` TO 'chat_guest'@'%';
-GRANT SELECT ON `chat`.`channel_message_type_view` TO 'chat_guest'@'%';
-GRANT SELECT ON `chat`.`channel_message_upload_view` TO 'chat_user'@'%';
-GRANT SELECT ON `chat`.`channel_message_upload_type_view` TO 'chat_user'@'%';
-GRANT SELECT ON `chat`.`channel_webhook_view` TO 'chat_guest'@'%';
-GRANT SELECT ON `chat`.`channel_webhook_message_view` TO 'chat_guest'@'%';
-GRANT SELECT ON `chat`.`channel_webhook_message_type_view` TO 'chat_guest'@'%';
-GRANT SELECT ON `chat`.`user_status_state_view` TO 'chat_guest'@'%';
-GRANT SELECT ON `chat`.`user_email_verification_view` TO 'chat_guest'@'%';
-GRANT SELECT ON `chat`.`user_password_reset_view` TO 'chat_guest'@'%';
-GRANT SELECT ON `chat`.`user_status_view` TO 'chat_guest'@'%';
-GRANT SELECT ON `chat`.`user_login_view` TO 'chat_guest'@'%';
-GRANT SELECT ON `chat`.`user_login_type_view` TO 'chat_guest'@'%';
--- Flush privileges to apply changes
-FLUSH PRIVILEGES;
-
-
--- Create a user with restricted reading privileges, which will be unable to see some data
-CREATE USER IF NOT EXISTS 'chat_restricted'@'%' IDENTIFIED BY 'password';
--- Grant SELECT privilege on views only
-GRANT SELECT ON `chat`.`room_audit_view` TO 'chat_restricted'@'%';
-GRANT SELECT ON `chat`.`room_audit_type_view` TO 'chat_restricted'@'%';
-GRANT SELECT ON `chat`.`channel_audit_view` TO 'chat_restricted'@'%';
-GRANT SELECT ON `chat`.`channel_audit_type_view` TO 'chat_restricted'@'%';
--- Flush privileges to apply changes
-FLUSH PRIVILEGES;

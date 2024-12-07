@@ -1,21 +1,42 @@
-import TypeServiceValidator from '../../shared/validators/type_service_validator.js';
-import ControllerError from '../../shared/errors/controller_error.js';
+import Validator from '../../shared/validators/type_service_validator.js';
+import err from '../../shared/errors/index.js';
 import neodeInstance from '../neode/index.js';
 import dto from '../dto/type_dto.js';
 import neo4j from 'neo4j-driver';
 
-class Service {
+/**
+ * @class RoomFileTypeService
+ * @description Service class for room file types.
+ * @exports RoomFileTypeService
+ */
+class RoomFileTypeService {
+
+    /**
+     * @function findOne
+     * @description Find a room file type by name.
+     * @param {Object} options
+     * @param {string} options.name
+     * @returns {Promise<Object>}
+     */
     async findOne(options = { name: null }) {
-        TypeServiceValidator.findOne(options);
+        Validator.findOne(options);
 
         const result = await neodeInstance.model('RoomFileType').find(options.name);
-        if (!result) throw new ControllerError(404, 'room_file_type not found');
+        if (!result) throw new err.EntityNotFoundError('room_file_type');
 
         return dto(result.properties());
     }
 
+    /**
+     * @function findAll
+     * @description Find all room file types.
+     * @param {Object} options
+     * @param {number} options.page optional
+     * @param {number} options.limit optional
+     * @returns {Promise<Object>}
+     */
     async findAll(options = { page: null, limit: null }) {
-        options = TypeServiceValidator.findAll(options);
+        options = Validator.findAll(options);
 
         const { page, limit, offset } = options;
         const result = await neodeInstance.batch([
@@ -40,6 +61,6 @@ class Service {
     }
 }
 
-const service = new Service();
+const service = new RoomFileTypeService();
 
 export default service;

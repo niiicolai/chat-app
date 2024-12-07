@@ -4,12 +4,6 @@ export default {
         type: 'string',
         required: true
     },
-    user_status: {
-        type: 'relationship',
-        target: 'UserStatus',
-        relationship: 'HAS_USER_STATUS',
-        direction: 'in',
-    },
     created_at: {
         type: 'datetime',
         required: true,
@@ -19,5 +13,15 @@ export default {
         type: 'datetime',
         required: true,
         default: () => new Date().toISOString()
-    }
+    },
+    /**
+     * INCOMING RELATION
+     */
+    user_status: {
+        type: 'relationship',
+        target: 'UserStatus',
+        relationship: 'STATE_IS',
+        direction: 'in',
+        eager: false
+    },
 }

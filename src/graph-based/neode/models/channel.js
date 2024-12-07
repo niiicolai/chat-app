@@ -12,33 +12,6 @@ export default {
         type: 'string',
         required: true
     },
-    channel_type: {
-        type: 'relationship',
-        target: 'ChannelType',
-        relationship: 'HAS_CHANNEL_TYPE',
-        direction: 'out',
-        eager: true
-    },
-    room: {
-        type: 'relationship',
-        target: 'Room',
-        relationship: 'HAS_ROOM',
-        direction: 'out',
-        eager: true
-    },
-    room_file: {
-        type: 'relationship',
-        target: 'RoomFile',
-        relationship: 'HAS_CHANNEL_FILE',
-        direction: 'out',
-        eager: true
-    },
-    room_join_settings: {
-        type: 'relationship',
-        target: 'RoomJoinSettings',
-        relationship: 'HAS_CHANNEL_JOIN_SETTINGS',
-        direction: 'in',
-    },
     created_at: {
         type: 'datetime',
         required: true,
@@ -48,5 +21,57 @@ export default {
         type: 'datetime',
         required: true,
         default: () => new Date().toISOString()
+    },
+    /**
+     * OUTGOING RELATION
+     */
+    room_file: {
+        type: 'relationship',
+        target: 'RoomFile',
+        relationship: 'CHANNEL_AVATAR_IS',
+        direction: 'out',
+        eager: true
+    },
+    channel_type: {
+        type: 'relationship',
+        target: 'ChannelType',
+        relationship: 'TYPE_IS',
+        direction: 'out',
+        eager: true
+    },
+    /**
+     * INCOMING RELATION
+     */
+    room_join_settings: {
+        type: 'relationship',
+        target: 'RoomJoinSettings',
+        relationship: 'ANNOUNCE_IN',
+        direction: 'in',
+    },
+    room: {
+        type: 'relationship',
+        target: 'Room',
+        relationship: 'COMMUNICATES_IN',
+        direction: 'in',
+        eager: true
+    },
+    channel_webhook: {
+        type: 'relationship',
+        target: 'ChannelWebhook',
+        relationship: 'WRITE_TO',
+        direction: 'in',
+        eager: true
+    },
+    channel_message: {
+        type: 'relationship',
+        target: 'ChannelMessage',
+        relationship: 'WRITTEN_IN',
+        direction: 'in',
+    },
+    channel_audit: {
+        type: 'relationship',
+        target: 'ChannelAudit',
+        relationship: 'AUDIT_IN',
+        direction: 'in',
     },
 }

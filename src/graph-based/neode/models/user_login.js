@@ -12,20 +12,6 @@ export default {
         type: 'string',
         required: false
     },
-    user_login_type: {
-        type: 'relationship',
-        target: 'UserLoginType',
-        relationship: 'HAS_LOGIN_TYPE',
-        direction: 'out',
-        eager: true
-    },
-    user: {
-        type: 'relationship',
-        target: 'User',
-        relationship: 'HAS_USER',
-        direction: 'out',
-        eager: true
-    },
     created_at: {
         type: 'datetime',
         required: true,
@@ -35,5 +21,25 @@ export default {
         type: 'datetime',
         required: true,
         default: () => new Date().toISOString()
+    },
+    /**
+     * OUTGOING RELATION
+     */
+    user_login_type: {
+        type: 'relationship',
+        target: 'UserLoginType',
+        relationship: 'TYPE_IS',
+        direction: 'out',
+        eager: true
+    },
+    /**
+     * INCOMING RELATION
+     */
+    user: {
+        type: 'relationship',
+        target: 'User',
+        relationship: 'AUTHORIZE_VIA',
+        direction: 'in',
+        eager: false
     },
 }

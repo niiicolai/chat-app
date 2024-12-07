@@ -9,20 +9,23 @@ export default {
         required: true,
         default: false
     },
-    user: {
-        type: 'relationship',
-        target: 'User',
-        relationship: 'HAS_EMAIL_VERIFICATION',
-        direction: 'in',
-    },
     created_at: {
         type: 'datetime',
-        required: true,
+        required: false,
         default: () => new Date().toISOString()
     },
     updated_at: {
         type: 'datetime',
-        required: true,
+        required: false,
         default: () => new Date().toISOString()
+    },
+    /**
+     * INCOMING RELATION
+     */
+    user: {
+        type: 'relationship',
+        target: 'User',
+        relationship: 'EMAIL_VERIFY_VIA',
+        direction: 'in',
     },
 }

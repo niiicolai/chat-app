@@ -1,40 +1,79 @@
-import RoomAuditServiceValidator from '../../shared/validators/room_audit_service_validator.js';
-import MysqlBaseFindService from './_mysql_base_find_service.js';
+import Validator from '../../shared/validators/room_audit_service_validator.js';
+import err from '../../shared/errors/index.js';
+import RPS from './room_permission_service.js';
 import db from '../sequelize/models/index.cjs';
-import ControllerError from '../../shared/errors/controller_error.js';
-import RoomPermissionService from './room_permission_service.js';
 import dto from '../dto/room_audit_dto.js';
 
-class Service extends MysqlBaseFindService {
-    constructor() {
-        super(db.RoomAuditView, dto);
+/**
+ * @class RoomAuditService
+ * @description Service class for Room audits.
+ * @exports RoomAuditService
+ */
+class RoomAuditService {
+
+    /**
+     * @function findOne
+     * @description Find a room audit by UUID.
+     * @param {Object} options
+     * @param {string} options.uuid
+     * @param {string} options.user
+     * @param {string} options.user.sub
+     * @returns {Promise<Object>}
+     */
+    async findOne(options = { uuid: null, user: null }) {
+        Validator.findOne(options);
+
+        const { uuid, user } = options;
+        const entity = await db.RoomAuditView.findByPk(uuid);
+        if (!entity) throw new err.EntityNotFoundError('room_audit');
+
+        const isInRoom = await RPS.isInRoom({ room_uuid: entity.room_uuid, user });
+        if (!isInRoom) throw new err.RoomMemberRequiredError();
+
+        return dto(entity);
     }
 
-    async findOne(options = { user: null }) {
-        RoomAuditServiceValidator.findOne(options);
+    /**
+     * @function findAll
+     * @description Find all room audits by room UUID.
+     * @param {Object} options
+     * @param {string} options.room_uuid
+     * @param {string} options.user
+     * @param {string} options.user.sub
+     * @param {number} options.page optional
+     * @param {number} options.limit optional
+     * @returns {Promise<Object>}
+     */
+    async findAll(options = { room_uuid: null, user: null, page: null, limit: null }) {
+        options = Validator.findAll(options);
 
-        const { user } = options;
-        const r = await super.findOne({ ...options });
+        const { room_uuid, user, page, limit, offset } = options;
 
-        if (!(await RoomPermissionService.isInRoom({ room_uuid: r.room_uuid, user, role_name: null }))) {
-            throw new ControllerError(403, 'User is not in the room');
-        }
+        const room = await db.RoomView.findOne({ uuid: room_uuid });
+        if (!room) throw new err.EntityNotFoundError('room');
 
-        return r;
-    }
+        const isInRoom = await RPS.isInRoom({ room_uuid, user });
+        if (!isInRoom) throw new err.RoomMemberRequiredError();
 
-    async findAll(options = { room_uuid: null, user: null }) {
-        options = RoomAuditServiceValidator.findAll(options);
-        const { room_uuid, user } = options;
+        const [total, data] = await Promise.all([
+            db.RoomAuditView.count({ room_uuid }),
+            db.RoomAuditView.findAll({
+                where: { room_uuid },
+                ...(limit && { limit }),
+                ...(offset && { offset })
+            })
+        ]);
 
-        if (!(await RoomPermissionService.isInRoom({ room_uuid, user, role_name: null }))) {
-            throw new ControllerError(403, 'User is not in the room');
-        }
-        
-        return await super.findAll({ ...options, where: { room_uuid } });
+        return {
+            data: data.map(entity => dto(entity)),
+            total,
+            ...(limit && { limit }),
+            ...(page && { page }),
+            ...(page && { pages: Math.ceil(total / limit) })
+        };
     }
 }
 
-const service = new Service();
+const service = new RoomAuditService();
 
 export default service;

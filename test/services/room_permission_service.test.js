@@ -1,81 +1,33 @@
-import RelationalUserService from '../../src/relational-based/services/user_service.js';
 import RelationalRoomPermissionService from '../../src/relational-based/services/room_permission_service.js';
-import RelationalRoomInviteLinkService from '../../src/relational-based/services/room_invite_link_service.js';
 import RelationalRoomService from '../../src/relational-based/services/room_service.js';
-import RelationalRoomUserService from '../../src/relational-based/services/room_user_service.js';
-import RelationalChannelService from '../../src/relational-based/services/channel_service.js';
 
-import DocumentUserService from '../../src/document-based/services/user_service.js';
 import DocumentRoomPermissionService from '../../src/document-based/services/room_permission_service.js';
-import DocumentRoomInviteLinkService from '../../src/document-based/services/room_invite_link_service.js';
 import DocumentRoomService from '../../src/document-based/services/room_service.js';
-import DocumentRoomUserService from '../../src/document-based/services/room_user_service.js';
-import DocumentChannelService from '../../src/document-based/services/channel_service.js';
 
-import GraphUserService from '../../src/graph-based/services/user_service.js';
 import GraphRoomPermissionService from '../../src/graph-based/services/room_permission_service.js';
-import GraphRoomInviteLinkService from '../../src/graph-based/services/room_invite_link_service.js';
 import GraphRoomService from '../../src/graph-based/services/room_service.js';
-import GraphRoomUserService from '../../src/graph-based/services/room_user_service.js';
-import GraphChannelService from '../../src/graph-based/services/channel_service.js';
 
-import { test, expect, beforeAll } from 'vitest';
-import { context } from '../context.js';
-import { v4 as uuidv4 } from 'uuid';
+import data from '../../src/seed_data.js';
+import { test, expect } from 'vitest';
 
-const roomPermissionServiceTest = (
-    RoomPermissionService, 
-    UserService, 
-    RoomInviteLinkService, 
-    RoomService, 
-    ChannelService,
-    RoomUserService,
-    name) => {
+const roomPermissionServiceTest = (RoomPermissionService, RoomService, name) => {
 
-    const room_uuid = uuidv4();
-    const channel_uuid = uuidv4();
-    const room_invite_link_uuid = uuidv4();
-    const user = { 
-        uuid: uuidv4(),
-        username: `test-${uuidv4()}`,
-        email: `test-${uuidv4()}@example.com`,
-        password: '12345678',
-    };
+    /**
+     * Exisiting entities
+     */
 
-    beforeAll(async () => {
-        await UserService.create({ body: user });
-        await RoomService.create({ 
-            user: context.admin, 
-            body: { 
-                uuid: room_uuid, 
-                name: `test-${uuidv4()}`, 
-                description: 'test', 
-                room_category_name: 'General' 
-            } 
-        });
-        await ChannelService.create({
-            user: context.admin,
-            body: {
-                uuid: channel_uuid,
-                name: `test-${uuidv4()}`,
-                description: 'test',
-                channel_type_name: 'Text',
-                room_uuid,
-            }
-        });
-        await RoomInviteLinkService.create({ 
-            user: context.admin,
-            body: { 
-                uuid: room_invite_link_uuid, 
-                room_uuid,
-            }
-        });
-        await RoomInviteLinkService.join({ user: context.mod, uuid: room_invite_link_uuid });
-        await RoomInviteLinkService.join({ user: context.member, uuid: room_invite_link_uuid });
-        
-        const modRoomUser = await RoomUserService.findAuthenticatedUser({ room_uuid, user: context.mod });
-        await RoomUserService.update({ user: context.admin, uuid: modRoomUser.uuid, body: { room_user_role_name: 'Moderator' } });
-    });
+    const user = { sub: data.users.find(u => u.username === 'not_in_a_room').uuid };
+    const admin = { sub: data.users[0].uuid };
+    const mod = { sub: data.users[1].uuid };
+    const member = { sub: data.users[2].uuid };
+    const room_uuid = data.rooms[0].uuid;
+    const channel_uuid = data.rooms[0].channels[0].uuid;
+
+
+
+    /**
+     * Expected Methods
+     */
 
     test(`(${name}) - RoomPermissionService must implement expected methods`, () => {
         expect(RoomPermissionService).toHaveProperty('isVerified');
@@ -87,23 +39,29 @@ const roomPermissionServiceTest = (
         expect(RoomPermissionService).toHaveProperty('channelCountExceedsLimit');
     });
 
+
+
+    /**
+     * RoomPermissionService.isInRoom
+     */
+
     test.each([
-        [{ user: context.admin, role_name: 'Admin' }, true],
-        [{ user: context.admin, role_name: 'Moderator' }, false],
-        [{ user: context.admin, role_name: 'Member' }, false],
-        [{ user: context.mod, role_name: 'Moderator' }, true],
-        [{ user: context.mod, role_name: 'Admin' }, false],
-        [{ user: context.mod, role_name: 'Member' }, false],
-        [{ user: context.member, role_name: 'Member' }, true],
-        [{ user: context.member, role_name: 'Moderator' }, false],
-        [{ user: context.member, role_name: 'Admin' }, false],
-        [{ user: context.admin, role_name: null }, true],
-        [{ user: context.mod, role_name: null }, true],
-        [{ user: context.member, role_name: null }, true],
-        [{ user: { sub: user.uuid }, role_name: 'Admin' }, false],
-        [{ user: { sub: user.uuid }, role_name: 'Moderator' }, false],
-        [{ user: { sub: user.uuid }, role_name: 'Member' }, false],
-        [{ user: { sub: user.uuid }, role_name: null }, false],
+        [{ user: admin, role_name: 'Admin' }, true],
+        [{ user: admin, role_name: 'Moderator' }, false],
+        [{ user: admin, role_name: 'Member' }, false],
+        [{ user: mod, role_name: 'Moderator' }, true],
+        [{ user: mod, role_name: 'Admin' }, false],
+        [{ user: mod, role_name: 'Member' }, false],
+        [{ user: member, role_name: 'Member' }, true],
+        [{ user: member, role_name: 'Moderator' }, false],
+        [{ user: member, role_name: 'Admin' }, false],
+        [{ user: admin, role_name: null }, true],
+        [{ user: mod, role_name: null }, true],
+        [{ user: member, role_name: null }, true],
+        [{ user, role_name: 'Admin' }, false],
+        [{ user, role_name: 'Moderator' }, false],
+        [{ user, role_name: 'Member' }, false],
+        [{ user, role_name: null }, false],
     ])(`(${name}) - RoomPermissionService.isInRoom valid partitions`, async (options, expected) => {
         expect(await RoomPermissionService.isInRoom({...options, room_uuid})).toBe(expected);
     });
@@ -121,23 +79,29 @@ const roomPermissionServiceTest = (
         expect(async () => await RoomPermissionService.isInRoom(options)).rejects.toThrowError(expected);
     });
 
+
+
+    /**
+     * RoomPermissionService.isInRoomByChannel
+     */
+
     test.each([
-        [{ user: context.admin, role_name: 'Admin' }, true],
-        [{ user: context.admin, role_name: 'Moderator' }, false],
-        [{ user: context.admin, role_name: 'Member' }, false],
-        [{ user: context.mod, role_name: 'Moderator' }, true],
-        [{ user: context.mod, role_name: 'Admin' }, false],
-        [{ user: context.mod, role_name: 'Member' }, false],
-        [{ user: context.member, role_name: 'Member' }, true],
-        [{ user: context.member, role_name: 'Moderator' }, false],
-        [{ user: context.member, role_name: 'Admin' }, false],
-        [{ user: context.admin, role_name: null }, true],
-        [{ user: context.mod, role_name: null }, true],
-        [{ user: context.member, role_name: null }, true],
-        [{ user: { sub: user.uuid }, role_name: 'Admin' }, false],
-        [{ user: { sub: user.uuid }, role_name: 'Moderator' }, false],
-        [{ user: { sub: user.uuid }, role_name: 'Member' }, false],
-        [{ user: { sub: user.uuid }, role_name: null }, false],
+        [{ user: admin, role_name: 'Admin' }, true],
+        [{ user: admin, role_name: 'Moderator' }, false],
+        [{ user: admin, role_name: 'Member' }, false],
+        [{ user: mod, role_name: 'Moderator' }, true],
+        [{ user: mod, role_name: 'Admin' }, false],
+        [{ user: mod, role_name: 'Member' }, false],
+        [{ user: member, role_name: 'Member' }, true],
+        [{ user: member, role_name: 'Moderator' }, false],
+        [{ user: member, role_name: 'Admin' }, false],
+        [{ user: admin, role_name: null }, true],
+        [{ user: mod, role_name: null }, true],
+        [{ user: member, role_name: null }, true],
+        [{ user, role_name: 'Admin' }, false],
+        [{ user, role_name: 'Moderator' }, false],
+        [{ user, role_name: 'Member' }, false],
+        [{ user, role_name: null }, false],
     ])(`(${name}) - RoomPermissionService.isInRoomByChannel valid partitions`, async (options, expected) => {
         expect(await RoomPermissionService.isInRoomByChannel({...options, channel_uuid})).toBe(expected);
     });
@@ -155,8 +119,14 @@ const roomPermissionServiceTest = (
         expect(async () => await RoomPermissionService.isInRoomByChannel(options)).rejects.toThrowError(expected);
     });
 
+
+
+    /**
+     * RoomPermissionService.fileExceedsTotalFilesLimit
+     */
+
     test(`(${name}) - RoomPermissionService.fileExceedsTotalFilesLimit valid partitions`, async () => {
-        const room = await RoomService.findOne({ uuid: room_uuid, user: context.admin });
+        const room = await RoomService.findOne({ uuid: room_uuid, user: admin });
         const { total_files_bytes_allowed } = room.fileSettings;
         
         expect(await RoomPermissionService.fileExceedsTotalFilesLimit(
@@ -179,8 +149,14 @@ const roomPermissionServiceTest = (
         expect(async () => await RoomPermissionService.fileExceedsTotalFilesLimit(options)).rejects.toThrowError(expected);
     });
 
+
+
+    /**
+     * RoomPermissionService.fileExceedsSingleFileSize
+     */
+
     test(`(${name}) - RoomPermissionService.fileExceedsSingleFileSize valid partitions`, async () => {
-        const room = await RoomService.findOne({ uuid: room_uuid, user: context.admin });
+        const room = await RoomService.findOne({ uuid: room_uuid, user: admin });
         const { single_file_bytes_allowed } = room.fileSettings;
         
         expect(await RoomPermissionService.fileExceedsSingleFileSize(
@@ -203,8 +179,14 @@ const roomPermissionServiceTest = (
         expect(async () => await RoomPermissionService.fileExceedsSingleFileSize(options)).rejects.toThrowError(expected);
     });
 
+
+
+    /**
+     * RoomPermissionService.roomUserCountExceedsLimit
+     */
+
     test(`(${name}) - RoomPermissionService.roomUserCountExceedsLimit valid partitions`, async () => {
-        const room = await RoomService.findOne({ uuid: room_uuid, user: context.admin });
+        const room = await RoomService.findOne({ uuid: room_uuid, user: admin });
         const { max_users } = room.userSettings;
 
         expect(await RoomPermissionService.roomUserCountExceedsLimit(
@@ -227,8 +209,14 @@ const roomPermissionServiceTest = (
         expect(async () => await RoomPermissionService.roomUserCountExceedsLimit(options)).rejects.toThrowError(expected);
     });
 
+
+
+    /**
+     * RoomPermissionService.channelCountExceedsLimit
+     */
+
     test(`(${name}) - RoomPermissionService.channelCountExceedsLimit valid partitions`, async () => {
-        const room = await RoomService.findOne({ uuid: room_uuid, user: context.admin });
+        const room = await RoomService.findOne({ uuid: room_uuid, user: admin });
         const { max_channels } = room.channelSettings;
 
         expect(await RoomPermissionService.channelCountExceedsLimit(
@@ -252,32 +240,6 @@ const roomPermissionServiceTest = (
     });
 };
 
-roomPermissionServiceTest(
-    RelationalRoomPermissionService, 
-    RelationalUserService, 
-    RelationalRoomInviteLinkService, 
-    RelationalRoomService, 
-    RelationalChannelService,
-    RelationalRoomUserService, 
-    'Relational'
-);
-
-roomPermissionServiceTest(
-    DocumentRoomPermissionService, 
-    DocumentUserService, 
-    DocumentRoomInviteLinkService, 
-    DocumentRoomService, 
-    DocumentChannelService,
-    DocumentRoomUserService, 
-    'Document'
-);
-
-roomPermissionServiceTest(
-    GraphRoomPermissionService, 
-    GraphUserService, 
-    GraphRoomInviteLinkService, 
-    GraphRoomService, 
-    GraphChannelService,
-    GraphRoomUserService, 
-    'Graph'
-);
+roomPermissionServiceTest(RelationalRoomPermissionService, RelationalRoomService, 'Relational');
+roomPermissionServiceTest(DocumentRoomPermissionService, DocumentRoomService, 'Document');
+roomPermissionServiceTest(GraphRoomPermissionService, GraphRoomService, 'Graph');

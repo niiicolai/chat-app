@@ -16,12 +16,6 @@ export default {
         type: 'integer',
         required: true
     },
-    room: {
-        type: 'relationship',
-        target: 'Room',
-        relationship: 'HAS_FILE_SETTINGS',
-        direction: 'in',
-    },
     created_at: {
         type: 'datetime',
         required: true,
@@ -31,5 +25,14 @@ export default {
         type: 'datetime',
         required: true,
         default: () => new Date().toISOString()
+    },
+    /**
+     * INCOMING RELATION
+     */
+    room: {
+        type: 'relationship',
+        target: 'Room',
+        relationship: 'FILE_SETTINGS_IS',
+        direction: 'in',
     },
 }

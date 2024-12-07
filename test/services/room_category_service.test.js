@@ -1,36 +1,29 @@
 import RelationalRoomCategoryService from '../../src/relational-based/services/room_category_service.js';
 import DocumentRoomCategoryService from '../../src/document-based/services/room_category_service.js';
 import GraphRoomCategoryService from '../../src/graph-based/services/room_category_service.js';
+
+import data from '../../src/seed_data.js';
 import { test, expect } from 'vitest';
 
 const roomCategoryServiceTest = (RoomCategoryService, name) => {
+
+    /**
+     * Expected methods
+     */
 
     test(`(${name}) - RoomCategoryService must implement expected methods`, () => {
         expect(RoomCategoryService).toHaveProperty('findOne');
         expect(RoomCategoryService).toHaveProperty('findAll');
     });
 
+
+
+    /**
+     * RoomCategoryService.findOne
+     */
+
     test.each([
-        ['General'],
-        ['Tech'],
-        ['Sports'],
-        ['Music'],
-        ['Movies'],
-        ['Books'],
-        ['Gaming'],
-        ['Food'],
-        ['Travel'],
-        ['Fitness'],
-        ['Fashion'],
-        ['Art'],
-        ['Science'],
-        ['Politics'],
-        ['Business'],
-        ['Education'],
-        ['Health'],
-        ['Lifestyle'],
-        ['Entertainment'],
-        ['Other'],
+        data.room_categories.map(rc => rc.name),
     ])(`(${name}) - RoomCategoryService.findOne valid partitions`, async (name) => {
         const result = await RoomCategoryService.findOne({ name });
 
@@ -54,6 +47,12 @@ const roomCategoryServiceTest = (RoomCategoryService, name) => {
     ])(`(${name}) - RoomCategoryService.findOne invalid partitions`, async (options, expected) => {
         expect(async () => await RoomCategoryService.findOne(options)).rejects.toThrowError(expected);
     });
+
+
+
+    /**
+     * RoomCategoryService.findAll
+     */
 
     test.each([
         [undefined],

@@ -5,13 +5,14 @@ import roomUserSettingsDto from './room_user_settings_dto.js';
 import roomChannelSettingsDto from './room_channel_settings_dto.js';
 import roomFileSettingsDto from './room_file_settings_dto.js';
 import roomFileDto from './room_file_dto.js';
+import { stringify } from 'uuid';
 
 export default (entity = {}) => {
     const dto = {
-        uuid: entity.uuid,
+        uuid: !(entity._id instanceof Buffer) ? entity._id : stringify(entity._id),
         name: entity.name,
         description: entity.description,
-        room_category_name: entity.room_category?.name,
+        room_category_name: entity.room_category,
         bytes_used: entity.bytes_used || 0,
         mb_used: entity.bytes_used ? parseFloat((entity.bytes_used / 1024 / 1024).toFixed(2)) : 0,
         created_at: entity.created_at,

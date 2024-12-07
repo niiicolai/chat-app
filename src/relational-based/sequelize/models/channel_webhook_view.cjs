@@ -11,6 +11,104 @@ module.exports = (sequelize, DataTypes) => {
          */
         static associate(models) {
         }
+
+        /**
+         * @function createChannelWebhookProc
+         * @description Create a channel webhook using a stored procedure.
+         * @param {Object} replacements
+         * @param {string} replacements.uuid
+         * @param {string} replacements.name
+         * @param {string} replacements.description
+         * @param {string} replacements.src optional
+         * @param {number} replacements.bytes optional
+         * @param {string} replacements.room_uuid
+         * @param {Object} transaction optional
+         * @returns {Promise<void>}
+         * @static
+         */
+        static async createChannelWebhookProc(replacements, transaction) {
+            if (!replacements.uuid) throw new Error('createChannelWebhookProc: No uuid provided');
+            if (!replacements.name) throw new Error('createChannelWebhookProc: No name provided');
+            if (!replacements.description) throw new Error('createChannelWebhookProc: No description provided');
+            if (!replacements.room_uuid) throw new Error('createChannelWebhookProc: No room_uuid provided');
+            if (!replacements.src) replacements.src = null;
+            if (!replacements.bytes) replacements.bytes = null;
+
+            await sequelize.query('CALL create_channel_webhook_proc(:uuid, :channel_uuid, :name, :description, :src, :bytes, :room_uuid, @result)', {
+                replacements,
+                ...(transaction && { transaction }),
+            });
+        }
+
+        /**
+         * @function editChannelWebhookProc
+         * @description Edit a channel webhook using a stored procedure.
+         * @param {Object} replacements
+         * @param {string} replacements.uuid optional
+         * @param {string} replacements.name optional
+         * @param {string} replacements.description optional
+         * @param {string} replacements.src optional
+         * @param {number} replacements.bytes optional
+         * @param {string} replacements.room_uuid optional
+         * @param {Object} transaction optional
+         * @returns {Promise<void>}
+         * @instance
+         */
+        async editChannelWebhookProc(replacements, transaction) {
+            if (!replacements.uuid) replacements.uuid = this.channel_webhook_uuid;
+            if (!replacements.name) replacements.name = this.channel_webhook_name;
+            if (!replacements.description) replacements.description = this.channel_webhook_description;
+            if (!replacements.src) replacements.src = this.room_file_src;
+            if (!replacements.bytes) replacements.bytes = this.room_file_size;
+            if (!replacements.room_uuid) replacements.room_uuid = this.room_uuid;
+
+            await sequelize.query('CALL edit_channel_webhook_proc(:uuid, :name, :description, :src, :bytes, :room_uuid, @result)', {
+                replacements,
+                ...(transaction && { transaction }),
+            });
+        }
+
+        /**
+         * @function deleteChannelWebhookProc
+         * @description Delete a channel webhook using a stored procedure.
+         * @param {Object} transaction optional
+         * @returns {Promise<void>}
+         * @instance
+         */
+        async deleteChannelWebhookProc(transaction) {
+            const uuid = this.channel_webhook_uuid;
+            if (!uuid) throw new Error('deleteChannelWebhookProc: No uuid provided');
+
+            await sequelize.query('CALL delete_channel_webhook_proc(:uuid, @result)', {
+                replacements: { uuid },
+                ...(transaction && { transaction }),
+            });
+        }
+
+        /**
+         * @function message
+         * @description Create a webhook message using a stored procedure.
+         * @param {Object} replacements
+         * @param {string} replacements.message
+         * @param {string} replacements.channel_message_uuid
+         * @param {string} replacements.channel_webhook_message_type_name
+         * @param {Object} transaction optional
+         * @returns {Promise<void>}
+         * @instance
+         */
+        async createChannelWebhookMessageProc(replacements, transaction) {
+            if (!replacements.message) throw new Error('ChannelWebhookView.message: No message provided');
+            if (!replacements.channel_message_uuid) throw new Error('ChannelWebhookView.message: No channel_message_uuid provided');
+            if (!replacements.channel_webhook_message_type_name) throw new Error('ChannelWebhookView.message: No channel_webhook_message_type_name provided');
+            
+            replacements.channel_webhook_uuid = this.channel_webhook_uuid;
+            replacements.channel_uuid = this.channel_uuid;
+
+            await sequelize.query('CALL create_webhook_message_proc(:channel_message_uuid, :message, :channel_uuid, :channel_webhook_uuid, :channel_webhook_message_type_name, @result)', {
+                replacements,
+                ...(transaction && { transaction }),
+            });
+        }
     }
     ChannelWebhookView.init({
         channel_webhook_uuid: {

@@ -1,92 +1,81 @@
-import { roomUuid } from './room.js';
-import User from '../models/user.js';
-import Room from '../models/room.js';
-import RoomFile from '../models/room_file.js';
-import RoomFileType from '../models/room_file_type.js';
 import Channel from '../models/channel.js';
-import ChannelType from '../models/channel_type.js';
 import ChannelMessage from '../models/channel_message.js';
-import ChannelMessageType from '../models/channel_message_type.js';
-import ChannelMessageUploadType from '../models/channel_message_upload_type.js';
-import ChannelWebhookMessageType from '../models/channel_webhook_message_type.js';
 import ChannelAudit from '../models/channel_audit.js';
-
-import data from './data.js';
-
-const channelUuid = "1c9437b0-4e88-4a8e-84f0-679c7714407f";
-const channelWebhookUuid = "3219fadb-a982-4b4c-81a3-d7b70b4c9963";
-const channelMessageUploadUuid = "972462eb-938f-4728-8ce7-76938f635e7d";
-const channelWebhookMessageUuid = "a94e56ff-f8e4-4a35-bf22-3542053232b3";
-const channelMessageUuid1 = "507886b9-43ce-4af2-8d4e-0ef2af1245bf";
-const channelMessageUuid2 = "3be500fe-6982-49d2-b22e-77593ddee4ee";
-const roomFileUuid = "0ce35cef-37b0-4c01-bd15-cc3786bca6c0";
+import mongoose from 'mongoose';
+import data from '../../../seed_data.js';
 
 export default class ChannelSeeder {
     async up() {
-        /**
-         * Create Channel
-         */
-        const room = await Room.findOne({ uuid: roomUuid });
-        const channel_type = await ChannelType.findOne({ name: "Text" });
-        const channel = await new Channel({ 
-            uuid: channelUuid, 
-            name: "General Discussion", 
-            description: "General discussion channel",
-            channel_type,
-            room: room._id,
-            channel_webhook: {
-                uuid: channelWebhookUuid,
-                name: "Test Channel Webhook",
-                description: "Test Channel Webhook Description",
-            }
-        }).save();
+        const session = await mongoose.startSession();
+        try {
+            session.startTransaction();
 
-        /**
-         * Create a Channel Message with a Channel Message Upload
-         */
-        const room_file_type = await RoomFileType.findOne({ name: "ChannelMessageUpload" });
-        const roomFile = await new RoomFile({
-            uuid: roomFileUuid,
-            src: "https://ghostchat.fra1.cdn.digitaloceanspaces.com/channel_message_upload/LemonadeGuyCardboardAndPencilWithShadow-8cdc3130cc5498718fce7ee9d1ff5d92ddcc2ed81c689a1bf275bd14189a607c-512-08efe54f-4cbc-4923-9a70-2ceb6a55d58e-1726929326038.jpeg",
-            room_file_type,
-            size: 540000,
-            room: room._id
-        }).save();
+            await Channel.insertMany(data.rooms.flatMap((room) => {
+                return room.channels.map((channel) => {
+                    return {
+                        _id: channel.uuid,
+                        name: channel.name,
+                        description: channel.description,
+                        channel_type: channel.channel_type_name,
+                        room: room.uuid,
+                        ...(channel.channel_webhook && {
+                            channel_webhook: {
+                                _id: channel.channel_webhook.uuid,
+                                name: channel.channel_webhook.name,
+                                description: channel.channel_webhook.description,
+                            }
+                        })
+                    }
+                })
+            }), { session });
 
-        const user1 = await User.findOne({ uuid: data.users[0].uuid });
-        const channelMessageType1 = await ChannelMessageType.findOne({ name: "User" });
-        const channel_message_upload_type = await ChannelMessageUploadType.findOne({ name: "Image" });
-        await new ChannelMessage({
-            uuid: channelMessageUuid1,
-            body: "Test Channel Message 1",
-            channel: channel._id,
-            channel_message_type: channelMessageType1,
-            user: user1._id,
-            channel_message_upload: {
-                uuid: channelMessageUploadUuid,
-                room_file: roomFile._id,
-                channel_message_upload_type
-            }
-        }).save();
+            await ChannelMessage.insertMany(data.rooms.flatMap((room) => {
+                return room.channels.flatMap((channel) => {
+                    return channel.channel_messages.map((channelMessage) => {
+                        return {
+                            _id: channelMessage.uuid,
+                            body: channelMessage.body,
+                            channel_message_type: channelMessage.channel_message_type_name,
+                            channel: channel.uuid,
+                            ...(channelMessage.user_uuid && { user: channelMessage.user_uuid }),
+                            ...(channelMessage.channel_message_upload && {
+                                channel_message_upload: {
+                                    _id: channelMessage.channel_message_upload.uuid,
+                                    room_file: channelMessage.channel_message_upload.room_file_uuid,
+                                    channel_message_upload_type: channelMessage.channel_message_upload.channel_message_upload_type_name
+                                }
+                            }),
+                            ...(channelMessage.channel_webhook_message && {
+                                channel_webhook_message: {
+                                    _id: channelMessage.channel_webhook_message.uuid,
+                                    body: channelMessage.channel_webhook_message.body,
+                                    channel_webhook_message_type: channelMessage.channel_webhook_message.channel_webhook_message_type_name,
+                                    channel_webhook: channel.channel_webhook.uuid
+                                }
+                            }),
+                        }
+                    })
+                })
+            }), { session });
 
-        /**
-         * Create a Channel message with a Channel Webhook Message
-         * and a Channel Message
-         */
-        const channelMessageType2 = await ChannelMessageType.findOne({ name: "Webhook" });
-        const channel_webhook_message_type = await ChannelWebhookMessageType.findOne({ name: "Custom" });
-        await new ChannelMessage({
-            uuid: channelMessageUuid2,
-            body: "Test Channel Message 2",
-            channel: channel._id,
-            channel_message_type: channelMessageType2,
-            channel_webhook_message: {
-                uuid: channelWebhookMessageUuid,
-                body: "Test Channel Webhook Message",
-                channel_webhook_message_type,
-                channel_webhook: channel.channel_webhook._id
-            }
-        }).save(); 
+            await ChannelAudit.insertMany(data.rooms.flatMap((room) => {
+                return room.channel_audits.flatMap((audit) => {
+                    return {
+                        _id: audit.uuid,
+                        body: audit.body,
+                        channel_audit_type: audit.channel_audit_type_name,
+                        channel: audit.channel_uuid
+                    }
+                })
+            }), { session });
+
+            await session.commitTransaction();
+        } catch (error) {
+            await session.abortTransaction();
+            throw error;
+        } finally {
+            session.endSession();
+        }
     }
 
     async down() {

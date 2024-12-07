@@ -1,9 +1,6 @@
 import dateHelper from './_date_helper.js';
 
-export default (entity = {}, eagerRelationships = []) => {
-    const user_status_state = eagerRelationships.find((rel) => rel.user_status_state)?.user_status_state || {};
-    const user_status_state_name = user_status_state.name || null;
-    const user = eagerRelationships.find((rel) => rel.user)?.user || null;
+export default (entity = {}) => {
     const dto = {};
 
     if (entity.last_seen_at && typeof entity.created_at === 'object') {
@@ -17,7 +14,7 @@ export default (entity = {}, eagerRelationships = []) => {
         uuid: entity.uuid,
         message: entity.message,
         total_online_hours: entity.total_online_hours,
-        user_status_state_name,
-        user_uuid: user?.uuid,
+        user_status_state_name: entity.user_status_state.name,
+        user_uuid: entity.user.uuid,
     });
 }

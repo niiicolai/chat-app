@@ -1,8 +1,8 @@
 import { CronJob } from 'cron';
 import StorageService from "../../shared/services/storage_service.js";
 import ChannelMessage from '../mongoose/models/channel_message.js';
-import ChannelMessageUpload from '../mongoose/models/channel_message_upload.js';
-import ChannelWebhookMessage from '../mongoose/models/channel_webhook_message.js';
+import ChannelMessageUpload from '../mongoose/subdocuments/channel_message_upload.js';
+import ChannelWebhookMessage from '../mongoose/subdocuments/channel_webhook_message.js';
 import RoomFile from '../mongoose/models/room_file.js';
 import Room from '../mongoose/models/room.js';
 import Channel from '../mongoose/models/channel.js';

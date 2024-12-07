@@ -1,110 +1,127 @@
-import GoogleAuthServiceValidator from '../../shared/validators/google_auth_service_validator.js';
+import Validator from '../../shared/validators/google_auth_service_validator.js';
 import JwtService from '../../shared/services/jwt_service.js';
-import ControllerError from '../../shared/errors/controller_error.js';
+import err from '../../shared/errors/index.js';
 import neodeInstance from '../neode/index.js';
 import dto from '../dto/user_dto.js';
 import { v4 as uuidv4 } from 'uuid';
 
-class Service {
+/**
+ * @class GoogleAuthService
+ * @description Service class for Google auth
+ * @exports GoogleAuthService
+ */
+class GoogleAuthService {
 
-    async create(options = { info: null }) {
-        GoogleAuthServiceValidator.create(options);
+    async create(options = { info: null, user_uuid: null }) {
+        Validator.create(options);
 
-        const { id: third_party_id, email, picture: avatar_src } = options.info.data;
+        const { id: third_party_id, email } = options.info.data;
 
-        if ((await neodeInstance.cypher('MATCH (u:User) WHERE u.email = $email RETURN u', { email })).records.length > 0) {
-            throw new ControllerError(400, 'Account already linked already exists. Please login instead!');
-        }
-        if ((await neodeInstance.cypher('MATCH (ul:UserLogin) WHERE ul.third_party_id = $third_party_id RETURN ul', { third_party_id })).records.length > 0) {
-            throw new ControllerError(400, 'Account already linked already exists. Please login instead!');
-        }
+        const thirdPartyIdExist = await neodeInstance.model('UserLogin').first({ third_party_id });
+        if (thirdPartyIdExist) throw new err.DuplicateEntryError('user', 'third_party_id', third_party_id);
 
-        const userStatusState = await neodeInstance.model('UserStatusState').find('Offline');
-        if (!userStatusState) throw new ControllerError(500, 'User status state not found');
-
-        const userLoginType = await neodeInstance.model('UserLoginType').find('Google');
-        if (!userLoginType) throw new ControllerError(500, 'User login type not found');
+        const emailExist = await neodeInstance.model('User').first({ email });
+        if (emailExist) throw new err.DuplicateEntryError('user', 'email', email);
 
         const now = new Date();
-        const uuid = uuidv4();
-        const username = `user${now.getTime()}`;
+        const uuid = options.user_uuid || uuidv4();
 
-        const userLogin = await neodeInstance.model('UserLogin').create({
-            uuid: uuidv4(),
-            third_party_id,
+        const session = neodeInstance.session();
+        await session.writeTransaction(async tx => {
+
+            // Create user
+            await tx.run(
+                'CREATE (u:User {uuid: $uuid, email: $email, username: $username})',
+                { uuid, email, username: `user${now.getTime()}` }
+            );
+
+            // Create user status
+            await tx.run(
+                'MATCH (u:User {uuid: $uuid}) ' +
+                'MATCH (uss:UserStatusState {name: "Offline"}) ' +
+                'CREATE (us:UserStatus {uuid: $status_uuid, last_seen_at: $last_seen_at, message: $message, total_online_hours: $total_online_hours}) ' +
+                'CREATE (u)-[:STATUS_IS]->(us) ' +
+                'CREATE (us)-[:STATE_IS]->(uss)',
+                {
+                    uuid,
+                    status_uuid: uuidv4(),
+                    last_seen_at: new Date().toDateString(),
+                    message: 'new msg',
+                    total_online_hours: 0
+                }
+            );
+
+            // Create user email verification
+            await tx.run(
+                'MATCH (u:User {uuid: $uuid}) ' +
+                'CREATE (uev:UserEmailVerification {uuid: $user_email_verification_uuid, is_verified: $is_verified}) ' +
+                'CREATE (u)-[:EMAIL_VERIFY_VIA]->(uev)',
+                {
+                    uuid,
+                    user_email_verification_uuid: uuidv4(),
+                    is_verified: true
+                }
+            );
+
+            // Create user login
+            await tx.run(
+                'MATCH (u:User {uuid: $uuid}) ' +
+                'MATCH (ult:UserLoginType {name: "Google"}) ' +
+                'CREATE (ul:UserLogin {uuid: $login_uuid, third_party_id: $third_party_id}) ' +
+                'CREATE (ul)-[:TYPE_IS]->(ult) ' +
+                'CREATE (u)-[:AUTHORIZE_VIA]->(ul)',
+                {
+                    uuid,
+                    login_uuid: uuidv4(),
+                    third_party_id
+                }
+            );
+        }).catch(error => {
+            console.error('transaction', error);
+            throw error;
+        }).finally(() => {
+            session.close();
         });
 
-        const userState = await neodeInstance.model('UserStatus').create({
-            last_seen_at: new Date(),
-            message: "No message",
-            total_online_hours: 0,
-        });
-
-        const userEmailVerification = await neodeInstance.model('UserEmailVerification').create({
-            uuid: uuidv4(),
-            is_verified: true,
-        });
-
-        const savedUser = await neodeInstance.model('User').create({
-            uuid,
-            username,
-            email,
-            avatar_src: avatar_src || null,
-            created_at: new Date(),
-            updated_at: new Date()
-        });
-
-        await userState.relateTo(userStatusState, 'user_status_state');
-        await savedUser.relateTo(userState, 'user_status');
-        await savedUser.relateTo(userEmailVerification, 'user_email_verification');
-        await userLogin.relateTo(savedUser, 'user');
-        await userLogin.relateTo(userLoginType, 'user_login_type');
+        const savedUser = await neodeInstance.model('User').find(uuid);
+        const userStatus = savedUser.get('user_status').endNode();
+        const userStatusState = userStatus.get('user_status_state').endNode();
+        const userEmailVerification = savedUser.get('user_email_verification').endNode();
 
         return {
             token: JwtService.sign(uuid),
-            user: dto(savedUser.properties(), [
-                { user_status: userState.properties() },
-                { user_email_verification: userEmailVerification.properties() },
-                { user_status_state: userStatusState.properties() }
-            ]),
+            user: dto({
+                ...savedUser.properties(),
+                user_status: userStatus.properties(),
+                user_status_state: userStatusState.properties(),
+                user_email_verification: userEmailVerification.properties()
+            })
         };
     }
 
     async login(options = { info: null }) {
-        GoogleAuthServiceValidator.login(options);
+        Validator.login(options);
 
         const { id: third_party_id } = options.info.data;
 
-        const userLoginType = await neodeInstance.model('UserLoginType').find('Google');
-        if (!userLoginType) throw new ControllerError(500, 'User login type not found');
-
         const userLoginResult = await neodeInstance.cypher(
-            'MATCH (ul:UserLogin { third_party_id: $third_party_id })-[:HAS_LOGIN_TYPE]->(ult:UserLoginType { name: "Google" }) RETURN ul',
+            'MATCH (ul:UserLogin { third_party_id: $third_party_id })-[:TYPE_IS]->(ult:UserLoginType { name: "Google" }) ' +
+            'MATCH (u:User)-[:AUTHORIZE_VIA]->(ul) ' +
+            'MATCH (u)-[:STATUS_IS]->(us:UserStatus)-[:STATE_IS]->(uss:UserStatusState) ' +
+            'MATCH (u)-[:EMAIL_VERIFY_VIA]->(uev:UserEmailVerification) ' +  
+            'RETURN ul, u, us, uss, uev',
             { third_party_id }
         );
-        if (!userLoginResult.records.length) throw new ControllerError(400, 'User not found');
-        const userLogin = userLoginResult.records[0].get('ul').properties;
-        
-        const savedUserResult = await neodeInstance.cypher(
-            'MATCH (ul:UserLogin { uuid: $uuid })-[:HAS_USER]->(u:User) ' +
-            'MATCH (u)-[:HAS_USER_STATUS]->(us:UserStatus) ' +
-            'MATCH (us)-[:HAS_USER_STATUS_STATE]->(uss:UserStatusState) ' +
-            'MATCH (u)-[:HAS_USER_EMAIL_VERIFICATION]->(uev:UserEmailVerification) ' +
-            'MATCH (ul)-[:HAS_LOGIN_TYPE]->(ult:UserLoginType {name: "Google"}) ' +
-            'RETURN u, us, uev, ul, ult, uss',
-            { uuid: userLogin.uuid }
-        );
-        
-        if (!savedUserResult.records.length) throw new ControllerError(400, 'User not found');
-        const savedUser = savedUserResult.records[0].get('u').properties;
+        if (!userLoginResult.records.length) throw new err.EntityNotFoundError('user_login');
+
+        const user = userLoginResult.records[0].get('u').properties;
+        const user_status = userLoginResult.records[0].get('us').properties;
+        const user_status_state = userLoginResult.records[0].get('uss').properties;
+        const user_email_verification = userLoginResult.records[0].get('uev').properties;
 
         return {
-            token: JwtService.sign(savedUser.uuid),
-            user: dto(savedUser, [
-                { user_status: savedUserResult.records[0].get('us').properties },
-                { user_email_verification: savedUserResult.records[0].get('uev').properties },
-                { user_status_state: savedUserResult.records[0].get('uss').properties }
-            ]),
+            token: JwtService.sign(user.uuid),
+            user: dto({ ...user, user_status, user_status_state, user_email_verification }),
         };
     }
 
@@ -115,41 +132,56 @@ class Service {
      * @param {String} options.third_party_id
      * @param {String} options.type
      * @param {Object} options.user
+     * @param {String} options.user.sub
+     * @param {String} options.login_uuid optional
      * @returns {void}
      */
-    async addToExistingUser(options={ third_party_id: null, type: null, user: null }) {
-        GoogleAuthServiceValidator.addToExistingUser(options);
+    async addToExistingUser(options = { third_party_id: null, type: null, user: null, login_uuid: null }) {
+        Validator.addToExistingUser(options);
 
         const result = await neodeInstance.cypher(
-            'MATCH (ul:UserLogin { third_party_id: $third_party_id })-[:HAS_LOGIN_TYPE]->(ult:UserLoginType { name: $type }) ' +
-            'MATCH (ul)-[:HAS_USER]->(u:User { uuid: $uuid })' +
+            'MATCH (ul:UserLogin { third_party_id: $third_party_id })-[:TYPE_IS]->(ult:UserLoginType { name: $type }) ' +
+            'MATCH (u:User { uuid: $uuid })-[:AUTHORIZE_VIA]->(ul)' +
             'RETURN ul',
             { third_party_id: options.third_party_id, type: options.type, uuid: options.user.sub }
         );
 
         if (result.records.length > 0) {
-            throw new ControllerError(400, 'Account already linked already exists. Please login instead!');
+            throw new err.DuplicateThirdPartyLoginError("Google");
         }
 
         if (options.type !== 'Google') {
-            throw new ControllerError(400, 'Only Google are currently supported');
+            throw new err.ControllerError(400, 'Only Google are currently supported');
         }
 
-        const userLoginType = await neodeInstance.model('UserLoginType').find('Google');
-        if (!userLoginType) throw new ControllerError(500, 'User login type not found');
-        const userInstance = await neodeInstance.model('User').find(options.user.sub);
-        if (!userInstance) throw new ControllerError(400, 'User not found');
+        const savedUser = await neodeInstance.model('User').find(options.user.sub);
+        if (!savedUser) throw new err.EntityNotFoundError('user');
 
-        const userLogin = await neodeInstance.model('UserLogin').create({
-            uuid: uuidv4(),
-            third_party_id: options.third_party_id
+        const session = neodeInstance.session();
+        await session.writeTransaction(async tx => {
+            // Create user login
+            await tx.run(
+                'MATCH (u:User {uuid: $uuid}) ' +
+                'MATCH (ult:UserLoginType {name: $user_login_type_name}) ' +
+                'CREATE (ul:UserLogin {uuid: $login_uuid, third_party_id: $third_party_id}) ' +
+                'CREATE (ul)-[:TYPE_IS]->(ult) ' +
+                'CREATE (u)-[:AUTHORIZE_VIA]->(ul)',
+                { 
+                    uuid: options.user.sub,
+                    login_uuid: options.login_uuid || uuidv4(),
+                    third_party_id: options.third_party_id,
+                    user_login_type_name: options.type
+                }
+            );
+        }).catch(error => {
+            console.error('transaction', error);
+            throw error;
+        }).finally(() => {
+            session.close();
         });
-
-        await userLogin.relateTo(userInstance, 'user');
-        await userLogin.relateTo(userLoginType, 'user_login_type');
     }
 }
 
-const service = new Service();
+const service = new GoogleAuthService();
 
 export default service;

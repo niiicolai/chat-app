@@ -15,6 +15,109 @@ module.exports = (sequelize, DataTypes) => {
                 targetKey: 'channel_uuid',
             });
         }
+
+        /**
+         * @function createChannelMessageProcStatic
+         * @description Create a channel message using a stored procedure.
+         * @param {Object} replacements
+         * @param {string} replacements.uuid
+         * @param {string} replacements.msg
+         * @param {string} replacements.channel_message_type_name
+         * @param {string} replacements.channel_uuid
+         * @param {string} replacements.user_uuid
+         * @param {string} replacements.upload_type - optional
+         * @param {string} replacements.upload_src - optional
+         * @param {number} replacements.bytes - optional
+         * @param {string} replacements.room_uuid 
+         * @param {Object} transaction optional
+         * @returns {Promise<void>}
+         * @static
+         */
+        static async createChannelMessageProcStatic(replacements, transaction) {
+            if (!replacements) throw new Error('createChannelMessageProcStatic: No replacements provided');
+            if (!replacements.uuid) throw new Error('createChannelMessageProcStatic: No uuid provided');
+            if (!replacements.msg) throw new Error('createChannelMessageProcStatic: No msg provided');
+            if (!replacements.channel_message_type_name) throw new Error('createChannelMessageProcStatic: No channel_message_type_name provided');
+            if (!replacements.channel_uuid) throw new Error('createChannelMessageProcStatic: No channel_uuid provided');
+            if (!replacements.user_uuid) throw new Error('createChannelMessageProcStatic: No user_uuid provided');
+            if (!replacements.room_uuid) throw new Error('createChannelMessageProcStatic: No room_uuid provided');
+            if (!replacements.upload_type) replacements.upload_type = null;
+            if (!replacements.upload_src) replacements.upload_src = null;
+            if (!replacements.bytes) replacements.bytes = null;
+
+            await sequelize.query('CALL create_channel_message_proc(:uuid, :msg, :channel_message_type_name, :channel_uuid, :user_uuid, :upload_type, :upload_src, :bytes, :room_uuid, @result)', {
+                replacements,
+                ...(transaction && { transaction }),
+            });
+        }
+
+        /**
+         * @function editChannelMessageProc
+         * @description Edit a channel message using a stored procedure.
+         * @param {Object} replacements
+         * @param {string} replacements.uuid
+         * @param {string} replacements.msg
+         * @param {Object} transaction optional
+         * @returns {Promise<void>}
+         * @static
+         */
+        static async editChannelMessageProcStatic(replacements, transaction) {
+            if (!replacements) throw new Error('editChannelMessageProcStatic: No replacements provided');
+            if (!replacements.uuid) throw new Error('editChannelMessageProcStatic: No uuid provided');
+            if (!replacements.msg) throw new Error('editChannelMessageProcStatic: No msg provided');
+
+            await sequelize.query('CALL edit_channel_message_proc(:uuid, :msg, @result)', {
+                replacements,
+                ...(transaction && { transaction }),
+            });
+        }
+
+        /**
+         * @function deleteChannelMessageProcStatic
+         * @description Delete a channel message using a stored procedure.
+         * @param {Object} replacements
+         * @param {string} replacements.uuid
+         * @param {Object} transaction optional
+         * @returns {Promise<void>}
+         * @static
+         */
+        static async deleteChannelMessageProcStatic(replacements, transaction) {
+            if (!replacements) throw new Error('deleteChannelMessageProcStatic: No replacements provided');
+            if (!replacements.uuid) throw new Error('deleteChannelMessageProcStatic: No uuid provided');
+
+            await sequelize.query('CALL delete_channel_message_proc(:uuid, @result)', {
+                replacements,
+                transaction,
+            });
+        }
+
+        /**
+         * @function editChannelMessageProc
+         * @description Edit a channel message using a stored procedure.
+         * @param {Object} replacements
+         * @param {string} replacements.msg optional
+         * @param {Object} transaction optional
+         * @returns {Promise<void>}
+         * @instance
+         */
+        async editChannelMessageProc(replacements, transaction) {
+            if (!replacements) throw new Error('editChannelMessageProc: No replacements provided');
+            if (!replacements.msg) replacements.msg = this.channel_message_body;
+
+            replacements.uuid = this.channel_message_uuid;
+            await ChannelMessageView.editChannelMessageProcStatic(replacements, transaction);
+        }
+
+        /**
+         * @function deleteChannelMessageProc
+         * @description Delete a channel message using a stored procedure.
+         * @param {Object} transaction optional
+         * @returns {Promise<void>}
+         * @instance
+         */
+        async deleteChannelMessageProc(transaction) {
+            await ChannelMessageView.deleteChannelMessageProcStatic({ uuid: this.channel_message_uuid }, transaction);
+        }
     }
     ChannelMessageView.init({
         channel_message_uuid: {

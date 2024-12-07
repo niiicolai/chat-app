@@ -1,4 +1,4 @@
-import { execute as seed } from '../neode/seeders/seed_all.js';
+import { execute as seed } from './seed_all.js';
 
 const args = process.argv.slice(2);
 const command = args[0];

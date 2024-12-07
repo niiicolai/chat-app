@@ -1,20 +1,41 @@
-import TypeServiceValidator from '../../shared/validators/type_service_validator.js';
-import ControllerError from '../../shared/errors/controller_error.js';
+import Validator from '../../shared/validators/type_service_validator.js';
+import err from '../../shared/errors/index.js';
 import RoomAuditType from '../mongoose/models/room_audit_type.js';
 import dto from '../dto/type_dto.js';
 
-class Service {
-    async findOne(options = { name: null }) {
-        TypeServiceValidator.findOne(options);
+/**
+ * @class RoomAuditTypeService
+ * @description Service class for room audit types.
+ * @exports RoomAuditTypeService
+ */
+class RoomAuditTypeService {
 
-        const result = await RoomAuditType.findOne({ name: options.name });
-        if (!result) throw new ControllerError(404, 'room_audit_type not found');
+    /**
+     * @function findOne
+     * @description Find a room audit type by name
+     * @param {Object} options
+     * @param {String} options.name
+     * @returns {Promise<Object>}
+     */
+    async findOne(options = { name: null }) {
+        Validator.findOne(options);
+
+        const result = await RoomAuditType.findOne({ _id: options.name });
+        if (!result) throw new err.EntityNotFoundError('room_audit_type');
 
         return dto(result._doc);
     }
 
+    /**
+     * @function findAll
+     * @description Find all room audit types
+     * @param {Object} options
+     * @param {Number} options.page optional
+     * @param {Number} options.limit optional
+     * @returns {Promise<Object>}
+     */
     async findAll(options = { page: null, limit: null }) {
-        options = TypeServiceValidator.findAll(options);
+        options = Validator.findAll(options);
 
         const { page, limit, offset } = options;
         const [total, data] = await Promise.all([
@@ -34,6 +55,6 @@ class Service {
     }
 }
 
-const service = new Service();
+const service = new RoomAuditTypeService();
 
 export default service;

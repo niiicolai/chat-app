@@ -1,204 +1,276 @@
-import RoomInviteLinkServiceValidator from '../../shared/validators/room_invite_link_service_validator.js';
-import ControllerError from '../../shared/errors/controller_error.js';
-import RoomPermissionService from './room_permission_service.js';
+import Validator from '../../shared/validators/room_invite_link_service_validator.js';
+import { getJoinMessage } from '../../shared/utils/join_message_utils.js';
+import err from '../../shared/errors/index.js';
+import RPS from './room_permission_service.js';
 import ChannelService from './channel_service.js';
 import neodeInstance from '../neode/index.js';
-import NeodeBaseFindService from './neode_base_find_service.js';
 import dto from '../dto/room_invite_link_dto.js';
+import neo4j from 'neo4j-driver';
 import { v4 as uuidv4 } from 'uuid';
-import { getJoinMessage } from '../../shared/utils/join_message_utils.js';
 
-class Service extends NeodeBaseFindService {
-    constructor() {
-        super('uuid', 'RoomInviteLink', dto);
-    }
+/**
+ * @class RoomInviteLinkService
+ * @description Service class for room invite links
+ * @exports RoomInviteLinkService
+ */
+class RoomInviteLinkService {
 
+    /**
+     * @function findOne
+     * @description Find a room invite link by uuid
+     * @param {Object} options
+     * @param {string} options.uuid
+     * @param {Object} options.user
+     * @param {Object} options.user.sub
+     * @returns {Promise<Object>}
+     */
     async findOne(options = { uuid: null, user: null }) {
-        RoomInviteLinkServiceValidator.findOne(options);
+        Validator.findOne(options);
 
         const { user, uuid } = options;
 
-        const linkInstance = await neodeInstance.model('RoomInviteLink').find(uuid);
-        if (!linkInstance) throw new ControllerError(404, 'room_invite_link not found');
+        const link = await neodeInstance.model('RoomInviteLink').find(uuid);
+        if (!link) throw new err.EntityNotFoundError('room_invite_link');
 
-        const roomInstance = await linkInstance.get('room').endNode().properties();
-        if (!roomInstance) throw new ControllerError(404, 'Room not found');
+        const room = await link.get('room').startNode().properties();
 
-        if (!(await RoomPermissionService.isInRoom({ room_uuid: roomInstance.uuid, user, role_name: null }))) {
-            throw new ControllerError(403, 'User is not in the room');
-        }
+        const isInRoom = await RPS.isInRoom({ room_uuid: room.uuid, user });
+        if (!isInRoom) throw new err.RoomMemberRequiredError();
 
-        return dto(linkInstance.properties(), [{ room: roomInstance }]);
+        return dto({ ...link.properties(), room });
     }
 
+    /**
+     * @function findAll
+     * @description Find all room invite links
+     * @param {Object} options
+     * @param {string} options.room_uuid
+     * @param {Object} options.user
+     * @param {Object} options.user.sub
+     * @param {number} options.page optional
+     * @param {number} options.limit optional
+     * @returns {Promise<Object>}
+     */
     async findAll(options = { room_uuid: null, user: null, page: null, limit: null }) {
-        RoomInviteLinkServiceValidator.findAll(options);
+        options = Validator.findAll(options);
 
-        const { room_uuid, user, page, limit } = options;
+        const { room_uuid, user, page, limit, offset } = options;
 
-        if (!(await RoomPermissionService.isInRoom({ room_uuid, user, role_name: null }))) {
-            throw new ControllerError(403, 'User is not in the room');
-        }
+        const isInRoom = await RPS.isInRoom({ room_uuid, user });
+        if (!isInRoom) throw new err.RoomMemberRequiredError();
 
-        return super.findAll({ page, limit, override: {
-            match: ['MATCH (ril:RoomInviteLink)-[:HAS_ROOM]->(r:Room {uuid: $room_uuid})'],
-            return: ['ril', 'r'],
-            map: { model: 'ril', relationships: [{ alias: 'r', to: 'room' }] },
-            params: { room_uuid }
-        }}); 
+        const result = await neodeInstance.cypher(
+            `MATCH (r:Room {uuid: $room_uuid}) ` +
+            `MATCH (r)-[:INVITES_VIA]->(ril:RoomInviteLink) ` +
+            `ORDER BY ril.created_at DESC ` +
+            (offset ? `SKIP $offset ` : ``) +
+            (limit ? `LIMIT $limit ` : ``) +
+            `RETURN COUNT(ril) AS total, ril, r`,
+            {
+                ...(offset && { offset: neo4j.int(offset) }),
+                ...(limit && { limit: neo4j.int(limit) }),
+                room_uuid
+            }
+        );
+
+        const total = result.records[0].get('total').low;
+        return {
+            total,
+            data: result.records.map(record => dto({
+                ...record.get('ril').properties,
+                room: record.get('r').properties,
+            })),
+            ...(limit && { limit }),
+            ...(page && limit && { page, pages: Math.ceil(total / limit) }),
+        };
     }
 
+    /**
+     * @function create
+     * @description Create a room invite link
+     * @param {Object} options
+     * @param {Object} options.body
+     * @param {string} options.body.uuid
+     * @param {string} options.body.room_uuid
+     * @param {string} options.body.expires_at
+     * @param {Object} options.user
+     * @param {Object} options.user.sub
+     * @returns {Promise<Object>}
+     */
     async create(options = { body: null, user: null }) {
-        RoomInviteLinkServiceValidator.create(options);
+        Validator.create(options);
 
         const { body, user } = options;
         const { uuid, room_uuid, expires_at } = body;
 
-        if (expires_at && new Date(expires_at) < new Date()) {
-            throw new ControllerError(400, 'The expiration date cannot be in the past');
+        const room = await neodeInstance.model('Room').find(room_uuid);
+        if (!room) throw new err.EntityNotFoundError('room');
+
+        const isAdmin = await RPS.isInRoom({ room_uuid, user, role_name: 'Admin' });
+        if (!isAdmin) throw new err.AdminPermissionRequiredError();
+
+        const uuidUsed = await neodeInstance.model('RoomInviteLink').find(uuid);
+        if (uuidUsed) throw new err.DuplicateEntryError('room_invite_link', 'PRIMARY', uuid);
+
+        try {
+            await neodeInstance.batch([{
+                query:
+                    `MATCH (r:Room {uuid: $room_uuid}) ` +
+                    `CREATE (ril:RoomInviteLink {uuid: $uuid, expires_at: $expires_at, created_at: datetime(), updated_at: datetime()}) ` +
+                    `CREATE (r)-[:INVITES_VIA]->(ril)`,
+                params: { uuid, room_uuid, expires_at: expires_at || null }
+            }]);
+        } catch (e) {
+            console.error(e);
+            throw e;
         }
 
-        if (!(await RoomPermissionService.isInRoom({ room_uuid, user, role_name: 'Admin' }))) {
-            throw new ControllerError(403, 'User is not an admin of the room');
-        }
-
-        const roomInstance = await neodeInstance.model('Room').find(room_uuid);
-        if (!roomInstance) throw new ControllerError(404, 'Room not found');
-
-        const linkInstance = await neodeInstance.model('RoomInviteLink').create({
-            uuid,
-            expires_at: expires_at || null,
-            created_at: new Date(),
-            updated_at: new Date(),
-        });
-
-        await linkInstance.relateTo(roomInstance, 'room');
-        
-        return this.findOne({ uuid, user });
+        return await this.findOne({ uuid, user });
     }
 
+    /**
+     * @function update
+     * @description Update a room invite link
+     * @param {Object} options
+     * @param {string} options.uuid
+     * @param {Object} options.body
+     * @param {string} options.body.expires_at
+     * @param {Object} options.user
+     * @param {Object} options.user.sub
+     * @returns {Promise<Object>}
+     */
     async update(options = { uuid: null, body: null, user: null }) {
-        RoomInviteLinkServiceValidator.update(options);
+        Validator.update(options);
 
         const { uuid, body, user } = options;
         const { expires_at } = body;
 
-        const linkInstance = await neodeInstance.model('RoomInviteLink').find(uuid);
-        if (!linkInstance) throw new ControllerError(404, 'Room Invite Link not found');
+        const link = await neodeInstance.model('RoomInviteLink').find(uuid);
+        if (!link) throw new err.EntityNotFoundError('room_invite_link');
 
-        const room = await linkInstance.get('room').endNode().properties();
+        const room = await link.get('room').startNode().properties();
         const room_uuid = room.uuid;
-        if (!(await RoomPermissionService.isInRoom({ room_uuid, user, role_name: 'Admin' }))) {
-            throw new ControllerError(403, 'User is not an admin of the room');
-        }
+        const isAdmin = await RPS.isInRoom({ room_uuid, user, role_name: 'Admin' });
+        if (!isAdmin) throw new err.AdminPermissionRequiredError();
 
-        linkInstance.update({
-            expires_at: expires_at || null,
-            updated_at: new Date(),
-        });
-
-        return this.findOne({ uuid, user });
+        await link.update({ expires_at: expires_at || null });
+        return await this.findOne({ uuid, user });
     }
 
+    /**
+     * @function destroy
+     * @description Destroy a room invite link
+     * @param {Object} options
+     * @param {string} options.uuid
+     * @param {Object} options.user
+     * @param {Object} options.user.sub
+     * @returns {Promise<void>}
+     */
     async destroy(options = { uuid: null, user: null }) {
-        RoomInviteLinkServiceValidator.destroy(options);
+        Validator.destroy(options);
 
         const { uuid, user } = options;
 
-        const linkInstance = await neodeInstance.model('RoomInviteLink').find(uuid);
-        if (!linkInstance) throw new ControllerError(404, 'room_invite_link not found');
+        const link = await neodeInstance.model('RoomInviteLink').find(uuid);
+        if (!link) throw new err.EntityNotFoundError('room_invite_link');
 
-        const room = await linkInstance.get('room').endNode().properties();
+        const room = await link.get('room').startNode().properties();
         const room_uuid = room.uuid;
+        const isAdmin = await RPS.isInRoom({ room_uuid, user, role_name: 'Admin' });
+        if (!isAdmin) throw new err.AdminPermissionRequiredError();
 
-        if (!(await RoomPermissionService.isInRoom({ room_uuid, user, role_name: 'Admin' }))) {
-            throw new ControllerError(403, 'User is not an admin of the room');
-        }
-
-        await linkInstance.delete();
+        await link.delete();
     }
 
+    /**
+     * @function join
+     * @description Join a room using a room invite link
+     * @param {Object} options
+     * @param {string} options.uuid
+     * @param {Object} options.user
+     * @param {Object} options.user.sub
+     * @returns {Promise<void>}
+     */
     async join(options = { uuid: null, user: null }) {
-        RoomInviteLinkServiceValidator.join(options);
+        Validator.join(options);
 
         const { uuid, user } = options;
         const { sub: user_uuid } = user;
 
-        const linkInstance = await neodeInstance.model('RoomInviteLink').find(uuid);
-        if (!linkInstance) throw new ControllerError(404, 'Room Invite Link not found');
-        const link = linkInstance.properties();
+        const isVerified = await RPS.isVerified({ user });
+        if (!isVerified) err.VerifiedEmailRequiredError("join a room");
 
-        const room = linkInstance.get('room').endNode().properties();
-        const roomInstance = await neodeInstance.model('Room').find(room.uuid);
+        const link = await neodeInstance.model('RoomInviteLink').find(uuid);
+        if (!link) throw new err.EntityNotFoundError('room_invite_link');
 
-        if (!(await RoomPermissionService.isVerified({ user }))) {
-            throw new ControllerError(403, 'You must verify your email before you can join a room');
+        const { expires_at } = link.properties();
+        const room = link.get('room').startNode().properties();
+        const room_uuid = room.uuid;
+
+        const isInRoom = await RPS.isInRoom({ room_uuid, user });
+        if (isInRoom) throw new err.DuplicateRoomUserError();
+        
+        if (expires_at && new Date(expires_at) < new Date()) {
+            throw new err.EntityExpiredError('room_invite_link');
         }
 
-        if (link.expires_at && new Date(link.expires_at) < new Date()) {
-            throw new ControllerError(400, 'Room Invite Link has expired');
-        }
+        const exceedsCount = await RPS.roomUserCountExceedsLimit({ room_uuid, add_count: 1 });
+        if (exceedsCount) throw new err.ExceedsRoomUserCountError();
 
-        if (await RoomPermissionService.isInRoom({ room_uuid: room.uuid, user, role_name: null })) {
-            throw new ControllerError(400, 'User is already in room');
-        }
+        const session = neodeInstance.session();
+        await session.writeTransaction(async tx => {
+            // Add the user to the room
+            await tx.run(
+                `MATCH (u:User {uuid: $user_uuid}) ` +
+                `MATCH (r:Room {uuid: $room_uuid}) ` +
+                `CREATE (u)-[:MEMBER_IN {uuid: $mui_uuid, role: "Member", created_at: datetime(), updated_at: datetime()}]->(r) `,
+                { user_uuid, room_uuid, mui_uuid: uuidv4() }
+            );
 
-        if (await RoomPermissionService.roomUserCountExceedsLimit({ room_uuid: room.uuid, add_count: 1 })) {
-            throw new ControllerError(400, 'Room user count exceeds limit. The room cannot have more users');
-        }
+            // Find the room's join settings
+            const result = await tx.run(
+                `MATCH (r:Room {uuid: $room_uuid}) ` +
+                `MATCH (r)-[:JOIN_SETTINGS_IS]->(rjs:RoomJoinSettings) ` +
+                `OPTIONAL MATCH (rjs)-[:ANNOUNCE_IN]->(rjsc:Channel) ` +
+                `OPTIONAL MATCH (r)-[:COMMUNICATES_IN]->(c:Channel) ` +
+                `RETURN rjs, rjsc.uuid AS join_channel_uuid, c.uuid AS channel_uuid`,
+                { room_uuid }
+            );
+            if (result.records.length > 0) {
+                const roomJoinSettings = result.records[0].get('rjs').properties;
+                const message = roomJoinSettings.join_message;
+                let join_channel_uuid = result.records[0].get('join_channel_uuid');
+                if (!join_channel_uuid && result.records[0].get('channel_uuid')) {
+                    join_channel_uuid = result.records[0].get('channel_uuid');
+                }
 
-        const roomUserRole = await neodeInstance.model('RoomUserRole').find('Member');
-        if (!roomUserRole) throw new ControllerError(500, 'RoomUserRole not found');
-
-        const userInstance = await neodeInstance.model('User').find(user_uuid);
-        if (!userInstance) throw new ControllerError(404, 'User not found');
-
-        return neodeInstance.model('RoomUser').create({ uuid: uuidv4() })
-            .then(async (roomUser) => {
-                await Promise.all([
-                    roomUser.relateTo(userInstance, 'user'),
-                    roomUser.relateTo(roomInstance, 'room'),
-                    roomUser.relateTo(roomUserRole, 'room_user_role'),
-                ]);
-            });
-
-        /*
-        const roomJoinSettings = roomInstance.get('room_join_settings').endNode().properties();
-        const roomJoinSettingsInstance = await neodeInstance.model('RoomJoinSettings').find(roomJoinSettings.uuid);
-
-        let channelId = roomJoinSettingsInstance.get('join_channel')?.endNode()?.properties()?.uuid;
-        if (!channelId) {
-            const channelResult = await ChannelService.findAll({ room_uuid: room.uuid, user });
-            if (channelResult.data.length > 0) {
-                channelId = channelResult.data[0].uuid;
+                // Announce the user's join
+                if (join_channel_uuid) {
+                    await tx.run(
+                        `MATCH (u:User {uuid: $user_uuid})
+                         MATCH (c:Channel {uuid: $channel_uuid})
+                         MATCH (cmt:ChannelMessageType {name: 'System'})
+                         CREATE (cm:ChannelMessage {uuid: $channel_message_uuid, body: $message, created_at: datetime(), updated_at: datetime()})
+                         CREATE (cm)-[:TYPE_IS]->(cmt)
+                         CREATE (cm)-[:WRITTEN_IN]->(c)
+                         CREATE (cm)-[:WRITTEN_BY]->(u)
+                        `,
+                        { user_uuid, channel_uuid: join_channel_uuid, channel_message_uuid: uuidv4(), message }
+                    );
+                }
             }
-        }
+        }).catch(error => {
+            // Delete the avatar file if it was uploaded
+            if (room_file_src) storage.deleteFile(storage.parseKey(room_file_src));
 
-        if (channelId) {
-            const username = userInstance.properties().username;
-            const joinMessage = roomJoinSettings.join_message;
-            const body = getJoinMessage(joinMessage, [{ 
-                key: 'name', value: username 
-            }]);
-
-            const session = neodeInstance.session();
-            session.writeTransaction(async (transaction) => {
-                await transaction.run(
-                    `MATCH (u:User {uuid: $user_uuid})
-                     MATCH (c:Channel {uuid: $channel_uuid})
-                     MATCH (cmt:ChannelMessageType {name: 'System'})
-                     CREATE (cm:ChannelMessage {uuid: $channel_message_uuid, body: $body})
-                     CREATE (cm)-[:HAS_CHANNEL_MESSAGE_TYPE]->(cmt)
-                     CREATE (cm)-[:HAS_CHANNEL]->(c)
-                     CREATE (cm)-[:HAS_USER]->(u)
-                    `,
-                    { user_uuid, channel_uuid: channelId, channel_message_uuid: uuidv4(), body }
-                );
-            });
-        }*/
+            console.error('transaction', error);
+            throw error;
+        }).finally(() => {
+            session.close();
+        });
     }
 }
 
-const service = new Service();
+const service = new RoomInviteLinkService();
 
 export default service;

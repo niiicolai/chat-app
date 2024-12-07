@@ -1,16 +1,13 @@
 import mongoose from "mongoose";
 
-export const channelMessageUploadTypeSchema = new mongoose.Schema({
-    name: { 
-        type: String, 
-        required: true,
-        index: true
-    },
+const channelMessageUploadTypeSchema = new mongoose.Schema({
+    _id: mongoose.Schema.Types.String,
 }, {
     timestamps: {
         createdAt: 'created_at',
         updatedAt: 'updated_at'
-    }
+    },
+    autoCreate: false
 });
 
 const ChannelMessageUploadType = mongoose.model("ChannelMessageUploadType", channelMessageUploadTypeSchema);

@@ -1,20 +1,29 @@
 import RelationalUserStatusStateService from '../../src/relational-based/services/user_status_state_service.js';
 import DocumentUserStatusStateService from '../../src/document-based/services/user_status_state_service.js';
 import GraphUserStatusStateService from '../../src/graph-based/services/user_status_state_service.js';
+
+import data from '../../src/seed_data.js';
 import { test, expect } from 'vitest';
 
 const userStatusStateServiceTest = (UserStatusStateService, name) => {
+
+    /**
+     * Expected methods
+     */
 
     test(`(${name}) - UserStatusStateService must implement expected methods`, () => {
         expect(UserStatusStateService).toHaveProperty('findOne');
         expect(UserStatusStateService).toHaveProperty('findAll');
     });
 
+
+
+    /**
+     * UserStatusStateService.findOne
+     */
+
     test.each([
-        ['Online'],
-        ['Away'],
-        ['Do Not Disturb'],
-        ['Offline'],
+        data.user_status_states.map(uss => uss.name),
     ])(`(${name}) - UserStatusStateService.findOne valid partitions`, async (name) => {
         const result = await UserStatusStateService.findOne({ name });
 
@@ -38,6 +47,12 @@ const userStatusStateServiceTest = (UserStatusStateService, name) => {
     ])(`(${name}) - UserStatusStateService.findOne invalid partitions`, async (options, expected) => {
         expect(async () => await UserStatusStateService.findOne(options)).rejects.toThrowError(expected);
     });
+
+
+
+    /**
+     * UserStatusStateService.findAll
+     */
 
     test.each([
         [undefined],

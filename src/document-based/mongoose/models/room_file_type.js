@@ -1,16 +1,13 @@
 import mongoose from "mongoose";
 
-export const roomFileTypeSchema = new mongoose.Schema({
-    name: { 
-        type: String, 
-        required: true,
-        unique: true 
-    },
+const roomFileTypeSchema = new mongoose.Schema({
+    _id: mongoose.Schema.Types.String,
 }, {
     timestamps: {
         createdAt: 'created_at',
         updatedAt: 'updated_at'
-    }
+    },
+    autoCreate: false
 });
 
 const roomFileTypeModel = mongoose.model("RoomFileType", roomFileTypeSchema);

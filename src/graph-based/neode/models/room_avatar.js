@@ -4,20 +4,6 @@ export default {
         type: 'uuid',
         required: true
     },
-    room: {
-        type: 'relationship',
-        target: 'Room',
-        relationship: 'HAS_ROOM',
-        direction: 'in',
-        eager: true
-    },
-    room_file: {
-        type: 'relationship',
-        target: 'RoomFile',
-        relationship: 'HAS_ROOM_FILE',
-        direction: 'out',
-        eager: true
-    },
     created_at: {
         type: 'datetime',
         required: true,
@@ -27,5 +13,25 @@ export default {
         type: 'datetime',
         required: true,
         default: () => new Date().toISOString()
+    },
+    /**
+     * OUTGOING RELATION
+     */
+    room_file: {
+        type: 'relationship',
+        target: 'RoomFile',
+        relationship: 'ROOM_AVATAR_IS',
+        direction: 'out',
+        eager: true
+    },
+    /**
+     * INCOMING RELATION
+     */
+    room: {
+        type: 'relationship',
+        target: 'Room',
+        relationship: 'ROOM_AVATAR_IS',
+        direction: 'in',
+        eager: true
     },
 }
