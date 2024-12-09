@@ -310,6 +310,6 @@ const channelMessageTest = (ChannelMessageService, name) => {
     });*/
 };
 
-//channelMessageTest(RelationalChannelMessageService, 'Relational');
+channelMessageTest(RelationalChannelMessageService, 'Relational');
 channelMessageTest(DocumentChannelMessageService, 'Document');
 //channelMessageTest(GraphChannelMessageService, 'Graph');

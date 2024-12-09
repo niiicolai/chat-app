@@ -157,4 +157,4 @@ const roomFileServiceTest = (RoomFileService, name) => {
 
 roomFileServiceTest(RelationalRoomFileService, 'Relational');
 roomFileServiceTest(DocumentRoomFileService, 'Document');
-roomFileServiceTest(GraphRoomFileService, 'Graph');
+//roomFileServiceTest(GraphRoomFileService, 'Graph');

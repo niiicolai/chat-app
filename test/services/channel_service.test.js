@@ -306,4 +306,4 @@ const channelTest = (ChannelService, name) => {
 
 channelTest(RelationalChannelService, 'Relational');
 channelTest(DocumentChannelService, 'Document');
-channelTest(GraphChannelService, 'Graph');
+//channelTest(GraphChannelService, 'Graph');

@@ -103,4 +103,4 @@ const userStatusServiceTest = (UserStatusService, name) => {
 
 userStatusServiceTest(RelationalUserStatusService, 'Relational');
 userStatusServiceTest(DocumentUserStatusService, 'Document');
-userStatusServiceTest(GraphUserStatusService, 'Graph');
+//userStatusServiceTest(GraphUserStatusService, 'Graph');

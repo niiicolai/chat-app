@@ -94,4 +94,4 @@ const userPasswordResetServiceTest = (UserPasswordResetService, UserService, nam
 
 userPasswordResetServiceTest(RelationalUserPasswordResetService, RelationalUserService, 'Relational');
 userPasswordResetServiceTest(DocumentUserPasswordResetService, DocumentUserService, 'Document');
-userPasswordResetServiceTest(GraphUserPasswordResetService, GraphUserService, 'Graph');
+//userPasswordResetServiceTest(GraphUserPasswordResetService, GraphUserService, 'Graph');

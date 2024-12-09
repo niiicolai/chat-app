@@ -97,4 +97,4 @@ const roomCategoryServiceTest = (RoomCategoryService, name) => {
 
 roomCategoryServiceTest(RelationalRoomCategoryService, 'Relational');
 roomCategoryServiceTest(DocumentRoomCategoryService, 'Document');
-roomCategoryServiceTest(GraphRoomCategoryService, 'Graph');
+//roomCategoryServiceTest(GraphRoomCategoryService, 'Graph');

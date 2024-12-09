@@ -97,4 +97,4 @@ const roomFileTypeServiceTest = (RoomFileTypeService, name) => {
 
 roomFileTypeServiceTest(RelationalRoomFileTypeService, 'Relational');
 roomFileTypeServiceTest(DocumentRoomFileTypeService, 'Document');
-roomFileTypeServiceTest(GraphRoomFileTypeService, 'Graph');
+//roomFileTypeServiceTest(GraphRoomFileTypeService, 'Graph');

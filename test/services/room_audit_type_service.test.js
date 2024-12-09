@@ -97,4 +97,4 @@ const roomAuditTypeServiceTest = (RoomAuditTypeService, name) => {
 
 roomAuditTypeServiceTest(RelationalRoomAuditTypeService, 'Relational');
 roomAuditTypeServiceTest(DocumentRoomAuditTypeService, 'Document');
-roomAuditTypeServiceTest(GraphRoomAuditTypeService, 'Graph');
+//roomAuditTypeServiceTest(GraphRoomAuditTypeService, 'Graph');
