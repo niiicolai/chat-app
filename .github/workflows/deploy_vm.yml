@@ -41,10 +41,10 @@ jobs:
         env:
           MYSQL_ROOT_PASSWORD: password
           MYSQL_DATABASE: chat
-      mongo:
-        image: mongo:4.4.9
-        ports:
-          - 27017:27017
+      #mongo:
+      #  image: mongo:4.4.9
+      #  ports:
+      #    - 27017:27017
       neo4j:
         image: neo4j:5.24.2
         ports:
