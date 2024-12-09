@@ -148,7 +148,7 @@ jobs:
 
       - name: Start the server in the background
         run: |
-          sh ./start.sh 
+          sh ./start.sh &
           SERVER_PID=$! # Capture the server's PID
 
       - name: Wait for the server to be ready
