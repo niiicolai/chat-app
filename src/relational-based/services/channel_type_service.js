@@ -50,7 +50,8 @@ class ChannelTypeService {
             db.ChannelTypeView.count(),
             db.ChannelTypeView.findAll({
                 ...(limit && { limit }),
-                ...(offset && { offset })
+                ...(offset && { offset }),
+                order: [['channel_type_created_at', 'DESC']]
             })
         ]);
         

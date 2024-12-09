@@ -50,7 +50,8 @@ class RoomAuditTypeService {
             db.RoomAuditTypeView.count(),
             db.RoomAuditTypeView.findAll({
                 ...(limit && { limit }),
-                ...(offset && { offset })
+                ...(offset && { offset }),
+                order: [['room_audit_type_created_at', 'DESC']]
             })
         ]);
         

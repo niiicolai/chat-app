@@ -1194,31 +1194,20 @@ CREATE PROCEDURE create_channel_message_proc(
     IN channel_uuid_input VARCHAR(36),
     IN user_uuid_input VARCHAR(36),
     IN channel_message_upload_type_name_input VARCHAR(255),
-    IN channel_message_upload_src_input TEXT,
-    IN channel_message_upload_size_input BIGINT,
-    IN room_uuid_input VARCHAR(36),
-    OUT result BOOLEAN
+    in room_file_uuid_input VARCHAR(36),
+    IN room_uuid_input VARCHAR(36)
 )
 BEGIN
-    DECLARE room_file_uuid VARCHAR(36);
-
     -- Insert the channel message
     INSERT INTO ChannelMessage (uuid, body, channel_uuid, user_uuid, channel_message_type_name)
         VALUES (message_uuid_input, message_body_input, channel_uuid_input, user_uuid_input, channel_message_type_name_input);
         
     -- Check if the channel message upload is not null and insert it into the ChannelMessageUpload table
-    IF channel_message_upload_src_input IS NOT NULL THEN
-        SET room_file_uuid = UUID();
-
-        -- Create a room file
-        INSERT INTO RoomFile (uuid, src, size, room_uuid, room_file_type_name)
-            VALUES (room_file_uuid, channel_message_upload_src_input, channel_message_upload_size_input, room_uuid_input, 'ChannelMessageUpload');
-
+    IF room_file_uuid_input IS NOT NULL THEN
         -- Create a channel message upload
         INSERT INTO ChannelMessageUpload (uuid, channel_message_uuid, channel_message_upload_type_name, room_file_uuid)
-            VALUES (UUID(), message_uuid_input, channel_message_upload_type_name_input, room_file_uuid);
+            VALUES (UUID(), message_uuid_input, channel_message_upload_type_name_input, room_file_uuid_input);
     END IF;
-    SET result = TRUE;
 END //
 DELIMITER ;
 
@@ -1284,44 +1273,13 @@ CREATE PROCEDURE create_channel_webhook_proc(
     IN channel_uuid_input VARCHAR(36),
     IN channel_webhook_name_input VARCHAR(255),
     IN channel_webhook_description_input TEXT,
-    IN channel_webhook_avatar_src_input TEXT,
-    IN channel_webhook_avatar_size_input BIGINT,
-    IN room_uuid_input VARCHAR(36),
-    OUT result BOOLEAN
+    in room_file_uuid_input VARCHAR(36),
+    IN room_uuid_input VARCHAR(36)
 )
 BEGIN
-    DECLARE room_file_uuid VARCHAR(36);
-    DECLARE exit_code VARCHAR(5);
-    DECLARE exit_message TEXT;
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION
-    BEGIN
-        GET DIAGNOSTICS CONDITION 1
-            exit_code = RETURNED_SQLSTATE, 
-            exit_message = MESSAGE_TEXT;
-        ROLLBACK;
-        -- Print the error message and code
-        SELECT CONCAT('Error Code: ', exit_code, ' Error Message: ', exit_message) AS error_output;
-        
-        SET result = FALSE;
-    END;
-
-    START TRANSACTION;
-        -- Check if the channel webhook avatar is not null and insert it into the RoomFile table
-        IF channel_webhook_avatar_src_input IS NOT NULL THEN
-            SET room_file_uuid = UUID();
-            INSERT INTO RoomFile (uuid, src, size, room_uuid, room_file_type_name)
-            VALUES (room_file_uuid, channel_webhook_avatar_src_input, channel_webhook_avatar_size_input, room_uuid_input, 'ChannelWebhookAvatar');
-
-            -- Insert the channel webhook
-            INSERT INTO ChannelWebhook (uuid, name, description, channel_uuid, room_file_uuid)
-            VALUES (channel_webhook_uuid_input, channel_webhook_name_input, channel_webhook_description_input, channel_uuid_input, room_file_uuid);
-        ELSE
-            -- Insert the channel webhook
-            INSERT INTO ChannelWebhook (uuid, name, description, channel_uuid)
-            VALUES (channel_webhook_uuid_input, channel_webhook_name_input, channel_webhook_description_input, channel_uuid_input);
-        END IF;
-    COMMIT;
-    SET result = TRUE;
+    -- Insert the channel webhook
+    INSERT INTO ChannelWebhook (uuid, name, description, channel_uuid, room_file_uuid)
+    VALUES (channel_webhook_uuid_input, channel_webhook_name_input, channel_webhook_description_input, channel_uuid_input, room_file_uuid_input);
 END //
 DELIMITER ;
 
@@ -1333,44 +1291,12 @@ CREATE PROCEDURE edit_channel_webhook_proc(
     IN channel_webhook_uuid_input VARCHAR(36),
     IN channel_webhook_name_input VARCHAR(255),
     IN channel_webhook_description_input TEXT,
-    IN channel_webhook_avatar_src_input TEXT,
-    IN channel_webhook_avatar_size_input BIGINT,
-    IN room_uuid_input VARCHAR(36),
-    OUT result BOOLEAN
+    in room_file_uuid_input VARCHAR(36),
+    IN room_uuid_input VARCHAR(36)
 )
 BEGIN
-    DECLARE room_file_uuid VARCHAR(36);
-    DECLARE exit_code VARCHAR(5);
-    DECLARE exit_message TEXT;
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION
-    BEGIN
-        GET DIAGNOSTICS CONDITION 1
-            exit_code = RETURNED_SQLSTATE, 
-            exit_message = MESSAGE_TEXT;
-        ROLLBACK;
-        -- Print the error message and code
-        SELECT CONCAT('Error Code: ', exit_code, ' Error Message: ', exit_message) AS error_output;
-        
-        SET result = FALSE;
-    END;
-
-    START TRANSACTION;
-        -- Check if the channel webhook avatar is not null and insert it into the RoomFile table
-        IF channel_webhook_avatar_src_input IS NOT NULL THEN
-            SET room_file_uuid = UUID();
-            INSERT INTO RoomFile (uuid, src, size, room_uuid, room_file_type_name)
-            VALUES (room_file_uuid, channel_webhook_avatar_src_input, channel_webhook_avatar_size_input, room_uuid_input, 'ChannelWebhookAvatar');
-
-            -- Edit the channel webhook
-            UPDATE ChannelWebhook SET name = channel_webhook_name_input, description = channel_webhook_description_input, room_file_uuid = room_file_uuid
-            WHERE uuid = channel_webhook_uuid_input;
-        ELSE
-            -- Edit the channel webhook
-            UPDATE ChannelWebhook SET name = channel_webhook_name_input, description = channel_webhook_description_input
-            WHERE uuid = channel_webhook_uuid_input;
-        END IF;
-    COMMIT;
-    SET result = TRUE;
+    UPDATE ChannelWebhook SET name = channel_webhook_name_input, description = channel_webhook_description_input, room_file_uuid = room_file_uuid_input
+    WHERE uuid = channel_webhook_uuid_input;
 END //
 DELIMITER ;
 

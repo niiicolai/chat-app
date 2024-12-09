@@ -31,10 +31,9 @@ module.exports = (sequelize, DataTypes) => {
             if (!replacements.name) throw new Error('createChannelWebhookProc: No name provided');
             if (!replacements.description) throw new Error('createChannelWebhookProc: No description provided');
             if (!replacements.room_uuid) throw new Error('createChannelWebhookProc: No room_uuid provided');
-            if (!replacements.src) replacements.src = null;
-            if (!replacements.bytes) replacements.bytes = null;
+            if (!replacements.room_file_uuid) replacements.room_file_uuid = null;
 
-            await sequelize.query('CALL create_channel_webhook_proc(:uuid, :channel_uuid, :name, :description, :src, :bytes, :room_uuid, @result)', {
+            await sequelize.query('CALL create_channel_webhook_proc(:uuid, :channel_uuid, :name, :description, :room_file_uuid, :room_uuid)', {
                 replacements,
                 ...(transaction && { transaction }),
             });
@@ -58,11 +57,10 @@ module.exports = (sequelize, DataTypes) => {
             if (!replacements.uuid) replacements.uuid = this.channel_webhook_uuid;
             if (!replacements.name) replacements.name = this.channel_webhook_name;
             if (!replacements.description) replacements.description = this.channel_webhook_description;
-            if (!replacements.src) replacements.src = this.room_file_src;
-            if (!replacements.bytes) replacements.bytes = this.room_file_size;
             if (!replacements.room_uuid) replacements.room_uuid = this.room_uuid;
+            if (replacements.room_file_uuid === undefined) replacements.room_file_uuid = this.room_file_uuid;
 
-            await sequelize.query('CALL edit_channel_webhook_proc(:uuid, :name, :description, :src, :bytes, :room_uuid, @result)', {
+            await sequelize.query('CALL edit_channel_webhook_proc(:uuid, :name, :description, :room_file_uuid, :room_uuid)', {
                 replacements,
                 ...(transaction && { transaction }),
             });

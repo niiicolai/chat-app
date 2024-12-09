@@ -66,11 +66,12 @@ class RoomFileService {
         if (!isInRoom) throw new err.RoomMemberRequiredError();
 
         const [total, data] = await Promise.all([
-            db.RoomFileView.count({ room_uuid }),
+            db.RoomFileView.count({ where: { room_uuid } }),
             db.RoomFileView.findAll({
                 where: { room_uuid },
                 ...(limit && { limit }),
-                ...(offset && { offset })
+                ...(offset && { offset }),
+                order: [['room_file_created_at', 'DESC']]
             })
         ]);
 

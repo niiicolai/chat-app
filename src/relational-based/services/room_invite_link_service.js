@@ -56,11 +56,12 @@ class RoomInviteLinkService {
         if (!isInRoom) throw new err.RoomMemberRequiredError();
 
         const [total, data] = await Promise.all([
-            db.RoomInviteLinkView.count({ room_uuid }),
+            db.RoomInviteLinkView.count({ where: { room_uuid } }),
             db.RoomInviteLinkView.findAll({
                 where: { room_uuid },
                 ...(limit && { limit }),
-                ...(offset && { offset })
+                ...(offset && { offset }),
+                order: [['room_invite_link_created_at', 'DESC']]
             })
         ]);
 
@@ -140,10 +141,12 @@ class RoomInviteLinkService {
         const isAdmin = await RPS.isInRoom({ room_uuid: roomInviteLink.room_uuid, user, role_name: 'Admin' });
         if (!isAdmin) throw new err.AdminPermissionRequiredError();
 
+        const expires_at = Object.keys(body).includes('expires_at') 
+            ? body.expires_at ? new Date(body.expires_at).toISOString().slice(0, 19).replace('T', ' ') : null 
+            : roomInviteLink.expires_at || null;
+
         await roomInviteLink.editRoomInviteLinkProc({
-            expires_at: body.expires_at
-                ? new Date(body.expires_at).toISOString().slice(0, 19).replace('T', ' ') // YYYY-MM-DD HH:MM:SS
-                : (roomInviteLink.expires_at || null)
+            expires_at
         });
 
         return await db.RoomInviteLinkView

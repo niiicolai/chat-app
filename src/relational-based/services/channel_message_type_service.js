@@ -50,7 +50,8 @@ class ChannelMessageTypeService {
             db.ChannelMessageTypeView.count(),
             db.ChannelMessageTypeView.findAll({
                 ...(limit && { limit }),
-                ...(offset && { offset })
+                ...(offset && { offset }),
+                order: [['channel_message_type_created_at', 'DESC']]
             })
         ]);
         

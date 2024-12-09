@@ -27,9 +27,12 @@ function originIsAllowed(origin) {
     return true;
 }
 
-export function broadcastChannel(channel, type, payload) {
+export function broadcastChannel(channel, type, payload, user_uuid) {
+    console.log(`INFO: Broadcasting to channel ${channel}: ${type}`);
+
     wsServer.connections.forEach((connection) => {
-        if (connection.userData.channel === channel) {
+        if (connection.userData?.user?.sub !== user_uuid && connection.userData.channel === channel) {
+            console.log(`Sending to ${connection.userData.user}: ${type}`);
             connection.sendUTF(JSON.stringify({ type, payload }));
         }
     });

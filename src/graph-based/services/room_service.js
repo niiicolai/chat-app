@@ -5,7 +5,6 @@ import RPS from './room_permission_service.js';
 import ChannelService from './channel_service.js';
 import RoomFileService from './room_file_service.js';
 import neodeInstance from '../neode/index.js';
-import err from '../../shared/errors/index.js';
 import dto from '../dto/room_dto.js';
 import neo4j from 'neo4j-driver';
 import { v4 as uuidv4 } from 'uuid';

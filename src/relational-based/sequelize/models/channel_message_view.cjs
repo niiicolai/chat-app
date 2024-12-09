@@ -42,10 +42,9 @@ module.exports = (sequelize, DataTypes) => {
             if (!replacements.user_uuid) throw new Error('createChannelMessageProcStatic: No user_uuid provided');
             if (!replacements.room_uuid) throw new Error('createChannelMessageProcStatic: No room_uuid provided');
             if (!replacements.upload_type) replacements.upload_type = null;
-            if (!replacements.upload_src) replacements.upload_src = null;
-            if (!replacements.bytes) replacements.bytes = null;
+            if (!replacements.room_file_uuid) replacements.room_file_uuid = null;
 
-            await sequelize.query('CALL create_channel_message_proc(:uuid, :msg, :channel_message_type_name, :channel_uuid, :user_uuid, :upload_type, :upload_src, :bytes, :room_uuid, @result)', {
+            await sequelize.query('CALL create_channel_message_proc(:uuid, :msg, :channel_message_type_name, :channel_uuid, :user_uuid, :upload_type, :room_file_uuid, :room_uuid)', {
                 replacements,
                 ...(transaction && { transaction }),
             });

@@ -50,7 +50,8 @@ class UserStatusStateService {
             db.UserStatusStateView.count(),
             db.UserStatusStateView.findAll({
                 ...(limit && { limit }),
-                ...(offset && { offset })
+                ...(offset && { offset }),
+                order: [['user_status_state_created_at', 'DESC']]
             })
         ]);
         

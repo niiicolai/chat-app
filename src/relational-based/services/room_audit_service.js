@@ -56,11 +56,12 @@ class RoomAuditService {
         if (!isInRoom) throw new err.RoomMemberRequiredError();
 
         const [total, data] = await Promise.all([
-            db.RoomAuditView.count({ room_uuid }),
+            db.RoomAuditView.count({ where: { room_uuid } }),
             db.RoomAuditView.findAll({
                 where: { room_uuid },
                 ...(limit && { limit }),
-                ...(offset && { offset })
+                ...(offset && { offset }),
+                order: [['room_audit_created_at', 'DESC']]
             })
         ]);
 

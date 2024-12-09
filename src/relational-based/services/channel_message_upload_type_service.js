@@ -50,7 +50,8 @@ class ChannelMessageUploadTypeService {
             db.ChannelMessageUploadTypeView.count(),
             db.ChannelMessageUploadTypeView.findAll({
                 ...(limit && { limit }),
-                ...(offset && { offset })
+                ...(offset && { offset }),
+                order: [['channel_message_upload_type_created_at', 'DESC']]
             })
         ]);
         

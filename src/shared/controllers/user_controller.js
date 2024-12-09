@@ -50,7 +50,7 @@ export default (crudService) => {
     ctrl.update = () => {
         router.patch('/user/me', [originMiddleware, csrfMiddleware, uploadMiddleware, authMiddleware], async (req, res) => {
             await errorHandler(res, async () => {
-                const result = await crudService.update({ body: req.body, file: req.file, user: req.user });
+                const result = await crudService.update({ body: req.body, file: req.file, uuid: req.user.sub });
                 res.json(result);
             });
         });

@@ -26,12 +26,12 @@ export default class BroadcastChannelService {
      * @description Broadcast a chat message to a channel.
      * @returns {void}
      */
-    static create(channelMessage) {
+    static create(channelMessage, user_uuid) {
         if (!channelMessage) throw new Error('Channel message is required.');
         if (typeof channelMessage !== 'object') throw new Error('Channel message must be an object.');
         if (!channelMessage.channel_uuid) throw new Error('Channel UUID is required.');
 
-        broadcastChannel(`${PREFIX}${channelMessage.channel_uuid}`, EVENTS.chat_message_created, channelMessage);
+        broadcastChannel(`${PREFIX}${channelMessage.channel_uuid}`, EVENTS.chat_message_created, channelMessage, user_uuid);
     }
 
     /**
@@ -39,12 +39,12 @@ export default class BroadcastChannelService {
      * @description Broadcast an updated chat message to a channel.
      * @returns {void}
      */
-    static update(channelMessage) {
+    static update(channelMessage, user_uuid) {
         if (!channelMessage) throw new Error('Channel message is required.');
         if (typeof channelMessage !== 'object') throw new Error('Channel message must be an object.');
         if (!channelMessage.channel_uuid) throw new Error('Channel UUID is required.');
 
-        broadcastChannel(`${PREFIX}${channelMessage.channel_uuid}`, EVENTS.chat_message_updated, channelMessage);
+        broadcastChannel(`${PREFIX}${channelMessage.channel_uuid}`, EVENTS.chat_message_updated, channelMessage, user_uuid);
     }
 
     /**
@@ -52,10 +52,10 @@ export default class BroadcastChannelService {
      * @description Broadcast a deleted chat message to a channel.
      * @returns {void}
      */
-    static destroy(channel_uuid, channel_message_uuid) {
+    static destroy(channel_uuid, channel_message_uuid, user_uuid) {
         if (!channel_uuid) throw new Error('Channel UUID is required.');
         if (!channel_message_uuid) throw new Error('Channel message UUID is required.');
 
-        broadcastChannel(`${PREFIX}${channel_uuid}`, EVENTS.chat_message_deleted, channel_message_uuid);
+        broadcastChannel(`${PREFIX}${channel_uuid}`, EVENTS.chat_message_deleted, channel_message_uuid, user_uuid);
     }
 }

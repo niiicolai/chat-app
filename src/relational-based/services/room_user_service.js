@@ -57,11 +57,12 @@ class RoomUserService {
         if (!isInRoom) throw new err.RoomMemberRequiredError();
 
         const [total, data] = await Promise.all([
-            db.RoomUserView.count({ room_uuid }),
+            db.RoomUserView.count({ where: { room_uuid } }),
             db.RoomUserView.findAll({
                 where: { room_uuid },
                 ...(limit && { limit }),
-                ...(offset && { offset })
+                ...(offset && { offset }),
+                order: [['room_user_created_at', 'DESC']]
             })
         ]);
 

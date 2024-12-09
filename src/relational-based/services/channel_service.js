@@ -66,11 +66,12 @@ class ChannelService {
         if (!isInRoom) throw new err.RoomMemberRequiredError();
 
         const [total, data] = await Promise.all([
-            db.ChannelView.count({ room_uuid }),
+            db.ChannelView.count({ where: { room_uuid } }),
             db.ChannelView.findAll({
                 where: { room_uuid },
                 ...(limit && { limit }),
-                ...(offset && { offset })
+                ...(offset && { offset }),
+                order: [['channel_created_at', 'DESC']]
             })
         ]);
 

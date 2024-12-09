@@ -50,7 +50,8 @@ class ChannelAuditTypeService {
             db.ChannelAuditTypeView.count(),
             db.ChannelAuditTypeView.findAll({
                 ...(limit && { limit }),
-                ...(offset && { offset })
+                ...(offset && { offset }),
+                order: [['channel_audit_type_created_at', 'DESC']]
             })
         ]);
         

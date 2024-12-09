@@ -36,7 +36,6 @@
 									"    \"username\",\r",
 									"    \"email\",\r",
 									"    \"email_verified\",\r",
-									"    \"avatar_src\",\r",
 									"    \"created_at\",\r",
 									"    \"updated_at\",\r",
 									"].forEach(expected => {\r",
@@ -50,7 +49,6 @@
 									"    { prop: \"username\", type: \"string\" },\r",
 									"    { prop: \"email\", type: \"string\" },\r",
 									"    { prop: \"email_verified\", type: \"boolean\" },\r",
-									"    { prop: \"avatar_src\", type: \"string\" },\r",
 									"    { prop: \"created_at\", type: \"string\" },\r",
 									"    { prop: \"updated_at\", type: \"string\" },\r",
 									"].forEach(expected => {\r",
@@ -480,7 +478,6 @@
 									"    \"username\",\r",
 									"    \"email\",\r",
 									"    \"email_verified\",\r",
-									"    \"avatar_src\",\r",
 									"    \"created_at\",\r",
 									"    \"updated_at\",\r",
 									"].forEach(expected => {\r",
@@ -494,7 +491,6 @@
 									"    { prop: \"username\", type: \"string\" },\r",
 									"    { prop: \"email\", type: \"string\" },\r",
 									"    { prop: \"email_verified\", type: \"boolean\" },\r",
-									"    { prop: \"avatar_src\", type: \"string\" },\r",
 									"    { prop: \"created_at\", type: \"string\" },\r",
 									"    { prop: \"updated_at\", type: \"string\" },\r",
 									"].forEach(expected => {\r",
@@ -1385,7 +1381,6 @@
 									"    \"userSettings\",\r",
 									"    \"channelSettings\",\r",
 									"    \"fileSettings\",\r",
-									"    \"avatar\"\r",
 									"].forEach(expected => {\r",
 									"    pm.test(`response must include ${expected} property`, function () {\r",
 									"        pm.expect(responseJSON).to.have.property(expected);\r",
@@ -1406,7 +1401,6 @@
 									"    { prop: \"userSettings\", type: \"object\" },\r",
 									"    { prop: \"channelSettings\", type: \"object\" },\r",
 									"    { prop: \"fileSettings\", type: \"object\" },\r",
-									"    { prop: \"avatar\", type: \"object\" },\r",
 									"].forEach(expected => {\r",
 									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
 									"        pm.expect(responseJSON[expected.prop])\r",
@@ -1457,15 +1451,6 @@
 									"].forEach(expected => {\r",
 									"    pm.test(`response fileSettings property must include ${expected} property`, function () {\r",
 									"        pm.expect(responseJSON.fileSettings).to.have.property(expected);\r",
-									"    });\r",
-									"});\r",
-									"\r",
-									"[\r",
-									"    \"uuid\",\r",
-									"    \"room_uuid\",\r",
-									"].forEach(expected => {\r",
-									"    pm.test(`response avatar property must include ${expected} property`, function () {\r",
-									"        pm.expect(responseJSON.avatar).to.have.property(expected);\r",
 									"    });\r",
 									"});\r",
 									"\r",
@@ -1569,7 +1554,6 @@
 									"    \"userSettings\",\r",
 									"    \"channelSettings\",\r",
 									"    \"fileSettings\",\r",
-									"    \"avatar\"\r",
 									"].forEach(expected => {\r",
 									"    pm.test(`response must include ${expected} property`, function () {\r",
 									"        pm.expect(responseJSON).to.have.property(expected);\r",
@@ -1590,7 +1574,6 @@
 									"    { prop: \"userSettings\", type: \"object\" },\r",
 									"    { prop: \"channelSettings\", type: \"object\" },\r",
 									"    { prop: \"fileSettings\", type: \"object\" },\r",
-									"    { prop: \"avatar\", type: \"object\" },\r",
 									"].forEach(expected => {\r",
 									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
 									"        pm.expect(responseJSON[expected.prop])\r",
@@ -1641,15 +1624,6 @@
 									"].forEach(expected => {\r",
 									"    pm.test(`response fileSettings property must include ${expected} property`, function () {\r",
 									"        pm.expect(responseJSON.fileSettings).to.have.property(expected);\r",
-									"    });\r",
-									"});\r",
-									"\r",
-									"[\r",
-									"    \"uuid\",\r",
-									"    \"room_uuid\",\r",
-									"].forEach(expected => {\r",
-									"    pm.test(`response avatar property must include ${expected} property`, function () {\r",
-									"        pm.expect(responseJSON.avatar).to.have.property(expected);\r",
 									"    });\r",
 									"});\r",
 									"\r",
@@ -2245,7 +2219,6 @@
 									"    \"userSettings\",\r",
 									"    \"channelSettings\",\r",
 									"    \"fileSettings\",\r",
-									"    \"avatar\"\r",
 									"].forEach(expected => {\r",
 									"    pm.test(`response must include ${expected} property`, function () {\r",
 									"        pm.expect(responseJSON).to.have.property(expected);\r",
@@ -2266,7 +2239,6 @@
 									"    { prop: \"userSettings\", type: \"object\" },\r",
 									"    { prop: \"channelSettings\", type: \"object\" },\r",
 									"    { prop: \"fileSettings\", type: \"object\" },\r",
-									"    { prop: \"avatar\", type: \"object\" },\r",
 									"].forEach(expected => {\r",
 									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
 									"        pm.expect(responseJSON[expected.prop])\r",
@@ -2317,15 +2289,6 @@
 									"].forEach(expected => {\r",
 									"    pm.test(`response fileSettings property must include ${expected} property`, function () {\r",
 									"        pm.expect(responseJSON.fileSettings).to.have.property(expected);\r",
-									"    });\r",
-									"});\r",
-									"\r",
-									"[\r",
-									"    \"uuid\",\r",
-									"    \"room_uuid\",\r",
-									"].forEach(expected => {\r",
-									"    pm.test(`response avatar property must include ${expected} property`, function () {\r",
-									"        pm.expect(responseJSON.avatar).to.have.property(expected);\r",
 									"    });\r",
 									"});\r",
 									"\r",
@@ -2489,13 +2452,13 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{BaseUrl}}/room/no_uuid",
+							"raw": "{{BaseUrl}}/room/08b802c4-b7c3-4988-a3e2-d1f9c798f9ea",
 							"host": [
 								"{{BaseUrl}}"
 							],
 							"path": [
 								"room",
-								"no_uuid"
+								"08b802c4-b7c3-4988-a3e2-d1f9c798f9ea"
 							]
 						}
 					},
@@ -2535,7 +2498,6 @@
 									"        \"userSettings\",\r",
 									"        \"channelSettings\",\r",
 									"        \"fileSettings\",\r",
-									"        \"avatar\"\r",
 									"    ].forEach(expected => {\r",
 									"        pm.test(`response must include ${expected} property`, function () {\r",
 									"            pm.expect(room).to.have.property(expected);\r",
@@ -2554,7 +2516,6 @@
 									"        { prop: \"userSettings\", type: \"object\" },\r",
 									"        { prop: \"channelSettings\", type: \"object\" },\r",
 									"        { prop: \"fileSettings\", type: \"object\" },\r",
-									"        { prop: \"avatar\", type: \"object\" },\r",
 									"    ].forEach(expected => {\r",
 									"        pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
 									"            pm.expect(room[expected.prop])\r",
@@ -2605,14 +2566,6 @@
 									"    ].forEach(expected => {\r",
 									"        pm.test(`response fileSettings property must include ${expected} property`, function () {\r",
 									"            pm.expect(room.fileSettings).to.have.property(expected);\r",
-									"        });\r",
-									"    });\r",
-									"\r",
-									"    [\r",
-									"        \"uuid\",\r",
-									"    ].forEach(expected => {\r",
-									"        pm.test(`response avatar property must include ${expected} property`, function () {\r",
-									"            pm.expect(room.avatar).to.have.property(expected);\r",
 									"        });\r",
 									"    });\r",
 									"};\r",
@@ -3857,13 +3810,13 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{BaseUrl}}/channel/no_uuid",
+							"raw": "{{BaseUrl}}/channel/08b802c4-b7c3-4988-a3e2-d1f9c798f9ea",
 							"host": [
 								"{{BaseUrl}}"
 							],
 							"path": [
 								"channel",
-								"no_uuid"
+								"08b802c4-b7c3-4988-a3e2-d1f9c798f9ea"
 							]
 						}
 					},
@@ -4994,13 +4947,13 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{BaseUrl}}/room_invite_link/no_uuid",
+							"raw": "{{BaseUrl}}/room_invite_link/08b802c4-b7c3-4988-a3e2-d1f9c798f9ea",
 							"host": [
 								"{{BaseUrl}}"
 							],
 							"path": [
 								"room_invite_link",
-								"no_uuid"
+								"08b802c4-b7c3-4988-a3e2-d1f9c798f9ea"
 							]
 						}
 					},
@@ -5907,13 +5860,13 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{BaseUrl}}/room_user/no_uuid",
+							"raw": "{{BaseUrl}}/room_user/08b802c4-b7c3-4988-a3e2-d1f9c798f9ea",
 							"host": [
 								"{{BaseUrl}}"
 							],
 							"path": [
 								"room_user",
-								"no_uuid"
+								"08b802c4-b7c3-4988-a3e2-d1f9c798f9ea"
 							]
 						}
 					},
@@ -6173,13 +6126,13 @@
 						"method": "DELETE",
 						"header": [],
 						"url": {
-							"raw": "{{BaseUrl}}/room_user/no_uuid",
+							"raw": "{{BaseUrl}}/room_user/08b802c4-b7c3-4988-a3e2-d1f9c798f9ea",
 							"host": [
 								"{{BaseUrl}}"
 							],
 							"path": [
 								"room_user",
-								"no_uuid"
+								"08b802c4-b7c3-4988-a3e2-d1f9c798f9ea"
 							]
 						}
 					},
@@ -6699,7 +6652,6 @@
 									"        \"uuid\",\r",
 									"        \"src\",\r",
 									"        \"room_file_type_name\",\r",
-									"        \"room_uuid\",\r",
 									"        \"created_at\",\r",
 									"        \"updated_at\",\r",
 									"    ].forEach(expected => {\r",
@@ -6712,7 +6664,6 @@
 									"        { prop: \"uuid\", types: [\"string\"] },\r",
 									"        { prop: \"src\", types: [\"string\"] },\r",
 									"        { prop: \"room_file_type_name\", types: [\"string\"] },\r",
-									"        { prop: \"room_uuid\", types: [\"string\"] },\r",
 									"        { prop: \"created_at\", types: [\"string\"] },\r",
 									"        { prop: \"updated_at\", types: [\"string\"] },\r",
 									"    ].forEach(expected => {\r",
@@ -6937,7 +6888,6 @@
 									"    \"uuid\",\r",
 									"    \"src\",\r",
 									"    \"room_file_type_name\",\r",
-									"    \"room_uuid\",\r",
 									"    \"created_at\",\r",
 									"    \"updated_at\",\r",
 									"].forEach(expected => {\r",
@@ -6950,7 +6900,6 @@
 									"    { prop: \"uuid\", types: [\"string\"] },\r",
 									"    { prop: \"src\", types: [\"string\"] },\r",
 									"    { prop: \"room_file_type_name\", types: [\"string\"] },\r",
-									"    { prop: \"room_uuid\", types: [\"string\"] },\r",
 									"    { prop: \"created_at\", types: [\"string\"] },\r",
 									"    { prop: \"updated_at\", types: [\"string\"] },\r",
 									"].forEach(expected => {\r",
@@ -7106,13 +7055,13 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{BaseUrl}}/room_file/no_uuid",
+							"raw": "{{BaseUrl}}/room_file/08b802c4-b7c3-4988-a3e2-d1f9c798f9ea",
 							"host": [
 								"{{BaseUrl}}"
 							],
 							"path": [
 								"room_file",
-								"no_uuid"
+								"08b802c4-b7c3-4988-a3e2-d1f9c798f9ea"
 							]
 						}
 					},
@@ -8782,13 +8731,13 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{BaseUrl}}/channel_message/no_uuid",
+							"raw": "{{BaseUrl}}/channel_message/08b802c4-b7c3-4988-a3e2-d1f9c798f9ea",
 							"host": [
 								"{{BaseUrl}}"
 							],
 							"path": [
 								"channel_message",
-								"no_uuid"
+								"08b802c4-b7c3-4988-a3e2-d1f9c798f9ea"
 							]
 						}
 					},
@@ -10245,101 +10194,6 @@
 					"response": []
 				},
 				{
-					"name": "Update 200",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"const responseJSON = pm.response.json();\r",
-									"const channelUpdateBody = JSON.parse(pm.environment.get('ChannelUpdateBody'));\r",
-									"\r",
-									"pm.test(\"The returned channel should match the parameters in the body\", function() {\r",
-									"    pm.expect(responseJSON.name).to.equal(channelUpdateBody.name);\r",
-									"    pm.expect(responseJSON.description).to.equal(channelUpdateBody.description);\r",
-									"});\r",
-									"\r",
-									"[\r",
-									"    \"uuid\",\r",
-									"    \"name\",\r",
-									"    \"description\",\r",
-									"    \"channel_uuid\",\r",
-									"    \"created_at\",\r",
-									"    \"updated_at\"\r",
-									"].forEach(expected => {\r",
-									"    pm.test(`response must include ${expected} property`, function () {\r",
-									"        pm.expect(responseJSON).to.have.property(expected);\r",
-									"    });\r",
-									"});\r",
-									"\r",
-									"[\r",
-									"    { prop: \"uuid\", type: \"string\" },\r",
-									"    { prop: \"name\", type: \"string\" },\r",
-									"    { prop: \"description\", type: \"string\" },\r",
-									"    { prop: \"channel_uuid\", type: \"string\" },\r",
-									"    { prop: \"created_at\", type: \"string\" },\r",
-									"    { prop: \"updated_at\", type: \"string\" },\r",
-									"].forEach(expected => {\r",
-									"    pm.test(`response property ${expected.prop} must be of type ${expected.type}`, function () {\r",
-									"        pm.expect(responseJSON[expected.prop])\r",
-									"            .to.be.a(expected.type);\r",
-									"    });\r",
-									"});\r",
-									"\r",
-									""
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						},
-						{
-							"listen": "prerequest",
-							"script": {
-								"exec": [
-									"const { v4: uuidV4 } = require('uuid');\r",
-									"\r",
-									"pm.request.headers.add({\r",
-									"    key: \"Authorization\", \r",
-									"    value: pm.environment.get(\"Authorization\") \r",
-									"});\r",
-									"\r",
-									"pm.environment.set('ChannelWebhookUpdateBody', JSON.stringify({\r",
-									"    name: `test-${uuidV4()}`,\r",
-									"    description: `test-${uuidV4()}`,\r",
-									"}))\r",
-									""
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						}
-					],
-					"request": {
-						"method": "PATCH",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{{ChannelUpdateBody}}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{BaseUrl}}/channel_webhook/{{ChannelWebhookUuid}}",
-							"host": [
-								"{{BaseUrl}}"
-							],
-							"path": [
-								"channel_webhook",
-								"{{ChannelWebhookUuid}}"
-							]
-						}
-					},
-					"response": []
-				},
-				{
 					"name": "Update 401",
 					"event": [
 						{
@@ -10490,7 +10344,6 @@
 									"        \"uuid\",\r",
 									"        \"name\",\r",
 									"        \"description\",\r",
-									"        \"channel_uuid\",\r",
 									"        \"created_at\",\r",
 									"        \"updated_at\",\r",
 									"    ].forEach(expected => {\r",
@@ -10503,7 +10356,6 @@
 									"        { prop: \"uuid\", types: [\"string\"] },\r",
 									"        { prop: \"name\", types: [\"string\"] },\r",
 									"        { prop: \"description\", types: [\"string\"] },\r",
-									"        { prop: \"channel_uuid\", types: [\"string\"] },\r",
 									"        { prop: \"created_at\", types: [\"string\"] },\r",
 									"        { prop: \"updated_at\", types: [\"string\"] },\r",
 									"    ].forEach(expected => {\r",
@@ -10727,7 +10579,6 @@
 									"    \"uuid\",\r",
 									"    \"name\",\r",
 									"    \"description\",\r",
-									"    \"channel_uuid\",\r",
 									"    \"created_at\",\r",
 									"    \"updated_at\"\r",
 									"].forEach(expected => {\r",
@@ -10740,7 +10591,6 @@
 									"    { prop: \"uuid\", type: \"string\" },\r",
 									"    { prop: \"name\", type: \"string\" },\r",
 									"    { prop: \"description\", type: \"string\" },\r",
-									"    { prop: \"channel_uuid\", type: \"string\" },\r",
 									"    { prop: \"created_at\", type: \"string\" },\r",
 									"    { prop: \"updated_at\", type: \"string\" },\r",
 									"].forEach(expected => {\r",
@@ -10897,13 +10747,13 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{BaseUrl}}/channel_webhook/no_uuid",
+							"raw": "{{BaseUrl}}/channel_webhook/08b802c4-b7c3-4988-a3e2-d1f9c798f9ea",
 							"host": [
 								"{{BaseUrl}}"
 							],
 							"path": [
 								"channel_webhook",
-								"no_uuid"
+								"08b802c4-b7c3-4988-a3e2-d1f9c798f9ea"
 							]
 						}
 					},

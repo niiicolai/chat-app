@@ -48,7 +48,7 @@ module.exports = (sequelize, DataTypes) => {
         static async editRoomInviteLinkProcStatic(replacements, transaction) {
             if (!replacements) throw new Error('editRoomInviteLinkProcStatic: No replacements provided');
             if (!replacements.uuid) throw new Error('editRoomInviteLinkProcStatic: No uuid provided');
-            if (!replacements.expires_at) replacements.expires_at = null;
+            if (replacements.expires_at == undefined) replacements.expires_at = null;
 
             await sequelize.query('CALL edit_room_invite_link_proc(:uuid, :expires_at, @result)', {
                 replacements,
@@ -85,7 +85,6 @@ module.exports = (sequelize, DataTypes) => {
          * @instance
          */
         async editRoomInviteLinkProc(replacements, transaction) {
-            if (!replacements.expires_at) replacements.expires_at = this.room_invite_link_expires_at;
             replacements.uuid = this.room_invite_link_uuid;
 
             await sequelize.query('CALL edit_room_invite_link_proc(:uuid, :expires_at, @result)', {

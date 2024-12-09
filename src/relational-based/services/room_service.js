@@ -67,7 +67,8 @@ class RoomService {
             db.RoomView.findAll({
                 ...params,
                 ...(limit && { limit }),
-                ...(offset && { offset })
+                ...(offset && { offset }),
+                order: [['room_created_at', 'DESC']]
             })
         ]);
 
@@ -209,12 +210,12 @@ class RoomService {
             }, transaction);
 
             if (room_file_src) {
-                const room_file_uuid = (room_file_src ? uuidv4() : null);
+                const room_file_uuid = uuidv4();
                 await db.RoomFileView.createRoomFileProcStatic({
-                    room_file_uuid: room_file_uuid,
+                    room_file_uuid,
                     room_file_src,
                     room_file_size: file.size,
-                    room_uuid: body.uuid,
+                    room_uuid: uuid,
                     room_file_type_name: 'RoomAvatar',
                 }, transaction);
                 await room.editRoomAvatarProc({ room_file_uuid }, transaction);

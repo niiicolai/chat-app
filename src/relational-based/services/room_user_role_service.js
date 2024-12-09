@@ -50,7 +50,8 @@ class RoomUserRoleService {
             db.RoomUserRoleView.count(),
             db.RoomUserRoleView.findAll({
                 ...(limit && { limit }),
-                ...(offset && { offset })
+                ...(offset && { offset }),
+                order: [['room_user_role_created_at', 'DESC']]
             })
         ]);
         

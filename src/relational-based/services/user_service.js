@@ -124,6 +124,7 @@ class UserService {
      * @returns {Promise<Object>}
      */
     async update(options = { body: null, file: null, uuid: null }) {
+        console.log(options);
         Validator.update(options);
 
         const { body, file, uuid } = options;

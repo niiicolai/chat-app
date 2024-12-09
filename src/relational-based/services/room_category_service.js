@@ -50,7 +50,8 @@ class RoomCategoryService {
             db.RoomCategoryView.count(),
             db.RoomCategoryView.findAll({
                 ...(limit && { limit }),
-                ...(offset && { offset })
+                ...(offset && { offset }),
+                order: [['room_category_created_at', 'DESC']]
             })
         ]);
         

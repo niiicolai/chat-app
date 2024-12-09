@@ -67,11 +67,12 @@ class ChannelWebhookService {
         if (!isInRoom) throw new err.RoomMemberRequiredError();
 
         const [total, data] = await Promise.all([
-            db.ChannelWebhookView.count({ room_uuid }),
+            db.ChannelWebhookView.count({ where: { room_uuid } }),
             db.ChannelWebhookView.findAll({
                 where: { room_uuid },
                 ...(limit && { limit }),
-                ...(offset && { offset })
+                ...(offset && { offset }),
+                order: [['channel_webhook_created_at', 'DESC']]
             })
         ]);
 
@@ -291,7 +292,7 @@ class ChannelWebhookService {
         if (!channelMessage) throw new err.ControllerError(500, 'Channel Message not found');
 
         const data = dtoCM(channelMessage);
-        BroadcastChannelService.create(data);
+        BroadcastChannelService.create(data, null);
     }
 
     /**

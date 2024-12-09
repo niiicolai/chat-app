@@ -50,7 +50,8 @@ class RoomFileTypeService {
             db.RoomFileTypeView.count(),
             db.RoomFileTypeView.findAll({
                 ...(limit && { limit }),
-                ...(offset && { offset })
+                ...(offset && { offset }),
+                order: [['room_file_type_created_at', 'DESC']]
             })
         ]);
         

@@ -57,14 +57,15 @@ class ChannelAuditService {
         if (!isInRoom) throw new err.RoomMemberRequiredError();
 
         const [total, data] = await Promise.all([
-            db.ChannelAuditView.count({ channel_uuid }),
+            db.ChannelAuditView.count({ where: { channel_uuid } }),
             db.ChannelAuditView.findAll({
                 where: { channel_uuid },
                 ...(limit && { limit }),
-                ...(offset && { offset })
+                ...(offset && { offset }),
+                order: [['channel_audit_created_at', 'DESC']]
             })
         ]);
-
+        
         return {
             data: data.map(entity => dto(entity)),
             total,

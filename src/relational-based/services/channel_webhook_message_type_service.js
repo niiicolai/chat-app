@@ -50,7 +50,8 @@ class ChannelWebhookMessageTypeService {
             db.ChannelWebhookMessageTypeView.count(),
             db.ChannelWebhookMessageTypeView.findAll({
                 ...(limit && { limit }),
-                ...(offset && { offset })
+                ...(offset && { offset }),
+                order: [['channel_webhook_message_type_created_at', 'DESC']]
             })
         ]);
         

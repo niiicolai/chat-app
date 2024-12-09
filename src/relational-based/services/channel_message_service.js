@@ -69,11 +69,12 @@ class ChannelMessageService {
         if (!isInRoom) throw new err.RoomMemberRequiredError();
 
         const [total, data] = await Promise.all([
-            db.ChannelMessageView.count({ channel_uuid }),
+            db.ChannelMessageView.count({ where: { channel_uuid } }),
             db.ChannelMessageView.findAll({
                 where: { channel_uuid },
                 ...(limit && { limit }),
-                ...(offset && { offset })
+                ...(offset && { offset }),
+                order: [['channel_message_created_at', 'DESC']]
             })
         ]);
 
@@ -157,7 +158,7 @@ class ChannelMessageService {
             .findByPk(uuid)
             .then((channelMessage) => dto(channelMessage))
             .then((channelMessage) => {
-                BroadcastChannelService.create(channelMessage);
+                BroadcastChannelService.create(channelMessage, user.sub);
                 return channelMessage;
             });
     }
@@ -191,7 +192,7 @@ class ChannelMessageService {
             .findByPk(uuid)
             .then((channelMessage) => dto(channelMessage))
             .then((channelMessage) => {
-                BroadcastChannelService.update(channelMessage);
+                BroadcastChannelService.update(channelMessage, user.sub);
                 return channelMessage;
             });
     }
@@ -223,7 +224,7 @@ class ChannelMessageService {
             }
         });
 
-        BroadcastChannelService.destroy(channelMessage.channel_uuid, uuid);
+        BroadcastChannelService.destroy(channelMessage.channel_uuid, uuid, user.sub);
     }
 
     /**
