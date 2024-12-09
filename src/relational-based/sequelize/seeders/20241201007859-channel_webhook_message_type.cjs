@@ -6,7 +6,7 @@ module.exports = {
     const data = (await import('../../../seed_data.js')).default;
 
     try {
-      await queryInterface.bulkInsert('channelwebhookmessagetype', data.channel_webhook_message_types, {});
+      await queryInterface.bulkInsert('ChannelWebhookMessageType', data.channel_webhook_message_types, {});
     } catch (error) {
       console.error('Error inserting data', error);
     }
@@ -14,7 +14,7 @@ module.exports = {
 
   async down(queryInterface, Sequelize) {
     try {
-      await queryInterface.bulkDelete('channelwebhookmessagetype', null, {});
+      await queryInterface.bulkDelete('ChannelWebhookMessageType', null, {});
     } catch (error) {
       console.error('Error deleting data', error);
     }

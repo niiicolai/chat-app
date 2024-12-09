@@ -6,7 +6,7 @@ module.exports = {
     const data = (await import('../../../seed_data.js')).default;
 
     try {
-      await queryInterface.bulkInsert('user', data.users.map(user => {
+      await queryInterface.bulkInsert('User', data.users.map(user => {
         return {
           uuid: user.uuid,
           username: user.username,
@@ -14,7 +14,7 @@ module.exports = {
           avatar_src: user.avatar_src,
         };
       }), {});
-      await queryInterface.bulkInsert('userlogin', data.users.flatMap(user => {
+      await queryInterface.bulkInsert('UserLogin', data.users.flatMap(user => {
         return user.user_logins.map(user_login => {
           return {
             uuid: user_login.uuid,
@@ -26,7 +26,7 @@ module.exports = {
         });
       }
       ), {});
-      await queryInterface.bulkInsert('userpasswordreset', data.users.flatMap(user => {
+      await queryInterface.bulkInsert('UserPasswordReset', data.users.flatMap(user => {
         return user.user_password_resets.map(user_password_reset => {
           return {
             uuid: user_password_reset.uuid,
@@ -52,11 +52,11 @@ module.exports = {
 
   async down(queryInterface, Sequelize) {
     try {
-      await queryInterface.bulkDelete('userpasswordreset', null, {});
-      await queryInterface.bulkDelete('userlogin', null, {});
-      await queryInterface.bulkDelete('useremailverification', null, {});
-      await queryInterface.bulkDelete('userstatus', null, {});
-      await queryInterface.bulkDelete('user', null, {});
+      await queryInterface.bulkDelete('UserPasswordReset', null, {});
+      await queryInterface.bulkDelete('UserLogin', null, {});
+      await queryInterface.bulkDelete('UserEmailVerification', null, {});
+      await queryInterface.bulkDelete('UserStatus', null, {});
+      await queryInterface.bulkDelete('User', null, {});
     } catch (error) {
       console.error('Error deleting data', error);
     }

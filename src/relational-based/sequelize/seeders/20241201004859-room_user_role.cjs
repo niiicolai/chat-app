@@ -6,7 +6,7 @@ module.exports = {
     const data = (await import('../../../seed_data.js')).default;
 
     try {
-      await queryInterface.bulkInsert('roomuserrole', data.room_user_roles, {});
+      await queryInterface.bulkInsert('RoomUserRole', data.room_user_roles, {});
     } catch (error) {
       console.error('Error inserting data', error);
     }
@@ -14,7 +14,7 @@ module.exports = {
 
   async down(queryInterface, Sequelize) {
     try {
-      await queryInterface.bulkDelete('roomuserrole', null, {});
+      await queryInterface.bulkDelete('RoomUserRole', null, {});
     } catch (error) {
       console.error('Error deleting data', error);
     }

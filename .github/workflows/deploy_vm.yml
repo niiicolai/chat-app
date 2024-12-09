@@ -81,12 +81,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
         
-      #- name: Wait for dbs and overwite data
-      #  run: |
-      #    sh ./wait_for_dbs.sh --db-overwrite
+      - name: Wait for dbs and overwite data
+        run: |
+          sh ./wait_for_dbs.sh --db-overwrite
 
-      #- name: Run tests
-      #  run: npm test  
+      - name: Run tests
+        run: npm test  
 
   postman-and-e2e-test:
     needs: build
@@ -168,11 +168,11 @@ jobs:
       - name: Install Newman
         run: npm install -g newman
 
-      #- name: Run MySQL API tests using Postman
-      #  run: newman run ./test/api_test/Chat\ API\ Test.postman_collection.json --environment ./test/api_test/Chat\ App\ Dev\ MySQL.postman_environment.json
+      - name: Run MySQL API tests using Postman
+        run: newman run ./test/api_test/Chat\ API\ Test.postman_collection.json --environment ./test/api_test/Chat\ App\ Dev\ MySQL.postman_environment.json
 
-      #- name: Run MongoDB API tests using Postman
-      #  run: newman run ./test/api_test/Chat\ API\ Test.postman_collection.json --environment ./test/api_test/Chat\ App\ Dev\ MongoDB.postman_environment.json
+      - name: Run MongoDB API tests using Postman
+        run: newman run ./test/api_test/Chat\ API\ Test.postman_collection.json --environment ./test/api_test/Chat\ App\ Dev\ MongoDB.postman_environment.json
 
       #- name: Run Neo4j API tests using Postman
       #  run: newman run ./test/api_test/Chat\ API\ Test.postman_collection.json --environment ./test/api_test/Chat\ App\ Dev\ Neo4j.postman_environment.json
@@ -208,10 +208,10 @@ jobs:
           echo "Frontend server did not become ready in time!"
           exit 1
 
-      #- name: Run E2E tests
-      #  run: |
-      #    cd chat-app-react
-      #    npx cypress run
+      - name: Run E2E tests
+        run: |
+          cd chat-app-react
+          npx cypress run
 
       - name: Remove frontend repository
         run: rm -rf chat-app-react

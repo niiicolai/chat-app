@@ -6,7 +6,7 @@ module.exports = {
     const data = (await import('../../../seed_data.js')).default;
 
     try {
-      await queryInterface.bulkInsert('roomfiletype', data.room_file_types, {});
+      await queryInterface.bulkInsert('RoomFileType', data.room_file_types, {});
     } catch (error) {
       console.error('Error inserting data', error);
     }
@@ -14,7 +14,7 @@ module.exports = {
 
   async down(queryInterface, Sequelize) {
     try {
-      await queryInterface.bulkDelete('roomfiletype', null, {});
+      await queryInterface.bulkDelete('RoomFileType', null, {});
     } catch (error) {
       console.error('Error deleting data', error);
     }

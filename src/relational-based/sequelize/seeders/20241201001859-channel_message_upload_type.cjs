@@ -6,7 +6,7 @@ module.exports = {
     const data = (await import('../../../seed_data.js')).default;
 
     try {
-      await queryInterface.bulkInsert('channelmessageuploadtype', data.channel_message_upload_types, {});
+      await queryInterface.bulkInsert('ChannelMessageUploadType', data.channel_message_upload_types, {});
     } catch (error) {
       console.error('Error inserting data', error);
     }
@@ -14,7 +14,7 @@ module.exports = {
 
   async down(queryInterface, Sequelize) {
     try {
-      await queryInterface.bulkDelete('channelmessageuploadtype', null, {});
+      await queryInterface.bulkDelete('ChannelMessageUploadType', null, {});
     } catch (error) {
       console.error('Error deleting data', error);
     }

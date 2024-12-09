@@ -6,7 +6,7 @@ module.exports = {
     const data = (await import('../../../seed_data.js')).default;
 
     try {
-      await queryInterface.bulkInsert('channel', data.rooms.flatMap(room => {
+      await queryInterface.bulkInsert('Channel', data.rooms.flatMap(room => {
         return room.channels.map(channel => {
           return {
             uuid: channel.uuid,
@@ -18,7 +18,7 @@ module.exports = {
         });
       }), {});
 
-      await queryInterface.bulkInsert('channelwebhook', data.rooms.flatMap(room => {
+      await queryInterface.bulkInsert('ChannelWebhook', data.rooms.flatMap(room => {
         return room.channels.map(channel => {
           if (channel.channel_webhook) {
             return {
@@ -33,7 +33,7 @@ module.exports = {
         }).filter(item => item !== null);
       }), {});
 
-      await queryInterface.bulkInsert('channelmessage', data.rooms.flatMap(room => {
+      await queryInterface.bulkInsert('ChannelMessage', data.rooms.flatMap(room => {
         return room.channels.flatMap(channel => {
           return channel.channel_messages.map(channelMessage => {
             return {
@@ -47,7 +47,7 @@ module.exports = {
         });
       }), {});
 
-      await queryInterface.bulkInsert('channelmessageupload', data.rooms.flatMap(room => {
+      await queryInterface.bulkInsert('ChannelMessageUpload', data.rooms.flatMap(room => {
         return room.channels.flatMap(channel => {
           return channel.channel_messages.map(channelMessage => {
             if (channelMessage.channel_message_upload) {
@@ -64,7 +64,7 @@ module.exports = {
         }).filter(item => item !== null);
       }), {});
 
-      await queryInterface.bulkInsert('channelwebhookmessage', data.rooms.flatMap(room => {
+      await queryInterface.bulkInsert('ChannelWebhookMessage', data.rooms.flatMap(room => {
         return room.channels.flatMap(channel => {
           return channel.channel_messages.map(channelMessage => {
             if (channelMessage.channel_webhook_message) {
@@ -88,11 +88,11 @@ module.exports = {
 
   async down(queryInterface, Sequelize) {
     try {
-      await queryInterface.bulkDelete('channelmessageupload', null, {});
-      await queryInterface.bulkDelete('channelwebhookmessage', null, {});
-      await queryInterface.bulkDelete('channelwebhook', null, {});
-      await queryInterface.bulkDelete('channelmessage', null, {});
-      await queryInterface.bulkDelete('channel', null, {});
+      await queryInterface.bulkDelete('ChannelMessageUpload', null, {});
+      await queryInterface.bulkDelete('ChannelWebhookMessage', null, {});
+      await queryInterface.bulkDelete('ChannelWebhook', null, {});
+      await queryInterface.bulkDelete('ChannelMessage', null, {});
+      await queryInterface.bulkDelete('Channel', null, {});
 
     } catch (error) {
       console.error('Error deleting data', error);

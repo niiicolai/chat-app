@@ -6,7 +6,7 @@ module.exports = {
     const data = (await import('../../../seed_data.js')).default;
 
     try {
-      await queryInterface.bulkInsert('room', data.rooms.map(room => {
+      await queryInterface.bulkInsert('Room', data.rooms.map(room => {
         return {
           uuid: room.uuid,
           name: room.name,
@@ -14,14 +14,14 @@ module.exports = {
           room_category_name: room.room_category_name,
         };
       }), {});
-      await queryInterface.bulkInsert('roominvitelink', data.rooms.map(room => {
+      await queryInterface.bulkInsert('RoomInviteLink', data.rooms.map(room => {
         return {
           uuid: room.room_invite_link.uuid,
           room_uuid: room.uuid,
           ...(room.room_invite_link.expired_at && { expired_at: room.room_invite_link.expired_at }),
         };
       }), {});
-      await queryInterface.bulkInsert('roomuser', data.rooms.flatMap(room => {
+      await queryInterface.bulkInsert('RoomUser', data.rooms.flatMap(room => {
         return room.room_users.map(room_user => {
           return {
             uuid: room_user.uuid,
@@ -31,7 +31,7 @@ module.exports = {
           };
         });
       }), {});
-      await queryInterface.bulkInsert('roomfile', data.rooms.flatMap(room => {
+      await queryInterface.bulkInsert('RoomFile', data.rooms.flatMap(room => {
         return room.room_files.map(room_file => {
           return {
             uuid: room_file.uuid,
@@ -49,17 +49,17 @@ module.exports = {
 
   async down(queryInterface, Sequelize) {
     try {
-      await queryInterface.bulkDelete('roomaudit', null, {});
-      await queryInterface.bulkDelete('roomjoinsetting`', null, {});
-      await queryInterface.bulkDelete('roomfilesetting', null, {});
-      await queryInterface.bulkDelete('roomusersetting', null, {});
-      await queryInterface.bulkDelete('roomchannelsetting', null, {});
-      await queryInterface.bulkDelete('roomrulessetting', null, {});
-      await queryInterface.bulkDelete('roomavatar', null, {});
-      await queryInterface.bulkDelete('roominvitelink', null, {});
-      await queryInterface.bulkDelete('roomuser', null, {});
-      await queryInterface.bulkDelete('roomfile', null, {});     
-      await queryInterface.bulkDelete('room', null, {});
+      await queryInterface.bulkDelete('RoomAudit', null, {});
+      await queryInterface.bulkDelete('RoomJoinSetting`', null, {});
+      await queryInterface.bulkDelete('RoomFileSetting', null, {});
+      await queryInterface.bulkDelete('RoomUserSetting', null, {});
+      await queryInterface.bulkDelete('RoomChannelSetting', null, {});
+      await queryInterface.bulkDelete('RoomRulesSetting', null, {});
+      await queryInterface.bulkDelete('RoomAvatar', null, {});
+      await queryInterface.bulkDelete('RoomInviteLink', null, {});
+      await queryInterface.bulkDelete('RoomUser', null, {});
+      await queryInterface.bulkDelete('RoomFile', null, {});     
+      await queryInterface.bulkDelete('Room', null, {});
     } catch (error) {
       console.error('Error deleting data', error);
     }

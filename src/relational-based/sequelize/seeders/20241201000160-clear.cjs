@@ -7,7 +7,7 @@ module.exports = {
 
   async down(queryInterface, Sequelize) {
     try {
-      await queryInterface.bulkDelete('channelaudit', null, {});
+      await queryInterface.bulkDelete('ChannelAudit', null, {});
       await queryInterface.bulkDelete('channelmessageupload', null, {});
       await queryInterface.bulkDelete('channelwebhookmessage', null, {});
       await queryInterface.bulkDelete('channelwebhook', null, {});
