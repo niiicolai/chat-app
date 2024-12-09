@@ -7,6 +7,7 @@ import { execute as seedNeo4j } from './src/graph-based/scripts/seed_all.js';
 
 (async () => {
     await overrideMySQL();
+    await new Promise((resolve) => setTimeout(resolve, 5000));
     await new Promise((resolve) => { // Seeds the MySQL database.
         exec('npm run sequelize:seed', (error, stdout, stderr) => {
             if (error) {
