@@ -218,7 +218,7 @@ jobs:
 
       - name: Remove .env file
         run: rm .env
-        
+         
   deploy-to-vm:
     needs: 
       - build

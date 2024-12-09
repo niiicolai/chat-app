@@ -45,6 +45,12 @@ if [ "$1" = "--db-overwrite" ]; then
     npm run db:override
 fi
 
+# if the second argument is --mongodb-replica-set, then we need to set the replica set
+if [ "$2" = "--mongodb-replica-set" ]; then
+    # configure the replica set by connecting with mongosh
+    mongosh --host "$MONGO_HOST" --port "$MONGO_PORT" --eval "rs.initiate()"
+fi
+
 echo "Starting the application"
 
 npm start

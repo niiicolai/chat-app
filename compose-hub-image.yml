@@ -54,7 +54,7 @@ services:
       - neo4j-dumps:/var/backups/neo4j
     networks:
       - chat-network
-    command: ["sh", "./wait_for_start.sh", "--db-overwrite"]
+    command: ["sh", "./wait_for_start.sh", "--db-overwrite", "--mongodb-replica-set"]
     depends_on:
       - mysql
       - mongodb
