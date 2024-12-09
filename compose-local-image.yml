@@ -23,7 +23,7 @@ services:
       - mongodb-volume:/data/db
     networks:
       - chat-network
-    command: ["mongod", "--bind_ip_all"]
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
 
   neo4j:
     container_name: neo4j

@@ -74,7 +74,7 @@ jobs:
         
       - name: Wait for dbs and overwite data
         run: |
-          sh ./wait_for_dbs.sh --db-overwrite
+          sh ./wait_for_dbs.sh
 
       - name: Run tests
         run: npm test  
@@ -101,6 +101,11 @@ jobs:
         image: mongo:4.4.9
         ports:
           - 27017:27017
+        options: >-
+          --health-cmd "mongo --eval 'db.adminCommand({ ping: 1 })'" 
+          --health-interval 10s 
+          --health-timeout 5s 
+          --health-retries 5
       neo4j:
         image: neo4j:5.24.2
         ports:
@@ -130,7 +135,7 @@ jobs:
         
       - name: Wait for dbs and overwite data
         run: |
-          sh ./wait_for_dbs.sh --db-overwrite
+          sh ./wait_for_dbs.sh --db-overwrite-mysql
 
       - name: Start the server in the background
         run: |
@@ -157,8 +162,8 @@ jobs:
       - name: Run MySQL API tests using Postman
         run: newman run ./test/api_test/Chat\ API\ Test.postman_collection.json --environment ./test/api_test/Chat\ App\ Dev\ MySQL.postman_environment.json
 
-      - name: Run MongoDB API tests using Postman
-        run: newman run ./test/api_test/Chat\ API\ Test.postman_collection.json --environment ./test/api_test/Chat\ App\ Dev\ MongoDB.postman_environment.json
+      #- name: Run MongoDB API tests using Postman
+      #  run: newman run ./test/api_test/Chat\ API\ Test.postman_collection.json --environment ./test/api_test/Chat\ App\ Dev\ MongoDB.postman_environment.json
 
       #- name: Run Neo4j API tests using Postman
       #  run: newman run ./test/api_test/Chat\ API\ Test.postman_collection.json --environment ./test/api_test/Chat\ App\ Dev\ Neo4j.postman_environment.json

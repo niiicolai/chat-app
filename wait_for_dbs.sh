@@ -44,3 +44,9 @@ if [ "$1" = "--db-overwrite" ]; then
     echo "Dropping and recreating the database"
     npm run db:override
 fi
+
+if [ "$1" = "--db-overwrite-mysql" ]; then
+    echo "Dropping and recreating the database"
+    npm run sequelize:override
+    npm run sequelize:seed
+fi
