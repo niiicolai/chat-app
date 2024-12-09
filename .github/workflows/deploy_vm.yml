@@ -97,15 +97,15 @@ jobs:
         env:
           MYSQL_ROOT_PASSWORD: password
           MYSQL_DATABASE: chat
-      mongo:
-        image: mongo:4.4.9
-        ports:
-          - 27017:27017
-        options: >-
-          --health-cmd "mongo --eval 'db.adminCommand({ ping: 1 })'" 
-          --health-interval 10s 
-          --health-timeout 5s 
-          --health-retries 5
+      #mongo:
+      #  image: mongo:4.4.9
+      #  ports:
+      #    - 27017:27017
+      #  options: >-
+      #    --health-cmd "mongo --eval 'db.adminCommand({ ping: 1 })'" 
+      #    --health-interval 10s 
+      #    --health-timeout 5s 
+      #    --health-retries 5
       neo4j:
         image: neo4j:5.24.2
         ports:
@@ -119,6 +119,14 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: 18
+
+      - name: Start mongo
+        id: start-mongo
+        run: docker run --rm -d -p 27017:27017 --name mongo  mongo:4.4.9 --replSet test --bind_ip_all
+      - name: Initialize MongoDB Replica Set
+        run: |
+          sleep 5 # Give mongo a chance to start up
+          docker run --rm mongo:6.0 mongosh --host 172.17.0.1 --eval 'rs.initiate({_id: "test", members: [{_id: 0, host: "172.17.0.1:27017"}]})'
 
       - name: Create .env file
         run: echo "${{ secrets.TEST_ENV_FILE }}" > .env   
