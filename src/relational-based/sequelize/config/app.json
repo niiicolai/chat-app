@@ -1,11 +1,14 @@
 {
   "development": {
-    "use_env_variable": "SEQUELIZE_DEV_DATABASE_URL"
+    "use_env_variable": "SEQUELIZE_DEV_DATABASE_URL",
+    "logging": false
   },
   "test": {
-    "use_env_variable": "SEQUELIZE_TEST_DATABASE_URL"
+    "use_env_variable": "SEQUELIZE_TEST_DATABASE_URL",
+    "logging": false
   },
   "production": {
-    "use_env_variable": "SEQUELIZE_PROD_DATABASE_URL"
+    "use_env_variable": "SEQUELIZE_PROD_DATABASE_URL",
+    "logging": false
   }
 }
