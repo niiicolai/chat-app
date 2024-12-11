@@ -257,7 +257,7 @@ socket.send("{ 'type': 'event_type', obj1, obj2 }"));
 createCard(
     'Channel Controller', 
     'join_channel', 
-    'Join a channel by sending a string with the name of the channel and a JWT token. Peers connected to a channel will receive messages sent to that channel.', 
+    'Join a channel by sending a string with the name of the channel, the db, and a JWT token. Peers connected to a channel will receive messages sent to that channel.', 
 \`{
     type: 'join_channel',
     token: 'string',
@@ -266,7 +266,8 @@ createCard(
 \`{
     type: 'join_channel',
     token: 'eyJhbGciOiJ...',
-    channel: 'channel-bb7120d9-2d1b-4f5f-a56b-63a4f5f3ca4b'
+    channel: 'channel-bb7120d9-2d1b-4f5f-a56b-63a4f5f3ca4b',
+    db: 'mysql'
 }\`
 );
 
