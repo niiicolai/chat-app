@@ -37,7 +37,10 @@ export default (entity = {}) => {
         dto.channel_webhook_message.channel_webhook = channelWebhookDto(entity);
 
         if (entity.channel_webhook_room_file_uuid) {
-            dto.channel_webhook_message.channel_webhook.room_file = roomFileDto(entity);
+            dto.channel_webhook_message.channel_webhook.room_file = roomFileDto({
+                room_file_uuid: entity.channel_webhook_room_file_uuid,
+                room_file_src: entity.channel_webhook_room_file_src,
+            });
         }
     }
 
