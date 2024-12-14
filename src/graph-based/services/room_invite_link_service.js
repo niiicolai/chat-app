@@ -72,7 +72,6 @@ class RoomInviteLinkService {
                 room_uuid
             }
         );
-
         const total = result.records[0].get('total').low;
         return {
             total,

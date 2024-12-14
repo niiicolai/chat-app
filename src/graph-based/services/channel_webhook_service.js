@@ -7,6 +7,7 @@ import dto from '../dto/channel_webhook_dto.js';
 import channelMessageDto from '../dto/channel_message_dto.js';
 import neodeInstance from '../neode/index.js';
 import { v4 as uuidv4 } from 'uuid';
+import neo4j from 'neo4j-driver';
 
 /**
  * @constant storage

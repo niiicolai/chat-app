@@ -29,7 +29,7 @@ module.exports = (sequelize, DataTypes) => {
             if (!replacements.room_uuid) throw new Error('createRoomInviteLinkProcStatic: No room_uuid provided');
             if (!replacements.expires_at) replacements.expires_at = null;
 
-            await sequelize.query('CALL create_room_invite_link_proc(:uuid, :room_uuid, :expires_at, @result)', {
+            await sequelize.query('CALL create_room_invite_link_proc(:uuid, :room_uuid, :expires_at)', {
                 replacements,
                 ...(transaction && { transaction }),
             });
@@ -50,7 +50,7 @@ module.exports = (sequelize, DataTypes) => {
             if (!replacements.uuid) throw new Error('editRoomInviteLinkProcStatic: No uuid provided');
             if (replacements.expires_at == undefined) replacements.expires_at = null;
 
-            await sequelize.query('CALL edit_room_invite_link_proc(:uuid, :expires_at, @result)', {
+            await sequelize.query('CALL edit_room_invite_link_proc(:uuid, :expires_at)', {
                 replacements,
                 ...(transaction && { transaction }),
             });
@@ -69,7 +69,7 @@ module.exports = (sequelize, DataTypes) => {
             if (!replacements) throw new Error('deleteRoomInviteLinkProcStatic: No replacements provided');
             if (!replacements.uuid) throw new Error('deleteRoomInviteLinkProcStatic: No uuid provided');
 
-            await sequelize.query('CALL delete_room_invite_link_proc(:uuid, @result)', {
+            await sequelize.query('CALL delete_room_invite_link_proc(:uuid)', {
                 replacements,
                 ...(transaction && { transaction }),
             });
@@ -87,7 +87,7 @@ module.exports = (sequelize, DataTypes) => {
         async editRoomInviteLinkProc(replacements, transaction) {
             replacements.uuid = this.room_invite_link_uuid;
 
-            await sequelize.query('CALL edit_room_invite_link_proc(:uuid, :expires_at, @result)', {
+            await sequelize.query('CALL edit_room_invite_link_proc(:uuid, :expires_at)', {
                 replacements,
                 ...(transaction && { transaction }),
             });
@@ -104,7 +104,7 @@ module.exports = (sequelize, DataTypes) => {
             const uuid = this.room_invite_link_uuid;
             if (!uuid) throw new Error('deleteRoomInviteLinkProc: No uuid provided');
 
-            await sequelize.query('CALL delete_room_invite_link_proc(:uuid, @result)', {
+            await sequelize.query('CALL delete_room_invite_link_proc(:uuid)', {
                 replacements: { uuid },
                 ...(transaction && { transaction }),
             });

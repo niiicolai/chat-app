@@ -38,7 +38,7 @@ module.exports = (sequelize, DataTypes) => {
             if (!replacements.room_uuid) throw new Error('room_uuid is required');
             if (!replacements.room_file_uuid) replacements.room_file_uuid = null;
  
-            await sequelize.query('CALL create_channel_proc(:uuid, :name, :description, :channel_type_name, :room_uuid, :room_file_uuid, @result)', {
+            await sequelize.query('CALL create_channel_proc(:uuid, :name, :description, :channel_type_name, :room_uuid, :room_file_uuid)', {
                 replacements,
                 ...(transaction && { transaction })
             });
@@ -67,7 +67,7 @@ module.exports = (sequelize, DataTypes) => {
             if (!replacements.room_uuid) throw new Error('room_uuid is required');
             if (!replacements.room_file_uuid) replacements.room_file_uuid = null;
 
-            await sequelize.query('CALL edit_channel_proc(:uuid, :name, :description, :channel_type_name, :room_uuid, :room_file_uuid, @result)', {
+            await sequelize.query('CALL edit_channel_proc(:uuid, :name, :description, :channel_type_name, :room_uuid, :room_file_uuid)', {
                 replacements,
                 ...(transaction && { transaction })
             });
@@ -86,7 +86,7 @@ module.exports = (sequelize, DataTypes) => {
             if (!replacements) throw new Error('deleteChannelProcStatic: No replacements provided');
             if (!replacements.uuid) throw new Error('deleteChannelProcStatic: No uuid provided');
 
-            await sequelize.query('CALL delete_channel_proc(:uuid, @result)', {
+            await sequelize.query('CALL delete_channel_proc(:uuid)', {
                 replacements,
                 ...(transaction && { transaction }),
             });

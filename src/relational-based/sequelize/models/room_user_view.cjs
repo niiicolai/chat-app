@@ -33,7 +33,7 @@ module.exports = (sequelize, DataTypes) => {
             if (!replacements.room_uuid) throw new Error('editRoomUserProcStatic: No room_uuid provided');
             if (!replacements.role_name) throw new Error('editRoomUserProcStatic: No role_name provided');
 
-            await sequelize.query('CALL edit_room_user_role_proc(:user_uuid, :room_uuid, :role_name, @result)', {
+            await sequelize.query('CALL edit_room_user_role_proc(:user_uuid, :room_uuid, :role_name)', {
                 replacements,
                 ...(transaction && { transaction }),
             });

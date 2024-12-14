@@ -121,57 +121,47 @@ INSERT INTO UserStatusState (name) VALUES
 -- Create the admin, moderator, and member users
 SET @loginType = 'Password';
 SET @thirdPartyId = NULL;
-call create_user_proc(@user_uuid, 'admin', 'admin@example.com', @password, @upload_src2, @loginType, @thirdPartyId, @result);
-call create_user_proc(@user2_uuid, 'moderator', 'moderator@example.com', @password, @upload_src3, @loginType, @thirdPartyId, @result);
-call create_user_proc(@user3_uuid, 'member', 'member@example.com', @password, @upload_src, @loginType, @thirdPartyId, @result);
+call create_user_proc(@user_uuid, 'admin', 'admin@example.com', @upload_src2);
+call create_user_proc(@user2_uuid, 'moderator', 'moderator@example.com', @upload_src3);
+call create_user_proc(@user3_uuid, 'member', 'member@example.com', @upload_src);
 
-
--- Create the room with the first user as the admin
-call create_room_proc(@user_uuid, @room_uuid, 'General Chat', 'A room for general discussion', 'General', 'Admin', @upload_src, 100450, @result);
-
-
-
--- Create channels for the room
-call create_channel_proc(@ch_uuid, 'General Discussion', 'General discussion channel', 'Text', 100450, @upload_src, @room_uuid, @result);
-call create_channel_proc(UUID(), 'Call Chat', 'Channel for voice and video calls', 'Call', 100450, @upload_src, @room_uuid, @result);
-
-
-
--- Joining the other two users to the room after the channel is created
--- to ensure that the join message is sent to a channel
-call join_room_proc(@user2_uuid, @room_uuid, 'Moderator', @result);
-call join_room_proc(@user3_uuid, @room_uuid, 'Member', @result);
-
-
-
--- Create messages for the channel
-call create_channel_message_proc(UUID(), 'Hello everyone!', 'User', @ch_uuid, @user_uuid, NULL, NULL, NULL, NULL, @result);
-call create_channel_message_proc(UUID(), 'Hey! How are you all doing?', 'User', @ch_uuid, @user2_uuid, NULL, NULL, NULL, NULL, @result);
-call create_channel_message_proc(UUID(), 'Doing great! How about you?', 'User', @ch_uuid, @user3_uuid, NULL, NULL, NULL, NULL, @result);
-call create_channel_message_proc(UUID(), 'I am good too, thanks for asking!', 'User', @ch_uuid, @user2_uuid, NULL, NULL, NULL, NULL, @result);
-call create_channel_message_proc(UUID(), 'What are you all working on today?', 'User', @ch_uuid, @user_uuid, NULL, NULL, NULL, NULL, @result);
-call create_channel_message_proc(UUID(), 'I am working on a new project for work.', 'User', @ch_uuid, @user3_uuid, NULL, NULL, NULL, NULL, @result);
-call create_channel_message_proc(UUID(), 'That sounds interesting! Tell me more.', 'User', @ch_uuid, @user2_uuid, NULL, NULL, NULL, NULL, @result);
-call create_channel_message_proc(UUID(), 'Sure, I will share the details in a bit.', 'User', @ch_uuid, @user3_uuid, NULL, NULL, NULL, NULL, @result);
-call create_channel_message_proc(UUID(), 'Check out this image:', 'User', @ch_uuid, @user3_uuid, 'Image', @upload_src, 100450, @room_uuid, @result);
-
-
-
--- Create a room invite link that never expires
-call create_room_invite_link_proc(UUID(), @room_uuid, NULL, @result);
-
-
-
--- Create a webhool url for the channel
-call create_channel_webhook_proc(@wh_uuid, @ch_uuid, 'General Chat Webhook', 'Webhook for the general chat channel', @upload_src, 100450, @room_uuid, @result);
-
-
-
--- Create a webhook message for the webhook
-call create_webhook_message_proc(UUID(), 'This is a webhook message!', @ch_uuid, @wh_uuid, 'Custom', @result);
-
+-- Create logins for the users
+call create_user_login_proc(UUID(), @user_uuid, @loginType, @thirdPartyId, @password);
+call create_user_login_proc(UUID(), @user2_uuid, @loginType, @thirdPartyId, @password);
+call create_user_login_proc(UUID(), @user3_uuid, @loginType, @thirdPartyId, @password);
 
 -- Set users as verified
-call set_user_email_verification_proc(@user_uuid, 1, @result);
-call set_user_email_verification_proc(@user2_uuid, 1, @result);
-call set_user_email_verification_proc(@user3_uuid, 1, @result);
+call set_user_email_verification_proc(@user_uuid, 1);
+call set_user_email_verification_proc(@user2_uuid, 1);
+call set_user_email_verification_proc(@user3_uuid, 1);
+
+-- Create the room with the first user as the admin
+call create_room_proc(@room_uuid, 'General Chat', 'A room for general discussion', 'General');
+
+-- Create channels for the room
+call create_channel_proc(@ch_uuid, 'General Discussion', 'General discussion channel', 'Text', @room_uuid, NULL);
+call create_channel_proc(UUID(), 'Call Chat', 'Channel for voice and video calls', 'Call', @room_uuid, NULL);
+
+-- Joining the users to the room with different roles
+call join_room_proc(@user_uuid, @room_uuid, 'Admin');
+call join_room_proc(@user2_uuid, @room_uuid, 'Moderator');
+call join_room_proc(@user3_uuid, @room_uuid, 'Member');
+
+-- Create messages for the channel
+call create_channel_message_proc(UUID(), 'Hello everyone!', 'User', @ch_uuid, @user_uuid, NULL, NULL, NULL);
+call create_channel_message_proc(UUID(), 'Hey! How are you all doing?', 'User', @ch_uuid, @user2_uuid, NULL, NULL, NULL);
+call create_channel_message_proc(UUID(), 'Doing great! How about you?', 'User', @ch_uuid, @user3_uuid, NULL, NULL, NULL);
+call create_channel_message_proc(UUID(), 'I am good too, thanks for asking!', 'User', @ch_uuid, @user2_uuid, NULL, NULL, NULL);
+call create_channel_message_proc(UUID(), 'What are you all working on today?', 'User', @ch_uuid, @user_uuid, NULL, NULL, NULL);
+call create_channel_message_proc(UUID(), 'I am working on a new project for work.', 'User', @ch_uuid, @user3_uuid, NULL, NULL, NULL);
+call create_channel_message_proc(UUID(), 'That sounds interesting! Tell me more.', 'User', @ch_uuid, @user2_uuid, NULL, NULL, NULL);
+call create_channel_message_proc(UUID(), 'Sure, I will share the details in a bit.', 'User', @ch_uuid, @user3_uuid, NULL, NULL, NULL);
+
+-- Create a room invite link that never expires
+call create_room_invite_link_proc(UUID(), @room_uuid, NULL);
+
+-- Create a webhool url for the channel
+call create_channel_webhook_proc(@wh_uuid, @ch_uuid, 'General Chat Webhook', 'Webhook for the general chat channel', NULL);
+
+-- Create a webhook message for the webhook
+call create_webhook_message_proc(UUID(), 'This is a webhook message!', @ch_uuid, @wh_uuid, 'Custom');

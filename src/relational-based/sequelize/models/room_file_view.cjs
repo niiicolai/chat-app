@@ -33,7 +33,7 @@ module.exports = (sequelize, DataTypes) => {
             if (!replacements.room_uuid) throw new Error('createRoomFileProcStatic: No room_uuid provided');
             if (!replacements.room_file_type_name) throw new Error('createRoomFileProcStatic: No room_file_type_name provided');
 
-            await sequelize.query('CALL create_room_file_proc(:room_file_uuid, :room_file_src, :room_file_size, :room_uuid, :room_file_type_name, @result)', {
+            await sequelize.query('CALL create_room_file_proc(:room_file_uuid, :room_file_src, :room_file_size, :room_uuid, :room_file_type_name)', {
                 replacements,
                 ...(transaction && { transaction }),
             });

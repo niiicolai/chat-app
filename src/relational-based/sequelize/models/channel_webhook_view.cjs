@@ -30,10 +30,9 @@ module.exports = (sequelize, DataTypes) => {
             if (!replacements.uuid) throw new Error('createChannelWebhookProc: No uuid provided');
             if (!replacements.name) throw new Error('createChannelWebhookProc: No name provided');
             if (!replacements.description) throw new Error('createChannelWebhookProc: No description provided');
-            if (!replacements.room_uuid) throw new Error('createChannelWebhookProc: No room_uuid provided');
             if (!replacements.room_file_uuid) replacements.room_file_uuid = null;
 
-            await sequelize.query('CALL create_channel_webhook_proc(:uuid, :channel_uuid, :name, :description, :room_file_uuid, :room_uuid)', {
+            await sequelize.query('CALL create_channel_webhook_proc(:uuid, :channel_uuid, :name, :description, :room_file_uuid)', {
                 replacements,
                 ...(transaction && { transaction }),
             });
@@ -57,10 +56,9 @@ module.exports = (sequelize, DataTypes) => {
             if (!replacements.uuid) replacements.uuid = this.channel_webhook_uuid;
             if (!replacements.name) replacements.name = this.channel_webhook_name;
             if (!replacements.description) replacements.description = this.channel_webhook_description;
-            if (!replacements.room_uuid) replacements.room_uuid = this.room_uuid;
             if (replacements.room_file_uuid === undefined) replacements.room_file_uuid = this.room_file_uuid;
 
-            await sequelize.query('CALL edit_channel_webhook_proc(:uuid, :name, :description, :room_file_uuid, :room_uuid)', {
+            await sequelize.query('CALL edit_channel_webhook_proc(:uuid, :name, :description, :room_file_uuid)', {
                 replacements,
                 ...(transaction && { transaction }),
             });
@@ -77,7 +75,7 @@ module.exports = (sequelize, DataTypes) => {
             const uuid = this.channel_webhook_uuid;
             if (!uuid) throw new Error('deleteChannelWebhookProc: No uuid provided');
 
-            await sequelize.query('CALL delete_channel_webhook_proc(:uuid, @result)', {
+            await sequelize.query('CALL delete_channel_webhook_proc(:uuid)', {
                 replacements: { uuid },
                 ...(transaction && { transaction }),
             });
@@ -102,7 +100,7 @@ module.exports = (sequelize, DataTypes) => {
             replacements.channel_webhook_uuid = this.channel_webhook_uuid;
             replacements.channel_uuid = this.channel_uuid;
 
-            await sequelize.query('CALL create_webhook_message_proc(:channel_message_uuid, :message, :channel_uuid, :channel_webhook_uuid, :channel_webhook_message_type_name, @result)', {
+            await sequelize.query('CALL create_webhook_message_proc(:channel_message_uuid, :message, :channel_uuid, :channel_webhook_uuid, :channel_webhook_message_type_name)', {
                 replacements,
                 ...(transaction && { transaction }),
             });

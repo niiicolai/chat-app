@@ -25,7 +25,7 @@ module.exports = (sequelize, DataTypes) => {
             if (!replacements) throw new Error('deleteUserPasswordResetProc: No replacements provided');
             if (!replacements.uuid) throw new Error('deleteUserPasswordResetProc: No uuid provided');
 
-            await sequelize.query('CALL delete_user_password_reset_proc(:uuid, @result)', {
+            await sequelize.query('CALL delete_user_password_reset_proc(:uuid)', {
                 replacements,
                 ...(transaction && { transaction }),
             });

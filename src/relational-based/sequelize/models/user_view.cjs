@@ -98,7 +98,7 @@ module.exports = (sequelize, DataTypes) => {
             if (!replacements) throw new Error('deleteUserAvatarProcStatic: No replacements provided');
             if (!replacements.uuid) throw new Error('deleteUserAvatarProcStatic: No uuid provided');
 
-            await sequelize.query('CALL delete_user_avatar_proc(:uuid, @result)', {
+            await sequelize.query('CALL delete_user_avatar_proc(:uuid)', {
                 replacements,
                 ...(transaction && { transaction }),
             });
@@ -175,7 +175,7 @@ module.exports = (sequelize, DataTypes) => {
             if (!replacements.user_uuid) throw new Error('createUserPasswordResetProcStatic: No user_uuid provided');
             if (!replacements.expires_at) throw new Error('createUserPasswordResetProcStatic: No expires_at provided');
 
-            await sequelize.query('CALL create_user_password_reset_proc(:uuid, :user_uuid, :expires_at, @result)', {
+            await sequelize.query('CALL create_user_password_reset_proc(:uuid, :user_uuid, :expires_at)', {
                 replacements,
                 ...(transaction && { transaction }),
             });

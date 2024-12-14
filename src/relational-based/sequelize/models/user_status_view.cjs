@@ -71,7 +71,7 @@ module.exports = (sequelize, DataTypes) => {
         if (!replacements.last_seen_at) replacements.last_seen_at = this.user_status_last_seen_at;
         if (!replacements.user_status_total_online_hours) replacements.user_status_total_online_hours = this.user_status_total_online_hours;
 
-        await sequelize.query('CALL update_user_status_proc(:user_uuid, :user_status_state, :message, :last_seen_at, :user_status_total_online_hours, @result)', {
+        await sequelize.query('CALL update_user_status_proc(:user_uuid, :user_status_state, :message, :last_seen_at, :user_status_total_online_hours)', {
             replacements,
             ...(transaction && { transaction }),
         });

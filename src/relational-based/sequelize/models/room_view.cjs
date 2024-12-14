@@ -110,7 +110,7 @@ module.exports = (sequelize, DataTypes) => {
             if (!replacements.rules_text) throw new Error('editRoomSettingProcStatic: No rules_text provided');
             if (!replacements.join_channel_uuid) replacements.join_channel_uuid = null;
 
-            await sequelize.query('CALL edit_room_setting_proc(:uuid, :join_message, :join_channel_uuid, :rules_text, @result)', {
+            await sequelize.query('CALL edit_room_setting_proc(:uuid, :join_message, :join_channel_uuid, :rules_text)', {
                 replacements,
                 ...(transaction && { transaction }),
             });
@@ -131,7 +131,7 @@ module.exports = (sequelize, DataTypes) => {
             if (!replacements.user_uuid) throw new Error('leaveRoomProcStatic: No user_uuid provided');
             if (!replacements.uuid) throw new Error('leaveRoomProcStatic: No uuid provided');
 
-            await sequelize.query('CALL leave_room_proc(:user_uuid, :uuid, @result)', {
+            await sequelize.query('CALL leave_room_proc(:user_uuid, :uuid)', {
                 replacements,
                 ...(transaction && { transaction }),
             });
@@ -150,7 +150,7 @@ module.exports = (sequelize, DataTypes) => {
             if (!replacements) throw new Error('deleteRoomProcStatic: No replacements provided');
             if (!replacements.uuid) throw new Error('deleteRoomProcStatic: No uuid provided');
 
-            await sequelize.query('CALL delete_room_proc(:uuid, @result)', {
+            await sequelize.query('CALL delete_room_proc(:uuid)', {
                 replacements,
                 transaction
             });
@@ -173,7 +173,7 @@ module.exports = (sequelize, DataTypes) => {
             if (!replacements.room_uuid) throw new Error('joinRoomProcStatic: No room_uuid provided');
             if (!replacements.role_name) throw new Error('joinRoomProcStatic: No role_name provided');
 
-            await sequelize.query('CALL join_room_proc(:user_uuid, :room_uuid, :role_name, @result)', {
+            await sequelize.query('CALL join_room_proc(:user_uuid, :room_uuid, :role_name)', {
                 replacements,
                 ...(transaction && { transaction }),
             });
@@ -194,7 +194,7 @@ module.exports = (sequelize, DataTypes) => {
             if (!replacements.user_uuid) throw new Error('leaveRoomProcStatic: No user_uuid provided');
             if (!replacements.room_uuid) throw new Error('leaveRoomProcStatic: No room_uuid provided');
 
-            await sequelize.query('CALL leave_room_proc(:user_uuid, :room_uuid, @result)', {
+            await sequelize.query('CALL leave_room_proc(:user_uuid, :room_uuid)', {
                 replacements,
                 ...(transaction && { transaction }),
             });

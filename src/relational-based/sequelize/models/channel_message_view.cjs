@@ -65,7 +65,7 @@ module.exports = (sequelize, DataTypes) => {
             if (!replacements.uuid) throw new Error('editChannelMessageProcStatic: No uuid provided');
             if (!replacements.msg) throw new Error('editChannelMessageProcStatic: No msg provided');
 
-            await sequelize.query('CALL edit_channel_message_proc(:uuid, :msg, @result)', {
+            await sequelize.query('CALL edit_channel_message_proc(:uuid, :msg)', {
                 replacements,
                 ...(transaction && { transaction }),
             });
@@ -84,7 +84,7 @@ module.exports = (sequelize, DataTypes) => {
             if (!replacements) throw new Error('deleteChannelMessageProcStatic: No replacements provided');
             if (!replacements.uuid) throw new Error('deleteChannelMessageProcStatic: No uuid provided');
 
-            await sequelize.query('CALL delete_channel_message_proc(:uuid, @result)', {
+            await sequelize.query('CALL delete_channel_message_proc(:uuid)', {
                 replacements,
                 transaction,
             });

@@ -422,7 +422,8 @@ CREATE TABLE UserEmailVerification (
     is_verified BOOLEAN DEFAULT FALSE,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_uuid) REFERENCES User(uuid)
+    FOREIGN KEY (user_uuid) REFERENCES User(uuid),
+    CONSTRAINT user_email_verification_unique UNIQUE (user_uuid) -- Only one verification per user
 );
 
 -- A user status state is used to determine if a user is online or offline.
@@ -445,7 +446,8 @@ CREATE TABLE UserStatus (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_status_state_name) REFERENCES UserStatusState(name),
-    FOREIGN KEY (user_uuid) REFERENCES User(uuid)
+    FOREIGN KEY (user_uuid) REFERENCES User(uuid),
+    CONSTRAINT user_status_unique UNIQUE (user_uuid) -- Only one status per user
 );
 
 -- ### EVENTS ###
@@ -754,13 +756,11 @@ DELIMITER ;
 DROP PROCEDURE IF EXISTS delete_user_avatar_proc;
 DELIMITER //
 CREATE PROCEDURE delete_user_avatar_proc(
-    IN user_uuid_input VARCHAR(36),
-    OUT result BOOLEAN
+    IN user_uuid_input VARCHAR(36)
 )
 BEGIN
     -- Update the user
     UPDATE User SET avatar_src = NULL WHERE uuid = user_uuid_input;
-    SET result = TRUE;
 END //
 DELIMITER ;
 
@@ -818,7 +818,6 @@ DELIMITER ;
 
 
 -- Create a new room with a user
--- It runs in a transaction to ensure that both inserts are successful
 DROP PROCEDURE IF EXISTS create_room_proc;
 DELIMITER //
 CREATE PROCEDURE create_room_proc(
@@ -867,8 +866,7 @@ DELIMITER ;
 DROP PROCEDURE IF EXISTS delete_room_proc;
 DELIMITER //
 CREATE PROCEDURE delete_room_proc(
-    IN room_uuid_input VARCHAR(36),
-    OUT result BOOLEAN
+    IN room_uuid_input VARCHAR(36)
 )
 BEGIN
     -- Delete the room
@@ -877,7 +875,6 @@ BEGIN
     JOIN Channel ON ChannelMessage.channel_uuid = Channel.uuid
     WHERE Channel.room_uuid = room_uuid_input;
     DELETE FROM Room WHERE uuid = room_uuid_input;
-    SET result = TRUE;
 END //
 DELIMITER ;
 
@@ -890,8 +887,7 @@ CREATE PROCEDURE edit_room_setting_proc(
     IN room_uuid_input VARCHAR(36),
     IN join_message_input VARCHAR(255),
     IN join_channel_uuid_input VARCHAR(36),
-    IN rules_text_input TEXT,
-    OUT result BOOLEAN
+    IN rules_text_input TEXT
 )
 BEGIN
     -- Update the room setting
@@ -902,39 +898,23 @@ BEGIN
     UPDATE RoomRulesSetting SET
 		rules_text = rules_text_input
 	WHERE room_uuid = room_uuid_input;
-    SET result = TRUE;
 END //
 DELIMITER ;
 
 
 
 -- Join a user to a room with a role
--- It runs in a transaction to ensure that both inserts are successful
 DROP PROCEDURE IF EXISTS join_room_proc;
 DELIMITER //
 CREATE PROCEDURE join_room_proc(
     IN user_uuid_input VARCHAR(36),
     IN room_uuid_input VARCHAR(36),
-    IN room_user_role_name_input VARCHAR(255),
-    OUT result BOOLEAN
+    IN room_user_role_name_input VARCHAR(255)
 )
 BEGIN
     DECLARE username VARCHAR(255);
     DECLARE join_message TEXT;
     DECLARE join_channel_uuid VARCHAR(36);
-    DECLARE exit_code VARCHAR(5);
-    DECLARE exit_message TEXT;
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION
-    BEGIN
-        GET DIAGNOSTICS CONDITION 1
-            exit_code = RETURNED_SQLSTATE, 
-            exit_message = MESSAGE_TEXT;
-        ROLLBACK;
-        -- Print the error message and code
-        SELECT CONCAT('Error Code: ', exit_code, ' Error Message: ', exit_message) AS error_output;
-        
-        SET result = FALSE;
-    END;
 
     -- Select join message and join channel UUID from room setting
     SELECT rs.join_message, rs.join_channel_uuid INTO join_message, join_channel_uuid
@@ -952,20 +932,18 @@ BEGIN
     SELECT u.username INTO username
     FROM User u WHERE u.uuid = user_uuid_input;
 
-    START TRANSACTION;
-        -- Insert the user into the room
-        INSERT INTO RoomUser (uuid, room_uuid, user_uuid, room_user_role_name) 
-        VALUES (UUID(), room_uuid_input, user_uuid_input, room_user_role_name_input);
-        -- If join_channel_uuid is found, insert a welcome message into the join channel
-        IF join_channel_uuid IS NOT NULL THEN
-            IF join_message IS NULL THEN
-                SET join_message = '{name} has joined the room!';
-            END IF;
-            INSERT INTO ChannelMessage (uuid, body, channel_uuid, user_uuid, channel_message_type_name)
-            VALUES (UUID(), REPLACE(join_message, '{name}', username), join_channel_uuid, user_uuid_input, 'System');
+    -- Insert the user into the room
+    INSERT INTO RoomUser (uuid, room_uuid, user_uuid, room_user_role_name) 
+    VALUES (UUID(), room_uuid_input, user_uuid_input, room_user_role_name_input);
+    
+    -- If join_channel_uuid is found, insert a welcome message into the join channel
+    IF join_channel_uuid IS NOT NULL THEN
+        IF join_message IS NULL THEN
+            SET join_message = '{name} has joined the room!';
         END IF;
-    COMMIT;
-    SET result = TRUE;
+        INSERT INTO ChannelMessage (uuid, body, channel_uuid, user_uuid, channel_message_type_name)
+        VALUES (UUID(), REPLACE(join_message, '{name}', username), join_channel_uuid, user_uuid_input, 'System');
+    END IF;
 END //
 DELIMITER ;
 
@@ -977,14 +955,12 @@ DELIMITER //
 CREATE PROCEDURE edit_room_user_role_proc(
     IN user_uuid_input VARCHAR(36),
     IN room_uuid_input VARCHAR(36),
-    IN room_user_role_name_input VARCHAR(255),
-    OUT result BOOLEAN
+    IN room_user_role_name_input VARCHAR(255)
 )
 BEGIN
     -- Update the user's role in the room
     UPDATE RoomUser SET room_user_role_name = room_user_role_name_input
     WHERE room_uuid = room_uuid_input AND user_uuid = user_uuid_input;
-    SET result = TRUE;
 END //
 DELIMITER ;
 
@@ -995,13 +971,11 @@ DROP PROCEDURE IF EXISTS leave_room_proc;
 DELIMITER //
 CREATE PROCEDURE leave_room_proc(
     IN user_uuid_input VARCHAR(36),
-    IN room_uuid_input VARCHAR(36),
-    OUT result BOOLEAN
+    IN room_uuid_input VARCHAR(36)
 )
 BEGIN
     -- Delete the user from the room
     DELETE FROM RoomUser WHERE room_uuid = room_uuid_input AND user_uuid = user_uuid_input;
-    SET result = TRUE;
 END //
 DELIMITER ;
 
@@ -1011,13 +985,11 @@ DELIMITER ;
 DROP PROCEDURE IF EXISTS delete_room_file_proc;
 DELIMITER //
 CREATE PROCEDURE delete_room_file_proc(
-    IN room_file_uuid_input VARCHAR(36),
-    OUT result BOOLEAN
+    IN room_file_uuid_input VARCHAR(36)
 )
 BEGIN
     -- Delete the room file
     DELETE FROM RoomFile WHERE uuid = room_file_uuid_input;
-    SET result = TRUE;
 END //
 DELIMITER ;
 
@@ -1029,14 +1001,12 @@ DELIMITER //
 CREATE PROCEDURE create_room_invite_link_proc(
     IN room_invite_link_uuid_input VARCHAR(36),
     IN room_uuid_input VARCHAR(36),
-    IN room_invite_link_expires_at_input DATETIME,
-    OUT result BOOLEAN
+    IN room_invite_link_expires_at_input DATETIME
 )
 BEGIN
     -- Insert the room invite link
     INSERT INTO RoomInviteLink (uuid, room_uuid, expires_at) 
     VALUES (room_invite_link_uuid_input, room_uuid_input, room_invite_link_expires_at_input);
-    SET result = TRUE;
 END //
 DELIMITER ;
 
@@ -1047,14 +1017,12 @@ DROP PROCEDURE IF EXISTS edit_room_invite_link_proc;
 DELIMITER //
 CREATE PROCEDURE edit_room_invite_link_proc(
     IN room_invite_link_uuid_input VARCHAR(36),
-    IN room_invite_link_expires_at_input DATETIME,
-    OUT result BOOLEAN
+    IN room_invite_link_expires_at_input DATETIME
 )
 BEGIN
     -- Update the room invite link
     UPDATE RoomInviteLink SET expires_at = room_invite_link_expires_at_input
     WHERE uuid = room_invite_link_uuid_input;
-    SET result = TRUE;
 END //
 DELIMITER ;
 
@@ -1064,13 +1032,11 @@ DELIMITER ;
 DROP PROCEDURE IF EXISTS delete_room_invite_link_proc;
 DELIMITER //
 CREATE PROCEDURE delete_room_invite_link_proc(
-    IN room_invite_link_uuid_input VARCHAR(36),
-    OUT result BOOLEAN
+    IN room_invite_link_uuid_input VARCHAR(36)
 )
 BEGIN
     -- Delete the room invite link
     DELETE FROM RoomInviteLink WHERE uuid = room_invite_link_uuid_input;
-    SET result = TRUE;
 END //
 DELIMITER ;
 
@@ -1085,8 +1051,7 @@ CREATE PROCEDURE create_channel_proc(
     IN channel_description_input TEXT,
     IN channel_type_name_input VARCHAR(255),
     IN room_uuid_input VARCHAR(36),
-    in room_file_uuid_input VARCHAR(36),
-    OUT result BOOLEAN
+    in room_file_uuid_input VARCHAR(36)
 )
 BEGIN
     INSERT INTO Channel (uuid, name, description, channel_type_name, room_uuid, room_file_uuid) 
@@ -1096,7 +1061,6 @@ BEGIN
                 channel_type_name_input, 
                 room_uuid_input, 
                 room_file_uuid_input);
-    SET result = TRUE;
 END //
 DELIMITER ;
 
@@ -1111,8 +1075,7 @@ CREATE PROCEDURE edit_channel_proc(
     IN channel_description_input TEXT,
     IN channel_type_name_input VARCHAR(255),
     IN room_uuid_input VARCHAR(36),
-    in room_file_uuid_input VARCHAR(36),
-    OUT result BOOLEAN
+    in room_file_uuid_input VARCHAR(36)
 )
 BEGIN
     -- Update the channel
@@ -1122,7 +1085,6 @@ BEGIN
                        room_file_uuid = room_file_uuid_input,
                        room_uuid = room_uuid_input
             WHERE uuid = channel_uuid_input;
-    SET result = TRUE;
 END //
 DELIMITER ;
 
@@ -1132,32 +1094,14 @@ DELIMITER ;
 DROP PROCEDURE IF EXISTS delete_channel_proc;
 DELIMITER //
 CREATE PROCEDURE delete_channel_proc(
-    IN channel_uuid_input VARCHAR(36),
-    OUT result BOOLEAN
+    IN channel_uuid_input VARCHAR(36)
 )
 BEGIN
-    DECLARE exit_code VARCHAR(5);
-    DECLARE exit_message TEXT;
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION
-    BEGIN
-        GET DIAGNOSTICS CONDITION 1
-            exit_code = RETURNED_SQLSTATE, 
-            exit_message = MESSAGE_TEXT;
-        ROLLBACK;
-        -- Print the error message and code
-        SELECT CONCAT('Error Code: ', exit_code, ' Error Message: ', exit_message) AS error_output;
-        
-        SET result = FALSE;
-    END;
-
-        START TRANSACTION;
-        -- Delete the channel
-        DELETE ChannelWebhookMessage FROM ChannelWebhookMessage
-        JOIN ChannelMessage ON ChannelWebhookMessage.channel_message_uuid = ChannelMessage.uuid
-        WHERE ChannelMessage.channel_uuid = channel_uuid_input;
-        DELETE FROM Channel WHERE uuid = channel_uuid_input;
-    COMMIT;
-    SET result = TRUE;
+    -- Delete the channel
+    DELETE ChannelWebhookMessage FROM ChannelWebhookMessage
+    JOIN ChannelMessage ON ChannelWebhookMessage.channel_message_uuid = ChannelMessage.uuid
+    WHERE ChannelMessage.channel_uuid = channel_uuid_input;
+    DELETE FROM Channel WHERE uuid = channel_uuid_input;
 END //
 DELIMITER ;
 
@@ -1170,21 +1114,17 @@ CREATE PROCEDURE create_room_file_proc(
     IN room_file_src_input TEXT,
     IN room_file_size_input BIGINT,
     IN room_uuid_input VARCHAR(36),
-    IN room_file_type_name_input VARCHAR(255),
-    OUT result BOOLEAN
+    IN room_file_type_name_input VARCHAR(255)
 )
 BEGIN
     -- Insert the room file
     INSERT INTO RoomFile (uuid, src, size, room_uuid, room_file_type_name) 
         VALUES (room_file_uuid_input, room_file_src_input, room_file_size_input, room_uuid_input, room_file_type_name_input);
-    SET result = TRUE;
 END //
 DELIMITER ;
 
 
 -- Create a new channel message with an optional upload
--- The application is responsible for running this in a transaction
--- because it involves operations with an external file system.
 DROP PROCEDURE IF EXISTS create_channel_message_proc;
 DELIMITER //
 CREATE PROCEDURE create_channel_message_proc(
@@ -1218,8 +1158,7 @@ DROP PROCEDURE IF EXISTS edit_channel_message_proc;
 DELIMITER //
 CREATE PROCEDURE edit_channel_message_proc(
     IN message_uuid_input VARCHAR(36),
-    IN message_body_input TEXT,
-    OUT result BOOLEAN
+    IN message_body_input TEXT
 )
 BEGIN
     -- Edit the channel message
@@ -1233,14 +1172,12 @@ DELIMITER ;
 DROP PROCEDURE IF EXISTS delete_channel_message_proc;
 DELIMITER //
 CREATE PROCEDURE delete_channel_message_proc(
-    IN message_uuid_input VARCHAR(36),
-    OUT result BOOLEAN
+    IN message_uuid_input VARCHAR(36)
 )
 BEGIN
     -- Delete the channel message
     DELETE FROM ChannelWebhookMessage WHERE channel_message_uuid = message_uuid_input;
     DELETE FROM ChannelMessage WHERE uuid = message_uuid_input;
-    SET result = TRUE;
 END //
 DELIMITER ;
 
@@ -1251,15 +1188,13 @@ DROP PROCEDURE IF EXISTS delete_channel_message_upload_proc;
 DELIMITER //
 CREATE PROCEDURE delete_channel_message_upload_proc(
     IN message_uuid_input VARCHAR(36),
-    IN room_file_uuid_input VARCHAR(36),
-    OUT result BOOLEAN
+    IN room_file_uuid_input VARCHAR(36)
 )
 BEGIN
     -- Delete the channel message upload
     DELETE FROM ChannelMessageUpload WHERE channel_message_uuid = message_uuid_input;
     -- Delete the room file
     DELETE FROM RoomFile WHERE uuid = room_file_uuid_input;
-    SET result = TRUE;
 END //
 DELIMITER ;
 
@@ -1273,8 +1208,7 @@ CREATE PROCEDURE create_channel_webhook_proc(
     IN channel_uuid_input VARCHAR(36),
     IN channel_webhook_name_input VARCHAR(255),
     IN channel_webhook_description_input TEXT,
-    in room_file_uuid_input VARCHAR(36),
-    IN room_uuid_input VARCHAR(36)
+    in room_file_uuid_input VARCHAR(36)
 )
 BEGIN
     -- Insert the channel webhook
@@ -1291,8 +1225,7 @@ CREATE PROCEDURE edit_channel_webhook_proc(
     IN channel_webhook_uuid_input VARCHAR(36),
     IN channel_webhook_name_input VARCHAR(255),
     IN channel_webhook_description_input TEXT,
-    in room_file_uuid_input VARCHAR(36),
-    IN room_uuid_input VARCHAR(36)
+    in room_file_uuid_input VARCHAR(36)
 )
 BEGIN
     UPDATE ChannelWebhook SET name = channel_webhook_name_input, description = channel_webhook_description_input, room_file_uuid = room_file_uuid_input
@@ -1306,13 +1239,11 @@ DELIMITER ;
 DROP PROCEDURE IF EXISTS delete_channel_webhook_proc;
 DELIMITER //
 CREATE PROCEDURE delete_channel_webhook_proc(
-    IN channel_webhook_uuid_input VARCHAR(36),
-    OUT result BOOLEAN
+    IN channel_webhook_uuid_input VARCHAR(36)
 )
 BEGIN
     -- Delete the channel webhook
     DELETE FROM ChannelWebhook WHERE uuid = channel_webhook_uuid_input;
-    SET result = TRUE;
 END //
 DELIMITER ;
 
@@ -1326,34 +1257,16 @@ CREATE PROCEDURE create_webhook_message_proc(
     IN message_body_input TEXT,
     IN channel_uuid_input VARCHAR(36),
     IN channel_webhook_uuid_input VARCHAR(36),
-    IN channel_webhook_message_type_name_input VARCHAR(255),
-    OUT result BOOLEAN
+    IN channel_webhook_message_type_name_input VARCHAR(255)
 )
 BEGIN
-    DECLARE exit_code VARCHAR(5);
-    DECLARE exit_message TEXT;
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION
-    BEGIN
-        GET DIAGNOSTICS CONDITION 1
-            exit_code = RETURNED_SQLSTATE, 
-            exit_message = MESSAGE_TEXT;
-        ROLLBACK;
-        -- Print the error message and code
-        SELECT CONCAT('Error Code: ', exit_code, ' Error Message: ', exit_message) AS error_output;
+    -- Insert the webhook message
+    INSERT INTO ChannelMessage (uuid, body, channel_uuid, channel_message_type_name)
+    VALUES (message_uuid_input, message_body_input, channel_uuid_input, 'Webhook');
         
-        SET result = FALSE;
-    END;
-
-    START TRANSACTION;
-        -- Insert the webhook message
-        INSERT INTO ChannelMessage (uuid, body, channel_uuid, channel_message_type_name)
-        VALUES (message_uuid_input, message_body_input, channel_uuid_input, 'Webhook');
-        
-        -- Insert the webhook message into the ChannelWebhookMessage table
-        INSERT INTO ChannelWebhookMessage (uuid, body, channel_webhook_uuid, channel_message_uuid, channel_webhook_message_type_name)
-        VALUES (UUID(), message_body_input, channel_webhook_uuid_input, message_uuid_input, channel_webhook_message_type_name_input);
-    COMMIT;
-    SET result = TRUE;
+    -- Insert the webhook message into the ChannelWebhookMessage table
+    INSERT INTO ChannelWebhookMessage (uuid, body, channel_webhook_uuid, channel_message_uuid, channel_webhook_message_type_name)
+    VALUES (UUID(), message_body_input, channel_webhook_uuid_input, message_uuid_input, channel_webhook_message_type_name_input);
 END //
 DELIMITER ;
 
@@ -1375,12 +1288,10 @@ DELIMITER //
 CREATE PROCEDURE create_user_password_reset_proc(
     IN user_password_reset_uuid_input VARCHAR(36),
     IN user_uuid_input VARCHAR(36),
-    IN user_password_reset_expires_at_input DATETIME,
-    OUT result BOOLEAN
+    IN user_password_reset_expires_at_input DATETIME
 )
 BEGIN
     INSERT INTO UserPasswordReset (uuid, user_uuid, expires_at) VALUES (user_password_reset_uuid_input, user_uuid_input, user_password_reset_expires_at_input);
-    SET result = TRUE;
 END //
 DELIMITER ;
 
@@ -1388,12 +1299,10 @@ DELIMITER ;
 DROP PROCEDURE IF EXISTS delete_user_password_reset_proc;
 DELIMITER //
 CREATE PROCEDURE delete_user_password_reset_proc(
-    IN user_password_reset_uuid_input VARCHAR(36),
-    OUT result BOOLEAN
+    IN user_password_reset_uuid_input VARCHAR(36)
 )
 BEGIN
     DELETE FROM UserPasswordReset WHERE uuid = user_password_reset_uuid_input;
-    SET result = TRUE;
 END //
 DELIMITER ;
 
@@ -1405,12 +1314,10 @@ CREATE PROCEDURE update_user_status_proc(
     IN status_state_name_input VARCHAR(255),
     IN status_message_input TEXT,
     IN status_last_seen_at DATETIME,
-    IN status_total_online_hours_input BIGINT, 
-    OUT result BOOLEAN
+    IN status_total_online_hours_input BIGINT
 )
 BEGIN
     UPDATE UserStatus SET user_status_state_name = status_state_name_input, message = status_message_input, last_seen_at = status_last_seen_at, total_online_hours = status_total_online_hours_input WHERE user_uuid = user_uuid_input;
-    SET result = TRUE;
 END //
 DELIMITER ;
 
