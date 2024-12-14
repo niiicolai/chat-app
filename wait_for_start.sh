@@ -40,10 +40,12 @@ done
 
 echo "Neo4j is ready!"
 
-# if the second argument is --mongodb-replica-set, then we need to set the replica set
+# if the second argument is --mongodb-replica-set, 
+# then we need to set the replica set
 if [ "$2" = "--mongodb-replica-set" ]; then
+    echo "Configuring MongoDB replica set"
     # configure the replica set by connecting with mongosh
-    mongosh --host "$MONGO_HOST" --port "$MONGO_PORT" --eval "rs.initiate()"
+    mongosh --host "$MONGO_HOST" --port "$MONGO_PORT" --eval "rs.initiate({_id: 'rs0', members: [{_id: 0, host: '$MONGO_HOST:$MONGO_PORT'}]})"
 fi
 
 if [ "$1" = "--db-overwrite" ]; then
@@ -52,5 +54,4 @@ if [ "$1" = "--db-overwrite" ]; then
 fi
 
 echo "Starting the application"
-
 npm start
