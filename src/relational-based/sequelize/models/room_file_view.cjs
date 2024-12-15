@@ -51,7 +51,7 @@ module.exports = (sequelize, DataTypes) => {
             if (!replacements) throw new Error('deleteRoomFileProcStatic: No replacements provided');
             if (!replacements.uuid) throw new Error('deleteRoomFileProcStatic: No uuid provided');
 
-            await sequelize.query('CALL delete_room_file_proc(:uuid, @result)', {
+            await sequelize.query('CALL delete_room_file_proc(:uuid)', {
                 replacements,
                 ...(transaction && { transaction }),
             });
