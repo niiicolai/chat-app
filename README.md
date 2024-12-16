@@ -1,5 +1,5 @@
 # Chat App Backend
-A Node.js chat backend application.
+A Node.js chat backend application. 
 
 # Quickest Way to Try the Application
 The project includes a Compose file named `compose-hub-image.yml`, which is designed to run the entire application in a local environment, including databases, the backend, and the frontend. For more details, refer to [#run-docker-hub-image-in-detached-mode](https://github.com/niiicolai/chat-app?tab=readme-ov-file#run-docker-hub-image-in-detached-mode).
