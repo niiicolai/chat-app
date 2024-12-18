@@ -172,4 +172,4 @@ const googleAuthTest = (GoogleAuthService, UserService, name) => {
 
 googleAuthTest(RelationalGoogleAuthService, RelationalUserService, 'Relational');
 googleAuthTest(DocumentGoogleAuthService, DocumentUserService, 'Document');
-//googleAuthTest(GraphGoogleAuthService, GraphUserService, 'Graph');
+googleAuthTest(GraphGoogleAuthService, GraphUserService, 'Graph');

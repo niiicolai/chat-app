@@ -7,6 +7,7 @@ import dto from '../dto/channel_message_dto.js';
 import neodeInstance from '../neode/index.js';
 import { v4 as uuidv4 } from 'uuid';
 import { getUploadType } from '../../shared/utils/file_utils.js';
+import neo4j from 'neo4j-driver';
 
 /**
  * @constant storage
@@ -37,28 +38,24 @@ class ChannelMessageService {
 
         const { user, uuid } = options;
 
-        const messageInstance = await neodeInstance.model('ChannelMessage').find(uuid);
-        if (!messageInstance) throw new ControllerError(404, 'channel_message not found');
+        const message = await neodeInstance.model('ChannelMessage').find(uuid);
+        if (!message) throw new err.EntityNotFoundError('channel_message');
 
-        const channelMessageType = messageInstance.get('channel_message_type').endNode().properties();
-        if (!channelMessageType) throw new ControllerError(404, 'Channel message type not found');
+        const channelMessageType = message.get('channel_message_type').endNode().properties();
+        const channel = message.get('channel').endNode().properties();
+        const channelMessageUpload = message.get('channel_message_upload')?.endNode()?.properties();
+        const _user = message.get('user')?.endNode()?.properties();
 
-        const channel = messageInstance.get('channel').endNode().properties();
-        if (!channel) throw new ControllerError(404, 'Channel not found');
+        const isInRoom = await RPS.isInRoomByChannel({ channel_uuid: channel.uuid, user, role_name: null });
+        if (!isInRoom) throw new err.RoomMemberRequiredError();
 
-        const channelMessageUpload = messageInstance.get('channel_message_upload')?.endNode()?.properties();
-        const _user = messageInstance.get('user')?.endNode()?.properties();
-
-        if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid: channel.uuid, user, role_name: null }))) {
-            throw new ControllerError(403, 'User is not in the room');
-        }
-
-        return dto(messageInstance.properties(), [
-            { channelMessageType },
-            { channel },
-            { channelMessageUpload },
-            { user: _user }
-        ]);
+        return dto({
+            ...message.properties(),
+            channelMessageType,
+            channel,
+            channelMessageUpload,
+            user: _user
+        });
     }
 
     /**
@@ -77,39 +74,45 @@ class ChannelMessageService {
 
         const { channel_uuid, user, page, limit, offset } = options;
 
-        if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid, user, role_name: null }))) {
-            throw new ControllerError(403, 'User is not in the room');
-        }
+        const channel = await neodeInstance.model('Channel').find(channel_uuid);
+        if (!channel) throw new err.EntityNotFoundError('channel');
 
-        return super.findAll({
-            page, limit, override: {
-                match: [
-                    'MATCH (cm:ChannelMessage)-[:HAS_CHANNEL]->(c:Channel {uuid: $channel_uuid})',
-                    'MATCH (cm)-[:HAS_CHANNEL_MESSAGE_TYPE]->(cmt:ChannelMessageType)',
-                    'OPTIONAL MATCH (cm)-[:HAS_USER]->(u:User)',
-                    'OPTIONAL MATCH (cm)-[:HAS_CHANNEL_MESSAGE_UPLOAD]->(cmu:ChannelMessageUpload)-[:HAS_ROOM_FILE]->(rf:RoomFile)',
-                    'OPTIONAL MATCH (cmu)-[:HAS_CHANNEL_MESSAGE_UPLOAD_TYPE]->(cmmut:ChannelMessageUploadType)',
-                    'OPTIONAL MATCH (cm)-[:HAS_CHANNEL_WEBHOOK_MESSAGE]->(cwm:ChannelWebhookMessage)-[:HAS_CHANNEL_WEBHOOK_MESSAGE_TYPE]->(cwm_type:ChannelWebhookMessageType)',
-                    'OPTIONAL MATCH (cwm)-[:HAS_CHANNEL_WEBHOOK]->(cw:ChannelWebhook)-[:HAS_CHANNEL_FILE]->(cwrf:RoomFile)',
-                ],
-                return: ['cm', 'cmt', 'u', 'cmu', 'rf', 'cwm', 'cwm_type', 'cw', 'cwrf', 'cmmut', 'c'],
-                map: {
-                    model: 'cm', relationships: [
-                        { alias: 'cmt', to: 'channelMessageType' },
-                        { alias: 'c', to: 'channel' },
-                        { alias: 'u', to: 'user' },
-                        { alias: 'cmu', to: 'channelMessageUpload' },
-                        { alias: 'rf', to: 'roomFile' },
-                        { alias: 'cmmut', to: 'channelMessageUploadType' },
-                        { alias: 'cwm', to: 'channelWebhookMessage' },
-                        { alias: 'cwm_type', to: 'channelWebhookMessageType' },
-                        { alias: 'cw', to: 'channelWebhook' },
-                        { alias: 'cwrf', to: 'channelWebhookFile' },
-                    ]
-                },
-                params: { channel_uuid }
+        const isInRoom = await RPS.isInRoomByChannel({ channel_uuid, user });
+        if (!isInRoom) throw new err.RoomMemberRequiredError();
+
+        const result = await neodeInstance.cypher(
+            `MATCH (c:Channel { uuid: $channel_uuid }) ` +
+            `MATCH (cm:ChannelMessage)-[:WRITTEN_IN]->(c) ` +
+            `MATCH (cm)-[:WRITTEN_BY]->(u:User) ` +
+            `MATCH (cm)-[:TYPE_IS]->(cmt:ChannelMessageType) ` +
+            `OPTIONAL MATCH (cm)-[:UPLOAD_IS]->(cmu:ChannelMessageUpload)-[:SAVED_AS]->(rf:RoomFile)-[:TYPE_IS]->(rft:RoomFileType) ` +
+            `ORDER BY cm.created_at DESC ` +
+            (offset ? `SKIP $offset ` : ``) +
+            (limit ? `LIMIT $limit ` : ``) +
+            `RETURN COUNT(cm) AS total, cm, u, cmt, cmu, rf`,
+            {
+                ...(offset && { offset: neo4j.int(offset) }),
+                ...(limit && { limit: neo4j.int(limit) }),
+                channel_uuid
             }
-        });
+        );
+
+        const total = result.records.length > 0 
+            ? result.records[0].get('total').low
+            : 0;
+            
+        return {
+            total,
+            data: result.records.map(record => dto({
+                ...record.get('cm').properties,
+                channel: { uuid: channel_uuid },
+                user: record.get('u').properties,
+                channelMessageType: record.get('cmt').properties,
+                channelMessageUpload: record.get('cmu')?.properties,
+            })),
+            ...(limit && { limit }),
+            ...(page && limit && { page, pages: Math.ceil(total / limit) }),
+        };
     }
 
     /**
@@ -132,63 +135,57 @@ class ChannelMessageService {
         const { uuid, body: msg, channel_uuid } = body;
         const { sub: user_uuid } = user;
 
-        const channelInstance = await neodeInstance.model('Channel').find(channel_uuid);
-        if (!channelInstance) throw new ControllerError(404, 'Channel not found');
+        const channel = await neodeInstance.model('Channel').find(channel_uuid);
+        if (!channel) throw new err.EntityNotFoundError('channel');
 
-        if (!(await RoomPermissionService.isInRoomByChannel({ channel_uuid, user, role_name: null }))) {
-            throw new ControllerError(403, 'User is not in the room');
-        }
+        const isInRoom = await RPS.isInRoomByChannel({ channel_uuid, user });
+        if (!isInRoom) throw new err.RoomMemberRequiredError();
 
-        const userInstance = await neodeInstance.model('User').find(user_uuid);
-        if (!userInstance) throw new ControllerError(404, 'User not found');
+        const savedUser = await neodeInstance.model('User').find(user_uuid);
+        if (!savedUser) throw new err.EntityNotFoundError('user');
 
-        const channelMessageType = await neodeInstance.model('ChannelMessageType').find('User');
-        if (!channelMessageType) throw new ControllerError(404, 'Channel message type not found');
+        const room = channel.get('room').endNode().properties();
+        const room_uuid = room.uuid;
+        const room_file_src = await this.createUpload({ uuid, room_uuid, file });
 
-        const channelMessage = await neodeInstance.model('ChannelMessage').create({ uuid, body: msg });
+        const session = neodeInstance.session();
+        await session.writeTransaction(async (transaction) => {
+            await transaction.run(
+                `MATCH (u:User { uuid: $user_uuid }) ` +
+                `MATCH (c:Channel { uuid: $channel_uuid }) ` +
+                `MATCH (cmt:ChannelMessageType { name: "User" }) ` +
+                `CREATE (cm:ChannelMessage { uuid: $uuid, body: $body, created_at: datetime(), updated_at: datetime() }) ` +
+                `CREATE (cm)-[:WRITTEN_IN]->(c) ` +
+                `CREATE (cm)-[:WRITTEN_BY]->(u) ` +
+                `CREATE (cm)-[:TYPE_IS]->(cmt) ` +
+                `RETURN c`,
+                { uuid, body: msg, user_uuid, channel_uuid }
+            );
 
-        await channelMessage.relateTo(channelInstance, 'channel');
-        await channelMessage.relateTo(channelMessageType, 'channel_message_type');
-        await channelMessage.relateTo(userInstance, 'user');
-
-        if (file && file.size > 0) {
-            const size = file.size;
-            const room = channelInstance.get('room').endNode().properties();
-            const roomInstance = await neodeInstance.model('Room').find(room.uuid);
-
-            if ((await RoomPermissionService.fileExceedsTotalFilesLimit({ room_uuid: room.uuid, bytes: size }))) {
-                throw new ControllerError(400, 'The room does not have enough space for this file');
+            if (room_file_src) {
+                await transaction.run(
+                    `MATCH (cm:ChannelMessage { uuid: $cm_uuid }) ` +
+                    `MATCH (r:Room { uuid: $room_uuid }) ` +
+                    `MATCH (rft:RoomFileType { name: 'ChannelMessageUpload' }) ` +
+                    `MATCH (cmut:ChannelMessageUploadType { name: $ch_upload_type_name }) ` +
+                    `CREATE (cmu:ChannelMessageUpload { uuid: $cmu_uuid }) ` +
+                    `CREATE (rf:RoomFile { uuid: $rf_uuid, size: $size, src: $src, created_at: datetime(), updated_at: datetime() }) ` +
+                    `CREATE (cm)-[:UPLOAD_IS]->(cmu) ` +
+                    `CREATE (cmu)-[:TYPE_IS]->(cmut) ` +
+                    `CREATE (cmu)-[:SAVED_AS]->(rf) ` +
+                    `CREATE (rf)-[:STORED_IN]->(r) ` +
+                    `CREATE (rf)-[:TYPE_IS]->(rft)`,
+                    { uuid, room_uuid, size, rf_uuid: uuidv4(), src: room_file_src, cmu_uuid: uuidv4(), ch_upload_type_name: getUploadType(file) }
+                );
             }
-            if ((await RoomPermissionService.fileExceedsSingleFileSize({ room_uuid: room.uuid, bytes: size }))) {
-                throw new ControllerError(400, 'File exceeds single file size limit');
-            }
+        }).catch(err => {
+            if (room_file_src) storage.deleteFile(storage.parseKey(room_file_src));
+            throw err;
+        }).finally(() => session.close());
 
-            const roomFileType = await neodeInstance.model('RoomFileType').find('ChannelMessageUpload');
-            if (!roomFileType) throw new ControllerError(404, 'Room file type not found');
 
-            const src = await storage.uploadFile(file, uuid);
-            const roomFile = await neodeInstance.model('RoomFile').create({ uuid: uuidv4(), src, size });
-            await roomFile.relateTo(roomInstance, 'room');
-            await roomFile.relateTo(roomFileType, 'room_file_type');
-
-            const chUploadTypeName = getUploadType(file);
-            const chUploadType = await neodeInstance.model('ChannelMessageUploadType').find(chUploadTypeName);
-            if (!chUploadType) throw new ControllerError(404, 'Channel message upload type not found');
-
-            const chUpload = await neodeInstance.model('ChannelMessageUpload').create({ uuid: uuidv4() });
-            await chUpload.relateTo(chUploadType, 'channel_message_upload_type');
-            await chUpload.relateTo(roomFile, 'room_file');
-
-            await channelMessage.relateTo(chUpload, 'channel_message_upload');
-        }
-
-        const result = this.findOne({ uuid, user });
-
-        /**
-          * Broadcast the channel message to all users
-          * in the room where the channel message was created.
-          */
-        broadcastChannel(`channel-${channel_uuid}`, 'chat_message_created', result);
+        const result = await this.findOne({ uuid, user });
+        BroadcastChannelService.create(result, user.sub);
 
         return result;
     }
@@ -211,33 +208,25 @@ class ChannelMessageService {
         const { body: msg } = body;
         const { sub: user_uuid } = user;
 
-        const channelMessageInstance = await neodeInstance.model('ChannelMessage').find(uuid);
-        if (!channelMessageInstance) throw new ControllerError(404, 'channel_message not found');
+        const channelMessage = await neodeInstance.model('ChannelMessage').find(uuid);
+        if (!channelMessage) throw new err.EntityNotFoundError('channel_message');
 
-        const channel = channelMessageInstance.get('channel').endNode().properties();
-        if (!channel) throw new ControllerError(404, 'Channel not found');
+        const channel = channelMessage.get('channel').endNode().properties();
+        const messageUser = channelMessage.get('user')?.endNode()?.properties();
 
         const channel_uuid = channel.uuid;
-        const messageUser = channelMessageInstance.get('user')?.endNode()?.properties();
         const isOwner = messageUser?.uuid === user_uuid;
 
         if (!isOwner &&
-            !(await RoomPermissionService.isInRoomByChannel({ channel_uuid, user, role_name: 'Moderator' })) &&
-            !(await RoomPermissionService.isInRoomByChannel({ channel_uuid, user, role_name: 'Admin' }))) {
-            throw new ControllerError(403, 'User is not an owner of the message, or an admin or moderator of the room');
+            !(await RPS.isInRoomByChannel({ channel_uuid, user, role_name: 'Moderator' })) &&
+            !(await RPS.isInRoomByChannel({ channel_uuid, user, role_name: 'Admin' }))) {
+            throw new err.OwnershipOrLeastModRequiredError("channel_message");
         }
 
-        if (msg) {
-            await channelMessageInstance.update({ body: msg });
-        }
+        if (msg) await channelMessage.update({ body: msg });
 
-        const result = this.findOne({ uuid, user });
-
-        /**
-          * Broadcast the channel message to all users
-          * in the room where the channel message was updated.
-          */
-        broadcastChannel(`channel-${channel_uuid}`, 'chat_message_updated', result);
+        const result = await this.findOne({ uuid, user });
+        BroadcastChannelService.update(result, user.sub);
 
         return result;
     }
@@ -257,44 +246,48 @@ class ChannelMessageService {
         const { uuid, user } = options;
         const { sub: user_uuid } = user;
 
-        const channelMessageInstance = await neodeInstance.model('ChannelMessage').find(uuid);
-        if (!channelMessageInstance) throw new ControllerError(404, 'channel_message not found');
+        const channelMessage = await neodeInstance.model('ChannelMessage').find(uuid);
+        if (!channelMessage) throw new err.EntityNotFoundError('channel_message');
 
-        const channel = channelMessageInstance.get('channel').endNode().properties();
-        if (!channel) throw new ControllerError(500, 'Channel not found');
+        const channel = channelMessage.get('channel').endNode().properties();
+        const channelMessageUser = channelMessage.get('user')?.endNode()?.properties();
 
-        const channelMessageUser = channelMessageInstance.get('user')?.endNode()?.properties();
         const isOwner = channelMessageUser?.uuid === user_uuid;
         const channel_uuid = channel.uuid;
-        const [moderator, admin] = await Promise.all([
-            RoomPermissionService.isInRoomByChannel({ channel_uuid, user, role_name: 'Moderator' }),
-            RoomPermissionService.isInRoomByChannel({ channel_uuid, user, role_name: 'Admin' })
-        ]);
 
-        if (!isOwner && !moderator && !admin) {
-            throw new ControllerError(403, 'User is not an owner of the message, or an admin or moderator of the room');
+        if (!isOwner &&
+            !(await RPS.isInRoomByChannel({ channel_uuid, user, role_name: 'Moderator' })) &&
+            !(await RPS.isInRoomByChannel({ channel_uuid, user, role_name: 'Admin' }))) {
+            throw new err.OwnershipOrLeastModRequiredError("channel_message");
         }
 
-        let src = null;
-        const channelMessageUpload = channelMessageInstance.get('channel_message_upload')?.endNode()?.properties();
-        if (channelMessageUpload) {
-            const channelMessageUploadInstance = await neodeInstance.model('ChannelMessageUpload').find(channelMessageUpload.uuid);
-            if (!channelMessageUploadInstance) throw new ControllerError(500, 'Channel message upload not found');
-            const roomFile = channelMessageUploadInstance.get('room_file').endNode().properties();
-            if (!roomFile) throw new ControllerError(500, 'Room file not found');
-            src = roomFile.src;
-        }
+        const session = neodeInstance.session();
+        await session.writeTransaction(async (transaction) => {
+            const srcResult = await transaction.run(
+                `MATCH (cm:ChannelMessage { uuid: $uuid }) ` +
+                `OPTIONAL MATCH (cm)-[:UPLOAD_IS]->(cmu:ChannelMessageUpload)-[:SAVED_AS]->(rf:RoomFile) ` +
+                `RETURN rf.src AS src`,
+                { uuid }
+            );
 
-        await channelMessageInstance.delete()
-            .then(() => {
-                if (src) storage.deleteFile(storage.parseKey(src));
+            await transaction.run(
+                `MATCH (cm:ChannelMessage { uuid: $uuid }) ` +
+                `OPTIONAL MATCH (cm)-[:UPLOAD_IS]->(cmu:ChannelMessageUpload)-[:SAVED_AS]->(rf:RoomFile) ` +
+                `DETACH DELETE cm, cmu, rf`,
+                { uuid }
+            );
 
-                /**
-                 * Broadcast the channel message to all users
-                 * in the room where the channel message was deleted.
-                 */
-                broadcastChannel(`channel-${channel_uuid}`, 'chat_message_deleted', { uuid });
-            });
+            if (srcResult.records.length > 0 && srcResult.records[0].get('src')) {
+                const src = srcResult.records[0].get('src');
+                const key = storage.parseKey(src);
+                await storage.deleteFile(key);
+            }
+        }).catch(err => {
+            console.error(err);
+            throw err;
+        }).finally(() => session.close());
+
+        BroadcastChannelService.destroy(channel_uuid, uuid, user.sub);
     }
 
     /**

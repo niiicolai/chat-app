@@ -139,4 +139,4 @@ const roomAuditServiceTest = (RoomAuditService, name) => {
 
 roomAuditServiceTest(RelationalRoomAuditService, 'Relational');
 roomAuditServiceTest(DocumentRoomAuditService, 'Document');
-//roomAuditServiceTest(GraphRoomAuditService, 'Graph');
+roomAuditServiceTest(GraphRoomAuditService, 'Graph');

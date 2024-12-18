@@ -75,7 +75,7 @@ class ChannelService {
             `MATCH (c)-[:TYPE_IS]->(ct:ChannelType) ` +
             `OPTIONAL MATCH (cw)-[:CHANNEL_AVATAR_IS]->(rf:RoomFile) ` +
             `OPTIONAL MATCH (rf)-[:TYPE_IS]->(rft:RoomFileType) ` +
-            `ORDER BY cw.created_at DESC ` +
+            `ORDER BY c.created_at DESC ` +
             (offset ? `SKIP $offset ` : ``) +
             (limit ? `LIMIT $limit ` : ``) +
             `RETURN cw, c, rft, r, ct, rf, COUNT(c) AS total`,
@@ -86,7 +86,10 @@ class ChannelService {
             }
         );
 
-        const total = result.records[0].get('total').low;
+        const total = result.records.length > 0 
+            ? result.records[0].get('total').low
+            : 0;
+            
         return {
             total,
             data: result.records.map(record => dto({
@@ -153,7 +156,7 @@ class ChannelService {
 
         // Create transaction
         const session = neodeInstance.session();
-        const result = await session.writeTransaction(async (transaction) => {
+        await session.writeTransaction(async (transaction) => {
             await transaction.run(
                 `MATCH (r:Room { uuid: $room_uuid }) ` +
                 `MATCH (ct:ChannelType { name: $channel_type_name }) ` +
@@ -294,7 +297,7 @@ class ChannelService {
 
         const session = neodeInstance.session();
         await session.writeTransaction(async (transaction) => {
-            const res = await transaction.run(
+            await transaction.run(
                 `MATCH (c:Channel { uuid: $uuid }) ` +
                 `OPTIONAL MATCH (c)-[:CHANNEL_AVATAR_IS]->(rf:RoomFile) ` +
                 `OPTIONAL MATCH (cw:ChannelWebhook)-[:WRITE_TO]->(c) ` +

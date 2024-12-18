@@ -13,8 +13,8 @@ export default (entity = {}) => {
         uuid: entity.uuid,
         name: entity.name,
         description: entity.description,
-        bytes_used: entity.bytes_used,
-        mb_used: entity.mb_used,
+        bytes_used: entity.bytes_used || 0,
+        mb_used: entity.mb_used || 0,
     };
 
     if (entity.roomCategory) dto.room_category_name = entity.roomCategory.name;

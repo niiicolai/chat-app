@@ -301,4 +301,4 @@ const channelWebhookTest = (ChannelWebhookService, name) => {
 
 channelWebhookTest(RelationalChannelWebhookService, 'Relational');
 channelWebhookTest(DocumentChannelWebhookService, 'Document');
-//channelWebhookTest(GraphChannelWebhookService, 'Graph');
+channelWebhookTest(GraphChannelWebhookService, 'Graph');

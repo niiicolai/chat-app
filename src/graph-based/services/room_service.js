@@ -2,8 +2,6 @@ import Validator from '../../shared/validators/room_service_validator.js';
 import err from '../../shared/errors/index.js';
 import StorageService from '../../shared/services/storage_service.js';
 import RPS from './room_permission_service.js';
-import ChannelService from './channel_service.js';
-import RoomFileService from './room_file_service.js';
 import neodeInstance from '../neode/index.js';
 import dto from '../dto/room_dto.js';
 import neo4j from 'neo4j-driver';
@@ -109,7 +107,10 @@ class RoomService {
             }
         );
 
-        const total = result.records[0].get('total').low;
+        const total = result.records.length ?
+            result.records[0].get('total').low
+            : 0;
+            
         return {
             total,
             data: result.records.map(record => dto({
@@ -156,7 +157,7 @@ class RoomService {
         const nameInUse = await neodeInstance.model('Room').first('name', name);
         if (nameInUse) throw new err.DuplicateEntryError('room', 'room_name', name);
 
-        const validCategory = await neodeInstance.model('RoomCategory').first('name', room_category_name);
+        const validCategory = await neodeInstance.model('RoomCategory').find(room_category_name);
         if (!validCategory) throw new err.EntityNotFoundError('room_category_name');
 
         let room_file_src = null;
@@ -310,9 +311,9 @@ class RoomService {
             if (room_category_name && room_category_name !== currentCategory) {
                 await tx.run(
                     `MATCH (r:Room {uuid: $uuid}) ` +
-                    `MATCH (r)-[:CATEGORY_IS]->(rc:RoomCategory {name: $current_category_name}) ` +
+                    `MATCH (r)-[oc:CATEGORY_IS]->(rc:RoomCategory {name: $current_category_name}) ` +
                     `MATCH (rc_new:RoomCategory {name: $room_category_name}) ` +
-                    `DETACH DELETE rc ` +
+                    `DELETE oc ` +
                     `CREATE (r)-[:CATEGORY_IS]->(rc_new) `,
                     { uuid, current_category_name: currentCategory, room_category_name }
                 );

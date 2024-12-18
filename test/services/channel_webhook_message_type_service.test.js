@@ -97,4 +97,4 @@ const channelWebhookMessageTypeServiceTest = (ChannelWebhookMessageTypeService, 
 
 channelWebhookMessageTypeServiceTest(RelationalChannelWebhookMessageTypeService, 'Relational');
 channelWebhookMessageTypeServiceTest(DocumentChannelWebhookMessageTypeService, 'Document');
-//channelWebhookMessageTypeServiceTest(GraphChannelWebhookMessageTypeService, 'Graph');
+channelWebhookMessageTypeServiceTest(GraphChannelWebhookMessageTypeService, 'Graph');

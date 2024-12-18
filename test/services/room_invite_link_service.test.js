@@ -337,4 +337,4 @@ const roomInviteLinkServiceTest = (RoomInviteLinkService, RoomUserService, name)
 
 roomInviteLinkServiceTest(RelationalRoomInviteLinkService, RelationalRoomUserService, 'Relational');
 roomInviteLinkServiceTest(DocumentRoomInviteLinkService, DocumentRoomUserService, 'Document');
-//roomInviteLinkServiceTest(GraphRoomInviteLinkService, GraphRoomUserService, 'Graph');
+roomInviteLinkServiceTest(GraphRoomInviteLinkService, GraphRoomUserService, 'Graph');

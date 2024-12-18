@@ -323,5 +323,5 @@ const userServiceTest = (UserService, name) => {
 
 userServiceTest(RelationalUserService, 'Relational');
 userServiceTest(DocumentUserService, 'Document');
-//userServiceTest(GraphUserService, 'Graph');
+userServiceTest(GraphUserService, 'Graph');
 

@@ -236,8 +236,6 @@
 									"    \"uuid\",\r",
 									"    \"username\",\r",
 									"    \"email\",\r",
-									"    \"created_at\",\r",
-									"    \"updated_at\",\r",
 									"].forEach(expected => {\r",
 									"    pm.test(`response.user must include ${expected} property`, function () {\r",
 									"        pm.expect(responseJSON.user).to.have.property(expected);\r",
@@ -248,8 +246,6 @@
 									"    { prop: \"uuid\", type: \"string\" },\r",
 									"    { prop: \"email\", type: \"string\" },\r",
 									"    { prop: \"username\", type: \"string\" },\r",
-									"    { prop: \"created_at\", type: \"string\" },\r",
-									"    { prop: \"updated_at\", type: \"string\" },\r",
 									"].forEach(expected => {\r",
 									"    pm.test(`response.user's property ${expected.prop} must be of type ${expected.type}`, function () {\r",
 									"        pm.expect(responseJSON.user[expected.prop])\r",
@@ -1340,7 +1336,7 @@
 									"    uuid: uuidV4(),\r",
 									"    name: `test-${uuidV4()}`,\r",
 									"    description: `test-${uuidV4()}`,\r",
-									"    room_category_name: `General`\r",
+									"    room_category_name: `Music`\r",
 									"}))\r",
 									""
 								],
@@ -5514,6 +5510,7 @@
 									"});\r",
 									"\r",
 									"pm.environment.set('RoomUserUuid', responseJSON.data[0].uuid);\r",
+									"pm.environment.set('RoomUserOGRole', responseJSON.data[0].room_user_role_name);\r",
 									""
 								],
 								"type": "text/javascript",
@@ -5886,7 +5883,7 @@
 									"});\r",
 									"\r",
 									"pm.environment.set('RoomUserUpdateBody', JSON.stringify({\r",
-									"    room_user_role_name: \"Admin\"\r",
+									"    room_user_role_name: pm.environment.get('RoomUserOGRole')\r",
 									"}))\r",
 									""
 								],

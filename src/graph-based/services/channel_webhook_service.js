@@ -88,7 +88,10 @@ class ChannelWebhookService {
             }
         );
 
-        const total = result.records[0].get('total').low;
+        const total = result.records.length > 0 
+            ? result.records[0].get('total').low
+            : 0;
+
         return {
             total,
             data: result.records.map(record => dto({
@@ -170,7 +173,7 @@ class ChannelWebhookService {
             session.close();
         });
 
-        return this.findOne({ uuid, user });
+        return await this.findOne({ uuid, user });
     }
 
     /**
@@ -259,7 +262,7 @@ class ChannelWebhookService {
             session.close();
         });
 
-        return this.findOne({ uuid, user });
+        return await this.findOne({ uuid, user });
     }
 
     /**
