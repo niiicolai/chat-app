@@ -99,4 +99,4 @@ const channelMessageTypeServiceTest = (ChannelMessageTypeService, name) => {
 
 channelMessageTypeServiceTest(RelationalChannelMessageTypeService, 'Relational');
 channelMessageTypeServiceTest(DocumentChannelMessageTypeService, 'Document');
-//channelMessageTypeServiceTest(GraphChannelMessageTypeService, 'Graph');
+channelMessageTypeServiceTest(GraphChannelMessageTypeService, 'Graph');

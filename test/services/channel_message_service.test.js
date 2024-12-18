@@ -142,7 +142,7 @@ const channelMessageTest = (ChannelMessageService, name) => {
 
     /**
      * ChannelMessageService.findOne
-     
+     */
 
     test.each([
         [{ uuid: channel_message_uuid_admin, user: admin }],
@@ -179,13 +179,13 @@ const channelMessageTest = (ChannelMessageService, name) => {
         [{ uuid: fakeId, user: { sub: fakeId } }, 'channel_message not found'],
     ])(`(${name}) - ChannelMessageService.findOne invalid partitions`, async (options, expected) => {
         expect(async () => await ChannelMessageService.findOne(options)).rejects.toThrowError(expected);
-    });*/
+    });
 
 
 
     /**
      * ChannelMessageService.findAll
-     
+     */
 
     test.each([
         [{ channel_uuid, user: admin }],
@@ -233,13 +233,13 @@ const channelMessageTest = (ChannelMessageService, name) => {
         [{ channel_uuid: fakeId, user: { sub: fakeId } }, 'channel not found'],
     ])(`(${name}) - ChannelMessageService.findAll invalid partitions`, async (options, expected) => {
         expect(async () => await ChannelMessageService.findAll(options)).rejects.toThrowError(expected);
-    });*/
+    });
 
 
 
     /**
      * Security Checks
-     
+     */
 
     test.each([
         [user],
@@ -276,13 +276,13 @@ const channelMessageTest = (ChannelMessageService, name) => {
     ])(`(${name}) - ChannelMessageService.update return error for users who are not moderator, owner or admin`, async (user) => {
         expect(async () => await ChannelMessageService.update({ uuid: channel_message_uuid_admin, user, body: { body: "test" } }))
             .rejects.toThrow("User is not an owner of the channel_message, or an admin or moderator of the room");
-    });*/
+    });
 
 
 
     /**
      * ChannelMessageService.destroy
-     
+     */
 
     test.each([
         [{ user: admin, uuid: channel_message_uuid_mod }], // Admin can delete mod's message
@@ -307,9 +307,9 @@ const channelMessageTest = (ChannelMessageService, name) => {
         [{ uuid: fakeId, user: { sub: fakeId } }, 'channel_message not found'],
     ])(`(${name}) - ChannelMessageService.destroy invalid partitions`, async (options, expected) => {
         expect(async () => await ChannelMessageService.destroy(options)).rejects.toThrowError(expected);
-    });*/
+    });
 };
 
 channelMessageTest(RelationalChannelMessageService, 'Relational');
 channelMessageTest(DocumentChannelMessageService, 'Document');
-//channelMessageTest(GraphChannelMessageService, 'Graph');
+channelMessageTest(GraphChannelMessageService, 'Graph');

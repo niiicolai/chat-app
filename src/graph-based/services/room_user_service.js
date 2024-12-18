@@ -104,7 +104,10 @@ class RoomUserService {
             }
         );
 
-        const total = result.records[0].get('total').low;
+        const total = result.records.length > 0 
+            ? result.records[0].get('total').low
+            : 0;
+            
         return {
             total,
             data: result.records.map(record => dto({

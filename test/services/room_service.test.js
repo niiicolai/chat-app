@@ -352,4 +352,4 @@ const isValidRoom = (room) => {
 
 roomServiceTest(RelationalRoomService, 'Relational');
 roomServiceTest(DocumentRoomService, 'Document');
-//roomServiceTest(GraphRoomService, 'Graph');
+roomServiceTest(GraphRoomService, 'Graph');

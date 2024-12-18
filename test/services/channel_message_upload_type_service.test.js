@@ -99,4 +99,4 @@ const channelAuditTypeServiceTest = (ChannelMessageUploadTypeService, name) => {
 
 channelAuditTypeServiceTest(RelationalChannelMessageUploadTypeService, 'Relational');
 channelAuditTypeServiceTest(DocumentChannelMessageUploadTypeService, 'Document');
-//channelAuditTypeServiceTest(GraphChannelMessageUploadTypeService, 'Graph');
+channelAuditTypeServiceTest(GraphChannelMessageUploadTypeService, 'Graph');
