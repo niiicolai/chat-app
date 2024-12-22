@@ -302,4 +302,4 @@ const roomUserServiceTest = (RoomUserService, RoomInviteLinkService, name) => {
 
 roomUserServiceTest(RelationalRoomUserService, RelationalRoomInviteLinkService, 'Relational');
 roomUserServiceTest(DocumentRoomUserService, DocumentRoomInviteLinkService, 'Document');
-//roomUserServiceTest(GraphRoomUserService, GraphRoomInviteLinkService, 'Graph');
+roomUserServiceTest(GraphRoomUserService, GraphRoomInviteLinkService, 'Graph');

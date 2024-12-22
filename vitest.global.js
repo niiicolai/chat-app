@@ -28,6 +28,9 @@ export async function setup({ provide }) {
 
     console.log('Restore Neo4j');
     await seedNeo4j('up');
+    await new Promise((resolve) => {
+        setTimeout(resolve, 25000);
+    });
     
     console.log('=== Global Test Setup Completed ===');
 }

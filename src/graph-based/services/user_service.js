@@ -216,18 +216,20 @@ class UserService {
             if (user_login_password) {
                 const userLogin = await tx.run(
                     'MATCH (u:User {uuid: $user_uuid}) ' +
-                    'MATCH (ult:UserLoginType {name: $user_login_type_name}) ' +
+                    'MATCH (ult:UserLoginType {name: "Password"}) ' +
                     'MATCH (u)-[:AUTHORIZE_VIA]->(ul:UserLogin) ' +
+                    'MATCH (ul)-[:TYPE_IS]->(ult) ' +
                     'RETURN ul',
-                    { user_uuid, user_login_type_name }
+                    { user_uuid }
                 );
+
                 if (userLogin.records.length > 0) {
                     await tx.run(
                         'MATCH (u:User {uuid: $user_uuid}) ' +
-                        'MATCH (ult:UserLoginType {name: $user_login_type_name}) ' +
+                        'MATCH (ult:UserLoginType {name: "Password"}) ' +
                         'MATCH (u)-[:AUTHORIZE_VIA]->(ul:UserLogin) ' +
                         'SET ul.password = $user_login_password',
-                        { user_uuid, user_login_password, user_login_type_name }
+                        { user_uuid, user_login_password }
                     );
                 } else {
                     await tx.run(
@@ -399,7 +401,7 @@ class UserService {
     async destroyUserLogins(options = { uuid: null, login_uuid: null }) {
         Validator.destroyUserLogins(options);
 
-        const [userLogin, userLoginCount] = await Promise.all([
+        const [userLogin, userLoginResultCount] = await Promise.all([
             neodeInstance.model('UserLogin').find(options.login_uuid),
             neodeInstance.cypher(
                 'MATCH (u:User {uuid: $uuid}) ' +
@@ -408,14 +410,13 @@ class UserService {
                 { uuid: options.uuid }
             )
         ]);
+        
+        if (!userLogin) throw new err.EntityNotFoundError('user_login');
 
-        if (!userLogin)
-            throw new err.EntityNotFoundError('user_login');
-        if (userLogin.get('user_login_type').get('name') === 'Password')
-            throw new err.ControllerError(400, 'Cannot delete password login');
-        if (userLoginCount === 1)
-            throw new err.ControllerError(400, 'Cannot delete last login');
-
+        const userLoginType = userLogin.get('user_login_type').endNode().properties();
+        if (userLoginType.name === 'Password') throw new err.ControllerError(400, 'Cannot delete password login');
+        if (userLoginResultCount.records[0].get('user_login_count').low === 1) throw new err.ControllerError(400, 'Cannot delete last login');
+        
         await userLogin.delete();
     }
 
